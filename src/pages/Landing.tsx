@@ -15,9 +15,11 @@ export default function Landing() {
       try {
         const res = await fetch(`${apiUrl}/events?limit=60`, { cache: "no-store" })
         if (!res.ok) return
-        const data = (await res.json()) as { media_urls?: string[] }[]
-        const first = data.find((e) => (e.media_urls ?? []).some((u) => isLikelyImageUrl(u)))
-        const media = first?.media_urls?.find((u) => isLikelyImageUrl(u))
+        const data = (await res.json()) as { title?: string | null; description?: string | null; media_urls?: string[] }[]
+        const preferred = data.find((e) => matchesSelectedPost(e.title, e.description))
+        const fallback = data.find((e) => (e.media_urls ?? []).some((u) => isLikelyImageUrl(u)))
+        const source = preferred ?? fallback
+        const media = source?.media_urls?.find((u) => isLikelyImageUrl(u))
         const resolved = resolveMediaUrl(media, apiUrl)
         setHeroImage(resolved && isLikelyImageUrl(resolved) ? resolved : null)
       } catch {
@@ -145,4 +147,9 @@ function resolveMediaUrl(media: string | undefined, apiBase: string): string | n
   } catch {
     return media
   }
+}
+
+function matchesSelectedPost(title?: string | null, description?: string | null): boolean {
+  const t = `${title ?? ""}\n${description ?? ""}`.toLowerCase()
+  return t.includes("вечеринка идентичность") || t.includes("15.11")
 }
