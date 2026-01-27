@@ -115,6 +115,9 @@ export default function Feed() {
   const [activeFilterKey, setActiveFilterKey] = React.useState<string>("all")
   const [selected, setSelected] = React.useState<EventCard | null>(null)
   const [detailsOpen, setDetailsOpen] = React.useState(false)
+  const [deleteLoading, setDeleteLoading] = React.useState(false)
+  const [deleteError, setDeleteError] = React.useState<string | null>(null)
+  const [deleteCount, setDeleteCount] = React.useState<number | null>(null)
 
   const showDebug = React.useMemo(() => {
     if (typeof window === "undefined") return false
@@ -173,6 +176,28 @@ export default function Feed() {
     }
   }, [load])
 
+  const onDeleteTelegramEvents = React.useCallback(async () => {
+    if (!window.confirm("Удалить все события, загруженные из Telegram?")) return
+    setDeleteLoading(true)
+    setDeleteError(null)
+    setDeleteCount(null)
+    try {
+      const res = await fetch(`${apiUrl}/debug/telegram-events`, { method: "DELETE" })
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => null)) as { detail?: unknown } | null
+        const detail = payload && typeof payload.detail === "string" ? payload.detail : null
+        throw new Error(detail ? `status ${res.status}: ${detail}` : `status ${res.status}`)
+      }
+      const data = (await res.json()) as { deleted?: number }
+      setDeleteCount(typeof data.deleted === "number" ? data.deleted : 0)
+      await load()
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : "Не удалось удалить события")
+    } finally {
+      setDeleteLoading(false)
+    }
+  }, [load])
+
   const filteredItems = React.useMemo(() => {
     const f = eventFilters.find((x) => x.key === activeFilterKey) ?? eventFilters[0]
     return items.filter((e) => matchesFilter(e, f))
@@ -228,6 +253,27 @@ export default function Feed() {
             </Button>
           </Flex>
         </Flex>
+
+        <Box border="1px solid" borderColor="red.200" bg="red.50" borderRadius="lg" p="3">
+          <Stack gap="2">
+            <Text fontWeight="semibold" color="red.700">
+              Админ: Telegram-ивенты
+            </Text>
+            <Button colorScheme="red" size="sm" onClick={onDeleteTelegramEvents} loading={deleteLoading}>
+              Удалить все события из базы
+            </Button>
+            {deleteCount !== null && (
+              <Text fontSize="sm" color="red.700">
+                Удалено событий: {deleteCount}
+              </Text>
+            )}
+            {deleteError && (
+              <Text fontSize="sm" color="red.700">
+                Ошибка: {deleteError}
+              </Text>
+            )}
+          </Stack>
+        </Box>
 
         <Flex align="center" gap="2" wrap="wrap">
           <Badge borderRadius="full" px="3" py="1" bg="rgba(0,0,0,0.06)" color="#111" textTransform="none">

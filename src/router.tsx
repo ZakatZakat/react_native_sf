@@ -7,13 +7,19 @@ import Bauhaus from "./pages/Bauhaus"
 import About from "./pages/About"
 import Profile from "./pages/Profile"
 import RouteError from "./pages/RouteError"
+import NotFound from "./pages/NotFound"
 
-const rootRoute = createRootRoute({ component: App, errorComponent: RouteError })
+const rootRoute = createRootRoute({
+  component: App,
+  errorComponent: RouteError,
+  notFoundComponent: NotFound,
+})
 const landingRoute = createRoute({ getParentRoute: () => rootRoute, path: "/", component: Landing })
 const feedRoute = createRoute({ getParentRoute: () => rootRoute, path: "/feed", component: Feed })
 const bauhausRoute = createRoute({ getParentRoute: () => rootRoute, path: "/bauhaus", component: Bauhaus })
 const aboutRoute = createRoute({ getParentRoute: () => rootRoute, path: "/about", component: About })
 const profileRoute = createRoute({ getParentRoute: () => rootRoute, path: "/profile", component: Profile })
+const notFoundRoute = createRoute({ getParentRoute: () => rootRoute, path: "$", component: NotFound })
 
 const routeTree = rootRoute.addChildren([
   landingRoute,
@@ -21,6 +27,7 @@ const routeTree = rootRoute.addChildren([
   bauhausRoute,
   aboutRoute,
   profileRoute,
+  notFoundRoute,
 ])
 export const router = createRouter({ routeTree })
 declare module "@tanstack/react-router" { interface Register { router: typeof router } }

@@ -78,4 +78,11 @@ async def telegram_fetch_recent(
     }
 
 
+@router.delete("/telegram-events")
+async def telegram_delete_events(request: Request) -> dict[str, int | str]:
+    repo = _get_events_repo(request)
+    deleted = await repo.delete_all()
+    return {"status": "ok", "deleted": deleted}
+
+
 

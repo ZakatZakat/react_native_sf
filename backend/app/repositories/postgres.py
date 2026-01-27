@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Sequence
 from uuid import uuid4
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.models import Event
@@ -47,6 +47,12 @@ class PostgresEventsRepository:
             result = await session.scalars(select(Event).order_by(Event.created_at.desc()).limit(limit))
             records: Sequence[Event] = result.all()
             return [self._to_card(item) for item in records]
+
+    async def delete_all(self) -> int:
+        async with self._session_factory() as session:
+            result = await session.execute(delete(Event))
+            await session.commit()
+            return int(result.rowcount or 0)
 
     async def _find_by_channel_msg(self, session: AsyncSession, channel: str, message_id: int) -> Event | None:
         return await session.scalar(

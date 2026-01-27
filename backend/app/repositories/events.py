@@ -12,6 +12,8 @@ class EventsRepository(Protocol):
 
     async def list_recent(self, limit: int = 50) -> list[EventCard]: ...
 
+    async def delete_all(self) -> int: ...
+
 
 class InMemoryEventsRepository(EventsRepository):
     def __init__(self) -> None:
@@ -40,6 +42,11 @@ class InMemoryEventsRepository(EventsRepository):
 
     async def list_recent(self, limit: int = 50) -> list[EventCard]:
         return sorted(self._store.values(), key=lambda item: item.created_at, reverse=True)[:limit]
+
+    async def delete_all(self) -> int:
+        count = len(self._store)
+        self._store.clear()
+        return count
 
     def _find_by_channel_msg(self, channel: str, message_id: int) -> EventCard | None:
         for card in self._store.values():

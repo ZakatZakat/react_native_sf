@@ -122,6 +122,7 @@ export default function Profile() {
     await saveProfile()
   }
 
+
   // Autosave draft + debounced save after the profile is loaded
   React.useEffect(() => {
     if (!profile || !hasInitData || !initializedRef.current) return
