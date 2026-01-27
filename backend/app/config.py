@@ -33,7 +33,6 @@ DEFAULT_TELEGRAM_CHANNEL_IDS = "\n".join(
         "@digest_msk",
         "@afishakontramarka",
         "@est_prohodka",
-        "@kyivconcert",
         "@saint_afisha",
         "@produsserka",
         "@rupor_events_spb",
@@ -43,8 +42,6 @@ DEFAULT_TELEGRAM_CHANNEL_IDS = "\n".join(
         "@rock63ru",
         "@rupor_ekb",
         "@rassvetperm",
-        "@JazzClub32",
-        "@filarmonia_odessa",
     ]
 )
 
