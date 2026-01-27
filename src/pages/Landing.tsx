@@ -29,7 +29,17 @@ export default function Landing() {
 
   return (
     <Box minH="100dvh" bg="#FFFFFF" color={PRIMARY}>
-      <Stack maxW="420px" mx="auto" px="4" pt="10" pb="12" gap="6">
+      <Stack
+        maxW="420px"
+        mx="auto"
+        px="4"
+        pt="8"
+        pb="12"
+        gap="6"
+        border={`10px solid ${PRIMARY}`}
+        borderRadius="2xl"
+        bg="#FFFFFF"
+      >
         <Flex align="center" justify="space-between">
           <Text fontSize="2xl" fontWeight="semibold" letterSpacing="-0.2px">
             Поиск ивентов
@@ -39,14 +49,18 @@ export default function Landing() {
         </Flex>
 
         <Stack gap="6" align="center">
-          <Box className="tg-float-1" style={{ animationDuration: "6.4s", animationDelay: "-0.8s" }} alignSelf="flex-start">
+          <Box
+            className="tg-float-1"
+            style={{ animationDuration: "6.4s", animationDelay: "-0.8s" }}
+            alignSelf="flex-start"
+          >
             <Box
               width="290px"
-              border="1px solid rgba(45,42,140,0.28)"
-              borderRadius="xl"
+              border={`2px solid ${PRIMARY}`}
+              borderRadius="2xl"
               p="4"
               bg="white"
-              boxShadow="0 16px 30px rgba(45,42,140,0.12)"
+              boxShadow="0 10px 24px rgba(0,0,0,0.08)"
               style={{ transform: "rotate(-2.4deg)" }}
             >
             <Text fontSize="xs" fontWeight="semibold" letterSpacing="0.4px">
@@ -76,14 +90,18 @@ export default function Landing() {
             </Box>
           </Box>
 
-          <Box className="tg-float-2" style={{ animationDuration: "7.2s", animationDelay: "-1.1s" }} alignSelf="flex-end">
+          <Box
+            className="tg-float-2"
+            style={{ animationDuration: "7.2s", animationDelay: "-1.1s" }}
+            alignSelf="flex-end"
+          >
             <Box
               width="220px"
-              border="1px solid rgba(45,42,140,0.28)"
-              borderRadius="xl"
+              border={`2px solid ${PRIMARY}`}
+              borderRadius="2xl"
               p="3"
               bg="white"
-              boxShadow="0 16px 30px rgba(45,42,140,0.12)"
+              boxShadow="0 10px 24px rgba(0,0,0,0.08)"
               style={{ transform: "rotate(2.8deg)" }}
             >
             <Text fontSize="xs" fontWeight="semibold" letterSpacing="0.3px">
