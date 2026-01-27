@@ -2,7 +2,6 @@
 import * as React from "react"
 import { Outlet, useLocation, useNavigate } from "@tanstack/react-router"
 import { Box, Container, Flex, Heading, Spacer } from "@chakra-ui/react"
-import { ColorModeButton, useColorMode, useColorModeValue } from "./components/ui/color-mode"
 
 declare global {
   interface Window { Telegram?: { WebApp?: any } }
@@ -17,7 +16,6 @@ const ROUTES = [
 
 export default function App() {
   const tg = typeof window !== "undefined" ? window.Telegram?.WebApp : undefined
-  const { setColorMode } = useColorMode()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -25,16 +23,12 @@ export default function App() {
     if (!tg) return
     tg.ready()
     tg.expand?.()
-    // Sync Chakra color mode with Telegram’s scheme if provided
-    if (tg.colorScheme === "dark" || tg.colorScheme === "light") {
-      setColorMode(tg.colorScheme)
-    }
-  }, [tg, setColorMode])
+  }, [tg])
 
-  const bg = useColorModeValue("gray.50", "gray.900")
-  const fg = useColorModeValue("gray.800", "gray.100")
-  const selectBg = useColorModeValue("white", "gray.800")
-  const selectBorder = useColorModeValue("gray.200", "gray.700")
+  const bg = "#FFFFFF"
+  const fg = "#2D2A8C"
+  const selectBg = "#FFFFFF"
+  const selectBorder = "rgba(45,42,140,0.3)"
 
   const currentPath = React.useMemo(() => {
     const p = location.pathname
@@ -66,7 +60,6 @@ export default function App() {
             ))}
           </Box>
           <Spacer />
-          <ColorModeButton />
         </Flex>
       </Container>
       <Container maxW="container.md" pb="8">
