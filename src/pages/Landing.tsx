@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Badge, Box, Button, Flex, Image, Spinner, Stack, Text } from "@chakra-ui/react"
+import { Badge, Box, Button, Flex, Image, Stack, Text } from "@chakra-ui/react"
 
 const PRIMARY = "#2D2A8C"
 const PRIMARY_MUTED = "rgba(45,42,140,0.7)"
@@ -36,7 +36,6 @@ export default function Landing() {
             <br />
             mean to you?
           </Text>
-          <Spinner size="sm" thickness="2px" speed="0.8s" color={PRIMARY} />
         </Flex>
 
         <Flex gap="4">
@@ -93,37 +92,6 @@ export default function Landing() {
           CONTRIBUTE
         </Button>
 
-        <Flex align="center" justify="space-between" pt="2">
-          <Box width="32px" height="32px" borderRadius="full" border={`1px solid ${PRIMARY_BORDER}`} />
-          <Box
-            width="46px"
-            height="26px"
-            borderRadius="full"
-            border={`1px solid ${PRIMARY_BORDER}`}
-            position="relative"
-            bg={PRIMARY_SOFT}
-          >
-            <Box
-              width="22px"
-              height="22px"
-              borderRadius="full"
-              bg={PRIMARY}
-              position="absolute"
-              top="1.5px"
-              left="2px"
-            />
-          </Box>
-          <Box
-            width="32px"
-            height="32px"
-            borderRadius="full"
-            border={`1px solid ${PRIMARY_BORDER}`}
-            display="grid"
-            placeItems="center"
-          >
-            +
-          </Box>
-        </Flex>
       </Stack>
     </Box>
   )
