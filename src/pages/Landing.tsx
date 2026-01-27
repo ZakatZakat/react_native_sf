@@ -1,5 +1,6 @@
 import * as React from "react"
 import { Badge, Box, Button, Flex, Image, Stack, Text } from "@chakra-ui/react"
+import { useNavigate } from "@tanstack/react-router"
 
 const PRIMARY = "#2D2A8C"
 const PRIMARY_MUTED = "rgba(45,42,140,0.7)"
@@ -7,6 +8,7 @@ const PRIMARY_SOFT = "rgba(45,42,140,0.12)"
 const PRIMARY_BORDER = "rgba(45,42,140,0.28)"
 
 export default function Landing() {
+  const navigate = useNavigate()
   const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8000"
   const [heroImage, setHeroImage] = React.useState<string | null>(null)
 
@@ -123,7 +125,14 @@ export default function Landing() {
           </Box>
         </Stack>
 
-        <Button bg={PRIMARY} color="white" borderRadius="full" height="48px" fontWeight="semibold">
+        <Button
+          bg={PRIMARY}
+          color="white"
+          borderRadius="full"
+          height="48px"
+          fontWeight="semibold"
+          onClick={() => navigate({ to: "/bauhaus" })}
+        >
           Открыть ленту
         </Button>
 
