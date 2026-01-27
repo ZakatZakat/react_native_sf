@@ -32,16 +32,25 @@ export default function Landing() {
       <Stack maxW="420px" mx="auto" px="4" pt="10" pb="12" gap="6">
         <Flex align="center" justify="space-between">
           <Text fontSize="2xl" fontWeight="semibold" letterSpacing="-0.2px">
-            What does wellbeing
+            Поиск ивентов
             <br />
-            mean to you?
+            и событий в Москве
           </Text>
         </Flex>
 
-        <Flex gap="4">
-          <Box flex="1" border="1px solid rgba(45,42,140,0.28)" borderRadius="xl" p="4" bg="white">
+        <Stack gap="6" align="center">
+          <Box className="tg-float-1" style={{ animationDuration: "6.4s", animationDelay: "-0.8s" }} alignSelf="flex-start">
+            <Box
+              width="290px"
+              border="1px solid rgba(45,42,140,0.28)"
+              borderRadius="xl"
+              p="4"
+              bg="white"
+              boxShadow="0 16px 30px rgba(45,42,140,0.12)"
+              style={{ transform: "rotate(-2.4deg)" }}
+            >
             <Text fontSize="xs" fontWeight="semibold" letterSpacing="0.4px">
-              001 VISUAL ESSAY
+              ПОДБОРКИ С МЕДИА
             </Text>
             <Box
               mt="3"
@@ -57,39 +66,44 @@ export default function Landing() {
               )}
               <Box px="3" py="2" borderTop="1px solid rgba(45,42,140,0.2)">
                 <Text fontSize="xs" fontWeight="semibold">
-                  SLOW SUNDAYS
+                  ЛУЧШЕЕ В МОСКВЕ
                 </Text>
                 <Text fontSize="xs" color={PRIMARY_MUTED}>
-                  SOUTH OF FRANCE
+                  1000+ каналов
                 </Text>
               </Box>
             </Box>
+            </Box>
           </Box>
 
-          <Box
-            width="160px"
-            border="1px solid rgba(45,42,140,0.28)"
-            borderRadius="xl"
-            p="3"
-            bg="white"
-          >
+          <Box className="tg-float-2" style={{ animationDuration: "7.2s", animationDelay: "-1.1s" }} alignSelf="flex-end">
+            <Box
+              width="220px"
+              border="1px solid rgba(45,42,140,0.28)"
+              borderRadius="xl"
+              p="3"
+              bg="white"
+              boxShadow="0 16px 30px rgba(45,42,140,0.12)"
+              style={{ transform: "rotate(2.8deg)" }}
+            >
             <Text fontSize="xs" fontWeight="semibold" letterSpacing="0.3px">
-              001 SOUND SCAPE
+              ИИ-АГЕНТЫ
             </Text>
             <Text fontSize="xs" color={PRIMARY_MUTED} mt="1">
-              Do you ever think of the passive moments who designed the day? I&apos;ve definitely...
+              ИИ-агенты обрабатывают события и подбирают те, что подходят именно вам.
             </Text>
             <Badge mt="3" fontSize="9px" borderRadius="full" px="2" py="1" bg={PRIMARY_SOFT}>
-              IT TAKES A VILLAGE
+              ПЕРСОНАЛЬНЫЙ ФИД
             </Badge>
             <Text fontSize="xs" color={PRIMARY_MUTED} mt="2">
-              EDINBURGH, UK
+              Москва
             </Text>
+            </Box>
           </Box>
-        </Flex>
+        </Stack>
 
         <Button bg={PRIMARY} color="white" borderRadius="full" height="48px" fontWeight="semibold">
-          CONTRIBUTE
+          Открыть ленту
         </Button>
 
       </Stack>
