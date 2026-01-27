@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 from typing import List
 
 from pydantic import Field
@@ -48,6 +49,9 @@ DEFAULT_TELEGRAM_CHANNEL_IDS = "\n".join(
 )
 
 
+ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
+
+
 class Settings(BaseSettings):
     telegram_api_id: int = Field(..., alias="TELEGRAM_API_ID")
     telegram_api_hash: str = Field(..., alias="TELEGRAM_API_HASH")
@@ -64,7 +68,7 @@ class Settings(BaseSettings):
     app_host: str = Field("0.0.0.0", alias="APP_HOST")
     app_port: int = Field(8000, alias="APP_PORT")
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="allow")
+    model_config = SettingsConfigDict(env_file=str(ENV_FILE), env_file_encoding="utf-8", extra="allow")
 
     @property
     def telegram_channel_ids(self) -> list[str]:
