@@ -39,6 +39,7 @@ export default function Landing() {
         border={`10px solid ${PRIMARY}`}
         borderRadius="2xl"
         bg="#FFFFFF"
+        boxShadow="none"
       >
         <Flex align="center" justify="space-between">
           <Text fontSize="2xl" fontWeight="semibold" letterSpacing="-0.2px">
@@ -60,7 +61,7 @@ export default function Landing() {
               borderRadius="2xl"
               p="4"
               bg="white"
-              boxShadow="0 10px 24px rgba(0,0,0,0.08)"
+              boxShadow="none"
               style={{ transform: "rotate(-2.4deg)" }}
             >
             <Text fontSize="xs" fontWeight="semibold" letterSpacing="0.4px">
@@ -101,7 +102,7 @@ export default function Landing() {
               borderRadius="2xl"
               p="3"
               bg="white"
-              boxShadow="0 10px 24px rgba(0,0,0,0.08)"
+              boxShadow="none"
               style={{ transform: "rotate(2.8deg)" }}
             >
             <Text fontSize="xs" fontWeight="semibold" letterSpacing="0.3px">

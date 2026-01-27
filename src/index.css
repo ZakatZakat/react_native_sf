@@ -5,10 +5,13 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-body {
+html,
+body,
+#root {
   margin: 0;
   min-height: 100vh;
-  background: #ffffff;
+  background: #ffffff !important;
+  background-color: #ffffff !important;
 }
 
 @keyframes tg-float-1 {
