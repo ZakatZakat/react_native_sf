@@ -91,16 +91,17 @@ class TelegramIngestor:
         }
 
     async def _ingest_message(self, client: TelegramClient, channel: str, message: Message) -> int:
-        if not message.message:
+        if not message.message and not message.media:
             return 0
         media_urls = await self._collect_media(client, message)
         published_at = (
             message.date.replace(tzinfo=None) if getattr(message.date, "tzinfo", None) else message.date
         )
+        text = message.message or ""
         payload = EventIngestRequest(
             channel=channel,
             message_id=message.id,
-            text=message.message,
+            text=text,
             media_urls=media_urls,
             published_at=published_at,
         )

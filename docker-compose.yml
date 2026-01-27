@@ -8,8 +8,24 @@ services:
     env_file:
       - .env
     working_dir: /app
-    ports:
-      - "3000:80"
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=traefik-public
+      - traefik.constraint-label=traefik-public
+      - traefik.http.services.tgapp-frontend.loadbalancer.server.port=80
+
+      - traefik.http.routers.tgapp-frontend-http.rule=Host(`${DOMAIN?Variable not set}`)
+      - traefik.http.routers.tgapp-frontend-http.entrypoints=http
+
+      - traefik.http.routers.tgapp-frontend-https.rule=Host(`${DOMAIN?Variable not set}`)
+      - traefik.http.routers.tgapp-frontend-https.entrypoints=https
+      - traefik.http.routers.tgapp-frontend-https.tls=true
+      - traefik.http.routers.tgapp-frontend-https.tls.certresolver=le
+
+      - traefik.http.routers.tgapp-frontend-http.middlewares=https-redirect
+
+    networks:
+      - traefik-public
 
   api:
     build:
@@ -18,7 +34,6 @@ services:
     restart: unless-stopped
     environment:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
-      TELEGRAM_CHANNEL_IDS: ${TELEGRAM_CHANNEL_IDS}
       TELEGRAM_API_ID: ${TELEGRAM_API_ID}
       TELEGRAM_API_HASH: ${TELEGRAM_API_HASH}
       TELEGRAM_SESSION_STRING: ${TELEGRAM_SESSION_STRING}
@@ -41,11 +56,46 @@ services:
         condition: service_healthy
     volumes:
       - tgapp_media:/app/media
-    ports:
-      - "8001:8000"
+    networks:
+      - traefik-public
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=traefik-public
+      - traefik.constraint-label=traefik-public
+
+      - traefik.http.services.tgapp-api.loadbalancer.server.port=8000
+
+      - traefik.http.routers.tgapp-api-http.rule=Host(`api.${DOMAIN?Variable not set}`)
+      - traefik.http.routers.tgapp-api-http.entrypoints=http
+      - traefik.http.routers.tgapp-api-http.middlewares=https-redirect
+
+      - traefik.http.routers.tgapp-api-https.rule=Host(`api.${DOMAIN?Variable not set}`)
+      - traefik.http.routers.tgapp-api-https.entrypoints=https
+      - traefik.http.routers.tgapp-api-https.tls=true
+      - traefik.http.routers.tgapp-api-https.tls.certresolver=le
+
+      - traefik.http.middlewares.tgapp-api-strip.stripprefix.prefixes=/api
+      - traefik.http.routers.tgapp-api-main-http.rule=Host(`${DOMAIN?Variable not set}`) && PathPrefix(`/api`)
+      - traefik.http.routers.tgapp-api-main-http.entrypoints=http
+      - traefik.http.routers.tgapp-api-main-http.middlewares=https-redirect
+      - traefik.http.routers.tgapp-api-main-https.rule=Host(`${DOMAIN?Variable not set}`) && PathPrefix(`/api`)
+      - traefik.http.routers.tgapp-api-main-https.entrypoints=https
+      - traefik.http.routers.tgapp-api-main-https.tls=true
+      - traefik.http.routers.tgapp-api-main-https.tls.certresolver=le
+      - traefik.http.routers.tgapp-api-main-https.middlewares=tgapp-api-strip
+
+      - traefik.http.routers.tgapp-media-http.rule=Host(`${DOMAIN?Variable not set}`) && PathPrefix(`/media`)
+      - traefik.http.routers.tgapp-media-http.entrypoints=http
+      - traefik.http.routers.tgapp-media-http.middlewares=https-redirect
+      - traefik.http.routers.tgapp-media-https.rule=Host(`${DOMAIN?Variable not set}`) && PathPrefix(`/media`)
+      - traefik.http.routers.tgapp-media-https.entrypoints=https
+      - traefik.http.routers.tgapp-media-https.tls=true
+      - traefik.http.routers.tgapp-media-https.tls.certresolver=le
 
   redis:
     image: redis:7
+    networks:
+      - traefik-public
 
   db:
     image: postgres:16
@@ -60,6 +110,14 @@ services:
       retries: 5
     volumes:
       - pgdata:/var/lib/postgresql/data
+    networks:
+      traefik-public:
+        aliases:
+          - tg-miniapp-db
+
+networks:
+  traefik-public:
+    external: true
 
 volumes:
   pgdata:
