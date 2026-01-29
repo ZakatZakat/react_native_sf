@@ -1,9 +1,21 @@
 import * as React from "react"
 import { Badge, Box, Dialog, Flex, Image, Portal, Stack, Text } from "@chakra-ui/react"
+import { keyframes } from "@emotion/react"
 
 const PRIMARY = "#2D2A8C"
 const PRIMARY_BORDER = "rgba(45,42,140,0.28)"
 const BG = "#FFFFFF"
+
+const likeBurst = keyframes`
+  0% {
+    transform: scale(0.7);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.7);
+    opacity: 0;
+  }
+`
 
 type EventCard = {
   id: string
@@ -20,6 +32,8 @@ export default function Bauhaus2() {
   const [loading, setLoading] = React.useState(true)
   const [selected, setSelected] = React.useState<EventCard | null>(null)
   const [detailsOpen, setDetailsOpen] = React.useState(false)
+  const [likedIds, setLikedIds] = React.useState<Set<string>>(() => new Set())
+  const [burstId, setBurstId] = React.useState<string | null>(null)
 
   React.useEffect(() => {
     const load = async () => {
@@ -41,6 +55,19 @@ export default function Bauhaus2() {
   const openDetails = (item: EventCard) => {
     setSelected(item)
     setDetailsOpen(true)
+  }
+  const toggleLike = (id: string) => {
+    setLikedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+    setBurstId(id)
+    window.setTimeout(() => setBurstId((current) => (current === id ? null : current)), 420)
   }
 
   return (
@@ -73,6 +100,7 @@ export default function Bauhaus2() {
                 minH="100dvh"
                 display="flex"
                 flexDirection="column"
+                position="relative"
                 px="5"
                 pt="3"
                 pb="calc(20px + env(safe-area-inset-bottom))"
@@ -133,6 +161,33 @@ export default function Bauhaus2() {
                     Посмотреть ивент
                   </Text>
                 </Stack>
+                <Box
+                  position="absolute"
+                  right="20px"
+                  bottom="calc(32px + env(safe-area-inset-bottom))"
+                  width="52px"
+                  height="52px"
+                  borderRadius="full"
+                  border={`1px solid ${PRIMARY}`}
+                  bg={likedIds.has(item.id) ? PRIMARY : "white"}
+                  color={likedIds.has(item.id) ? "white" : PRIMARY}
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  cursor="pointer"
+                  onClick={() => toggleLike(item.id)}
+                >
+                  <Text fontSize="lg">♥</Text>
+                  {burstId === item.id ? (
+                    <Box
+                      position="absolute"
+                      inset="0"
+                      borderRadius="full"
+                      border={`1px solid ${PRIMARY}`}
+                      animation={`${likeBurst} 420ms ease-out`}
+                    />
+                  ) : null}
+                </Box>
               </Box>
             )
           })
