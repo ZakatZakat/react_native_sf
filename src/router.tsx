@@ -3,6 +3,7 @@ import { createRootRoute, createRouter, createRoute } from "@tanstack/react-rout
 import App from "./App"
 import Landing from "./pages/Landing"
 import Feed from "./pages/Feed"
+import Feed2 from "./pages/Feed2"
 import Bauhaus from "./pages/Bauhaus"
 import Bauhaus2 from "./pages/Bauhaus2"
 import About from "./pages/About"
@@ -17,6 +18,7 @@ const rootRoute = createRootRoute({
 })
 const landingRoute = createRoute({ getParentRoute: () => rootRoute, path: "/", component: Landing })
 const feedRoute = createRoute({ getParentRoute: () => rootRoute, path: "/feed", component: Feed })
+const feed2Route = createRoute({ getParentRoute: () => rootRoute, path: "/feed-2", component: Feed2 })
 const bauhausRoute = createRoute({ getParentRoute: () => rootRoute, path: "/bauhaus", component: Bauhaus })
 const bauhaus2Route = createRoute({ getParentRoute: () => rootRoute, path: "/bauhaus-2", component: Bauhaus2 })
 const aboutRoute = createRoute({ getParentRoute: () => rootRoute, path: "/about", component: About })
@@ -26,6 +28,7 @@ const notFoundRoute = createRoute({ getParentRoute: () => rootRoute, path: "$", 
 const routeTree = rootRoute.addChildren([
   landingRoute,
   feedRoute,
+  feed2Route,
   bauhausRoute,
   bauhaus2Route,
   aboutRoute,
