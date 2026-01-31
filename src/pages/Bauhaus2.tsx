@@ -103,7 +103,7 @@ export default function Bauhaus2() {
                 position="relative"
                 px="5"
                 pt="3"
-                pb="calc(20px + env(safe-area-inset-bottom))"
+                pb="calc(132px + env(safe-area-inset-bottom))"
                 style={{ scrollSnapAlign: "start", scrollSnapStop: "always" }}
               >
                 <Box
@@ -164,7 +164,7 @@ export default function Bauhaus2() {
                 <Box
                   position="absolute"
                   right="20px"
-                  bottom="calc(32px + env(safe-area-inset-bottom))"
+                  bottom="calc(72px + env(safe-area-inset-bottom))"
                   width="52px"
                   height="52px"
                   borderRadius="full"

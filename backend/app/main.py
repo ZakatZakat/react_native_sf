@@ -22,7 +22,7 @@ from app.tasks.polling import TelegramPollingService
 logging.basicConfig(level=logging.INFO)
 
 settings = Settings()
-app = FastAPI(title="tg-miniapp-backend")
+app = FastAPI(title="AI-Picks API")
 MEDIA_ROOT = Path(__file__).resolve().parents[1] / "media"
 MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
 

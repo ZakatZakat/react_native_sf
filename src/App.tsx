@@ -41,7 +41,7 @@ export default function App() {
     <Box minH="100dvh" bg={bg} color={fg}>
       <Container maxW="container.md" py="4">
         <Flex align="center" gap="4">
-          <Heading size="md">Telegram Mini App</Heading>
+          <Heading size="md">AI-Picks</Heading>
           <Box
             as="select"
             value={currentPath}

@@ -28,7 +28,7 @@ def _build_check_string(items: dict[str, str]) -> str:
 
 
 def _build_data_check_string(bot_id: str, items: dict[str, str]) -> str:
-    """Build data-check-string per Telegram Mini Apps docs."""
+    """Build data-check-string per Telegram Web App docs."""
     return f"{bot_id}:WebAppData\n{_build_check_string(items)}"
 
 
@@ -133,7 +133,7 @@ def _verify_init_data(init_data: str, bot_token: str) -> dict[str, Any]:
         (chat_instance or "")[:8] if chat_instance else None,
     )
 
-    # ---- 1) Validate 'hash' (Mini App backend validation) ----
+    # ---- 1) Validate 'hash' (Web App backend validation) ----
     # data_check_string: all received fields except 'hash', sorted, joined by '\n'
     data_fields = {k: v for k, v in parsed.items() if k != "hash"}
     data_check_string = _build_check_string(data_fields)
