@@ -34,6 +34,7 @@ export default function Bauhaus2() {
   const [detailsOpen, setDetailsOpen] = React.useState(false)
   const [likedIds, setLikedIds] = React.useState<Set<string>>(() => new Set())
   const [burstId, setBurstId] = React.useState<string | null>(null)
+  const [shortImageIds, setShortImageIds] = React.useState<Set<string>>(() => new Set())
 
   React.useEffect(() => {
     const load = async () => {
@@ -108,7 +109,7 @@ export default function Bauhaus2() {
               >
                 <Box
                   flex="0 0 auto"
-                  height={{ base: "48dvh", sm: "52dvh", md: "56dvh" }}
+                  height="auto"
                   mt="-2"
                   border="none"
                   borderRadius="2xl"
@@ -125,12 +126,27 @@ export default function Bauhaus2() {
                       src={src}
                       alt={title}
                       width="100%"
-                      height="100%"
+                      height="auto"
+                      maxH={{ base: "48dvh", sm: "52dvh", md: "56dvh" }}
                       objectFit="contain"
                       objectPosition="top center"
                       px={{ base: "2", sm: "3" }}
                       pt={{ base: "1", sm: "2" }}
                       pb="0"
+                      onLoad={(e) => {
+                        const { naturalWidth, naturalHeight } = e.currentTarget
+                        if (!naturalWidth || !naturalHeight) return
+                        const isShort = naturalWidth / naturalHeight >= 1.4
+                        setShortImageIds((prev) => {
+                          const next = new Set(prev)
+                          if (isShort) {
+                            next.add(item.id)
+                          } else {
+                            next.delete(item.id)
+                          }
+                          return next
+                        })
+                      }}
                     />
                   ) : (
                     <Box width="100%" height="100%" bg="rgba(45,42,140,0.10)" />
@@ -156,7 +172,7 @@ export default function Bauhaus2() {
                   </Flex>
                   <Text
                     fontWeight="semibold"
-                    fontSize="2xl"
+                    fontSize={shortImageIds.has(item.id) ? "4xl" : "2xl"}
                     lineHeight="1.1"
                     cursor="pointer"
                     onClick={() => openDetails(item)}
@@ -165,7 +181,7 @@ export default function Bauhaus2() {
                     {title}
                   </Text>
                   {item.description ? (
-                    <Text fontSize="sm" color="rgba(45,42,140,0.8)">
+                    <Text fontSize={shortImageIds.has(item.id) ? "lg" : "sm"} color="rgba(45,42,140,0.8)">
                       {truncateText(item.description, 240)}
                     </Text>
                   ) : null}
