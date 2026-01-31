@@ -14,12 +14,13 @@ const PRIMARY = "#2D2A8C"
 const PRIMARY_MUTED = "rgba(45,42,140,0.7)"
 const CARD_BG = "#FFFFFF"
 const BORDER = "rgba(45,42,140,0.22)"
-const BOARD_BG = "rgba(45,42,140,0.06)"
+const BOARD_BG = "#FFFFFF"
 
 export default function Feed2() {
   const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8000"
   const [items, setItems] = React.useState<EventCard[]>([])
   const [loading, setLoading] = React.useState(true)
+  const scrollerRef = React.useRef<HTMLDivElement | null>(null)
 
   React.useEffect(() => {
     const load = async () => {
@@ -47,25 +48,37 @@ export default function Feed2() {
     )
   }
 
+  const onWheel: React.WheelEventHandler<HTMLDivElement> = (e) => {
+    if (!scrollerRef.current) return
+    if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return
+    scrollerRef.current.scrollLeft += e.deltaY
+    e.preventDefault()
+  }
+
   return (
-    <Box px="1" pt="2" pb="10">
+    <Box px="1" pt="2" pb="10" height="calc(100dvh - 140px)" overflow="hidden">
       <Flex
+        ref={scrollerRef}
         gap="4"
         overflowX="auto"
+        overflowY="hidden"
+        height="100%"
         py="4"
         px="1"
-        style={{ scrollSnapType: "x mandatory" }}
+        onWheel={onWheel}
+        style={{
+          scrollSnapType: "x mandatory",
+          touchAction: "pan-x",
+          overscrollBehaviorX: "contain",
+          overscrollBehaviorY: "none",
+        }}
       >
         <Box
           minW="820px"
           maxW="820px"
-          borderRadius="3xl"
-          border="2px solid"
-          borderColor={BORDER}
           bg={BOARD_BG}
           px="4"
           py="5"
-          boxShadow="0 12px 26px rgba(45,42,140,0.10)"
           style={{ scrollSnapAlign: "start" }}
         >
           <Box
