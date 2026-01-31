@@ -114,6 +114,9 @@ export default function Bauhaus2() {
                   borderRadius="2xl"
                   overflow="hidden"
                   bg="transparent"
+                  display="flex"
+                  alignItems="flex-start"
+                  justifyContent="center"
                   cursor="pointer"
                   onClick={() => openDetails(item)}
                 >
@@ -124,8 +127,10 @@ export default function Bauhaus2() {
                       width="100%"
                       height="100%"
                       objectFit="contain"
+                      objectPosition="top center"
                       px={{ base: "2", sm: "3" }}
-                      py={{ base: "3", sm: "4" }}
+                      pt={{ base: "1", sm: "2" }}
+                      pb="0"
                     />
                   ) : (
                     <Box width="100%" height="100%" bg="rgba(45,42,140,0.10)" />
