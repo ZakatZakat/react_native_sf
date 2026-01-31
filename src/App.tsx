@@ -13,6 +13,7 @@ const ROUTES = [
   { label: "Feed 2", to: "/feed-2" },
   { label: "Bauhaus", to: "/bauhaus" },
   { label: "Bauhaus 2", to: "/bauhaus-2" },
+  { label: "Profile 1", to: "/profile-1" },
   { label: "About", to: "/about" },
   { label: "Profile", to: "/profile" },
 ] as const
