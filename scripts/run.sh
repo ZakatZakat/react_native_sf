@@ -31,12 +31,18 @@ run_local() {
   npm run dev -- --host 0.0.0.0 --port "$PORT"
 }
 
+run_compose_local() {
+  cd "$ROOT_DIR"
+  docker compose -f docker-compose.local.yml up --build
+}
+
 case "$MODE" in
   docker) run_docker_traefik ;;
   docker-local) run_docker_local ;;
   local) run_local ;;
+  compose-local) run_compose_local ;;
   *)
-    echo "Usage: $0 [docker|docker-local|local]" >&2
+    echo "Usage: $0 [docker|docker-local|local|compose-local]" >&2
     exit 1
     ;;
 esac

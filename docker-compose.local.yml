@@ -1,0 +1,76 @@
+services:
+  app:
+    build:
+      context: .
+      target: runner
+      args:
+        VITE_API_URL: http://localhost:8000
+    working_dir: /app
+    ports:
+      - "5175:80"
+    networks:
+      - local
+
+  api:
+    build:
+      context: ./backend
+    working_dir: /app
+    environment:
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_API_ID: ${TELEGRAM_API_ID}
+      TELEGRAM_API_HASH: ${TELEGRAM_API_HASH}
+      TELEGRAM_SESSION_STRING: ${TELEGRAM_SESSION_STRING}
+      TELEGRAM_LOGIN_MODE: ${TELEGRAM_LOGIN_MODE}
+      REDIS_URL: redis://redis:6379/0
+      POSTGRES_DSN: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      BOT_POLLING_INTERVAL: ${BOT_POLLING_INTERVAL}
+      APP_HOST: 0.0.0.0
+      APP_PORT: 8000
+    env_file:
+      - .env
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "8000:8000"
+    depends_on:
+      redis:
+        condition: service_started
+      db:
+        condition: service_healthy
+    volumes:
+      - tgapp_media:/app/media
+    networks:
+      - local
+
+  redis:
+    image: redis:7
+    networks:
+      - local
+
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      local:
+        aliases:
+          - tg-miniapp-db
+
+networks:
+  local:
+    driver: bridge
+
+volumes:
+  pgdata:
+  tgapp_media:
