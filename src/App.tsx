@@ -15,6 +15,7 @@ const ROUTES = [
   { label: "Bauhaus 2", to: "/bauhaus-2" },
   { label: "Profile 1", to: "/profile-1" },
   { label: "Profile 2", to: "/profile-2" },
+  { label: "Profile 2.1", to: "/profile-2-1" },
   { label: "About", to: "/about" },
   { label: "Profile", to: "/profile" },
 ] as const

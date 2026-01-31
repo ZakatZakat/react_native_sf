@@ -8,6 +8,7 @@ import Bauhaus from "./pages/Bauhaus"
 import Bauhaus2 from "./pages/Bauhaus2"
 import Profile1 from "./pages/Profile1"
 import Profile2 from "./pages/Profile2"
+import Profile21 from "./pages/Profile21"
 import About from "./pages/About"
 import Profile from "./pages/Profile"
 import RouteError from "./pages/RouteError"
@@ -25,6 +26,7 @@ const bauhausRoute = createRoute({ getParentRoute: () => rootRoute, path: "/bauh
 const bauhaus2Route = createRoute({ getParentRoute: () => rootRoute, path: "/bauhaus-2", component: Bauhaus2 })
 const profile1Route = createRoute({ getParentRoute: () => rootRoute, path: "/profile-1", component: Profile1 })
 const profile2Route = createRoute({ getParentRoute: () => rootRoute, path: "/profile-2", component: Profile2 })
+const profile21Route = createRoute({ getParentRoute: () => rootRoute, path: "/profile-2-1", component: Profile21 })
 const aboutRoute = createRoute({ getParentRoute: () => rootRoute, path: "/about", component: About })
 const profileRoute = createRoute({ getParentRoute: () => rootRoute, path: "/profile", component: Profile })
 const notFoundRoute = createRoute({ getParentRoute: () => rootRoute, path: "$", component: NotFound })
@@ -37,6 +39,7 @@ const routeTree = rootRoute.addChildren([
   bauhaus2Route,
   profile1Route,
   profile2Route,
+  profile21Route,
   aboutRoute,
   profileRoute,
   notFoundRoute,
