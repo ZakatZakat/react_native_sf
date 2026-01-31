@@ -119,12 +119,12 @@ export default function Bauhaus() {
             <SimpleGrid columns={{ base: 2, md: 3 }} spacing="4">
               {items.map((item) => (
                 <Box key={item.id} border="2px solid" borderColor={PRIMARY_BORDER} borderRadius="md" overflow="hidden">
-                  <AspectRatio ratio={1}>
+                  <AspectRatio ratio={1} bg="rgba(45,42,140,0.08)">
                     {(() => {
                       const media = item.media_urls?.find((u) => isLikelyImageUrl(u))
                       const src = resolveMediaUrl(media, apiUrl)
                       return src ? (
-                        <Image src={src} alt={item.title} objectFit="cover" />
+                        <Image src={src} alt={item.title} objectFit="contain" />
                       ) : (
                         <Box bg="rgba(45,42,140,0.08)" />
                       )

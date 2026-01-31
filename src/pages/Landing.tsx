@@ -79,7 +79,7 @@ export default function Landing() {
               bg={PRIMARY_SOFT}
             >
               {heroImage ? (
-                <Image src={heroImage} alt="Event preview" height="160px" width="100%" objectFit="cover" />
+                <Image src={heroImage} alt="Event preview" height="160px" width="100%" objectFit="contain" bg={PRIMARY_SOFT} />
               ) : (
                 <Box height="160px" bg="linear-gradient(135deg, #2D2A8C 0%, #C4C6F5 100%)" />
               )}

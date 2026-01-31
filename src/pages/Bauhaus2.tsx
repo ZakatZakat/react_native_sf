@@ -108,18 +108,25 @@ export default function Bauhaus2() {
               >
                 <Box
                   flex="0 0 auto"
-                  height={{ base: "52dvh", sm: "56dvh", md: "60dvh" }}
+                  height={{ base: "48dvh", sm: "52dvh", md: "56dvh" }}
                   mt="-2"
-                  border="2px solid"
-                  borderColor={PRIMARY_BORDER}
+                  border="none"
                   borderRadius="2xl"
                   overflow="hidden"
-                  bg="rgba(45,42,140,0.06)"
+                  bg="transparent"
                   cursor="pointer"
                   onClick={() => openDetails(item)}
                 >
                   {src ? (
-                    <Image src={src} alt={title} width="100%" height="100%" objectFit="cover" />
+                    <Image
+                      src={src}
+                      alt={title}
+                      width="100%"
+                      height="100%"
+                      objectFit="contain"
+                      px={{ base: "2", sm: "3" }}
+                      py={{ base: "3", sm: "4" }}
+                    />
                   ) : (
                     <Box width="100%" height="100%" bg="rgba(45,42,140,0.10)" />
                   )}
@@ -220,7 +227,7 @@ export default function Bauhaus2() {
                         const media = selected.media_urls?.find((u) => isLikelyImageUrl(u))
                         const src = resolveMediaUrl(media, apiUrl)
                         return src ? (
-                          <Image src={src} alt={selected.title} width="100%" height="auto" objectFit="cover" />
+                          <Image src={src} alt={selected.title} width="100%" height="auto" objectFit="contain" />
                         ) : (
                           <Box bg="rgba(45,42,140,0.10)" height="220px" />
                         )
