@@ -74,47 +74,49 @@ export default function Profile21() {
 
   return (
     <Box minH="100dvh" bg={BG} color={BLUE}>
-      <Stack maxW="520px" mx="auto" px="4" pt="6" pb="12" gap="4">
-        <Text fontSize="xl" fontWeight="semibold" color="black">
-          Интересы
-        </Text>
-        <Flex wrap="wrap" gap="2">
-          {tags
-            .filter((t) => !selected.has(t.key) || justSelected === t.key)
-            .map((tag) => {
-            const active = selected.has(tag.key)
-            const isFlying = justSelected === tag.key
-            return (
-              <Box
-                key={tag.key}
-                border={`2px solid ${BLUE_BORDER}`}
-                borderRadius="md"
-                px="3"
-                py="1.5"
-                lineHeight="1"
-                color={active ? "white" : BLUE}
-                bg={active ? BLUE : "white"}
-                cursor="pointer"
-                onClick={() => toggle(tag.key)}
-                role="button"
-                aria-pressed={active}
-                boxShadow={active ? "0 6px 0 rgba(29,78,216,0.25)" : "0 3px 0 rgba(29,78,216,0.2)"}
-                animation={
-                  isFlying ? `${FLY_TO_SELECTED} 520ms ease-out` : active ? `${POP} 420ms ease-out` : undefined
-                }
-                onAnimationEnd={() => {
-                  if (isFlying) setJustSelected(null)
-                }}
-              >
-                <Text fontSize="lg" fontWeight="semibold">
-                  {tag.label}
-                </Text>
-              </Box>
-            )
-          })}
-        </Flex>
+      <Flex direction="column" minH="100dvh" px="5" pt="6" pb="10" gap="3">
+        <Stack gap="4">
+          <Text fontSize="xl" fontWeight="semibold" color="black">
+            Интересы
+          </Text>
+          <Flex wrap="wrap" gap="3">
+            {tags
+              .filter((t) => !selected.has(t.key) || justSelected === t.key)
+              .map((tag) => {
+                const active = selected.has(tag.key)
+                const isFlying = justSelected === tag.key
+                return (
+                  <Box
+                    key={tag.key}
+                    border={`2px solid ${BLUE_BORDER}`}
+                    borderRadius="md"
+                    px="3"
+                    py="2.5"
+                    lineHeight="1.2"
+                    color={active ? "white" : BLUE}
+                    bg={active ? BLUE : "white"}
+                    cursor="pointer"
+                    onClick={() => toggle(tag.key)}
+                    role="button"
+                    aria-pressed={active}
+                    boxShadow={active ? "0 6px 0 rgba(29,78,216,0.25)" : "0 3px 0 rgba(29,78,216,0.2)"}
+                    animation={
+                      isFlying ? `${FLY_TO_SELECTED} 520ms ease-out` : active ? `${POP} 420ms ease-out` : undefined
+                    }
+                    onAnimationEnd={() => {
+                      if (isFlying) setJustSelected(null)
+                    }}
+                  >
+                    <Text fontSize="xl" fontWeight="semibold">
+                      {tag.label}
+                    </Text>
+                  </Box>
+                )
+              })}
+          </Flex>
+        </Stack>
 
-        <Flex align="center" justify="center" gap="3" pt="2">
+        <Flex align="center" justify="center" gap="3" mt="2">
           <Box
             borderRadius="full"
             border={`1px solid ${BLUE_BORDER}`}
@@ -142,7 +144,7 @@ export default function Profile21() {
             </Text>
           </Box>
         </Flex>
-      </Stack>
+      </Flex>
     </Box>
   )
 }
