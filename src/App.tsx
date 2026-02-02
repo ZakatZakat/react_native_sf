@@ -9,8 +9,13 @@ declare global {
 
 const ROUTES = [
   { label: "Landing", to: "/" },
+  { label: "Landing 2", to: "/landing-2" },
+  { label: "Landing 3", to: "/landing-3" },
+  { label: "Landing 4", to: "/landing-4" },
+  { label: "Landing 5", to: "/landing-5" },
   { label: "Feed", to: "/feed" },
   { label: "Feed 2", to: "/feed-2" },
+  { label: "Feed 3", to: "/feed-3" },
   { label: "Bauhaus", to: "/bauhaus" },
   { label: "Bauhaus 2", to: "/bauhaus-2" },
   { label: "Profile 1", to: "/profile-1" },
