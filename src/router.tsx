@@ -5,9 +5,9 @@ import Landing from "./pages/Landing"
 import Landing2 from "./pages/Landing2"
 import Landing3 from "./pages/Landing3"
 import Landing4 from "./pages/Landing4"
-import Landing5 from "./pages/Landing5"
+import Landing5ProjectBlue from "./pages/Landing5ProjectBlue"
 import Feed from "./pages/Feed"
-import Feed3 from "./pages/Feed3"
+import Feed3ProjectBlue from "./pages/Feed3ProjectBlue"
 import Feed2 from "./pages/Feed2"
 import Bauhaus from "./pages/Bauhaus"
 import Bauhaus2 from "./pages/Bauhaus2"
@@ -28,10 +28,10 @@ const landingRoute = createRoute({ getParentRoute: () => rootRoute, path: "/", c
 const landing2Route = createRoute({ getParentRoute: () => rootRoute, path: "/landing-2", component: Landing2 })
 const landing3Route = createRoute({ getParentRoute: () => rootRoute, path: "/landing-3", component: Landing3 })
 const landing4Route = createRoute({ getParentRoute: () => rootRoute, path: "/landing-4", component: Landing4 })
-const landing5Route = createRoute({ getParentRoute: () => rootRoute, path: "/landing-5", component: Landing5 })
+const landing5ProjectBlueRoute = createRoute({ getParentRoute: () => rootRoute, path: "/landing-5-project-blue", component: Landing5ProjectBlue })
 const feedRoute = createRoute({ getParentRoute: () => rootRoute, path: "/feed", component: Feed })
 const feed2Route = createRoute({ getParentRoute: () => rootRoute, path: "/feed-2", component: Feed2 })
-const feed3Route = createRoute({ getParentRoute: () => rootRoute, path: "/feed-3", component: Feed3 })
+const feed3ProjectBlueRoute = createRoute({ getParentRoute: () => rootRoute, path: "/feed-3-project-blue", component: Feed3ProjectBlue })
 const bauhausRoute = createRoute({ getParentRoute: () => rootRoute, path: "/bauhaus", component: Bauhaus })
 const bauhaus2Route = createRoute({ getParentRoute: () => rootRoute, path: "/bauhaus-2", component: Bauhaus2 })
 const profile1Route = createRoute({ getParentRoute: () => rootRoute, path: "/profile-1", component: Profile1 })
@@ -46,10 +46,10 @@ const routeTree = rootRoute.addChildren([
   landing2Route,
   landing3Route,
   landing4Route,
-  landing5Route,
+  landing5ProjectBlueRoute,
   feedRoute,
   feed2Route,
-  feed3Route,
+  feed3ProjectBlueRoute,
   bauhausRoute,
   bauhaus2Route,
   profile1Route,
