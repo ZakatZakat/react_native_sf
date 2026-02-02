@@ -6,3 +6,8 @@ export { ProjectBlueCard, ProjectBlueCardBadge } from "./ProjectBlueCard"
 export { ProjectBlueMediaCarousel } from "./ProjectBlueMediaCarousel"
 export { ProjectBlueHeading } from "./ProjectBlueHeading"
 export { ProjectBlueEventCard } from "./ProjectBlueEventCard"
+export {
+  ProjectBlueProfileCreate,
+  PROFILE_CATEGORIES,
+  type ProfileCreateData,
+} from "./ProjectBlueProfileCreate"

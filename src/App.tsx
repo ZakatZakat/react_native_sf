@@ -16,6 +16,7 @@ const ROUTES = [
   { label: "Feed", to: "/feed" },
   { label: "Feed 2", to: "/feed-2" },
   { label: "Feed 3 project_blue", to: "/feed-3-project-blue" },
+  { label: "Profile Create project_blue", to: "/profile-create-project-blue" },
   { label: "Bauhaus", to: "/bauhaus" },
   { label: "Bauhaus 2", to: "/bauhaus-2" },
   { label: "Profile 1", to: "/profile-1" },
