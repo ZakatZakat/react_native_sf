@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { Box, Flex, Stack, Text, Image, Dialog, Portal } from "@chakra-ui/react"
 
-const K = "#0D0D0D"
 const W = "#FFFFFF"
 const B = "#0055FF"
-const G = "rgba(13,13,13,0.35)"
+const BM = "rgba(0,85,255,0.45)"
+const BL = "rgba(0,85,255,0.12)"
+const BD = "#003ACC"
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000"
 
@@ -114,14 +115,14 @@ function PageWipe() {
       />
       <Box
         position="absolute" inset="-20% -40%"
-        bg={K}
+        bg={BD}
         style={{ animation: "p5-wipe-black 0.8s cubic-bezier(0.77, 0, 0.175, 1) 0.08s forwards" }}
       />
     </Box>
   )
 }
 
-export default function OpusFeed() {
+export default function OpusFeedOnlyBlue() {
   const [items, setItems] = useState<EventCard[]>([])
   const [loading, setLoading] = useState(true)
   const [activeFilter, setActiveFilter] = useState("all")
@@ -172,7 +173,7 @@ export default function OpusFeed() {
   }, [selected])
 
   return (
-    <Box minH="100dvh" bg={W} color={K} position="relative">
+    <Box minH="100dvh" bg={W} color={B} position="relative">
       <PageWipe />
 
       <Stack maxW="430px" mx="auto" px="5" pt="8" pb="20" gap="0">
@@ -192,9 +193,9 @@ export default function OpusFeed() {
             as="button"
             onClick={load}
             px="3" py="1.5"
-            border={`2px solid ${K}`}
+            border={`2px solid ${B}`}
             fontSize="10px" fontWeight="800" letterSpacing="0.12em" textTransform="uppercase"
-            cursor="pointer" _hover={{ bg: K, color: W }} transition="all 0.15s"
+            cursor="pointer" _hover={{ bg: B, color: W }} transition="all 0.15s"
           >
             {loading ? "..." : "Обновить"}
           </Flex>
@@ -207,12 +208,12 @@ export default function OpusFeed() {
           className="p5-drop" style={{ animationDelay: "0.45s" }}
         >
           Лента
-          <Text as="span" color={B}> событий</Text>
+          <Text as="span" color={BD}> событий</Text>
         </Text>
 
         {/* FILTERS */}
         <Box pb="6" className="p5-drop" style={{ animationDelay: "0.55s" }}>
-          <Box h="1px" bg={`${K}12`} mb="4" />
+          <Box h="1px" bg={BL} mb="4" />
           <Flex gap="0" flexWrap="wrap">
             {FILTERS.map((f) => (
               <Flex
@@ -220,9 +221,9 @@ export default function OpusFeed() {
                 onClick={() => handleFilter(f.key)}
                 cursor="pointer"
                 px="3" py="1.5"
-                border={`2px solid ${f.key === activeFilter ? K : `${K}12`}`}
-                bg={f.key === activeFilter ? K : "transparent"}
-                color={f.key === activeFilter ? W : K}
+                border={`2px solid ${f.key === activeFilter ? B : BL}`}
+                bg={f.key === activeFilter ? B : "transparent"}
+                color={f.key === activeFilter ? W : B}
                 fontSize="10px" fontWeight="800"
                 letterSpacing="0.12em" textTransform="uppercase"
                 transition="all 0.15s"
@@ -233,13 +234,13 @@ export default function OpusFeed() {
               </Flex>
             ))}
           </Flex>
-          <Box h="1px" bg={`${K}12`} mt="4" />
+          <Box h="1px" bg={BL} mt="4" />
         </Box>
 
         {/* COUNT */}
         <Text
           fontSize="10px" fontWeight="700" letterSpacing="0.15em"
-          textTransform="uppercase" color={G} pb="4"
+          textTransform="uppercase" color={BM} pb="4"
           className="p5-drop" style={{ animationDelay: "0.6s" }}
         >
           {filtered.length} {filtered.length === 1 ? "событие" : "событий"}
@@ -247,7 +248,7 @@ export default function OpusFeed() {
 
         {/* EVENT LIST */}
         {loading && items.length === 0 ? (
-          <Text color={G} fontSize="sm" py="10" textAlign="center">Загружаем...</Text>
+          <Text color={BM} fontSize="sm" py="10" textAlign="center">Загружаем...</Text>
         ) : (
           <Stack gap="5" key={filterKey}>
             {filtered.map((card, idx) => {
@@ -264,16 +265,16 @@ export default function OpusFeed() {
                   ref={(el) => reveal(el, idx)}
                 >
                 <Box
-                  border={`2.5px solid ${K}`}
+                  border={`2.5px solid ${B}`}
                   position="relative"
                   cursor="pointer"
                   onClick={() => openDetail(card)}
                   style={{ transform: tilt ? `rotate(${tilt}deg)` : undefined }}
-                  _hover={{ boxShadow: `4px 4px 0 ${B}` }}
+                  _hover={{ boxShadow: `4px 4px 0 ${BD}` }}
                   transition="box-shadow 0.15s"
                 >
                   {imgSrc && (
-                    <Box overflow="hidden" borderBottom={`2px solid ${K}`}>
+                    <Box overflow="hidden" borderBottom={`2px solid ${B}`}>
                       <Image
                         src={imgSrc}
                         alt={title}
@@ -288,18 +289,18 @@ export default function OpusFeed() {
                   )}
                   <Box px="4" py="3">
                     <Flex justify="space-between" align="center" mb="2">
-                      <Text fontSize="10px" fontWeight="700" letterSpacing="0.15em" textTransform="uppercase" color={B}>
+                      <Text fontSize="10px" fontWeight="700" letterSpacing="0.15em" textTransform="uppercase" color={BD}>
                         {card.channel}
                       </Text>
                       {date && (
-                        <Text fontSize="10px" fontWeight="600" letterSpacing="0.08em" color={G} textTransform="uppercase">
+                        <Text fontSize="10px" fontWeight="600" letterSpacing="0.08em" color={BM} textTransform="uppercase">
                           {date}
                         </Text>
                       )}
                     </Flex>
                     <Text
                       fontSize="16px" fontWeight="900" lineHeight="1.15"
-                      textTransform="uppercase" letterSpacing="-0.01em"
+                      textTransform="uppercase" letterSpacing="-0.01em" color={B}
                       style={{
                         display: "-webkit-box",
                         WebkitLineClamp: 3,
@@ -311,9 +312,9 @@ export default function OpusFeed() {
                     </Text>
                     <Flex
                       mt="3" align="center" justify="space-between"
-                      borderTop={`1px solid ${K}12`} pt="2"
+                      borderTop={`1px solid ${BL}`} pt="2"
                     >
-                      <Text fontSize="10px" fontWeight="700" letterSpacing="0.1em" textTransform="uppercase" color={G}>
+                      <Text fontSize="10px" fontWeight="700" letterSpacing="0.1em" textTransform="uppercase" color={BM}>
                         Подробнее
                       </Text>
                       <Text fontSize="14px" fontWeight="900" color={B}>→</Text>
@@ -332,12 +333,12 @@ export default function OpusFeed() {
 
         {/* FOOTER */}
         <Flex justify="space-between" align="center" pt="10">
-          <Text fontSize="10px" color={G} fontWeight="600" letterSpacing="0.06em">
+          <Text fontSize="10px" color={BM} fontWeight="600" letterSpacing="0.06em">
             © 2026 Opus
           </Text>
           <Flex gap="4">
             {["TG", "IG", "X"].map((s) => (
-              <Text key={s} fontSize="10px" fontWeight="800" letterSpacing="0.12em" color={K} cursor="pointer" _hover={{ color: B }} transition="color 0.15s">
+              <Text key={s} fontSize="10px" fontWeight="800" letterSpacing="0.12em" color={B} cursor="pointer" _hover={{ color: BD }} transition="color 0.15s">
                 {s}
               </Text>
             ))}
@@ -354,16 +355,16 @@ export default function OpusFeed() {
           <Dialog.Positioner>
             <Dialog.Content
               maxW="min(92vw, 420px)" mx="auto"
-              border={`3px solid ${K}`} borderRadius="0"
-              overflow="hidden" boxShadow={`6px 6px 0 ${B}`}
+              border={`3px solid ${B}`} borderRadius="0"
+              overflow="hidden" boxShadow={`6px 6px 0 ${BD}`}
               style={{ animation: "p5-dialog-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards" }}
             >
               <Dialog.CloseTrigger />
 
-              <Dialog.Header bg={K} px="5" py="3" position="relative" overflow="hidden">
+              <Dialog.Header bg={B} px="5" py="3" position="relative" overflow="hidden">
                 <Box
                   position="absolute" top="0" right="-20px" bottom="0" w="60px"
-                  bg={B} style={{ transform: "skewX(-12deg)" }} opacity={0.2}
+                  bg={BD} style={{ transform: "skewX(-12deg)" }} opacity={0.3}
                 />
                 <Dialog.Title>
                   <Text fontSize="12px" fontWeight="800" letterSpacing="0.15em" textTransform="uppercase" color={W} position="relative">
@@ -375,7 +376,7 @@ export default function OpusFeed() {
               <Dialog.Body px="5" py="4" bg={W}>
                 <Stack gap="3">
                   {selImg && selected && !failedImgs[selected.id] && (
-                    <Box border={`2px solid ${K}`} overflow="hidden">
+                    <Box border={`2px solid ${B}`} overflow="hidden">
                       <Image
                         src={selImg} alt={selTitle}
                         width="100%" height="auto" maxH="300px"
@@ -387,17 +388,17 @@ export default function OpusFeed() {
                     </Box>
                   )}
                   {selected?.channel && (
-                    <Text fontSize="10px" fontWeight="800" letterSpacing="0.15em" textTransform="uppercase" color={B}>
+                    <Text fontSize="10px" fontWeight="800" letterSpacing="0.15em" textTransform="uppercase" color={BD}>
                       {selected.channel}
                     </Text>
                   )}
-                  <Text fontSize="sm" color={K} whiteSpace="pre-wrap" lineHeight="1.5">
+                  <Text fontSize="sm" color={B} whiteSpace="pre-wrap" lineHeight="1.5">
                     {selected?.description ?? selected?.title ?? ""}
                   </Text>
                 </Stack>
               </Dialog.Body>
 
-              <Dialog.Footer px="5" py="3" bg={W} borderTop={`1px solid ${K}12`}>
+              <Dialog.Footer px="5" py="3" bg={W} borderTop={`1px solid ${BL}`}>
                 <Flex
                   as="button"
                   onClick={() => setDetailOpen(false)}

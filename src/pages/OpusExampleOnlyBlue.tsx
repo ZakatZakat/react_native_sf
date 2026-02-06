@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react"
 import { Box, Flex, Stack, Text } from "@chakra-ui/react"
 
-const K = "#0D0D0D"
 const W = "#FFFFFF"
 const B = "#0055FF"
-const G = "rgba(13,13,13,0.35)"
+const BM = "rgba(0,85,255,0.45)"
+const BL = "rgba(0,85,255,0.12)"
+const BD = "#003ACC"
 
 function Dots({ n, size, gap, color, opacity }: { n: number; size: number; gap: number; color: string; opacity: number }) {
   return (
@@ -34,18 +35,18 @@ function PageWipe() {
       />
       <Box
         position="absolute" inset="-20% -40%"
-        bg={K}
+        bg={BD}
         style={{ animation: "p5-wipe-black 0.8s cubic-bezier(0.77, 0, 0.175, 1) 0.08s forwards" }}
       />
     </Box>
   )
 }
 
-export default function OpusExample() {
+export default function OpusExampleOnlyBlue() {
   const [active, setActive] = useState(0)
 
   return (
-    <Box minH="100dvh" bg={W} color={K} position="relative" overflow="hidden">
+    <Box minH="100dvh" bg={W} color={B} position="relative" overflow="hidden">
       <PageWipe />
 
       <Stack maxW="430px" mx="auto" px="6" pt="14" pb="20" gap="0" position="relative" zIndex={1}>
@@ -62,8 +63,8 @@ export default function OpusExample() {
             </Text>
           </Flex>
           <Flex direction="column" gap="2px" cursor="pointer">
-            <Box w="20px" h="2px" bg={K} />
-            <Box w="14px" h="2px" bg={K} />
+            <Box w="20px" h="2px" bg={B} />
+            <Box w="14px" h="2px" bg={B} />
           </Flex>
         </Flex>
 
@@ -80,7 +81,7 @@ export default function OpusExample() {
             Отк
             <br />
             рой
-            <Text as="span" color={B}>!</Text>
+            <Text as="span" color={BD}>!</Text>
           </Text>
 
           <Box
@@ -89,12 +90,12 @@ export default function OpusExample() {
           >
             <Box
               w="90px" h="90px" borderRadius="full"
-              border={`3px solid ${K}`}
+              border={`3px solid ${B}`}
               position="relative"
             >
               <Box position="absolute" inset="12px" borderRadius="full" bg={B} />
               <Box position="absolute" inset="24px" borderRadius="full" bg={W} />
-              <Box position="absolute" inset="32px" borderRadius="full" bg={K} />
+              <Box position="absolute" inset="32px" borderRadius="full" bg={BD} />
             </Box>
           </Box>
 
@@ -103,7 +104,7 @@ export default function OpusExample() {
             fontWeight="600"
             letterSpacing="0.14em"
             textTransform="uppercase"
-            color={G}
+            color={BM}
             mt="6"
             maxW="220px"
             lineHeight="1.6"
@@ -121,38 +122,38 @@ export default function OpusExample() {
           style={{ animationDelay: "0.6s" }}
         >
           <Box
-            border={`3px solid ${K}`}
+            border={`3px solid ${B}`}
             position="relative"
             mb="10"
             style={{ transform: "rotate(-0.8deg)" }}
           >
-            <Box bg={K} px="5" py="4" position="relative" overflow="hidden">
+            <Box bg={B} px="5" py="4" position="relative" overflow="hidden">
               <Box
                 position="absolute" top="-20px" right="-20px"
-                w="80px" h="80px" borderRadius="full" bg={`${B}30`}
+                w="80px" h="80px" borderRadius="full" bg={`${W}20`}
               />
               <Flex direction="column" gap="6px" position="absolute" top="14px" right="14px">
                 <Dots n={4} size={3} gap={5} color={`${W}40`} opacity={1} />
                 <Dots n={4} size={3} gap={5} color={`${W}40`} opacity={1} />
                 <Dots n={4} size={3} gap={5} color={`${W}40`} opacity={1} />
               </Flex>
-              <Text fontSize="10px" fontWeight="700" letterSpacing="0.2em" textTransform="uppercase" color={B}>
+              <Text fontSize="10px" fontWeight="700" letterSpacing="0.2em" textTransform="uppercase" color={`${W}90`}>
                 Рекомендуем
               </Text>
               <Text fontSize="28px" fontWeight="900" color={W} lineHeight="1.05" mt="2" textTransform="uppercase" maxW="240px">
                 Белая
                 <br />
                 Ночь
-                <Text as="span" color={B}> ′26</Text>
+                <Text as="span" color={`${W}70`}> ′26</Text>
               </Text>
             </Box>
 
             <Flex bg={W} px="5" py="4" justify="space-between" align="center">
               <Stack gap="0">
-                <Text fontSize="10px" fontWeight="700" letterSpacing="0.15em" textTransform="uppercase" color={G}>
+                <Text fontSize="10px" fontWeight="700" letterSpacing="0.15em" textTransform="uppercase" color={BM}>
                   14 — 15 фев
                 </Text>
-                <Text fontSize="10px" fontWeight="600" letterSpacing="0.08em" color={G} mt="1px">
+                <Text fontSize="10px" fontWeight="600" letterSpacing="0.08em" color={BM} mt="1px">
                   Москва · Разные площадки
                 </Text>
               </Stack>
@@ -175,7 +176,7 @@ export default function OpusExample() {
 
         {/* — CATEGORIES — */}
         <Box pb="10" className="p5-drop" style={{ animationDelay: "0.7s" }}>
-          <Box h="1px" bg={`${K}12`} mb="5" />
+          <Box h="1px" bg={BL} mb="5" />
           <Flex gap="0" flexWrap="wrap">
             {CATEGORIES.map((c, i) => (
               <Flex
@@ -183,9 +184,9 @@ export default function OpusExample() {
                 onClick={() => setActive(i)}
                 cursor="pointer"
                 px="4" py="2"
-                border={`2px solid ${i === active ? K : `${K}12`}`}
-                bg={i === active ? K : "transparent"}
-                color={i === active ? W : K}
+                border={`2px solid ${i === active ? B : BL}`}
+                bg={i === active ? B : "transparent"}
+                color={i === active ? W : B}
                 fontSize="10px"
                 fontWeight="800"
                 letterSpacing="0.15em"
@@ -199,7 +200,7 @@ export default function OpusExample() {
               </Flex>
             ))}
           </Flex>
-          <Box h="1px" bg={`${K}12`} mt="5" />
+          <Box h="1px" bg={BL} mt="5" />
         </Box>
 
         {/* — STAT CARDS — */}
@@ -215,18 +216,18 @@ export default function OpusExample() {
               style={{ animationDelay: `${0.8 + i * 0.12}s` }}
             >
               <Box
-                border={`2.5px solid ${K}`}
+                border={`2.5px solid ${B}`}
                 p="5"
                 position="relative"
                 style={{ transform: `rotate(${i === 0 ? -1.2 : 1.5}deg)` }}
               >
-                <Text fontSize="10px" fontWeight="800" letterSpacing="0.18em" textTransform="uppercase" color={B}>
+                <Text fontSize="10px" fontWeight="800" letterSpacing="0.18em" textTransform="uppercase" color={BD}>
                   {card.label}
                 </Text>
-                <Text fontSize="42px" fontWeight="900" lineHeight="1" mt="1" letterSpacing="-0.03em">
+                <Text fontSize="42px" fontWeight="900" lineHeight="1" mt="1" letterSpacing="-0.03em" color={B}>
                   {card.value}
                 </Text>
-                <Text fontSize="10px" color={G} fontWeight="600" mt="1" letterSpacing="0.04em">
+                <Text fontSize="10px" color={BM} fontWeight="600" mt="1" letterSpacing="0.04em">
                   {card.sub}
                 </Text>
                 {i === 0 && (
@@ -272,12 +273,12 @@ export default function OpusExample() {
           justify="space-between" align="center" pt="8"
           className="p5-drop" style={{ animationDelay: "1.1s" }}
         >
-          <Text fontSize="10px" color={G} fontWeight="600" letterSpacing="0.06em">
+          <Text fontSize="10px" color={BM} fontWeight="600" letterSpacing="0.06em">
             © 2026 Opus
           </Text>
           <Flex gap="4">
             {["TG", "IG", "X"].map(s => (
-              <Text key={s} fontSize="10px" fontWeight="800" letterSpacing="0.12em" color={K} cursor="pointer" _hover={{ color: B }} transition="color 0.15s">
+              <Text key={s} fontSize="10px" fontWeight="800" letterSpacing="0.12em" color={B} cursor="pointer" _hover={{ color: BD }} transition="color 0.15s">
                 {s}
               </Text>
             ))}

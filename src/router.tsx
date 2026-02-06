@@ -11,6 +11,8 @@ import Feed3ProjectBlue from "./pages/Feed3ProjectBlue"
 import ProfileCreateProjectBlue from "./pages/ProfileCreateProjectBlue"
 import OpusExample from "./pages/OpusExample"
 import OpusFeed from "./pages/OpusFeed"
+import OpusExampleOnlyBlue from "./pages/OpusExampleOnlyBlue"
+import OpusFeedOnlyBlue from "./pages/OpusFeedOnlyBlue"
 import Feed2 from "./pages/Feed2"
 import Bauhaus from "./pages/Bauhaus"
 import Bauhaus2 from "./pages/Bauhaus2"
@@ -38,6 +40,8 @@ const feed3ProjectBlueRoute = createRoute({ getParentRoute: () => rootRoute, pat
 const profileCreateProjectBlueRoute = createRoute({ getParentRoute: () => rootRoute, path: "/profile-create-project-blue", component: ProfileCreateProjectBlue })
 const opusExampleRoute = createRoute({ getParentRoute: () => rootRoute, path: "/opus-example", component: OpusExample })
 const opusFeedRoute = createRoute({ getParentRoute: () => rootRoute, path: "/opus-feed", component: OpusFeed })
+const opusExampleOnlyBlueRoute = createRoute({ getParentRoute: () => rootRoute, path: "/opus-example-only-blue", component: OpusExampleOnlyBlue })
+const opusFeedOnlyBlueRoute = createRoute({ getParentRoute: () => rootRoute, path: "/opus-feed-only-blue", component: OpusFeedOnlyBlue })
 const bauhausRoute = createRoute({ getParentRoute: () => rootRoute, path: "/bauhaus", component: Bauhaus })
 const bauhaus2Route = createRoute({ getParentRoute: () => rootRoute, path: "/bauhaus-2", component: Bauhaus2 })
 const profile1Route = createRoute({ getParentRoute: () => rootRoute, path: "/profile-1", component: Profile1 })
@@ -59,6 +63,8 @@ const routeTree = rootRoute.addChildren([
   profileCreateProjectBlueRoute,
   opusExampleRoute,
   opusFeedRoute,
+  opusExampleOnlyBlueRoute,
+  opusFeedOnlyBlueRoute,
   bauhausRoute,
   bauhaus2Route,
   profile1Route,

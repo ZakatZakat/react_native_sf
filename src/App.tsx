@@ -19,6 +19,8 @@ const ROUTES = [
   { label: "Profile Create project_blue", to: "/profile-create-project-blue" },
   { label: "Opus Example", to: "/opus-example" },
   { label: "Opus Feed", to: "/opus-feed" },
+  { label: "Opus Example Only Blue", to: "/opus-example-only-blue" },
+  { label: "Opus Feed Only Blue", to: "/opus-feed-only-blue" },
   { label: "Bauhaus", to: "/bauhaus" },
   { label: "Bauhaus 2", to: "/bauhaus-2" },
   { label: "Profile 1", to: "/profile-1" },
