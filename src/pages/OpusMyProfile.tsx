@@ -19,16 +19,16 @@ type Category = {
 }
 
 const CATEGORIES: Category[] = [
-  { id: "contemporary", label: "Совриск",     icon: "◆", rotation: -2.1, channels: 38,  posts: 214 },
-  { id: "music",        label: "Музыка",      icon: "♫", rotation: 1.4,  channels: 52,  posts: 487 },
-  { id: "theatre",      label: "Театр",       icon: "◉", rotation: -1.0, channels: 27,  posts: 163 },
-  { id: "cinema",       label: "Кино",        icon: "▶", rotation: 2.2,  channels: 41,  posts: 329 },
-  { id: "architecture", label: "Архитектура", icon: "△", rotation: -1.6, channels: 19,  posts: 97 },
-  { id: "streetart",    label: "Стрит-арт",   icon: "✦", rotation: 0.9,  channels: 23,  posts: 178 },
-  { id: "lectures",     label: "Лекции",      icon: "◇", rotation: -2.4, channels: 34,  posts: 256 },
-  { id: "parties",      label: "Вечеринки",   icon: "★", rotation: 1.7,  channels: 46,  posts: 412 },
-  { id: "festivals",    label: "Фестивали",   icon: "⬡", rotation: -0.7, channels: 31,  posts: 189 },
-  { id: "photo",        label: "Фото",        icon: "◎", rotation: 2.0,  channels: 22,  posts: 134 },
+  { id: "contemporary", label: "Совриск",     icon: "◆", rotation: -1.2, channels: 38,  posts: 214 },
+  { id: "music",        label: "Музыка",      icon: "♫", rotation: 0.8,  channels: 52,  posts: 487 },
+  { id: "theatre",      label: "Театр",       icon: "◉", rotation: -0.6, channels: 27,  posts: 163 },
+  { id: "cinema",       label: "Кино",        icon: "▶", rotation: 1.2,  channels: 41,  posts: 329 },
+  { id: "architecture", label: "Архитектура", icon: "△", rotation: -0.9, channels: 19,  posts: 97 },
+  { id: "streetart",    label: "Стрит-арт",   icon: "✦", rotation: 0.5,  channels: 23,  posts: 178 },
+  { id: "lectures",     label: "Лекции",      icon: "◇", rotation: -1.3, channels: 34,  posts: 256 },
+  { id: "parties",      label: "Вечеринки",   icon: "★", rotation: 1.0,  channels: 46,  posts: 412 },
+  { id: "festivals",    label: "Фестивали",   icon: "⬡", rotation: -0.4, channels: 31,  posts: 189 },
+  { id: "photo",        label: "Фото",        icon: "◎", rotation: 1.1,  channels: 22,  posts: 134 },
 ]
 
 type ProfileData = { name: string; city: string; selected: string[] }
@@ -45,13 +45,23 @@ function saveProfile(data: ProfileData) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
 }
 
-function CategoryCard({ cat, onPick, animClass }: {
-  cat: Category; onPick: () => void; animClass: string
+function CategoryCard({ cat, onPick, animClass, idx }: {
+  cat: Category; onPick: () => void; animClass: string; idx: number
 }) {
+  const floatDur = 2.8 + (idx % 5) * 0.4
+  const floatDel = (idx % 7) * 0.3
+  const cls = animClass || "p5-float"
+
   return (
     <Box
-      className={animClass}
-      style={{ "--rot": `${cat.rotation}deg`, transform: `rotate(${cat.rotation}deg)` } as React.CSSProperties}
+      className={cls}
+      style={{
+        "--rot": `${cat.rotation}deg`,
+        "--float-dur": `${floatDur}s`,
+        "--float-del": `${floatDel}s`,
+        transform: `rotate(${cat.rotation}deg)`,
+        scrollSnapAlign: "start",
+      } as React.CSSProperties}
       cursor="pointer"
       onClick={onPick}
       _hover={{ style: { transform: "rotate(0deg) scale(1.05)" } as any }}
@@ -77,11 +87,11 @@ function CategoryCard({ cat, onPick, animClass }: {
         <Box px="3" pb="2">
           <Flex align="center" gap="2">
             <Text fontSize="7px" fontWeight="700" color={G}>
-              {cat.channels} каналов
+              {cat.channels} кан.
             </Text>
             <Box w="2px" h="2px" borderRadius="full" bg={G} />
             <Text fontSize="7px" fontWeight="700" color={G}>
-              {cat.posts} постов
+              {cat.posts} пост.
             </Text>
           </Flex>
         </Box>
@@ -370,7 +380,7 @@ export default function OpusMyProfile() {
         </Box>
 
         {/* CATEGORY PICKER */}
-        <Box className="p5-drop" style={{ animationDelay: "0.7s" }} mb="8">
+        <Box className="p5-drop" style={{ animationDelay: "0.7s" }} mb="8" overflow="visible">
           <Flex align="center" gap="2" mb="4">
             <Box w="20px" h="20px" bg={B}
               style={{ clipPath: "polygon(50% 0,100% 50%,50% 100%,0 50%)" }} />
@@ -389,13 +399,14 @@ export default function OpusMyProfile() {
               </Text>
             </Box>
           ) : (
-            <Box display="grid" gridTemplateColumns="1fr 1fr 1fr" gap="3">
-              {available.map((cat) => {
+            <Box display="grid" gridTemplateColumns="1fr 1fr 1fr" gap="3"
+              px="2" py="2" overflow="visible">
+              {available.map((cat, i) => {
                 let anim = ""
                 if (pickingOut === cat.id) anim = "p5-pick-out"
                 if (returning === cat.id) anim = "p5-return"
                 return (
-                  <CategoryCard key={cat.id} cat={cat} onPick={() => handlePick(cat.id)} animClass={anim} />
+                  <CategoryCard key={cat.id} cat={cat} onPick={() => handlePick(cat.id)} animClass={anim} idx={i} />
                 )
               })}
             </Box>

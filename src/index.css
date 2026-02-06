@@ -297,6 +297,20 @@ html.dark #root {
   animation: p5-return 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Category card gentle float */
+@keyframes p5-float {
+  0%, 100% { transform: translateY(0) rotate(var(--rot, 0deg)); }
+  50%      { transform: translateY(-6px) rotate(var(--rot, 0deg)); }
+}
+.p5-float {
+  animation: p5-float var(--float-dur, 3s) ease-in-out infinite;
+  animation-delay: var(--float-del, 0s);
+  will-change: transform;
+}
+.p5-float:hover {
+  animation-play-state: paused;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .tg-float-1,
   .tg-float-2 {
@@ -305,6 +319,7 @@ html.dark #root {
   .p5-reveal,
   .p5-drop,
   .p5-tab-pop,
+  .p5-float,
   .p5-pick-out,
   .p5-land-in,
   .p5-eject,
