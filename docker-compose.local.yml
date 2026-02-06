@@ -2,12 +2,18 @@ services:
   app:
     build:
       context: .
-      target: runner
+      target: dev
       args:
         VITE_API_URL: http://localhost:8000
     working_dir: /app
     ports:
-      - "5175:80"
+      - "5175:5173"
+    volumes:
+      - ./src:/app/src
+      - ./index.html:/app/index.html
+      - ./public:/app/public
+    environment:
+      VITE_API_URL: http://localhost:8000
     networks:
       - local
 

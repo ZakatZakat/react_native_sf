@@ -55,9 +55,176 @@ html.dark #root {
   animation-name: tg-float-2;
 }
 
+/* ── Persona 5 Royal style animations ── */
+
+/* Card slam-in from left (odd cards) */
+@keyframes p5-slam-left {
+  0% {
+    opacity: 0;
+    transform: translate3d(-120%, 20px, 0) rotate(-8deg) skewX(-6deg);
+  }
+  60% {
+    opacity: 1;
+    transform: translate3d(12px, -2px, 0) rotate(1.5deg) skewX(1deg);
+  }
+  80% {
+    transform: translate3d(-4px, 1px, 0) rotate(-0.5deg) skewX(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotate(0) skewX(0);
+  }
+}
+
+/* Card slam-in from right (even cards) */
+@keyframes p5-slam-right {
+  0% {
+    opacity: 0;
+    transform: translate3d(120%, 20px, 0) rotate(8deg) skewX(6deg);
+  }
+  60% {
+    opacity: 1;
+    transform: translate3d(-12px, -2px, 0) rotate(-1.5deg) skewX(-1deg);
+  }
+  80% {
+    transform: translate3d(4px, 1px, 0) rotate(0.5deg) skewX(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotate(0) skewX(0);
+  }
+}
+
+/* Header/title drop-in */
+@keyframes p5-drop {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -60px, 0) scaleY(1.3);
+    clip-path: inset(0 0 100% 0);
+  }
+  50% {
+    clip-path: inset(0 0 0% 0);
+  }
+  70% {
+    transform: translate3d(0, 6px, 0) scaleY(0.97);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scaleY(1);
+    clip-path: inset(0 0 0% 0);
+  }
+}
+
+/* Blue accent stripe wipe (page entrance) */
+@keyframes p5-wipe {
+  0% {
+    transform: translateX(-110%) skewX(-18deg);
+  }
+  40% {
+    transform: translateX(0%) skewX(-18deg);
+  }
+  70% {
+    transform: translateX(0%) skewX(-18deg);
+  }
+  100% {
+    transform: translateX(110%) skewX(-18deg);
+  }
+}
+
+/* Secondary black stripe wipe */
+@keyframes p5-wipe-black {
+  0% {
+    transform: translateX(-110%) skewX(-18deg);
+  }
+  30% {
+    transform: translateX(0%) skewX(-18deg);
+  }
+  60% {
+    transform: translateX(0%) skewX(-18deg);
+  }
+  100% {
+    transform: translateX(110%) skewX(-18deg);
+  }
+}
+
+/* Dialog slam-in */
+@keyframes p5-dialog-in {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 100%, 0) rotate(3deg) scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: translate3d(0, -8px, 0) rotate(-0.5deg) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotate(0) scale(1);
+  }
+}
+
+/* Dialog backdrop flash */
+@keyframes p5-backdrop {
+  0% {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+  30% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 1;
+    backdrop-filter: blur(2px);
+  }
+}
+
+/* Filter tab pop */
+@keyframes p5-tab-pop {
+  0% {
+    transform: scale(0.5) rotate(-4deg);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.08) rotate(1deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0);
+    opacity: 1;
+  }
+}
+
+/* Scroll-reveal: hidden state */
+.p5-reveal {
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+.p5-reveal.p5-visible-left {
+  animation: p5-slam-left 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.p5-reveal.p5-visible-right {
+  animation: p5-slam-right 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.p5-drop {
+  animation: p5-drop 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.p5-tab-pop {
+  animation: p5-tab-pop 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .tg-float-1,
   .tg-float-2 {
     animation: none !important;
+  }
+  .p5-reveal,
+  .p5-drop,
+  .p5-tab-pop {
+    animation: none !important;
+    opacity: 1 !important;
   }
 }
