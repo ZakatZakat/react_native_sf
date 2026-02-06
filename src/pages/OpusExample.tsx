@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useCallback } from "react"
 import { Box, Flex, Stack, Text } from "@chakra-ui/react"
+import { PageWipe, OpusFooter } from "./opus/shared"
 
 const K = "#0D0D0D"
 const W = "#FFFFFF"
@@ -55,23 +56,6 @@ const DEFAULT_LIKES: Record<string, boolean> = {
   zotov: false, regina: false, popoffart: false,
 }
 
-function PageWipe() {
-  const [done, setDone] = useState(false)
-  useEffect(() => {
-    const t = setTimeout(() => setDone(true), 900)
-    return () => clearTimeout(t)
-  }, [])
-  if (done) return null
-  return (
-    <Box position="fixed" inset="0" zIndex={100} pointerEvents="none" overflow="hidden">
-      <Box position="absolute" inset="-20% -40%" bg={B}
-        style={{ animation: "p5-wipe 0.8s cubic-bezier(0.77, 0, 0.175, 1) forwards" }} />
-      <Box position="absolute" inset="-20% -40%" bg={K}
-        style={{ animation: "p5-wipe-black 0.8s cubic-bezier(0.77, 0, 0.175, 1) 0.08s forwards" }} />
-    </Box>
-  )
-}
-
 function VenueTile({ venue, liked, onToggle, idx }: {
   venue: Venue; liked: boolean; onToggle: () => void; idx: number
 }) {
@@ -92,11 +76,9 @@ function VenueTile({ venue, liked, onToggle, idx }: {
         overflow="hidden"
         transition="all 0.2s"
       >
-        {/* Diagonal accent stripe */}
         <Box position="absolute" top="0" right="0" w="40px" h="40px"
           style={{ background: accent, clipPath: "polygon(100% 0, 0 0, 100% 100%)" }} />
 
-        {/* Tag badge */}
         <Flex position="absolute" top="0" left="0" bg={accent} px="2" py="1">
           <Text fontSize="7px" fontWeight="800" letterSpacing="0.14em" textTransform="uppercase" color={W}>
             {venue.tag}
@@ -121,7 +103,6 @@ function VenueTile({ venue, liked, onToggle, idx }: {
             {venue.addr}
           </Text>
 
-          {/* Sources bound to this venue */}
           <Flex mt="2.5" gap="1" flexWrap="wrap">
             {venue.sources.map((s) => (
               <Flex key={s.name} px="1.5" py="0.5"
@@ -138,7 +119,6 @@ function VenueTile({ venue, liked, onToggle, idx }: {
           </Flex>
         </Box>
 
-        {/* Bottom bar */}
         <Flex px="4" py="2" bg={liked ? `${B}08` : `${R}06`}
           align="center" justify="space-between" transition="background 0.2s">
           <Flex align="center" gap="1.5">
@@ -156,7 +136,6 @@ function VenueTile({ venue, liked, onToggle, idx }: {
           </Text>
         </Flex>
 
-        {/* Diagonal strike for disliked */}
         {!liked && (
           <Box position="absolute" inset="0" pointerEvents="none"
             style={{ background: `repeating-linear-gradient(135deg, transparent, transparent 8px, ${R}08 8px, ${R}08 9px)` }} />
@@ -177,7 +156,6 @@ function ProfileCard() {
     <Box className="p5-reveal p5-visible-left" style={{ animationDelay: "0.6s" }} mb="10">
       <Box border={`3px solid ${K}`} position="relative" overflow="hidden">
 
-        {/* Badge */}
         <Box position="absolute" top="-1px" right="-1px" zIndex={3}>
           <Flex bg={B} px="3" py="1.5"
             style={{ clipPath: "polygon(0 0, 100% 0, 100% 100%, 8px 100%)" }}>
@@ -187,7 +165,6 @@ function ProfileCard() {
           </Flex>
         </Box>
 
-        {/* Header with diagonal split */}
         <Box position="relative" overflow="hidden">
           <Box bg={K} px="5" pt="5" pb="16" position="relative">
             <Box position="absolute" bottom="0" left="0" right="0" h="50px"
@@ -214,7 +191,6 @@ function ProfileCard() {
           </Box>
         </Box>
 
-        {/* Summary row */}
         <Flex px="5" py="3" align="center" justify="space-between">
           <Flex align="center" gap="6">
             <Stack gap="0" align="center">
@@ -242,7 +218,6 @@ function ProfileCard() {
 
         <Box h="2px" bg={K} />
 
-        {/* НРАВИТСЯ — tile grid */}
         <Box px="4" pt="4" pb="2">
           <Flex align="center" gap="2" mb="3">
             <Box w="20px" h="20px" bg={B}
@@ -259,7 +234,6 @@ function ProfileCard() {
           </Box>
         </Box>
 
-        {/* Diagonal separator */}
         <Box position="relative" h="32px" overflow="hidden" my="1">
           <Box position="absolute" inset="0"
             style={{
@@ -273,7 +247,6 @@ function ProfileCard() {
           </Flex>
         </Box>
 
-        {/* НЕ НРАВИТСЯ — tile grid */}
         <Box px="4" pt="2" pb="4">
           <Flex align="center" gap="2" mb="3">
             <Box w="20px" h="20px" bg={R}
@@ -292,7 +265,6 @@ function ProfileCard() {
 
         <Box h="2px" bg={`${K}12`} />
 
-        {/* Aggregate sources */}
         <Box px="5" pt="3" pb="3">
           <Text fontSize="8px" fontWeight="700" letterSpacing="0.14em" textTransform="uppercase" color={G} mb="2">
             Источники · Спаршено агентами
@@ -311,7 +283,6 @@ function ProfileCard() {
 
         <Box h="1.5px" bg={`${K}08`} />
 
-        {/* Total */}
         <Flex px="5" py="4" align="center" justify="space-between">
           <Text fontSize="14px" fontWeight="900" textTransform="uppercase" letterSpacing="0.04em">Итого</Text>
           <Flex align="center" gap="3">
@@ -327,7 +298,6 @@ function ProfileCard() {
           </Flex>
         </Flex>
 
-        {/* CTA */}
         <Box px="5" pb="5">
           <Flex as="button" align="center" justify="center" gap="2"
             bg={B} color={W} py="4" width="100%"
@@ -341,7 +311,6 @@ function ProfileCard() {
           </Flex>
         </Box>
 
-        {/* Decorative */}
         <Box position="absolute" bottom="-8px" left="20px" w="16px" h="16px" bg={B}
           style={{ clipPath: "polygon(50% 0, 100% 50%, 50% 100%, 0 50%)" }} />
       </Box>
@@ -352,11 +321,10 @@ function ProfileCard() {
 export default function OpusExample() {
   return (
     <Box minH="100dvh" bg={W} color={K} position="relative" overflow="hidden">
-      <PageWipe />
+      <PageWipe primary={B} secondary={K} />
 
       <Stack maxW="430px" mx="auto" px="6" pt="14" pb="20" gap="0" position="relative" zIndex={1}>
 
-        {/* NAV */}
         <Flex align="center" justify="space-between" pb="12"
           className="p5-drop" style={{ animationDelay: "0.3s" }}>
           <Flex align="center" gap="3">
@@ -369,7 +337,6 @@ export default function OpusExample() {
           </Flex>
         </Flex>
 
-        {/* HERO */}
         <Box pb="8" position="relative">
           <Text fontSize="48px" fontWeight="900" lineHeight="0.92" letterSpacing="-0.03em"
             textTransform="uppercase" className="p5-drop" style={{ animationDelay: "0.4s" }}>
@@ -387,10 +354,8 @@ export default function OpusExample() {
           </Text>
         </Box>
 
-        {/* PROFILE CARD */}
         <ProfileCard />
 
-        {/* STAT CARDS */}
         <Flex gap="4" pb="10">
           {[
             { label: "Визитов", value: "42", sub: "за последний год" },
@@ -417,17 +382,9 @@ export default function OpusExample() {
           ))}
         </Flex>
 
-        {/* FOOTER */}
-        <Flex justify="space-between" align="center" pt="8"
-          className="p5-drop" style={{ animationDelay: "1.1s" }}>
-          <Text fontSize="10px" color={G} fontWeight="600" letterSpacing="0.06em">© 2026 Opus</Text>
-          <Flex gap="4">
-            {["TG", "IG", "X"].map(s => (
-              <Text key={s} fontSize="10px" fontWeight="800" letterSpacing="0.12em"
-                color={K} cursor="pointer" _hover={{ color: B }} transition="color 0.15s">{s}</Text>
-            ))}
-          </Flex>
-        </Flex>
+        <Box className="p5-drop" style={{ animationDelay: "1.1s" }}>
+          <OpusFooter muted={G} accent={K} hoverColor={B} />
+        </Box>
 
       </Stack>
     </Box>

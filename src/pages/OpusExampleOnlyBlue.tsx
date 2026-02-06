@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Box, Flex, Stack, Text } from "@chakra-ui/react"
+import { PageWipe, OpusFooter } from "./opus/shared"
 
 const W = "#FFFFFF"
 const B = "#0055FF"
@@ -19,35 +20,12 @@ function Dots({ n, size, gap, color, opacity }: { n: number; size: number; gap: 
 
 const CATEGORIES = ["Концерты", "Искусство", "Кино", "DJ Сеты", "Лекции"] as const
 
-function PageWipe() {
-  const [done, setDone] = useState(false)
-  useEffect(() => {
-    const t = setTimeout(() => setDone(true), 900)
-    return () => clearTimeout(t)
-  }, [])
-  if (done) return null
-  return (
-    <Box position="fixed" inset="0" zIndex={100} pointerEvents="none" overflow="hidden">
-      <Box
-        position="absolute" inset="-20% -40%"
-        bg={B}
-        style={{ animation: "p5-wipe 0.8s cubic-bezier(0.77, 0, 0.175, 1) forwards" }}
-      />
-      <Box
-        position="absolute" inset="-20% -40%"
-        bg={BD}
-        style={{ animation: "p5-wipe-black 0.8s cubic-bezier(0.77, 0, 0.175, 1) 0.08s forwards" }}
-      />
-    </Box>
-  )
-}
-
 export default function OpusExampleOnlyBlue() {
   const [active, setActive] = useState(0)
 
   return (
     <Box minH="100dvh" bg={W} color={B} position="relative" overflow="hidden">
-      <PageWipe />
+      <PageWipe primary={B} secondary={BD} />
 
       <Stack maxW="430px" mx="auto" px="6" pt="14" pb="20" gap="0" position="relative" zIndex={1}>
 
@@ -269,21 +247,9 @@ export default function OpusExampleOnlyBlue() {
         </Box>
 
         {/* — FOOTER — */}
-        <Flex
-          justify="space-between" align="center" pt="8"
-          className="p5-drop" style={{ animationDelay: "1.1s" }}
-        >
-          <Text fontSize="10px" color={BM} fontWeight="600" letterSpacing="0.06em">
-            © 2026 Opus
-          </Text>
-          <Flex gap="4">
-            {["TG", "IG", "X"].map(s => (
-              <Text key={s} fontSize="10px" fontWeight="800" letterSpacing="0.12em" color={B} cursor="pointer" _hover={{ color: BD }} transition="color 0.15s">
-                {s}
-              </Text>
-            ))}
-          </Flex>
-        </Flex>
+        <Box className="p5-drop" style={{ animationDelay: "1.1s" }}>
+          <OpusFooter muted={BM} accent={B} hoverColor={BD} />
+        </Box>
 
       </Stack>
     </Box>
