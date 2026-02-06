@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react"
-import { Box, Flex, Stack, Text, Image } from "@chakra-ui/react"
+import { Box, Flex, Stack, Text, Image, Dialog, Portal } from "@chakra-ui/react"
 import {
   PageWipe, PipeFooter, useCountUp, useScrollReveal,
   API, isImg, resolveMedia, firstLine, formatDate,
@@ -246,7 +246,26 @@ function PersonalFeed({ categories, onBack }: { categories: Category[]; onBack: 
   const [items, setItems] = useState<EventCard[]>([])
   const [loading, setLoading] = useState(true)
   const [failedImgs, setFailedImgs] = useState<Record<string, true>>({})
+  const [selected, setSelected] = useState<EventCard | null>(null)
+  const [detailOpen, setDetailOpen] = useState(false)
   const reveal = useScrollReveal()
+
+  const openDetail = useCallback((card: EventCard) => {
+    setSelected(card)
+    setDetailOpen(true)
+  }, [])
+
+  const selTitle = useMemo(() => {
+    if (!selected) return ""
+    return firstLine(selected.title) || firstLine(selected.description) || "Событие"
+  }, [selected])
+
+  const selImg = useMemo(() => {
+    if (!selected) return null
+    const m = selected.media_urls?.find(isImg) ?? selected.media_urls?.[0]
+    const r = resolveMedia(m)
+    return r && isImg(r) ? r : null
+  }, [selected])
 
   useEffect(() => {
     (async () => {
@@ -331,6 +350,8 @@ function PersonalFeed({ categories, onBack }: { categories: Category[]; onBack: 
                 <Box
                   border={`2.5px solid ${K}`}
                   position="relative"
+                  cursor="pointer"
+                  onClick={() => openDetail(card)}
                   style={{ transform: tilt ? `rotate(${tilt}deg)` : undefined }}
                   _hover={{ boxShadow: `4px 4px 0 ${B}` }}
                   transition="box-shadow 0.15s"
@@ -381,6 +402,70 @@ function PersonalFeed({ categories, onBack }: { categories: Category[]; onBack: 
           })}
         </Stack>
       )}
+
+      {/* DETAIL DIALOG */}
+      <Dialog.Root open={detailOpen} onOpenChange={(d) => setDetailOpen(d.open)}>
+        <Portal>
+          <Dialog.Backdrop style={{ animation: "p5-backdrop 0.35s ease-out forwards" }} />
+          <Dialog.Positioner>
+            <Dialog.Content
+              maxW="min(92vw, 420px)" mx="auto"
+              border={`3px solid ${K}`} borderRadius="0"
+              overflow="hidden" boxShadow={`6px 6px 0 ${B}`}
+              style={{ animation: "p5-dialog-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards" }}
+            >
+              <Dialog.CloseTrigger />
+
+              <Dialog.Header bg={K} px="5" py="3" position="relative" overflow="hidden">
+                <Box position="absolute" top="0" right="-20px" bottom="0" w="60px"
+                  bg={B} style={{ transform: "skewX(-12deg)" }} opacity={0.2} />
+                <Dialog.Title>
+                  <Text fontSize="12px" fontWeight="800" letterSpacing="0.15em" textTransform="uppercase" color={W} position="relative">
+                    {selTitle}
+                  </Text>
+                </Dialog.Title>
+              </Dialog.Header>
+
+              <Dialog.Body px="5" py="4" bg={W}>
+                <Stack gap="3">
+                  {selImg && selected && !failedImgs[selected.id] && (
+                    <Box border={`2px solid ${K}`} overflow="hidden">
+                      <Image
+                        src={selImg} alt={selTitle}
+                        width="100%" height="auto" maxH="300px"
+                        objectFit="cover" display="block"
+                        onError={() => {
+                          if (selected) setFailedImgs((p) => ({ ...p, [selected.id]: true }))
+                        }}
+                      />
+                    </Box>
+                  )}
+                  {selected?.channel && (
+                    <Text fontSize="10px" fontWeight="800" letterSpacing="0.15em" textTransform="uppercase" color={B}>
+                      {selected.channel}
+                    </Text>
+                  )}
+                  <Text fontSize="sm" color={K} whiteSpace="pre-wrap" lineHeight="1.5">
+                    {selected?.description ?? selected?.title ?? ""}
+                  </Text>
+                </Stack>
+              </Dialog.Body>
+
+              <Dialog.Footer px="5" py="3" bg={W} borderTop={`1px solid ${K}12`}>
+                <Flex
+                  as="button" onClick={() => setDetailOpen(false)}
+                  bg={B} color={W}
+                  px="5" py="2.5"
+                  fontSize="11px" fontWeight="800" letterSpacing="0.15em" textTransform="uppercase"
+                  cursor="pointer" _hover={{ opacity: 0.88 }} transition="opacity 0.15s"
+                >
+                  Закрыть
+                </Flex>
+              </Dialog.Footer>
+            </Dialog.Content>
+          </Dialog.Positioner>
+        </Portal>
+      </Dialog.Root>
     </Stack>
   )
 }
