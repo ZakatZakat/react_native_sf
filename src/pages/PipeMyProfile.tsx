@@ -1,17 +1,17 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import { Box, Flex, Stack, Text, Image } from "@chakra-ui/react"
 import {
-  PageWipe, OpusFooter, useCountUp, useScrollReveal,
+  PageWipe, PipeFooter, useCountUp, useScrollReveal,
   API, isImg, resolveMedia, firstLine, formatDate,
   type EventCard,
-} from "./opus/shared"
+} from "./pipe/shared"
 
 const K = "#0D0D0D"
 const W = "#FFFFFF"
 const B = "#0055FF"
 const G = "rgba(13,13,13,0.35)"
 
-const STORAGE_KEY = "opus-profile"
+const STORAGE_KEY = "pipe-profile"
 
 type Category = {
   id: string
@@ -386,7 +386,7 @@ function PersonalFeed({ categories, onBack }: { categories: Category[]; onBack: 
 }
 
 /* ── Main Page ── */
-export default function OpusMyProfile() {
+export default function PipeMyProfile() {
   const [profile, setProfile] = useState<ProfileData>(loadProfile)
   const [view, setView] = useState<"profile" | "transition" | "feed">("profile")
 
@@ -473,7 +473,7 @@ export default function OpusMyProfile() {
               <Flex align="center" gap="3">
                 <Box w="32px" h="32px" borderRadius="full" bg={B} />
                 <Text fontSize="11px" fontWeight="800" letterSpacing="0.25em" textTransform="uppercase">
-                  Opus
+                  Pipe
                 </Text>
               </Flex>
               <Flex direction="column" gap="2px" cursor="pointer">
@@ -482,91 +482,49 @@ export default function OpusMyProfile() {
               </Flex>
             </Flex>
 
-            {/* PROFILE HEADER — P5R Confidant Card */}
-            <Box className="p5-reveal p5-visible-left" style={{ animationDelay: "0.4s" }} mb="8"
-              position="relative">
-              <Box border={`3px solid ${K}`} position="relative" overflow="hidden" bg={W}>
-                <Box position="absolute" top="0" left="0" bottom="0" w="72px" bg={B} zIndex={0} />
-                <Box position="absolute" top="0" right="0" w="100px" h="28px" zIndex={0}
-                  style={{ background: K, clipPath: "polygon(40px 0,100% 0,100% 100%,0 100%)" }} />
-
-                <Box position="absolute" top="16px" left="12px" zIndex={3}>
-                  <Box w="48px" h="48px" position="relative">
-                    <Box position="absolute" inset="0" borderRadius="full" bg={W} />
-                    <Box position="absolute" inset="2px" borderRadius="full" bg={K} />
+            {/* PROFILE HEADER */}
+            <Box className="p5-reveal p5-visible-left" style={{ animationDelay: "0.4s" }} mb="8">
+              <Box border={`2.5px solid ${K}`} bg={W} p="5">
+                <Flex align="center" gap="4" mb="4">
+                  <Box w="50px" h="50px" borderRadius="full" bg={K} flexShrink={0}
+                    position="relative" overflow="hidden">
                     <Flex position="absolute" inset="0" align="center" justify="center">
-                      <Text fontSize="22px" fontWeight="900" color={B}>{profile.name.charAt(0)}</Text>
+                      <Text fontSize="22px" fontWeight="900" color={W}>{profile.name.charAt(0)}</Text>
                     </Flex>
                   </Box>
-                </Box>
-
-                <Box position="relative" zIndex={1} pl="84px" pr="5">
-                  <Box pt="4" pb="1">
-                    <Flex align="center" gap="2">
-                      <Text fontSize="9px" fontWeight="800" letterSpacing="0.18em"
-                        textTransform="uppercase" color={`${W}70`}>№01</Text>
-                      <Box flex="1" h="1px" bg={`${K}10`} />
-                    </Flex>
-                    <Text fontSize="24px" fontWeight="900" textTransform="uppercase"
-                      letterSpacing="-0.02em" color={K} lineHeight="1" mt="1">
+                  <Stack gap="0" flex="1">
+                    <Text fontSize="22px" fontWeight="900" textTransform="uppercase"
+                      letterSpacing="-0.02em" lineHeight="1">
                       {profile.name}
                     </Text>
-                    <Flex align="center" gap="1.5" mt="1.5">
-                      <Box w="5px" h="5px" bg={B}
-                        style={{ clipPath: "polygon(50% 0,100% 50%,50% 100%,0 50%)" }} />
-                      <Text fontSize="8px" fontWeight="700" letterSpacing="0.12em"
-                        textTransform="uppercase" color={G}>{profile.city}</Text>
-                    </Flex>
-                  </Box>
+                    <Text fontSize="9px" fontWeight="600" letterSpacing="0.12em"
+                      textTransform="uppercase" color={G} mt="1">
+                      {profile.city} · Арт-энтузиаст
+                    </Text>
+                  </Stack>
+                </Flex>
 
-                  <Box h="1.5px" my="2"
-                    style={{ background: `linear-gradient(90deg, ${B}, ${K}20, transparent)` }} />
+                <Box h="1.5px" bg={`${K}10`} mb="3" />
 
-                  <Flex gap="4" pb="4" align="flex-end">
-                    <Stack gap="1" flex="1">
-                      <Text fontSize="6px" fontWeight="800" letterSpacing="0.14em"
-                        textTransform="uppercase" color={G}>Выбрано</Text>
-                      <Flex align="center" gap="2">
-                        <Text fontSize="28px" fontWeight="900" color={B} lineHeight="1">
-                          {selectedCats.length}
-                        </Text>
-                        <Box flex="1" h="6px" bg={`${K}08`} position="relative" overflow="hidden">
-                          <Box h="100%" bg={B} transition="width 0.4s cubic-bezier(0.22,1,0.36,1)"
-                            style={{ width: `${(selectedCats.length / CATEGORIES.length) * 100}%` }} />
-                        </Box>
-                      </Flex>
+                <Flex align="center" justify="space-between">
+                  <Flex align="center" gap="4">
+                    <Stack gap="0">
+                      <Text fontSize="24px" fontWeight="900" color={B} lineHeight="1">{selectedCats.length}</Text>
+                      <Text fontSize="7px" fontWeight="700" letterSpacing="0.12em" textTransform="uppercase" color={G}>Выбрано</Text>
                     </Stack>
-                    <Stack gap="0" align="center" flexShrink={0}>
-                      <Text fontSize="6px" fontWeight="800" letterSpacing="0.14em"
-                        textTransform="uppercase" color={G}>/ {CATEGORIES.length}</Text>
+                    <Box w="1px" h="28px" bg={`${K}10`} />
+                    <Stack gap="0">
+                      <Text fontSize="24px" fontWeight="900" lineHeight="1">{CATEGORIES.length}</Text>
+                      <Text fontSize="7px" fontWeight="700" letterSpacing="0.12em" textTransform="uppercase" color={G}>Всего</Text>
                     </Stack>
                   </Flex>
-                </Box>
-
-                <Box position="relative" overflow="hidden">
-                  <Box h="32px" bg={K} position="relative">
-                    <Box position="absolute" top="0" left="0" bottom="0" w="72px" bg={B} style={{ opacity: 0.4 }} />
-                    <Box position="absolute" top="0" left="60px" bottom="0" w="40px"
-                      style={{ background: B, clipPath: "polygon(12px 0,100% 0,calc(100% - 12px) 100%,0 100%)" }} />
-                    <Flex position="relative" zIndex={1} h="100%" align="center" justify="flex-end" px="5">
-                      {selectedCats.length > 0 ? (
-                        <Flex align="center" gap="2">
-                          <Text fontSize="8px" fontWeight="700" letterSpacing="0.1em"
-                            textTransform="uppercase" color={`${W}50`}>Мэтч</Text>
-                          <Text fontSize="18px" fontWeight="900" color={B} lineHeight="1">
-                            {Math.round((selectedCats.length / CATEGORIES.length) * 100)}%
-                          </Text>
-                        </Flex>
-                      ) : (
-                        <Text fontSize="8px" fontWeight="700" letterSpacing="0.12em"
-                          textTransform="uppercase" color={`${W}30`}>Выбери категории</Text>
-                      )}
-                    </Flex>
-                  </Box>
-                </Box>
+                  {selectedCats.length > 0 && (
+                    <Text fontSize="20px" fontWeight="900" color={B}>
+                      {Math.round((selectedCats.length / CATEGORIES.length) * 100)}%
+                    </Text>
+                  )}
+                </Flex>
               </Box>
-              <Box position="absolute" top="-5px" right="-5px" w="14px" h="14px" bg={B}
-                style={{ clipPath: "polygon(50% 0,100% 50%,50% 100%,0 50%)" }} />
             </Box>
 
             {/* SELECTED ZONE */}
@@ -690,7 +648,7 @@ export default function OpusMyProfile() {
 
             {/* FOOTER */}
             <Box className="p5-drop" style={{ animationDelay: "1s" }} pt="2">
-              <OpusFooter muted={G} accent={K} hoverColor={B} />
+              <PipeFooter muted={G} accent={K} hoverColor={B} />
             </Box>
           </>
         ) : null}
@@ -698,7 +656,7 @@ export default function OpusMyProfile() {
         {/* Footer on feed view */}
         {view === "feed" && (
           <Box pt="8">
-            <OpusFooter muted={G} accent={K} hoverColor={B} />
+            <PipeFooter muted={G} accent={K} hoverColor={B} />
           </Box>
         )}
       </Stack>

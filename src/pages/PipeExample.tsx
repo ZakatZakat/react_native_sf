@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react"
 import { Box, Flex, Stack, Text } from "@chakra-ui/react"
-import { PageWipe, OpusFooter } from "./opus/shared"
+import { PageWipe, PipeFooter } from "./pipe/shared"
 
 const K = "#0D0D0D"
 const W = "#FFFFFF"
@@ -318,7 +318,7 @@ function ProfileCard() {
   )
 }
 
-export default function OpusExample() {
+export default function PipeExample() {
   return (
     <Box minH="100dvh" bg={W} color={K} position="relative" overflow="hidden">
       <PageWipe primary={B} secondary={K} />
@@ -329,7 +329,7 @@ export default function OpusExample() {
           className="p5-drop" style={{ animationDelay: "0.3s" }}>
           <Flex align="center" gap="3">
             <Box w="32px" h="32px" borderRadius="full" bg={B} />
-            <Text fontSize="11px" fontWeight="800" letterSpacing="0.25em" textTransform="uppercase">Opus</Text>
+            <Text fontSize="11px" fontWeight="800" letterSpacing="0.25em" textTransform="uppercase">Pipe</Text>
           </Flex>
           <Flex direction="column" gap="2px" cursor="pointer">
             <Box w="20px" h="2px" bg={K} />
@@ -383,7 +383,7 @@ export default function OpusExample() {
         </Flex>
 
         <Box className="p5-drop" style={{ animationDelay: "1.1s" }}>
-          <OpusFooter muted={G} accent={K} hoverColor={B} />
+          <PipeFooter muted={G} accent={K} hoverColor={B} />
         </Box>
 
       </Stack>

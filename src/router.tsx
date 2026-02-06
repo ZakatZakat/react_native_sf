@@ -9,11 +9,11 @@ import Landing5ProjectBlue from "./pages/Landing5ProjectBlue"
 import Feed from "./pages/Feed"
 import Feed3ProjectBlue from "./pages/Feed3ProjectBlue"
 import ProfileCreateProjectBlue from "./pages/ProfileCreateProjectBlue"
-import OpusExample from "./pages/OpusExample"
-import OpusMyProfile from "./pages/OpusMyProfile"
-import OpusFeed from "./pages/OpusFeed"
-import OpusExampleOnlyBlue from "./pages/OpusExampleOnlyBlue"
-import OpusFeedOnlyBlue from "./pages/OpusFeedOnlyBlue"
+import PipeExample from "./pages/PipeExample"
+import PipeMyProfile from "./pages/PipeMyProfile"
+import PipeFeed from "./pages/PipeFeed"
+import PipeExampleOnlyBlue from "./pages/PipeExampleOnlyBlue"
+import PipeFeedOnlyBlue from "./pages/PipeFeedOnlyBlue"
 import Feed2 from "./pages/Feed2"
 import Bauhaus from "./pages/Bauhaus"
 import Bauhaus2 from "./pages/Bauhaus2"
@@ -39,11 +39,11 @@ const feedRoute = createRoute({ getParentRoute: () => rootRoute, path: "/feed", 
 const feed2Route = createRoute({ getParentRoute: () => rootRoute, path: "/feed-2", component: Feed2 })
 const feed3ProjectBlueRoute = createRoute({ getParentRoute: () => rootRoute, path: "/feed-3-project-blue", component: Feed3ProjectBlue })
 const profileCreateProjectBlueRoute = createRoute({ getParentRoute: () => rootRoute, path: "/profile-create-project-blue", component: ProfileCreateProjectBlue })
-const opusExampleRoute = createRoute({ getParentRoute: () => rootRoute, path: "/opus-example", component: OpusExample })
-const opusMyProfileRoute = createRoute({ getParentRoute: () => rootRoute, path: "/opus-my-profile", component: OpusMyProfile })
-const opusFeedRoute = createRoute({ getParentRoute: () => rootRoute, path: "/opus-feed", component: OpusFeed })
-const opusExampleOnlyBlueRoute = createRoute({ getParentRoute: () => rootRoute, path: "/opus-example-only-blue", component: OpusExampleOnlyBlue })
-const opusFeedOnlyBlueRoute = createRoute({ getParentRoute: () => rootRoute, path: "/opus-feed-only-blue", component: OpusFeedOnlyBlue })
+const pipeExampleRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-example", component: PipeExample })
+const pipeMyProfileRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-my-profile", component: PipeMyProfile })
+const pipeFeedRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-feed", component: PipeFeed })
+const pipeExampleOnlyBlueRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-example-only-blue", component: PipeExampleOnlyBlue })
+const pipeFeedOnlyBlueRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-feed-only-blue", component: PipeFeedOnlyBlue })
 const bauhausRoute = createRoute({ getParentRoute: () => rootRoute, path: "/bauhaus", component: Bauhaus })
 const bauhaus2Route = createRoute({ getParentRoute: () => rootRoute, path: "/bauhaus-2", component: Bauhaus2 })
 const profile1Route = createRoute({ getParentRoute: () => rootRoute, path: "/profile-1", component: Profile1 })
@@ -63,11 +63,11 @@ const routeTree = rootRoute.addChildren([
   feed2Route,
   feed3ProjectBlueRoute,
   profileCreateProjectBlueRoute,
-  opusExampleRoute,
-  opusMyProfileRoute,
-  opusFeedRoute,
-  opusExampleOnlyBlueRoute,
-  opusFeedOnlyBlueRoute,
+  pipeExampleRoute,
+  pipeMyProfileRoute,
+  pipeFeedRoute,
+  pipeExampleOnlyBlueRoute,
+  pipeFeedOnlyBlueRoute,
   bauhausRoute,
   bauhaus2Route,
   profile1Route,

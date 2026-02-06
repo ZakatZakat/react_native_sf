@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { Box, Flex, Stack, Text } from "@chakra-ui/react"
-import { PageWipe, OpusFooter } from "./opus/shared"
+import { PageWipe, PipeFooter } from "./pipe/shared"
 
 const W = "#FFFFFF"
 const B = "#0055FF"
@@ -20,7 +20,7 @@ function Dots({ n, size, gap, color, opacity }: { n: number; size: number; gap: 
 
 const CATEGORIES = ["Концерты", "Искусство", "Кино", "DJ Сеты", "Лекции"] as const
 
-export default function OpusExampleOnlyBlue() {
+export default function PipeExampleOnlyBlue() {
   const [active, setActive] = useState(0)
 
   return (
@@ -37,7 +37,7 @@ export default function OpusExampleOnlyBlue() {
           <Flex align="center" gap="3">
             <Box w="32px" h="32px" borderRadius="full" bg={B} />
             <Text fontSize="11px" fontWeight="800" letterSpacing="0.25em" textTransform="uppercase">
-              Opus
+              Pipe
             </Text>
           </Flex>
           <Flex direction="column" gap="2px" cursor="pointer">
@@ -248,7 +248,7 @@ export default function OpusExampleOnlyBlue() {
 
         {/* — FOOTER — */}
         <Box className="p5-drop" style={{ animationDelay: "1.1s" }}>
-          <OpusFooter muted={BM} accent={B} hoverColor={BD} />
+          <PipeFooter muted={BM} accent={B} hoverColor={BD} />
         </Box>
 
       </Stack>

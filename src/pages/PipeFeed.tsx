@@ -1,17 +1,17 @@
 import { useState, useEffect, useMemo, useCallback } from "react"
 import { Box, Flex, Stack, Text, Image, Dialog, Portal } from "@chakra-ui/react"
 import {
-  PageWipe, OpusFooter, useScrollReveal,
+  PageWipe, PipeFooter, useScrollReveal,
   API, FILTERS, isImg, resolveMedia, firstLine, matchFilter, formatDate,
   type EventCard,
-} from "./opus/shared"
+} from "./pipe/shared"
 
 const K = "#0D0D0D"
 const W = "#FFFFFF"
 const B = "#0055FF"
 const G = "rgba(13,13,13,0.35)"
 
-export default function OpusFeed() {
+export default function PipeFeed() {
   const [items, setItems] = useState<EventCard[]>([])
   const [loading, setLoading] = useState(true)
   const [activeFilter, setActiveFilter] = useState("all")
@@ -75,7 +75,7 @@ export default function OpusFeed() {
           <Flex align="center" gap="3">
             <Box w="28px" h="28px" borderRadius="full" bg={B} />
             <Text fontSize="11px" fontWeight="800" letterSpacing="0.25em" textTransform="uppercase">
-              Opus
+              Pipe
             </Text>
           </Flex>
           <Flex
@@ -222,7 +222,7 @@ export default function OpusFeed() {
 
         {/* FOOTER */}
         <Box pt="2">
-          <OpusFooter muted={G} accent={K} hoverColor={B} />
+          <PipeFooter muted={G} accent={K} hoverColor={B} />
         </Box>
       </Stack>
 

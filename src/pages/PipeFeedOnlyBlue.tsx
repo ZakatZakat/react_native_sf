@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo, useCallback } from "react"
 import { Box, Flex, Stack, Text, Image, Dialog, Portal } from "@chakra-ui/react"
 import {
-  PageWipe, OpusFooter, useScrollReveal,
+  PageWipe, PipeFooter, useScrollReveal,
   API, FILTERS, isImg, resolveMedia, firstLine, matchFilter, formatDate,
   type EventCard,
-} from "./opus/shared"
+} from "./pipe/shared"
 
 const W = "#FFFFFF"
 const B = "#0055FF"
@@ -12,7 +12,7 @@ const BM = "rgba(0,85,255,0.45)"
 const BL = "rgba(0,85,255,0.12)"
 const BD = "#003ACC"
 
-export default function OpusFeedOnlyBlue() {
+export default function PipeFeedOnlyBlue() {
   const [items, setItems] = useState<EventCard[]>([])
   const [loading, setLoading] = useState(true)
   const [activeFilter, setActiveFilter] = useState("all")
@@ -76,7 +76,7 @@ export default function OpusFeedOnlyBlue() {
           <Flex align="center" gap="3">
             <Box w="28px" h="28px" borderRadius="full" bg={B} />
             <Text fontSize="11px" fontWeight="800" letterSpacing="0.25em" textTransform="uppercase">
-              Opus
+              Pipe
             </Text>
           </Flex>
           <Flex
@@ -223,7 +223,7 @@ export default function OpusFeedOnlyBlue() {
 
         {/* FOOTER */}
         <Box pt="2">
-          <OpusFooter muted={BM} accent={B} hoverColor={BD} />
+          <PipeFooter muted={BM} accent={B} hoverColor={BD} />
         </Box>
       </Stack>
 
