@@ -216,6 +216,87 @@ html.dark #root {
   animation: p5-tab-pop 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Category card pick → flies out with dramatic slam */
+@keyframes p5-pick-out {
+  0% {
+    transform: scale(1) rotate(var(--rot, 0deg));
+    opacity: 1;
+  }
+  25% {
+    transform: scale(1.18) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.2) translateY(-80px) rotate(-12deg);
+    opacity: 0;
+  }
+}
+
+/* Category tag landing in selected zone */
+@keyframes p5-land-in {
+  0% {
+    transform: scale(0) rotate(15deg);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.2) rotate(-2deg);
+    opacity: 1;
+  }
+  80% {
+    transform: scale(0.95) rotate(0.5deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+/* Reverse: tag flies back out from selected */
+@keyframes p5-eject {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0) rotate(-15deg);
+    opacity: 0;
+  }
+}
+
+/* Card re-appears with slam when deselected */
+@keyframes p5-return {
+  0% {
+    transform: scale(0.2) translateY(-60px) rotate(10deg);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.1) rotate(-1.5deg);
+    opacity: 1;
+  }
+  75% {
+    transform: scale(0.97) rotate(0.5deg);
+  }
+  100% {
+    transform: scale(1) rotate(var(--rot, 0deg));
+    opacity: 1;
+  }
+}
+
+.p5-pick-out {
+  animation: p5-pick-out 0.4s cubic-bezier(0.55, 0, 0.1, 1) forwards;
+  pointer-events: none;
+}
+.p5-land-in {
+  animation: p5-land-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.p5-eject {
+  animation: p5-eject 0.25s cubic-bezier(0.55, 0, 0.1, 1) forwards;
+  pointer-events: none;
+}
+.p5-return {
+  animation: p5-return 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .tg-float-1,
   .tg-float-2 {
@@ -223,7 +304,11 @@ html.dark #root {
   }
   .p5-reveal,
   .p5-drop,
-  .p5-tab-pop {
+  .p5-tab-pop,
+  .p5-pick-out,
+  .p5-land-in,
+  .p5-eject,
+  .p5-return {
     animation: none !important;
     opacity: 1 !important;
   }
