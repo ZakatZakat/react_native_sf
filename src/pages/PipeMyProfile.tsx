@@ -291,6 +291,31 @@ function PersonalFeed({ categories, onBack }: { categories: Category[]; onBack: 
 
   const display = filtered.length > 0 ? filtered : items.slice(0, 12)
 
+  type AiMeta = { matchedCats: Category[]; score: number; reason: string }
+  const aiMap = useMemo(() => {
+    const map = new Map<string, AiMeta>()
+    for (const card of display) {
+      const t = `${card.title ?? ""}\n${card.description ?? ""}\n${card.channel}`.toLowerCase()
+      const matched = categories.filter((c) => c.keywords.some((kw) => t.includes(kw)))
+      const hitCount = allKeywords.filter((kw) => t.includes(kw)).length
+      const score = allKeywords.length > 0
+        ? Math.min(99, Math.round(30 + (hitCount / allKeywords.length) * 60 + matched.length * 8))
+        : 50 + Math.round(Math.random() * 30)
+      const reasons = [
+        matched.length > 0 ? `Соотносится с: ${matched.map((c) => c.label).join(", ")}` : null,
+        hitCount >= 3 ? "Высокое совпадение по контенту" : null,
+        hitCount >= 1 && hitCount < 3 ? "Частичное совпадение" : null,
+        matched.length === 0 ? "Рекомендация Pipe-бота" : null,
+      ]
+      map.set(card.id, {
+        matchedCats: matched,
+        score: Math.min(score, 99),
+        reason: reasons.find(Boolean) ?? "Анализ Pipe-бота",
+      })
+    }
+    return map
+  }, [display, categories, allKeywords])
+
   return (
     <Stack gap="0">
       {/* Header */}
@@ -344,6 +369,7 @@ function PersonalFeed({ categories, onBack }: { categories: Category[]; onBack: 
             const title = firstLine(card.title) || firstLine(card.description) || "Событие"
             const date = formatDate(card.event_time || card.created_at)
             const tilt = idx % 3 === 0 ? -0.6 : idx % 3 === 1 ? 0.5 : 0
+            const ai = aiMap.get(card.id)
 
             return (
               <Box key={card.id} ref={(el) => reveal(el, idx)}>
@@ -356,6 +382,16 @@ function PersonalFeed({ categories, onBack }: { categories: Category[]; onBack: 
                   _hover={{ boxShadow: `4px 4px 0 ${B}` }}
                   transition="box-shadow 0.15s"
                 >
+                  {/* AI score badge */}
+                  {ai && (
+                    <Flex position="absolute" top="-1px" right="-1px" zIndex={2}
+                      bg={K} color={W} px="2.5" py="1" gap="1.5" align="center"
+                      style={{ clipPath: "polygon(0 0,100% 0,100% 100%,8px 100%)" }}>
+                      <Box w="5px" h="5px" borderRadius="full" bg={ai.score >= 70 ? "#00E676" : ai.score >= 45 ? "#FFC107" : `${W}50`} />
+                      <Text fontSize="9px" fontWeight="900" letterSpacing="0.06em">{ai.score}%</Text>
+                    </Flex>
+                  )}
+
                   {imgSrc && (
                     <Box overflow="hidden" borderBottom={`2px solid ${K}`}>
                       <Image
@@ -385,6 +421,34 @@ function PersonalFeed({ categories, onBack }: { categories: Category[]; onBack: 
                       }}>
                       {title}
                     </Text>
+
+                    {/* AI analysis strip */}
+                    {ai && (
+                      <Box mt="2.5" bg={`${B}06`} border={`1px solid ${B}12`} px="3" py="2">
+                        <Flex align="center" gap="1.5" mb="1.5">
+                          <Box w="4px" h="4px" bg={B}
+                            style={{ clipPath: "polygon(50% 0,100% 50%,50% 100%,0 50%)" }} />
+                          <Text fontSize="7px" fontWeight="800" letterSpacing="0.14em"
+                            textTransform="uppercase" color={B}>Pipe-бот анализ</Text>
+                        </Flex>
+                        <Text fontSize="9px" fontWeight="700" color={K} lineHeight="1.3" mb="1.5">
+                          {ai.reason}
+                        </Text>
+                        {ai.matchedCats.length > 0 && (
+                          <Flex gap="1" flexWrap="wrap">
+                            {ai.matchedCats.map((c) => (
+                              <Flex key={c.id} align="center" gap="0.5" px="1.5" py="0.5"
+                                bg={`${B}10`} border={`1px solid ${B}18`}>
+                                <Text fontSize="8px" lineHeight="1">{c.icon}</Text>
+                                <Text fontSize="7px" fontWeight="700" letterSpacing="0.06em"
+                                  textTransform="uppercase" color={B}>{c.label}</Text>
+                              </Flex>
+                            ))}
+                          </Flex>
+                        )}
+                      </Box>
+                    )}
+
                     <Flex mt="3" align="center" justify="space-between"
                       borderTop={`1px solid ${K}12`} pt="2">
                       <Text fontSize="10px" fontWeight="700" letterSpacing="0.1em"
@@ -392,10 +456,6 @@ function PersonalFeed({ categories, onBack }: { categories: Category[]; onBack: 
                       <Text fontSize="14px" fontWeight="900" color={B}>→</Text>
                     </Flex>
                   </Box>
-                  {idx === 0 && (
-                    <Box position="absolute" top="-8px" right="-8px"
-                      w="16px" h="16px" borderRadius="full" bg={B} />
-                  )}
                 </Box>
               </Box>
             )
