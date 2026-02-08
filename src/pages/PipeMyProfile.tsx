@@ -241,6 +241,22 @@ function TransitionWipe({ active }: { active: boolean }) {
   )
 }
 
+const CARD_GAP = 20
+const ROW_HEIGHT = 200
+const COLLAGE_SLOTS: { left: number; top: number; w: number; rotate: number; z: number }[] = [
+  { left: 0, top: 0, w: 45, rotate: -1.2, z: 1 },
+  { left: 52, top: 12, w: 45, rotate: 1.5, z: 1 },
+  { left: 4, top: ROW_HEIGHT + CARD_GAP, w: 45, rotate: 0.8, z: 1 },
+  { left: 52, top: ROW_HEIGHT + CARD_GAP + 8, w: 45, rotate: -1, z: 1 },
+  { left: 0, top: 2 * ROW_HEIGHT + 2 * CARD_GAP, w: 45, rotate: -0.8, z: 1 },
+  { left: 52, top: 2 * ROW_HEIGHT + 2 * CARD_GAP + 10, w: 45, rotate: 1.2, z: 1 },
+  { left: 4, top: 3 * ROW_HEIGHT + 3 * CARD_GAP, w: 45, rotate: -1.5, z: 1 },
+  { left: 52, top: 3 * ROW_HEIGHT + 3 * CARD_GAP + 8, w: 45, rotate: 0.6, z: 1 },
+  { left: 0, top: 4 * ROW_HEIGHT + 4 * CARD_GAP, w: 45, rotate: 1, z: 1 },
+  { left: 52, top: 4 * ROW_HEIGHT + 4 * CARD_GAP + 12, w: 45, rotate: -1.2, z: 1 },
+  { left: 4, top: 5 * ROW_HEIGHT + 5 * CARD_GAP, w: 45, rotate: -0.6, z: 1 },
+]
+
 /* ── Personal Feed ── */
 function PersonalFeed({ categories, onBack }: { categories: Category[]; onBack: () => void }) {
   const [items, setItems] = useState<EventCard[]>([])
@@ -248,6 +264,7 @@ function PersonalFeed({ categories, onBack }: { categories: Category[]; onBack: 
   const [failedImgs, setFailedImgs] = useState<Record<string, true>>({})
   const [selected, setSelected] = useState<EventCard | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
+  const [feedView, setFeedView] = useState<"list" | "collage">("list")
   const reveal = useScrollReveal()
 
   const openDetail = useCallback((card: EventCard) => {
@@ -289,7 +306,8 @@ function PersonalFeed({ categories, onBack }: { categories: Category[]; onBack: 
     })
   }, [items, allKeywords])
 
-  const display = filtered.length > 0 ? filtered : items.slice(0, 12)
+  const baseDisplay = filtered.length > 0 ? filtered : items.slice(0, 12)
+  const display = baseDisplay.filter((ev) => ev.media_urls?.some(isImg))
 
   type AiMeta = { matchedCats: Category[]; score: number; reason: string }
   const aiMap = useMemo(() => {
@@ -338,14 +356,41 @@ function PersonalFeed({ categories, onBack }: { categories: Category[]; onBack: 
             ))}
           </Flex>
         </Stack>
-        <Flex
-          as="button" onClick={onBack}
-          px="3" py="1.5"
-          border={`2px solid ${K}`}
-          fontSize="10px" fontWeight="800" letterSpacing="0.12em" textTransform="uppercase"
-          cursor="pointer" _hover={{ bg: K, color: W }} transition="all 0.15s"
-        >
-          ← Назад
+        <Flex align="center" gap="2">
+          <Flex border={`2px solid ${K}`} overflow="hidden">
+            <Flex
+              as="button" onClick={() => setFeedView("list")}
+              px="2.5" py="1.5"
+              fontSize="9px" fontWeight="800" letterSpacing="0.06em" textTransform="uppercase"
+              cursor="pointer" transition="all 0.15s"
+              bg={feedView === "list" ? K : "transparent"}
+              color={feedView === "list" ? W : K}
+              _hover={{ bg: feedView === "list" ? K : `${K}12` }}
+            >
+              Список
+            </Flex>
+            <Flex
+              as="button" onClick={() => setFeedView("collage")}
+              px="2.5" py="1.5"
+              borderLeft={`2px solid ${K}`}
+              fontSize="9px" fontWeight="800" letterSpacing="0.06em" textTransform="uppercase"
+              cursor="pointer" transition="all 0.15s"
+              bg={feedView === "collage" ? K : "transparent"}
+              color={feedView === "collage" ? W : K}
+              _hover={{ bg: feedView === "collage" ? K : `${K}12` }}
+            >
+              Коллаж
+            </Flex>
+          </Flex>
+          <Flex
+            as="button" onClick={onBack}
+            px="3" py="1.5"
+            border={`2px solid ${K}`}
+            fontSize="10px" fontWeight="800" letterSpacing="0.12em" textTransform="uppercase"
+            cursor="pointer" _hover={{ bg: K, color: W }} transition="all 0.15s"
+          >
+            ← Назад
+          </Flex>
         </Flex>
       </Flex>
 
@@ -360,6 +405,73 @@ function PersonalFeed({ categories, onBack }: { categories: Category[]; onBack: 
       {/* Cards */}
       {loading ? (
         <Text color={G} fontSize="sm" py="10" textAlign="center">Загружаем события...</Text>
+      ) : feedView === "collage" ? (
+        <Box position="relative" minH={6 * ROW_HEIGHT + 6 * CARD_GAP + 60} pb="8">
+          {display.slice(0, COLLAGE_SLOTS.length).map((card, idx) => {
+            const slot = COLLAGE_SLOTS[idx]!
+            const media = card.media_urls?.find(isImg) ?? card.media_urls?.[0]
+            const rawSrc = resolveMedia(media)
+            const imgSrc = rawSrc && isImg(rawSrc) && !failedImgs[card.id] ? rawSrc : null
+            const title = firstLine(card.title) || firstLine(card.description) || "Событие"
+            const ai = aiMap.get(card.id)
+            return (
+              <Box
+                key={card.id}
+                position="absolute"
+                left={`${slot.left}%`}
+                top={`${slot.top}px`}
+                width={`${slot.w}%`}
+                zIndex={slot.z}
+                border={`2.5px solid ${K}`}
+                bg={W}
+                cursor="pointer"
+                overflow="hidden"
+                boxShadow={`4px 4px 0 ${B}40`}
+                transition="box-shadow 0.2s, transform 0.2s"
+                _hover={{ boxShadow: `6px 6px 0 ${B}` }}
+                _active={{ transform: `scale(0.98)` }}
+                onClick={() => openDetail(card)}
+                className="p5-collage-card"
+                style={{ "--slot-rot": `${slot.rotate}deg`, animationDelay: `${idx * 0.06}s` } as React.CSSProperties}
+              >
+                {ai && (
+                  <Flex position="absolute" top="0" right="0" zIndex={2}
+                    bg={K} color={W} px="2" py="0.5" gap="1" align="center"
+                    style={{ clipPath: "polygon(0 0,100% 0,100% 100%,12px 100%)" }}>
+                    <Box w="4px" h="4px" borderRadius="full" bg={ai.score >= 70 ? "#00E676" : ai.score >= 45 ? "#FFC107" : `${W}50`} />
+                    <Text fontSize="8px" fontWeight="900">{ai.score}%</Text>
+                  </Flex>
+                )}
+                {imgSrc ? (
+                  <Box overflow="hidden" borderBottom={`2px solid ${K}`}>
+                    <Image
+                      src={imgSrc} alt={title}
+                      width="100%" height="auto" maxH="140px"
+                      objectFit="cover" display="block"
+                      onError={() => setFailedImgs((p) => ({ ...p, [card.id]: true }))}
+                    />
+                  </Box>
+                ) : (
+                  <Box h="80px" bg={`${B}12`} borderBottom={`2px solid ${K}`} />
+                )}
+                <Box px="2.5" py="2">
+                  <Text fontSize="8px" fontWeight="700" letterSpacing="0.1em" textTransform="uppercase" color={B} mb="1">
+                    {card.channel.replace(/^@/, "").slice(0, 12)}
+                  </Text>
+                  <Text fontSize="11px" fontWeight="800" lineHeight="1.15" textTransform="uppercase"
+                    style={{
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
+                    }}>
+                    {title}
+                  </Text>
+                </Box>
+              </Box>
+            )
+          })}
+        </Box>
       ) : (
         <Stack gap="5">
           {display.map((card, idx) => {
@@ -374,13 +486,19 @@ function PersonalFeed({ categories, onBack }: { categories: Category[]; onBack: 
             return (
               <Box key={card.id} ref={(el) => reveal(el, idx)}>
                 <Box
+                  className="p5-card-float"
+                  style={{ animationDelay: `${(idx % 6) * 0.2}s` } as React.CSSProperties}
+                >
+                <Box
                   border={`2.5px solid ${K}`}
                   position="relative"
                   cursor="pointer"
                   onClick={() => openDetail(card)}
+                  boxShadow={`3px 3px 0 ${B}35`}
                   style={{ transform: tilt ? `rotate(${tilt}deg)` : undefined }}
-                  _hover={{ boxShadow: `4px 4px 0 ${B}` }}
-                  transition="box-shadow 0.15s"
+                  _hover={{ boxShadow: `5px 5px 0 ${B}` }}
+                  _active={{ transform: tilt ? `rotate(${tilt}deg) scale(0.98)` : `scale(0.98)` }}
+                  transition="box-shadow 0.15s, transform 0.15s"
                 >
                   {/* AI score badge */}
                   {ai && (
@@ -456,6 +574,7 @@ function PersonalFeed({ categories, onBack }: { categories: Category[]; onBack: 
                       <Text fontSize="14px" fontWeight="900" color={B}>→</Text>
                     </Flex>
                   </Box>
+                </Box>
                 </Box>
               </Box>
             )

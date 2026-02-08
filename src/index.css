@@ -311,6 +311,30 @@ html.dark #root {
   animation-play-state: paused;
 }
 
+@keyframes p5-collage-in {
+  0% { opacity: 0; transform: scale(0.7) rotate(var(--slot-rot, 0deg)); }
+  100% { opacity: 1; transform: scale(1) rotate(var(--slot-rot, 0deg)); }
+}
+@keyframes p5-card-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+@keyframes p5-card-float-rot {
+  0%, 100% { transform: translateY(0) rotate(var(--slot-rot, 0deg)); }
+  50% { transform: translateY(-4px) rotate(var(--slot-rot, 0deg)); }
+}
+.p5-collage-card {
+  animation: p5-collage-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both,
+             p5-card-float-rot 2.8s ease-in-out 0.6s infinite;
+}
+.p5-card-float {
+  animation: p5-card-float 2.8s ease-in-out infinite;
+}
+.p5-card-float:hover,
+.p5-collage-card:hover {
+  animation-play-state: paused;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .tg-float-1,
   .tg-float-2 {
@@ -323,7 +347,9 @@ html.dark #root {
   .p5-pick-out,
   .p5-land-in,
   .p5-eject,
-  .p5-return {
+  .p5-return,
+  .p5-collage-card,
+  .p5-card-float {
     animation: none !important;
     opacity: 1 !important;
   }
