@@ -423,10 +423,10 @@ function PersonalFeed({ categories, onBack }: { categories: Category[]; onBack: 
                 width={`${slot.w}%`}
                 zIndex={slot.z}
                 border={`2.5px solid ${K}`}
+                boxShadow={`4px 4px 0 ${B}`}
                 bg={W}
                 cursor="pointer"
                 overflow="hidden"
-                boxShadow={`4px 4px 0 ${B}40`}
                 transition="box-shadow 0.2s, transform 0.2s"
                 _hover={{ boxShadow: `6px 6px 0 ${B}` }}
                 _active={{ transform: `scale(0.98)` }}
@@ -491,12 +491,12 @@ function PersonalFeed({ categories, onBack }: { categories: Category[]; onBack: 
                 >
                 <Box
                   border={`2.5px solid ${K}`}
+                  boxShadow={`4px 4px 0 ${B}`}
                   position="relative"
                   cursor="pointer"
                   onClick={() => openDetail(card)}
-                  boxShadow={`3px 3px 0 ${B}35`}
                   style={{ transform: tilt ? `rotate(${tilt}deg)` : undefined }}
-                  _hover={{ boxShadow: `5px 5px 0 ${B}` }}
+                  _hover={{ boxShadow: `6px 6px 0 ${B}` }}
                   _active={{ transform: tilt ? `rotate(${tilt}deg) scale(0.98)` : `scale(0.98)` }}
                   transition="box-shadow 0.15s, transform 0.15s"
                 >
