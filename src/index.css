@@ -335,6 +335,30 @@ html.dark #root {
   animation-play-state: paused;
 }
 
+@keyframes pipe-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.pipe-hero-img {
+  position: relative;
+  overflow: hidden;
+}
+.pipe-hero-img::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.5) 40%,
+    transparent 60%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: pipe-shimmer 4s ease-in-out infinite;
+  pointer-events: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .tg-float-1,
   .tg-float-2 {
@@ -352,5 +376,9 @@ html.dark #root {
   .p5-card-float {
     animation: none !important;
     opacity: 1 !important;
+  }
+  .pipe-hero-img::after {
+    animation: none !important;
+    display: none !important;
   }
 }
