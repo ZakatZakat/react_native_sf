@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
-import { Box, Flex, Image, Text } from "@chakra-ui/react"
+import { useNavigate } from "@tanstack/react-router"
+import { Box, Button, Flex, Image, Text } from "@chakra-ui/react"
 import { API, isImg, resolveMedia, type EventCard } from "./pipe/shared"
 
 const K = "#0D0D0D"
@@ -11,6 +12,7 @@ const CROSSFADE_DURATION = 4000
 const TEXT_TO_IMAGE_SPACING = "32px"
 
 export default function PipeExample1() {
+  const navigate = useNavigate()
   const [events, setEvents] = useState<EventCard[]>([])
   const [activeIdx, setActiveIdx] = useState(0)
 
@@ -146,6 +148,20 @@ export default function PipeExample1() {
             На основе анализа 1000+ каналов <Text as="span" color={B}>ии-агентами</Text>
           </Text>
         </Box>
+        <Button
+          mt="6"
+          bg={B}
+          color={W}
+          size="lg"
+          fontSize={{ base: "md", sm: "lg" }}
+          fontWeight="700"
+          letterSpacing="0.04em"
+          _hover={{ opacity: 0.9 }}
+          _active={{ opacity: 0.85 }}
+          onClick={() => navigate({ to: "/pipe-my-profile" })}
+        >
+          Попробовать
+        </Button>
       </Flex>
     </Box>
   )
