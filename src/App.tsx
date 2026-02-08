@@ -19,6 +19,7 @@ const ROUTES = [
   { label: "Profile Create project_blue", to: "/profile-create-project-blue" },
   { label: "Pipe Example", to: "/pipe-example" },
   { label: "Pipe Example 1", to: "/pipe-example-1" },
+  { label: "Pipe Rotate", to: "/pipe-rotate" },
   { label: "Pipe My Profile", to: "/pipe-my-profile" },
   { label: "Pipe Feed", to: "/pipe-feed" },
   { label: "Pipe Example Only Blue", to: "/pipe-example-only-blue" },

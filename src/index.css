@@ -335,10 +335,31 @@ html.dark #root {
   animation-play-state: paused;
 }
 
+@keyframes pipe-rotate-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.pipe-rotate-slot {
+  animation: pipe-rotate-fade 0.8s ease-in-out forwards;
+}
+
 @keyframes pipe-shimmer {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
+.pipe-rotate-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.pipe-rotate-content {
+  animation: pipe-rotate-fade 0.4s ease-out;
+}
+
+.pipe-rotate-scroll::-webkit-scrollbar {
+  display: none;
+}
+
 .pipe-hero-img {
   position: relative;
   overflow: hidden;
@@ -360,6 +381,9 @@ html.dark #root {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .pipe-rotate-slot {
+    animation: none !important;
+  }
   .tg-float-1,
   .tg-float-2 {
     animation: none !important;

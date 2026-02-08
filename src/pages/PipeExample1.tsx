@@ -158,7 +158,7 @@ export default function PipeExample1() {
           letterSpacing="0.04em"
           _hover={{ opacity: 0.9 }}
           _active={{ opacity: 0.85 }}
-          onClick={() => navigate({ to: "/pipe-my-profile" })}
+          onClick={() => navigate({ to: "/pipe-rotate" })}
         >
           Попробовать
         </Button>

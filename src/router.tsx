@@ -11,6 +11,7 @@ import Feed3ProjectBlue from "./pages/Feed3ProjectBlue"
 import ProfileCreateProjectBlue from "./pages/ProfileCreateProjectBlue"
 import PipeExample from "./pages/PipeExample"
 import PipeExample1 from "./pages/PipeExample1"
+import PipeRotate from "./pages/PipeRotate"
 import PipeMyProfile from "./pages/PipeMyProfile"
 import PipeFeed from "./pages/PipeFeed"
 import PipeExampleOnlyBlue from "./pages/PipeExampleOnlyBlue"
@@ -42,6 +43,7 @@ const feed3ProjectBlueRoute = createRoute({ getParentRoute: () => rootRoute, pat
 const profileCreateProjectBlueRoute = createRoute({ getParentRoute: () => rootRoute, path: "/profile-create-project-blue", component: ProfileCreateProjectBlue })
 const pipeExampleRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-example", component: PipeExample })
 const pipeExample1Route = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-example-1", component: PipeExample1 })
+const pipeRotateRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-rotate", component: PipeRotate })
 const pipeMyProfileRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-my-profile", component: PipeMyProfile })
 const pipeFeedRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-feed", component: PipeFeed })
 const pipeExampleOnlyBlueRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-example-only-blue", component: PipeExampleOnlyBlue })
@@ -67,6 +69,7 @@ const routeTree = rootRoute.addChildren([
   profileCreateProjectBlueRoute,
   pipeExampleRoute,
   pipeExample1Route,
+  pipeRotateRoute,
   pipeMyProfileRoute,
   pipeFeedRoute,
   pipeExampleOnlyBlueRoute,
