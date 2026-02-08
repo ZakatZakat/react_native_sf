@@ -20,21 +20,8 @@ export function PageWipe({ primary, secondary }: { primary: string; secondary: s
 }
 
 /* ── Footer ── */
-export function PipeFooter({ muted, accent, hoverColor }: {
-  muted: string; accent: string; hoverColor?: string
-}) {
-  return (
-    <Flex justify="space-between" align="center" pt="8">
-      <Text fontSize="10px" color={muted} fontWeight="600" letterSpacing="0.06em">© 2026 Pipe</Text>
-      <Flex gap="4">
-        {["TG", "IG", "X"].map(s => (
-          <Text key={s} fontSize="10px" fontWeight="800" letterSpacing="0.12em"
-            color={accent} cursor="pointer" _hover={{ color: hoverColor ?? accent, opacity: 0.6 }}
-            transition="all 0.15s">{s}</Text>
-        ))}
-      </Flex>
-    </Flex>
-  )
+export function PipeFooter(_props: { muted: string; accent: string; hoverColor?: string }) {
+  return null
 }
 
 /* ── useScrollReveal ── */
