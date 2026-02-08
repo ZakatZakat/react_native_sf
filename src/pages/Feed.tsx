@@ -132,7 +132,7 @@ export default function Feed() {
     setLoading(true)
     try {
       const [eventsRes, credsRes] = await Promise.all([
-        fetch(`${apiUrl}/events?limit=20`, { cache: "no-store" }),
+        fetch(`${apiUrl}/events?limit=100`, { cache: "no-store" }),
         fetch(`${apiUrl}/debug/telegram-creds`, { cache: "no-store" }),
       ])
       if (!eventsRes.ok) throw new Error(`events status ${eventsRes.status}`)
@@ -160,7 +160,7 @@ export default function Feed() {
     setSyncError(null)
     try {
       const res = await fetch(
-        `${apiUrl}/debug/telegram-fetch-recent?per_channel_limit=5&pause_between_channels_seconds=1.2&pause_between_messages_seconds=0.05`,
+        `${apiUrl}/debug/telegram-fetch-recent?per_channel_limit=30&pause_between_channels_seconds=1.2&pause_between_messages_seconds=0.05`,
         { method: "POST" },
       )
       if (!res.ok) {
@@ -200,7 +200,9 @@ export default function Feed() {
 
   const filteredItems = React.useMemo(() => {
     const f = eventFilters.find((x) => x.key === activeFilterKey) ?? eventFilters[0]
-    return items.filter((e) => matchesFilter(e, f))
+    return items
+      .filter((e) => matchesFilter(e, f))
+      .filter((e) => e.media_urls?.some((u) => isLikelyImageUrl(u)))
   }, [items, activeFilterKey])
 
   const openDetails = React.useCallback((card: EventCard) => {

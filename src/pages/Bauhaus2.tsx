@@ -39,7 +39,7 @@ export default function Bauhaus2() {
   React.useEffect(() => {
     const load = async () => {
       try {
-        const res = await fetch(`${apiUrl}/events?limit=24`, { cache: "no-store" })
+        const res = await fetch(`${apiUrl}/events?limit=100`, { cache: "no-store" })
         if (!res.ok) return
         const data = (await res.json()) as EventCard[]
         setItems(data)
@@ -52,7 +52,7 @@ export default function Bauhaus2() {
     void load()
   }, [apiUrl])
 
-  const list = loading ? [] : items
+  const list = loading ? [] : items.filter((e) => e.media_urls?.some((u) => isLikelyImageUrl(u)))
   const openDetails = (item: EventCard) => {
     setSelected(item)
     setDetailsOpen(true)
