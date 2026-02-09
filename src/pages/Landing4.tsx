@@ -122,7 +122,7 @@ export default function Landing4() {
               alt=""
               width="100%"
               height="100%"
-              objectFit="cover"
+              objectFit="contain"
               filter="grayscale(100%)"
               opacity={colorMode === "dark" ? 0.9 : 1}
             />
@@ -278,7 +278,7 @@ export default function Landing4() {
                         alt={titleLine}
                         width="100%"
                         height="100%"
-                        objectFit="cover"
+                        objectFit="contain"
                         onError={() => setFailedImages((prev) => ({ ...prev, [card.id]: true }))}
                       />
                     ) : (
@@ -334,7 +334,7 @@ export default function Landing4() {
                         alt={titleLine}
                         width="100%"
                         height="100%"
-                        objectFit="cover"
+                        objectFit="contain"
                         onError={() => setFailedImages((prev) => ({ ...prev, [card.id]: true }))}
                       />
                     ) : (

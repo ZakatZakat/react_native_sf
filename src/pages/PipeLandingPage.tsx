@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import { Box, Button, Flex, Image, Text } from "@chakra-ui/react"
-import { API, isImg, resolveMedia, type EventCard } from "./pipe/shared"
 
 const K = "#0D0D0D"
 const W = "#FFFFFF"
@@ -11,33 +10,20 @@ const G = "rgba(13,13,13,0.5)"
 const CROSSFADE_DURATION = 4000
 const TEXT_TO_IMAGE_SPACING = "32px"
 
+/** Статические постеры (1200×1697) — одинаковые размеры, без обрезки */
+const POSTER_URLS = ["/posters/poster-01.jpg", "/posters/poster-02.jpg", "/posters/poster-03.jpg"]
+
 export default function PipeLandingPage() {
   const navigate = useNavigate()
-  const [events, setEvents] = useState<EventCard[]>([])
   const [activeIdx, setActiveIdx] = useState(0)
 
   useEffect(() => {
-    fetch(`${API}/events?limit=40`, { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data: EventCard[]) => setEvents(data))
-      .catch(() => setEvents([]))
-  }, [])
-
-  const imageUrls = [...new Set(
-    events
-      .flatMap((e) => e.media_urls ?? [])
-      .filter(isImg)
-      .map((u) => resolveMedia(u))
-      .filter((u): u is string => !!u)
-  )].slice(0, 12)
-
-  useEffect(() => {
-    if (imageUrls.length <= 1) return
+    if (POSTER_URLS.length <= 1) return
     const id = setInterval(() => {
-      setActiveIdx((i) => (i + 1) % imageUrls.length)
+      setActiveIdx((i) => (i + 1) % POSTER_URLS.length)
     }, CROSSFADE_DURATION)
     return () => clearInterval(id)
-  }, [imageUrls.length])
+  }, [])
 
   return (
     <Box
@@ -98,36 +84,31 @@ export default function PipeLandingPage() {
             className="pipe-hero-img"
             position="relative"
             w={{ base: "clamp(180px, 55vw, 280px)", sm: "clamp(200px, 38vw, 320px)" }}
-            h={{ base: "clamp(150px, 45vh, 260px)", sm: "clamp(170px, 35vh, 300px)" }}
+            aspectRatio="1200/1697"
             flexShrink={0}
             border={`2.5px solid ${K}`}
             overflow="hidden"
             boxShadow={`4px 4px 0 ${B}`}
           >
-              {imageUrls.length > 0 ? (
-                imageUrls.map((src, i) => (
-                  <Box
-                    key={`${src}-${i}`}
-                    position="absolute"
-                    inset="0"
-                    opacity={i === activeIdx ? 1 : 0}
-                    zIndex={i === activeIdx ? 2 : 1}
-                    transition="opacity 1.2s ease-in-out"
-                    bg={G}
-                  >
-                    <Image
-                      src={src}
-                      alt=""
-                      w="100%"
-                      h="100%"
-                      objectFit="cover"
-                      display="block"
-                    />
-                  </Box>
-                ))
-              ) : (
-                <Box w="100%" h="100%" bg={`${B}15`} />
-              )}
+              {POSTER_URLS.map((src, i) => (
+                <Box
+                  key={src}
+                  position="absolute"
+                  inset="0"
+                  opacity={i === activeIdx ? 1 : 0}
+                  zIndex={i === activeIdx ? 2 : 1}
+                  transition="opacity 1.2s ease-in-out"
+                >
+                  <Image
+                    src={src}
+                    alt=""
+                    w="100%"
+                    h="100%"
+                    objectFit="contain"
+                    display="block"
+                  />
+                </Box>
+              ))}
           </Box>
           <Text
             fontSize={{ base: "clamp(28px, 10vw, 48px)", sm: "clamp(48px, 15vw, 120px)", md: "clamp(72px, 18vw, 140px)" }}

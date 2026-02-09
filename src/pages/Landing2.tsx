@@ -53,7 +53,7 @@ export default function Landing2() {
 
         <Box border="1px solid rgba(45,106,227,0.35)" bg="#F2F1EA">
           {heroImage ? (
-            <Image src={heroImage} alt={titleLine} width="100%" height="auto" objectFit="cover" />
+            <Image src={heroImage} alt={titleLine} width="100%" height="auto" objectFit="contain" />
           ) : (
             <Box height="240px" bg="rgba(45,106,227,0.12)" />
           )}
