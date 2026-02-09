@@ -645,7 +645,7 @@ export default function PipeRotate() {
   }, [])
 
   const handleContinue = useCallback(() => {
-    navigate({ to: "/pipe-my-profile" })
+    navigate({ to: "/pipe-personal", state: { openFeed: true } })
   }, [navigate])
 
   const onWheel: React.WheelEventHandler<HTMLDivElement> = (e) => {

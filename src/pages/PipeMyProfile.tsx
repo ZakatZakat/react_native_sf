@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react"
+import { useLocation } from "@tanstack/react-router"
 import { Box, Flex, Stack, Text, Image, Dialog, Portal } from "@chakra-ui/react"
 import {
   PageWipe, PipeFooter, useCountUp, useScrollReveal,
@@ -337,62 +338,67 @@ function PersonalFeed({ categories, onBack }: { categories: Category[]; onBack: 
   return (
     <Stack gap="0">
       {/* Header */}
-      <Flex align="center" justify="space-between" pb="6"
-        className="p5-drop" style={{ animationDelay: "0.1s" }}>
-        <Stack gap="1">
-          <Text fontSize="32px" fontWeight="900" lineHeight="0.92"
-            letterSpacing="-0.03em" textTransform="uppercase">
-            Твоя
-            <Text as="span" color={B}> Лента</Text>
-          </Text>
-          <Flex gap="1.5" flexWrap="wrap">
-            {categories.map((c) => (
-              <Flex key={c.id} align="center" gap="1" px="2" py="0.5" bg={`${B}08`}
-                border={`1px solid ${B}15`}>
-                <Text fontSize="9px" lineHeight="1">{c.icon}</Text>
-                <Text fontSize="7px" fontWeight="700" letterSpacing="0.08em"
-                  textTransform="uppercase" color={B}>{c.label}</Text>
+      <Stack gap="4" pb="6" className="p5-drop" style={{ animationDelay: "0.1s" }}>
+        <Text fontSize="32px" fontWeight="900" lineHeight="0.92"
+          letterSpacing="-0.03em" textTransform="uppercase">
+          Твоя
+          <Text as="span" color={B}> Лента</Text>
+        </Text>
+        <Flex gap="2" flexWrap="wrap" align="center">
+          {categories.map((c) => (
+            <Flex key={c.id} align="center" gap="1.5" px="2.5" py="1" bg={W}
+              border={`2px solid ${B}50`}>
+              <Text fontSize="10px" lineHeight="1">{c.icon}</Text>
+              <Text fontSize="8px" fontWeight="800" letterSpacing="0.06em"
+                textTransform="uppercase" color={K}>{c.label}</Text>
+            </Flex>
+          ))}
+          <Flex align="center" gap="2">
+            <Flex border={`2px solid ${K}`} overflow="hidden">
+              <Flex
+                as="button" onClick={() => setFeedView("list")}
+                px="3" py="1.5"
+                fontSize="9px" fontWeight="800" letterSpacing="0.06em" textTransform="uppercase"
+                cursor="pointer" transition="all 0.15s"
+                bg={feedView === "list" ? K : W}
+                color={feedView === "list" ? W : K}
+                _hover={{ bg: feedView === "list" ? K : `${K}12` }}
+              >
+                Список
               </Flex>
-            ))}
-          </Flex>
-        </Stack>
-        <Flex align="center" gap="2">
-          <Flex border={`2px solid ${K}`} overflow="hidden">
-            <Flex
-              as="button" onClick={() => setFeedView("list")}
-              px="2.5" py="1.5"
-              fontSize="9px" fontWeight="800" letterSpacing="0.06em" textTransform="uppercase"
-              cursor="pointer" transition="all 0.15s"
-              bg={feedView === "list" ? K : "transparent"}
-              color={feedView === "list" ? W : K}
-              _hover={{ bg: feedView === "list" ? K : `${K}12` }}
-            >
-              Список
+              <Flex
+                as="button" onClick={() => setFeedView("collage")}
+                px="3" py="1.5"
+                borderLeft={`2px solid ${K}`}
+                fontSize="9px" fontWeight="800" letterSpacing="0.06em" textTransform="uppercase"
+                cursor="pointer" transition="all 0.15s"
+                bg={feedView === "collage" ? K : W}
+                color={feedView === "collage" ? W : K}
+                _hover={{ bg: feedView === "collage" ? K : `${K}12` }}
+              >
+                Коллаж
+              </Flex>
             </Flex>
             <Flex
-              as="button" onClick={() => setFeedView("collage")}
+              as="button" onClick={onBack}
+              flexDirection="column"
+              align="center"
+              justify="center"
+              gap="0"
               px="2.5" py="1.5"
-              borderLeft={`2px solid ${K}`}
-              fontSize="9px" fontWeight="800" letterSpacing="0.06em" textTransform="uppercase"
-              cursor="pointer" transition="all 0.15s"
-              bg={feedView === "collage" ? K : "transparent"}
-              color={feedView === "collage" ? W : K}
-              _hover={{ bg: feedView === "collage" ? K : `${K}12` }}
+              minW="44px"
+              bg={W}
+              border={`2px solid ${K}`}
+              fontSize="9px" fontWeight="800" letterSpacing="0.08em" textTransform="uppercase"
+              cursor="pointer" _hover={{ bg: `${K}08` }} transition="all 0.15s"
+              lineHeight="1.1"
             >
-              Коллаж
+              <Text fontSize="12px" mb="0.5">←</Text>
+              <Text>Назад</Text>
             </Flex>
-          </Flex>
-          <Flex
-            as="button" onClick={onBack}
-            px="3" py="1.5"
-            border={`2px solid ${K}`}
-            fontSize="10px" fontWeight="800" letterSpacing="0.12em" textTransform="uppercase"
-            cursor="pointer" _hover={{ bg: K, color: W }} transition="all 0.15s"
-          >
-            ← Назад
           </Flex>
         </Flex>
-      </Flex>
+      </Stack>
 
       {/* Count */}
       <Text fontSize="10px" fontWeight="700" letterSpacing="0.15em"
@@ -651,8 +657,10 @@ function PersonalFeed({ categories, onBack }: { categories: Category[]; onBack: 
 
 /* ── Main Page ── */
 export default function PipeMyProfile() {
+  const location = useLocation()
+  const openFeed = (location.state as { openFeed?: boolean } | undefined)?.openFeed
   const [profile, setProfile] = useState<ProfileData>(loadProfile)
-  const [view, setView] = useState<"profile" | "transition" | "feed">("profile")
+  const [view, setView] = useState<"profile" | "transition" | "feed">(openFeed ? "feed" : "profile")
 
   const [pickingOut, setPickingOut] = useState<string | null>(null)
   const [landingIn, setLandingIn] = useState<string | null>(null)

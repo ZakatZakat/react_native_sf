@@ -11,7 +11,7 @@ const G = "rgba(13,13,13,0.5)"
 const CROSSFADE_DURATION = 4000
 const TEXT_TO_IMAGE_SPACING = "32px"
 
-export default function PipeExample1() {
+export default function PipeLandingPage() {
   const navigate = useNavigate()
   const [events, setEvents] = useState<EventCard[]>([])
   const [activeIdx, setActiveIdx] = useState(0)
@@ -42,12 +42,13 @@ export default function PipeExample1() {
   return (
     <Box
       minH="100dvh"
+      h="100dvh"
       bg={W}
       color={K}
       display="flex"
       flexDirection="column"
       alignItems="center"
-      justifyContent="center"
+      justifyContent="stretch"
       overflow="hidden"
       css={{ WebkitTapHighlightColor: "transparent" }}
       style={{
@@ -60,7 +61,8 @@ export default function PipeExample1() {
       <Flex
         flexDirection="column"
         align="center"
-        justify="center"
+        justify="space-evenly"
+        flex="1"
         w="100%"
         maxW="min(96vw, 680px)"
         px={{ base: "5", sm: "6" }}
@@ -95,8 +97,8 @@ export default function PipeExample1() {
           <Box
             className="pipe-hero-img"
             position="relative"
-            w={{ base: "clamp(140px, 52vw, 220px)", sm: "clamp(160px, 32vw, 240px)" }}
-            h={{ base: "clamp(120px, 44vw, 190px)", sm: "clamp(130px, 26vw, 200px)" }}
+            w={{ base: "clamp(180px, 55vw, 280px)", sm: "clamp(200px, 38vw, 320px)" }}
+            h={{ base: "clamp(150px, 45vh, 260px)", sm: "clamp(170px, 35vh, 300px)" }}
             flexShrink={0}
             border={`2.5px solid ${K}`}
             overflow="hidden"

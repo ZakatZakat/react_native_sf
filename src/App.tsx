@@ -9,9 +9,9 @@ declare global {
 
 const PIPE_ROUTES = [
   { label: "Pipe Example", to: "/pipe-example" },
-  { label: "Pipe Example 1", to: "/pipe-example-1" },
+  { label: "Pipe Landing Page", to: "/pipe-landing" },
   { label: "Pipe Rotate", to: "/pipe-rotate" },
-  { label: "Pipe My Profile", to: "/pipe-my-profile" },
+  { label: "Pipe My Profile", to: "/pipe-personal" },
   { label: "Pipe Feed", to: "/pipe-feed" },
   { label: "Pipe Example Only Blue", to: "/pipe-example-only-blue" },
   { label: "Pipe Feed Only Blue", to: "/pipe-feed-only-blue" },

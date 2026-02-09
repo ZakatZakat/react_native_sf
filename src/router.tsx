@@ -10,7 +10,7 @@ import Feed from "./pages/Feed"
 import Feed3ProjectBlue from "./pages/Feed3ProjectBlue"
 import ProfileCreateProjectBlue from "./pages/ProfileCreateProjectBlue"
 import PipeExample from "./pages/PipeExample"
-import PipeExample1 from "./pages/PipeExample1"
+import PipeLandingPage from "./pages/PipeLandingPage"
 import PipeRotate from "./pages/PipeRotate"
 import PipeMyProfile from "./pages/PipeMyProfile"
 import PipeFeed from "./pages/PipeFeed"
@@ -42,9 +42,9 @@ const feed2Route = createRoute({ getParentRoute: () => rootRoute, path: "/feed-2
 const feed3ProjectBlueRoute = createRoute({ getParentRoute: () => rootRoute, path: "/feed-3-project-blue", component: Feed3ProjectBlue })
 const profileCreateProjectBlueRoute = createRoute({ getParentRoute: () => rootRoute, path: "/profile-create-project-blue", component: ProfileCreateProjectBlue })
 const pipeExampleRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-example", component: PipeExample })
-const pipeExample1Route = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-example-1", component: PipeExample1 })
+const pipeLandingRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-landing", component: PipeLandingPage })
 const pipeRotateRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-rotate", component: PipeRotate })
-const pipeMyProfileRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-my-profile", component: PipeMyProfile })
+const pipeMyProfileRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-personal", component: PipeMyProfile })
 const pipeFeedRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-feed", component: PipeFeed })
 const pipeExampleOnlyBlueRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-example-only-blue", component: PipeExampleOnlyBlue })
 const pipeFeedOnlyBlueRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-feed-only-blue", component: PipeFeedOnlyBlue })
@@ -68,7 +68,7 @@ const routeTree = rootRoute.addChildren([
   feed3ProjectBlueRoute,
   profileCreateProjectBlueRoute,
   pipeExampleRoute,
-  pipeExample1Route,
+  pipeLandingRoute,
   pipeRotateRoute,
   pipeMyProfileRoute,
   pipeFeedRoute,
