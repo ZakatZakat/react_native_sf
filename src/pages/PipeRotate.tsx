@@ -1,14 +1,14 @@
 import { useState, useCallback, useRef, useEffect } from "react"
 import { Box, Button, Flex, Text } from "@chakra-ui/react"
 import { useNavigate } from "@tanstack/react-router"
-import { PageWipe } from "./pipe/shared"
+import { PageWipe, PIPE_ROTATE_STORAGE } from "./pipe/shared"
 
 const K = "#0D0D0D"
 const W = "#FFFFFF"
 const B = "#0055FF"
 const G = "rgba(13,13,13,0.35)"
 
-const STORAGE_KEY = "pipe-rotate-class"
+const STORAGE_KEY = PIPE_ROTATE_STORAGE
 
 type UserClass = {
   id: string

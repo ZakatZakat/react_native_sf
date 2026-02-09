@@ -4,6 +4,7 @@ import { Box, Flex, Stack, Text, Image, Dialog, Portal } from "@chakra-ui/react"
 import {
   PageWipe, PipeFooter, useCountUp, useScrollReveal,
   API, isImg, resolveMedia, firstLine, formatDate,
+  loadPipeRotateSelected, ECO_INTERESTS,
   type EventCard,
 } from "./pipe/shared"
 
@@ -258,8 +259,10 @@ const COLLAGE_SLOTS: { left: number; top: number; w: number; rotate: number; z: 
   { left: 4, top: 5 * ROW_HEIGHT + 5 * CARD_GAP, w: 45, rotate: -0.6, z: 1 },
 ]
 
+type FeedTag = { id: string; label: string; icon: string; keywords: string[]; stat?: string }
+
 /* ── Personal Feed ── */
-function PersonalFeed({ categories, onBack }: { categories: Category[]; onBack: () => void }) {
+function PersonalFeed({ tags, onBack }: { tags: FeedTag[]; onBack: () => void }) {
   const [items, setItems] = useState<EventCard[]>([])
   const [loading, setLoading] = useState(true)
   const [failedImgs, setFailedImgs] = useState<Record<string, true>>({})
@@ -297,7 +300,7 @@ function PersonalFeed({ categories, onBack }: { categories: Category[]; onBack: 
   }, [])
 
   const allKeywords = useMemo(() =>
-    categories.flatMap((c) => c.keywords), [categories])
+    tags.flatMap((c) => c.keywords), [tags])
 
   const filtered = useMemo(() => {
     if (allKeywords.length === 0) return items
@@ -310,12 +313,12 @@ function PersonalFeed({ categories, onBack }: { categories: Category[]; onBack: 
   const baseDisplay = filtered.length > 0 ? filtered : items.slice(0, 12)
   const display = baseDisplay.filter((ev) => ev.media_urls?.some(isImg))
 
-  type AiMeta = { matchedCats: Category[]; score: number; reason: string }
+  type AiMeta = { matchedTags: FeedTag[]; score: number; reason: string }
   const aiMap = useMemo(() => {
     const map = new Map<string, AiMeta>()
     for (const card of display) {
       const t = `${card.title ?? ""}\n${card.description ?? ""}\n${card.channel}`.toLowerCase()
-      const matched = categories.filter((c) => c.keywords.some((kw) => t.includes(kw)))
+      const matched = tags.filter((c) => c.keywords.some((kw) => t.includes(kw)))
       const hitCount = allKeywords.filter((kw) => t.includes(kw)).length
       const score = allKeywords.length > 0
         ? Math.min(99, Math.round(30 + (hitCount / allKeywords.length) * 60 + matched.length * 8))
@@ -327,13 +330,13 @@ function PersonalFeed({ categories, onBack }: { categories: Category[]; onBack: 
         matched.length === 0 ? "Рекомендация Pipe-бота" : null,
       ]
       map.set(card.id, {
-        matchedCats: matched,
+        matchedTags: matched,
         score: Math.min(score, 99),
         reason: reasons.find(Boolean) ?? "Анализ Pipe-бота",
       })
     }
     return map
-  }, [display, categories, allKeywords])
+  }, [display, tags, allKeywords])
 
   return (
     <Stack gap="0">
@@ -345,12 +348,17 @@ function PersonalFeed({ categories, onBack }: { categories: Category[]; onBack: 
           <Text as="span" color={B}> Лента</Text>
         </Text>
         <Flex gap="2" flexWrap="wrap" align="center">
-          {categories.map((c) => (
-            <Flex key={c.id} align="center" gap="1.5" px="2.5" py="1" bg={W}
+          {tags.map((c) => (
+            <Flex key={c.id} direction="column" gap="0.5" px="3" py="1.5" bg={W}
               border={`2px solid ${B}50`}>
-              <Text fontSize="10px" lineHeight="1">{c.icon}</Text>
-              <Text fontSize="8px" fontWeight="800" letterSpacing="0.06em"
-                textTransform="uppercase" color={K}>{c.label}</Text>
+              <Flex align="center" gap="1.5">
+                <Text fontSize="12px" lineHeight="1">{c.icon}</Text>
+                <Text fontSize="9px" fontWeight="800" letterSpacing="0.06em"
+                  textTransform="uppercase" color={K}>{c.label}</Text>
+              </Flex>
+              {c.stat && (
+                <Text fontSize="7px" fontWeight="700" color={B}>{c.stat}</Text>
+              )}
             </Flex>
           ))}
           <Flex align="center" gap="2">
@@ -558,9 +566,9 @@ function PersonalFeed({ categories, onBack }: { categories: Category[]; onBack: 
                         <Text fontSize="9px" fontWeight="700" color={K} lineHeight="1.3" mb="1.5">
                           {ai.reason}
                         </Text>
-                        {ai.matchedCats.length > 0 && (
+                        {ai.matchedTags.length > 0 && (
                           <Flex gap="1" flexWrap="wrap">
-                            {ai.matchedCats.map((c) => (
+                            {ai.matchedTags.map((c) => (
                               <Flex key={c.id} align="center" gap="0.5" px="1.5" py="0.5"
                                 bg={`${B}10`} border={`1px solid ${B}18`}>
                                 <Text fontSize="8px" lineHeight="1">{c.icon}</Text>
@@ -671,6 +679,22 @@ export default function PipeMyProfile() {
   const available = CATEGORIES.filter((c) => !selected.has(c.id))
   const selectedCats = CATEGORIES.filter((c) => selected.has(c.id))
 
+  const feedTags = useMemo((): FeedTag[] => {
+    const ecoIds = loadPipeRotateSelected()
+    if (ecoIds.length > 0) {
+      return ecoIds
+        .map((id) => ECO_INTERESTS.find((e) => e.id === id))
+        .filter((e): e is NonNullable<typeof e> => !!e)
+    }
+    return selectedCats.map((c) => ({
+      id: c.id,
+      label: c.label,
+      icon: c.icon,
+      keywords: c.keywords,
+      stat: `${c.channels} кан. · ${c.posts} пост.`,
+    }))
+  }, [selectedCats])
+
   const persist = useCallback((sel: string[]) => {
     const next = { ...profile, selected: sel }
     setProfile(next)
@@ -733,7 +757,7 @@ export default function PipeMyProfile() {
         {view === "feed" ? (
           /* ── FEED VIEW ── */
           <PersonalFeed
-            categories={selectedCats}
+            tags={feedTags}
             onBack={handleBack}
           />
         ) : view === "profile" ? (
