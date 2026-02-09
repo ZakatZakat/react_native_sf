@@ -7,7 +7,17 @@ declare global {
   interface Window { Telegram?: { WebApp?: any } }
 }
 
-const ROUTES = [
+const PIPE_ROUTES = [
+  { label: "Pipe Example", to: "/pipe-example" },
+  { label: "Pipe Example 1", to: "/pipe-example-1" },
+  { label: "Pipe Rotate", to: "/pipe-rotate" },
+  { label: "Pipe My Profile", to: "/pipe-my-profile" },
+  { label: "Pipe Feed", to: "/pipe-feed" },
+  { label: "Pipe Example Only Blue", to: "/pipe-example-only-blue" },
+  { label: "Pipe Feed Only Blue", to: "/pipe-feed-only-blue" },
+] as const
+
+const ALT_ROUTES = [
   { label: "Landing", to: "/" },
   { label: "Landing 2", to: "/landing-2" },
   { label: "Landing 3", to: "/landing-3" },
@@ -17,13 +27,6 @@ const ROUTES = [
   { label: "Feed 2", to: "/feed-2" },
   { label: "Feed 3 project_blue", to: "/feed-3-project-blue" },
   { label: "Profile Create project_blue", to: "/profile-create-project-blue" },
-  { label: "Pipe Example", to: "/pipe-example" },
-  { label: "Pipe Example 1", to: "/pipe-example-1" },
-  { label: "Pipe Rotate", to: "/pipe-rotate" },
-  { label: "Pipe My Profile", to: "/pipe-my-profile" },
-  { label: "Pipe Feed", to: "/pipe-feed" },
-  { label: "Pipe Example Only Blue", to: "/pipe-example-only-blue" },
-  { label: "Pipe Feed Only Blue", to: "/pipe-feed-only-blue" },
   { label: "Bauhaus", to: "/bauhaus" },
   { label: "Bauhaus 2", to: "/bauhaus-2" },
   { label: "Profile 1", to: "/profile-1" },
@@ -32,6 +35,8 @@ const ROUTES = [
   { label: "About", to: "/about" },
   { label: "Profile", to: "/profile" },
 ] as const
+
+const ALL_ROUTES = [...PIPE_ROUTES, ...ALT_ROUTES] as const
 
 export default function App() {
   const tg = typeof window !== "undefined" ? window.Telegram?.WebApp : undefined
@@ -51,7 +56,7 @@ export default function App() {
 
   const currentPath = React.useMemo(() => {
     const p = location.pathname
-    return ROUTES.some((r) => r.to === p) ? p : ""
+    return ALL_ROUTES.some((r) => r.to === p) ? p : ""
   }, [location.pathname])
 
   return (
@@ -72,11 +77,20 @@ export default function App() {
             fontSize="sm"
             maxW="220px"
           >
-            {ROUTES.map((r) => (
-              <option key={r.to} value={r.to}>
-                {r.label}
-              </option>
-            ))}
+            <optgroup label="Клиентский Путь">
+              {PIPE_ROUTES.map((r) => (
+                <option key={r.to} value={r.to}>
+                  {r.label}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Альтернативные Варианты">
+              {ALT_ROUTES.map((r) => (
+                <option key={r.to} value={r.to}>
+                  {r.label}
+                </option>
+              ))}
+            </optgroup>
           </Box>
           <Spacer />
         </Flex>
