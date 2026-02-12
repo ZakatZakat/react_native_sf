@@ -8,42 +8,7 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-DEFAULT_TELEGRAM_CHANNEL_IDS = "\n".join(
-    [
-        "@afishadaily",
-        "@concerts_moscow",
-        "@napervom",
-        "@mskgigs",
-        "@northerntechno",
-        "@dancewithus",
-        "@free_concerts",
-        "@chirik_chiric",
-        "@blankclub",
-        "@maingig",
-        "@spb_conc",
-        "@Vspiskah",
-        "@kastry_fest",
-        "@svobodaconcerthall",
-        "@voicemedia",
-        "@rndmtoday",
-        "@mskevents_ru",
-        "@spbgigs",
-        "@rupor_msk",
-        "@spbeventsru",
-        "@digest_msk",
-        "@afishakontramarka",
-        "@est_prohodka",
-        "@saint_afisha",
-        "@produsserka",
-        "@rupor_events_spb",
-        "@afisha_36",
-        "@mainfest",
-        "@metalafisha",
-        "@rock63ru",
-        "@rupor_ekb",
-        "@rassvetperm",
-    ]
-)
+DEFAULT_TELEGRAM_CHANNEL_IDS = ""
 
 
 ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
