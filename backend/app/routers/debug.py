@@ -90,12 +90,55 @@ async def telegram_fetch_recent(
     }
 
 
+@router.post("/telegram-fetch-event-posts")
+async def telegram_fetch_event_posts(
+    request: Request,
+    per_channel_limit: int = Query(15, ge=1, le=50),
+    pause_between_channels_seconds: float = Query(1.0, ge=0.0, le=10.0),
+    event_only: bool = Query(True, description="If false, ingest all posts (no keyword filter)."),
+) -> dict[str, object]:
+    """Fetch posts from telegram channels; optionally keep only event-related (by keywords), upsert to DB."""
+    settings = Settings()
+    channel_ids = settings.telegram_channel_ids or [f"@{c}" for c in ECO_CHANNELS]
+    if not channel_ids:
+        raise HTTPException(status_code=400, detail="No channel_ids")
+    repo = _get_events_repo(request)
+    client = _get_telegram_client(request)
+    try:
+        data = await client.ingest(
+            channel_ids=channel_ids,
+            per_channel_limit=per_channel_limit,
+            pause_between_channels=pause_between_channels_seconds,
+            pause_between_messages=0.0,
+            event_keywords=DEFAULT_EVENT_KEYWORDS if event_only else None,
+        )
+    except httpx.HTTPError as e:
+        logger.exception("telegram-fetch-event-posts: microservice error")
+        raise HTTPException(status_code=502, detail="Telegram service unavailable") from e
+    events = data.get("events") or []
+    for ev in events:
+        await repo.upsert(event_payload_to_ingest_request(ev))
+    return {
+        "status": "ok",
+        "channels_ok": len(data.get("channels_ok") or []),
+        "channels_failed": len(data.get("channels_failed") or {}),
+        "events_ingested": len(events),
+    }
+
+
 @router.delete("/telegram-events")
 async def telegram_delete_events(request: Request) -> dict[str, int | str]:
     repo = _get_events_repo(request)
     deleted = await repo.delete_all()
     return {"status": "ok", "deleted": deleted}
 
+
+DEFAULT_EVENT_KEYWORDS = [
+    "ивент", "встреча", "март", "апр", "мая", "июн", "июл", "сент", "октяб", "нояб", "дек",
+    "swap", "маркет", "фестиваль", "концерт", "мастер-класс", "дата", "воскресенье", "суббот",
+    "вечеринк", "выставк", "ярмарк", "фэр", "pop-up", "popup", "вход", "бесплатно", "регистрация",
+    "лекция", "воркшоп", "workshop", "fair", "market", "event",
+]
 
 REP_DES_ART_CHANNEL = "rep_des_art"
 ECO_CHANNELS = [

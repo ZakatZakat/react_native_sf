@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react"
 import { Box, Button, Flex, Text, Image } from "@chakra-ui/react"
 import { useNavigate } from "@tanstack/react-router"
-import { API, PageWipe, PIPE_ROTATE_STORAGE } from "./pipe/shared"
+import { API, type EventCard as ApiEventCard, PageWipe, PIPE_ROTATE_STORAGE } from "./pipe/shared"
 
 const K = "#0D0D0D"
 const W = "#FFFFFF"
@@ -153,15 +153,42 @@ const ECO_INTEREST_GROUPS: {
   },
 ]
 
-function buildEcoInterests(ecoChannels: ChannelItem[] | null): EcoInterest[] {
+const MONTHS = "янв фев мар апр май июн июл авг сен окт ноя дек".split(" ")
+
+function formatEventDate(iso: string | null | undefined): string {
+  if (!iso) return "—"
+  try {
+    const d = new Date(iso)
+    if (Number.isNaN(d.getTime())) return "—"
+    return `${d.getDate()} ${MONTHS[d.getMonth()] ?? ""}`
+  } catch {
+    return "—"
+  }
+}
+
+function buildEcoInterests(
+  ecoChannels: ChannelItem[] | null,
+  ecoEvents: ApiEventCard[] | null
+): EcoInterest[] {
   const norm = (s: string) => s.replace(/^@/, "").toLowerCase()
   return ECO_INTEREST_GROUPS.map((g) => {
     const channels = ecoChannels
       ? ecoChannels.filter((c) => g.channelNames.includes(norm(c.name)))
       : []
+    const channelSet = new Set(g.channelNames.map((c) => c.toLowerCase()))
+    const groupEvents =
+      ecoEvents
+        ?.filter((e) => channelSet.has(norm(e.channel)))
+        .slice(0, SLOTS)
+        .map((e) => ({
+          title: e.title || "Без названия",
+          date: formatEventDate(e.event_time ?? e.created_at),
+        })) ?? []
+    const events = groupEvents.length > 0 ? groupEvents : g.events
     return {
       ...g,
       channels,
+      events,
       stat: `${channels.length} каналов`,
     }
   })
@@ -561,6 +588,7 @@ export default function PipeRotate() {
     () => new Set(loadSelected())
   )
   const [ecoChannels, setEcoChannels] = useState<ChannelItem[] | null>(null)
+  const [ecoEvents, setEcoEvents] = useState<ApiEventCard[] | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -569,7 +597,11 @@ export default function PipeRotate() {
       fetch(`${API}/debug/eco-channels`)
         .then((r) => (r.ok ? r.json() : null))
         .then((data: Array<{ name: string; subs: string; avatar: string | null }> | null) => {
-          if (cancelled || !Array.isArray(data)) return
+          if (cancelled) return
+          if (!Array.isArray(data)) {
+            setEcoChannels([])
+            return
+          }
           const withAvatar = data.filter((ch) => ch.avatar)
           setEcoChannels(
             withAvatar.map((ch) => ({
@@ -580,7 +612,10 @@ export default function PipeRotate() {
           )
         })
         .catch(() => {
-          if (!cancelled) retryId = setTimeout(load, 2000)
+          if (!cancelled) {
+            setEcoChannels([])
+            retryId = setTimeout(load, 2000)
+          }
         })
     }
     load()
@@ -589,6 +624,20 @@ export default function PipeRotate() {
       if (retryId) clearTimeout(retryId)
     }
   }, [])
+
+  useEffect(() => {
+    if (step !== "interests") return
+    let cancelled = false
+    fetch(`${API}/events?limit=60`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: ApiEventCard[] | null) => {
+        if (!cancelled) setEcoEvents(Array.isArray(data) ? data : [])
+      })
+      .catch(() => {
+        if (!cancelled) setEcoEvents([])
+      })
+    return () => { cancelled = true }
+  }, [step])
 
   const toggleInterest = useCallback((id: string) => {
     setSelectedInterests((prev) => {
@@ -726,7 +775,7 @@ export default function PipeRotate() {
                   paddingRight: "calc(50vw - 130px)",
                 }}
               >
-                {buildEcoInterests(ecoChannels).map((it, idx) => (
+                {buildEcoInterests(ecoChannels, ecoEvents).map((it, idx) => (
                   <Box key={it.id} flexShrink={0} style={{ scrollSnapAlign: "center" }}>
                     <InterestCard
                       item={it}

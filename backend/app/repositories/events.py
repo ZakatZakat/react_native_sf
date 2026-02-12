@@ -10,7 +10,7 @@ from app.schemas import EventCard, EventIngestRequest
 class EventsRepository(Protocol):
     async def upsert(self, request: EventIngestRequest) -> EventCard: ...
 
-    async def list_recent(self, limit: int = 50) -> list[EventCard]: ...
+    async def list_recent(self, limit: int = 50, channels: list[str] | None = None) -> list[EventCard]: ...
 
     async def delete_all(self) -> int: ...
 
@@ -40,8 +40,12 @@ class InMemoryEventsRepository(EventsRepository):
         self._store[event_id] = card
         return card
 
-    async def list_recent(self, limit: int = 50) -> list[EventCard]:
-        return sorted(self._store.values(), key=lambda item: item.created_at, reverse=True)[:limit]
+    async def list_recent(self, limit: int = 50, channels: list[str] | None = None) -> list[EventCard]:
+        items = list(self._store.values())
+        if channels:
+            norm = {c.replace("@", "").lower() for c in channels}
+            items = [x for x in items if (x.channel or "").replace("@", "").lower() in norm]
+        return sorted(items, key=lambda item: item.created_at, reverse=True)[:limit]
 
     async def delete_all(self) -> int:
         count = len(self._store)

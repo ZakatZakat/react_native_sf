@@ -13,8 +13,13 @@ def get_repo(request: Request) -> EventsRepository:
 
 
 @router.get("", response_model=list[EventCard])
-async def list_events(repo: EventsRepository = Depends(get_repo), limit: int = Query(50, ge=1, le=200)) -> list[EventCard]:
-    return await repo.list_recent(limit=limit)
+async def list_events(
+    repo: EventsRepository = Depends(get_repo),
+    limit: int = Query(50, ge=1, le=200),
+    channels: str | None = Query(None, description="Comma-separated channel usernames to filter by"),
+) -> list[EventCard]:
+    channel_list = [s.strip() for s in (channels or "").split(",") if s.strip()]
+    return await repo.list_recent(limit=limit, channels=channel_list or None)
 
 
 @router.post("/ingest", response_model=EventCard)

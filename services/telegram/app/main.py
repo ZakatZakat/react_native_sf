@@ -55,17 +55,19 @@ class IngestRequest(BaseModel):
     pause_between_channels: float = 1.0
     pause_between_messages: float = 0.0
     collect_media: bool = True
+    event_keywords: list[str] | None = None
 
 
 @app.post("/ingest")
 async def ingest(body: IngestRequest) -> dict:
-    """Fetch recent messages from channels; return event payloads (no DB write)."""
+    """Fetch recent messages from channels; return event payloads (no DB write). Optionally filter by event_keywords."""
     return await service.ingest(
         channel_ids=body.channel_ids,
         per_channel_limit=body.per_channel_limit,
         pause_between_channels=body.pause_between_channels,
         pause_between_messages=body.pause_between_messages,
         collect_media=body.collect_media,
+        event_keywords=body.event_keywords,
     )
 
 

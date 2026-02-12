@@ -43,19 +43,20 @@ class TelegramServiceClient:
         pause_between_channels: float = 1.0,
         pause_between_messages: float = 0.0,
         collect_media: bool = True,
+        event_keywords: list[str] | None = None,
     ) -> dict:
         """POST /ingest. Returns { channels_ok, channels_failed, events }."""
+        payload: dict = {
+            "channel_ids": channel_ids,
+            "per_channel_limit": per_channel_limit,
+            "pause_between_channels": pause_between_channels,
+            "pause_between_messages": pause_between_messages,
+            "collect_media": collect_media,
+        }
+        if event_keywords is not None:
+            payload["event_keywords"] = event_keywords
         async with httpx.AsyncClient(timeout=self._timeout) as client:
-            r = await client.post(
-                f"{self._base}/ingest",
-                json={
-                    "channel_ids": channel_ids,
-                    "per_channel_limit": per_channel_limit,
-                    "pause_between_channels": pause_between_channels,
-                    "pause_between_messages": pause_between_messages,
-                    "collect_media": collect_media,
-                },
-            )
+            r = await client.post(f"{self._base}/ingest", json=payload)
             r.raise_for_status()
             return r.json()
 

@@ -199,8 +199,9 @@ class TelegramService:
         pause_between_channels: float = 1.0,
         pause_between_messages: float = 0.0,
         collect_media: bool = True,
+        event_keywords: list[str] | None = None,
     ) -> dict[str, Any]:
-        """Fetch recent messages from channels; return list of event payloads (no DB)."""
+        """Fetch recent messages from channels; return list of event payloads (no DB). Optionally filter by event_keywords."""
         self.media_root.mkdir(parents=True, exist_ok=True)
         client = self._create_client()
         await self._start_client(client)
@@ -209,7 +210,6 @@ class TelegramService:
         failed: dict[str, str] = {}
         async with client:
             for channel in channel_ids:
-                n = 0
                 try:
                     async for message in client.iter_messages(entity=channel, limit=per_channel_limit):
                         if not isinstance(message, Message):
@@ -218,7 +218,6 @@ class TelegramService:
                             continue
                         media_urls = await self._collect_media(client, message) if collect_media else []
                         events.append(self._message_to_payload(channel, message, media_urls))
-                        n += 1
                         if pause_between_messages > 0:
                             await asyncio.sleep(pause_between_messages)
                     ok.append(channel)
@@ -231,6 +230,8 @@ class TelegramService:
                     failed[channel] = str(e)[:500]
                 if pause_between_channels > 0:
                     await asyncio.sleep(pause_between_channels)
+        if event_keywords:
+            events = [e for e in events if any(kw.lower() in (e.get("text") or "").lower() for kw in event_keywords)]
         return {
             "channels_ok": ok,
             "channels_failed": failed,
