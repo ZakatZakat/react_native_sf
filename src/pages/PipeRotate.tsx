@@ -108,112 +108,64 @@ type EcoInterest = {
   label: string
   icon: string
   keywords: string[]
-  channels: { name: string; subs: string }[]
+  channels: ChannelItem[]
   events: { title: string; date: string }[]
   stat: string
 }
 
-const ECO_INTERESTS: EcoInterest[] = [
+const ECO_INTEREST_GROUPS: {
+  id: string
+  label: string
+  icon: string
+  keywords: string[]
+  channelNames: string[]
+  events: { title: string; date: string }[]
+}[] = [
   {
     id: "upcycle", label: "Upcycle одежда", icon: "♻️",
     keywords: ["upcycle", "апсайкл", "переработк", "second hand"],
-    channels: [
-      { name: "@upcycle_msk", subs: "8K" },
-      { name: "@secondhand_finds", subs: "14K" },
-      { name: "@rework_studio", subs: "6K" },
-      { name: "@swap_community", subs: "11K" },
-      { name: "@thrift_moscow", subs: "9K" },
-      { name: "@vintage_styling", subs: "12K" },
-      { name: "@recycling_fashion", subs: "7K" },
-      { name: "@preloved_moscow", subs: "10K" },
-      { name: "@upcycle_diy", subs: "5K" },
-      { name: "@slow_wardrobe", subs: "8K" },
-      { name: "@consignment_events", subs: "6K" },
-      { name: "@fashion_swap", subs: "13K" },
-    ],
+    channelNames: ["constructor_brand", "exclusive_art_upcycling", "hodveshey", "kip_n_flip", "dmsk_bag", "melme"],
     events: [
       { title: "Swap Party Artplay", date: "15 мар" },
       { title: "Upcycle Мастерская", date: "20 мар" },
       { title: "Second Hand Pop-Up", date: "1 апр" },
-      { title: "Thrift Fashion Day", date: "12 мар" },
-      { title: "Recycle Workshop", date: "25 мар" },
-      { title: "Vintage Fair Vinzavod", date: "5 апр" },
-      { title: "Clothes Swap Sunday", date: "14 апр" },
-      { title: "DIY Upcycle Masterclass", date: "21 апр" },
-      { title: "Preloved Market", date: "28 апр" },
-      { title: "Capsule Wardrobe Talk", date: "6 мая" },
-      { title: "Mending Circle", date: "13 мая" },
-      { title: "Sustainable Fashion Week", date: "20 мая" },
     ],
-    stat: "15 каналов · 30 ивентов/мес",
   },
   {
     id: "fairs", label: "Фэры и маркеты", icon: "🛒",
     keywords: ["фэр", "маркет", "ярмарк", "блошинг", "fleamarket"],
-    channels: [
-      { name: "@fair_moscow", subs: "20K" },
-      { name: "@market_weekly", subs: "11K" },
-      { name: "@flea_culture", subs: "9K" },
-      { name: "@lambada_market", subs: "15K" },
-      { name: "@design_markets", subs: "12K" },
-      { name: "@antique_markets", subs: "18K" },
-      { name: "@handmade_markets", subs: "10K" },
-      { name: "@vinyl_community", subs: "14K" },
-      { name: "@book_fairs_msk", subs: "8K" },
-      { name: "@collectors_swap", subs: "6K" },
-      { name: "@craft_markets", subs: "22K" },
-      { name: "@weekend_bazaars", subs: "16K" },
-    ],
+    channelNames: ["swop_market_msk", "tutryadom", "mvpeople", "beindvz"],
     events: [
       { title: "Ламбада-маркет", date: "кажд. вс" },
       { title: "Хлебозавод Fair", date: "22 мар" },
       { title: "Garage Sale", date: "5 апр" },
-      { title: "Vinyl Market", date: "16 мар" },
-      { title: "Designers Fair", date: "30 мар" },
-      { title: "Antique Sunday", date: "7 апр" },
-      { title: "Handmade Bazaar", date: "14 апр" },
-      { title: "Book Swap Festival", date: "21 апр" },
-      { title: "Collectors Meet", date: "28 апр" },
-      { title: "Craft Weekend", date: "5 мая" },
-      { title: "Bike & Flea Market", date: "12 мая" },
-      { title: "Art Print Fair", date: "19 мая" },
     ],
-    stat: "20 каналов · 45 ивентов/мес",
   },
   {
     id: "niche", label: "Нишевые бренды", icon: "🏷",
     keywords: ["sustainable", "эко", "локальн", "handmade"],
-    channels: [
-      { name: "@local_brands_msk", subs: "7K" },
-      { name: "@handmade_digest", subs: "12K" },
-      { name: "@slow_fashion_ru", subs: "5K" },
-      { name: "@ethical_fashion", subs: "8K" },
-      { name: "@craft_moscow", subs: "10K" },
-      { name: "@independent_designers", subs: "9K" },
-      { name: "@artisan_market", subs: "6K" },
-      { name: "@small_batch_brands", subs: "4K" },
-      { name: "@maker_community", subs: "11K" },
-      { name: "@boutique_digest", subs: "7K" },
-      { name: "@unique_fashion", subs: "8K" },
-      { name: "@designer_stories", subs: "5K" },
-    ],
+    channelNames: ["skrvshch", "syyyyyyyr", "yergaworkshop", "zelenyy_syr"],
     events: [
       { title: "Local Brands Market", date: "10 мар" },
       { title: "Handmade Expo", date: "28 мар" },
       { title: "Slow Fashion Meetup", date: "12 апр" },
-      { title: "Ethical Fashion Week", date: "8 апр" },
-      { title: "Craft Fair ВДНХ", date: "15 апр" },
-      { title: "Designer Pop-Up", date: "22 апр" },
-      { title: "Artisan Day", date: "29 апр" },
-      { title: "Small Batch Showcase", date: "6 мая" },
-      { title: "Maker Fair", date: "13 мая" },
-      { title: "Boutique Weekend", date: "20 мая" },
-      { title: "Unique Brands Expo", date: "27 мая" },
-      { title: "Designer Stories Talk", date: "3 июн" },
     ],
-    stat: "12 каналов · 25 ивентов/мес",
   },
 ]
+
+function buildEcoInterests(ecoChannels: ChannelItem[] | null): EcoInterest[] {
+  const norm = (s: string) => s.replace(/^@/, "").toLowerCase()
+  return ECO_INTEREST_GROUPS.map((g) => {
+    const channels = ecoChannels
+      ? ecoChannels.filter((c) => g.channelNames.includes(norm(c.name)))
+      : []
+    return {
+      ...g,
+      channels,
+      stat: `${channels.length} каналов`,
+    }
+  })
+}
 
 const SLOTS = 6
 const SLOT_ROTATE_MS = 5000
@@ -774,7 +726,7 @@ export default function PipeRotate() {
                   paddingRight: "calc(50vw - 130px)",
                 }}
               >
-                {ECO_INTERESTS.map((it, idx) => (
+                {buildEcoInterests(ecoChannels).map((it, idx) => (
                   <Box key={it.id} flexShrink={0} style={{ scrollSnapAlign: "center" }}>
                     <InterestCard
                       item={it}
