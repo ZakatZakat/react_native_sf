@@ -2,6 +2,20 @@
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
+## Local run (Docker Compose)
+
+From repo root, ensure `.env` has Telegram credentials and Postgres vars (see `backend/` and `services/telegram/`). Then:
+
+```bash
+./scripts/run.sh compose-local
+```
+
+- **Frontend:** http://localhost:5175 (Vite dev server in container; `VITE_API_URL=http://localhost:8000`)
+- **API:** http://localhost:8000
+- **Telegram microservice:** http://localhost:8002 (used by API for avatars/ingest; avatars in browser load from this URL)
+
+Check: http://localhost:5175 → open a page that uses `/debug/eco-channels` or `/debug/channel-avatar` (e.g. PipeRotate) and confirm avatars load. API calls telegram at `http://telegram:8000` inside Docker; redirects/avatar URLs use `TELEGRAM_MEDIA_PUBLIC_URL=http://localhost:8002` so the browser can load images.
+
 Currently, two official plugins are available:
 
 - [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh

@@ -64,6 +64,8 @@ class Settings(BaseSettings):
     bot_polling_interval: int = Field(2, alias="BOT_POLLING_INTERVAL")
     app_host: str = Field("0.0.0.0", alias="APP_HOST")
     app_port: int = Field(8000, alias="APP_PORT")
+    telegram_service_url: str = Field("http://telegram:8000", alias="TELEGRAM_SERVICE_URL")
+    telegram_media_public_url: str | None = Field(None, alias="TELEGRAM_MEDIA_PUBLIC_URL")
 
     model_config = SettingsConfigDict(env_file=str(ENV_FILE), env_file_encoding="utf-8", extra="allow")
 

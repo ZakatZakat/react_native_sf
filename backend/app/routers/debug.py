@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import logging
 
+import httpx
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
 
 from app.config import Settings
-from app.ingest.telegram import TelegramIngestor
 from app.repositories.events import EventsRepository
 from app.schemas import ClientErrorReport
+from app.telegram_client import TelegramServiceClient, event_payload_to_ingest_request
 
 router = APIRouter(prefix="/debug", tags=["debug"])
 logger = logging.getLogger(__name__)
@@ -51,31 +52,41 @@ def _get_events_repo(request: Request) -> EventsRepository:
     return request.app.state.events_repo  # type: ignore[attr-defined]
 
 
+def _get_telegram_client(request: Request) -> TelegramServiceClient:
+    return request.app.state.telegram_client  # type: ignore[attr-defined]
+
+
 @router.post("/telegram-fetch-recent")
 async def telegram_fetch_recent(
     request: Request,
     per_channel_limit: int = Query(5, ge=1, le=50),
     pause_between_channels_seconds: float = Query(1.0, ge=0.0, le=10.0),
     pause_between_messages_seconds: float = Query(0.0, ge=0.0, le=2.0),
-    login_mode: str | None = Query(default=None, description="Override: bot | user"),
 ) -> dict[str, object]:
     settings = Settings()
-    if login_mode in {"bot", "user"}:
-        settings.telegram_login_mode = login_mode
+    channel_ids = settings.telegram_channel_ids or []
+    if not channel_ids:
+        raise HTTPException(status_code=400, detail="telegram_channel_ids not configured")
     repo = _get_events_repo(request)
-    ingestor = TelegramIngestor(settings=settings, repo=repo)
+    client = _get_telegram_client(request)
     try:
-        result = await ingestor.fetch_recent(
+        data = await client.ingest(
+            channel_ids=channel_ids,
             per_channel_limit=per_channel_limit,
-            pause_between_channels_seconds=pause_between_channels_seconds,
-            pause_between_messages_seconds=pause_between_messages_seconds,
+            pause_between_channels=pause_between_channels_seconds,
+            pause_between_messages=pause_between_messages_seconds,
         )
-    except Exception as e:
-        logger.exception("telegram_fetch_recent failed")
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    except httpx.HTTPError as e:
+        logger.exception("telegram-fetch-recent: microservice error")
+        raise HTTPException(status_code=502, detail="Telegram service unavailable") from e
+    events = data.get("events") or []
+    for ev in events:
+        await repo.upsert(event_payload_to_ingest_request(ev))
     return {
         "status": "ok",
-        "result": result,
+        "channels_ok": data.get("channels_ok", 0),
+        "channels_failed": data.get("channels_failed", 0),
+        "events_ingested": len(events),
     }
 
 
@@ -96,11 +107,22 @@ ECO_CHANNELS = [
 
 @router.get("/eco-channels")
 async def eco_channels(request: Request) -> list[dict[str, str | None]]:
-    """Return avatar paths and subs for eco card channels (warms avatar cache)."""
-    repo = _get_events_repo(request)
+    """Return avatar URLs and subs for eco card channels (warms avatar cache)."""
+    client = _get_telegram_client(request)
     settings = Settings()
-    ingestor = TelegramIngestor(settings=settings, repo=repo)
-    return await ingestor.fetch_channels_info(ECO_CHANNELS)
+    base = _media_base(settings)
+    try:
+        rows = await client.channels_info(ECO_CHANNELS)
+    except httpx.HTTPError as e:
+        logger.exception("eco-channels: microservice error")
+        raise HTTPException(status_code=502, detail="Telegram service unavailable") from e
+    out: list[dict[str, str | None]] = []
+    for r in rows:
+        avatar = r.get("avatar")
+        if avatar and isinstance(avatar, str) and not avatar.startswith("http"):
+            avatar = f"{base}{avatar}" if avatar.startswith("/") else f"{base}/{avatar}"
+        out.append({"name": r.get("name"), "subs": r.get("subs"), "avatar": avatar})
+    return out
 
 
 @router.post("/fetch-rep-des-art")
@@ -111,14 +133,33 @@ async def fetch_rep_des_art(
 ) -> dict[str, object]:
     """Fetch posts from @rep_des_art, extract advertised channel links, optionally ingest to DB."""
     repo = _get_events_repo(request)
-    settings = Settings()
-    ingestor = TelegramIngestor(settings=settings, repo=repo)
-    result = await ingestor.fetch_from_channel(
-        source_channel=REP_DES_ART_CHANNEL,
-        limit=limit,
-        ingest_to_db=ingest,
-    )
-    return {"status": "ok", "result": result}
+    client = _get_telegram_client(request)
+    try:
+        data = await client.fetch_channel(
+            source_channel=REP_DES_ART_CHANNEL,
+            limit=limit,
+            return_posts=True,
+            extract_channel_links=True,
+        )
+    except httpx.HTTPError as e:
+        logger.exception("fetch-rep-des-art: microservice error")
+        raise HTTPException(status_code=502, detail="Telegram service unavailable") from e
+    posts = data.get("posts") or []
+    ingested = 0
+    if ingest:
+        for p in posts:
+            await repo.upsert(event_payload_to_ingest_request(p))
+            ingested += 1
+    return {
+        "status": "ok",
+        "channels": data.get("channels", []),
+        "posts_count": len(posts),
+        "ingested": ingested,
+    }
+
+
+def _media_base(settings: Settings) -> str:
+    return (settings.telegram_media_public_url or settings.telegram_service_url).rstrip("/")
 
 
 @router.get("/channel-avatar")
@@ -126,15 +167,17 @@ async def channel_avatar(
     request: Request,
     channel: str = Query(..., min_length=1, description="Channel username with or without @"),
 ) -> RedirectResponse:
-    """Redirect to cached channel profile image in /media/ or 404 if not available."""
+    """Redirect to telegram service media URL for channel avatar or 404 if not available."""
     settings = Settings()
-    repo = _get_events_repo(request)
-    ingestor = TelegramIngestor(settings=settings, repo=repo)
-    url_path = await ingestor.fetch_channel_avatar(channel)
-    if not url_path:
-        logger.debug("Channel avatar not available: channel=%s", channel)
+    client = _get_telegram_client(request)
+    try:
+        path = await client.get_channel_avatar_path(channel)
+    except httpx.HTTPError as e:
+        logger.exception("channel-avatar: microservice error")
+        raise HTTPException(status_code=502, detail="Telegram service unavailable") from e
+    if not path:
         raise HTTPException(status_code=404, detail="Channel avatar not available")
-    return RedirectResponse(url=url_path, status_code=302)
+    return RedirectResponse(url=f"{_media_base(settings)}{path}", status_code=302)
 
 
 

@@ -11,13 +11,13 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from app.config import Settings
 from app.db import create_engine, create_session_maker
-from app.ingest.telegram import TelegramIngestor
 from app.models import Base
+from app.telegram_client import TelegramServiceClient
 from app.repositories.events import EventsRepository, InMemoryEventsRepository
 from app.repositories.postgres import PostgresEventsRepository
 from app.repositories.users import InMemoryUsersRepository, UsersRepository
 from app.routers import debug, events, health, users
-from app.tasks.polling import TelegramPollingService
+from app.tasks.polling import TelegramPollingService, TelegramServiceFetcher
 
 logging.basicConfig(level=logging.INFO)
 
@@ -58,14 +58,15 @@ async def startup_event() -> None:
         users_repo = InMemoryUsersRepository()
     app.state.events_repo = events_repo
     app.state.users_repo = users_repo
+    app.state.telegram_client = TelegramServiceClient(settings.telegram_service_url)
 
-    if (
-        settings.telegram_polling_enabled
-        and settings.telegram_channel_ids
-        and (settings.telegram_bot_token or settings.telegram_session_string)
-    ):
-        ingestor = TelegramIngestor(settings=settings, repo=events_repo)
-        service = TelegramPollingService(ingestor=ingestor, interval_seconds=settings.bot_polling_interval)
+    if settings.telegram_polling_enabled and settings.telegram_channel_ids:
+        fetcher = TelegramServiceFetcher(
+            client=app.state.telegram_client,
+            repo=events_repo,
+            channel_ids=settings.telegram_channel_ids,
+        )
+        service = TelegramPollingService(fetcher=fetcher, interval_seconds=settings.bot_polling_interval)
         polling_service = service
         polling_task = asyncio.create_task(service.run())
 
