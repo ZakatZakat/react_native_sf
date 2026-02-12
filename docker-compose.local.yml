@@ -17,6 +17,26 @@ services:
     networks:
       - local
 
+  telegram:
+    build:
+      context: ./services/telegram
+    working_dir: /app
+    environment:
+      TELEGRAM_API_ID: ${TELEGRAM_API_ID}
+      TELEGRAM_API_HASH: ${TELEGRAM_API_HASH}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_SESSION_STRING: ${TELEGRAM_SESSION_STRING}
+      TELEGRAM_LOGIN_MODE: ${TELEGRAM_LOGIN_MODE}
+      MEDIA_ROOT: /app/media
+    env_file:
+      - .env
+    ports:
+      - "8002:8000"
+    volumes:
+      - ./backend/media:/app/media
+    networks:
+      - local
+
   api:
     build:
       context: ./backend
