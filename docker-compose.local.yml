@@ -46,7 +46,7 @@ services:
       db:
         condition: service_healthy
     volumes:
-      - tgapp_media:/app/media
+      - ./backend/media:/app/media
     networks:
       - local
 
@@ -79,4 +79,3 @@ networks:
 
 volumes:
   pgdata:
-  tgapp_media:

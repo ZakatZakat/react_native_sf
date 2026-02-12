@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react"
-import { Box, Button, Flex, Text } from "@chakra-ui/react"
+import { Box, Button, Flex, Text, Image } from "@chakra-ui/react"
 import { useNavigate } from "@tanstack/react-router"
-import { PageWipe, PIPE_ROTATE_STORAGE } from "./pipe/shared"
+import { API, PageWipe, PIPE_ROTATE_STORAGE } from "./pipe/shared"
 
 const K = "#0D0D0D"
 const W = "#FFFFFF"
@@ -10,6 +10,28 @@ const G = "rgba(13,13,13,0.35)"
 
 const STORAGE_KEY = PIPE_ROTATE_STORAGE
 
+function channelThumb(name: string): string {
+  const slug = name.replace(/^@/, "").slice(0, 20)
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(slug)}&size=80&background=0055FF&color=fff&bold=true`
+}
+
+function channelAvatarUrl(name: string): string {
+  const slug = name.replace(/^@/, "").trim()
+  return `${API}/debug/channel-avatar?channel=${encodeURIComponent(slug)}`
+}
+
+function channelDirectMediaUrl(name: string): string {
+  const slug = name.replace(/^@/, "").replace(/[^a-zA-Z0-9_]/g, "_").toLowerCase().slice(0, 64)
+  return `${API}/media/channel_avatar_${slug}.jpg`
+}
+
+function channelImageSrc(ch: ChannelItem, _isEco: boolean): string {
+  if (ch.thumb) return ch.thumb
+  return channelDirectMediaUrl(ch.name)
+}
+
+type ChannelItem = { name: string; subs: string; thumb?: string }
+
 type UserClass = {
   id: string
   label: string
@@ -17,7 +39,7 @@ type UserClass = {
   icon: string
   rotation: number
   available: boolean
-  channels: { name: string; subs: string }[]
+  channels: ChannelItem[]
   events: { title: string; date: string }[]
   stat: string
 }
@@ -27,18 +49,20 @@ const USER_CLASSES: UserClass[] = [
     id: "eco", label: "Эко-энтузиаст", icon: "🌿", rotation: -1.2, available: true,
     desc: "Upcycle, фэры, sustainable-бренды",
     channels: [
-      { name: "@greenfashionmsk", subs: "12K" },
-      { name: "@upcycle_community", subs: "8K" },
-      { name: "@eco_swap_msk", subs: "5K" },
-      { name: "@zerowaste_msk", subs: "15K" },
-      { name: "@slow_fashion_ru", subs: "9K" },
-      { name: "@organic_market", subs: "7K" },
-      { name: "@ecology_events", subs: "11K" },
-      { name: "@sustainable_life", subs: "6K" },
-      { name: "@green_tech_msk", subs: "4K" },
-      { name: "@ethical_consumption", subs: "18K" },
-      { name: "@climate_action_ru", subs: "22K" },
-      { name: "@reuse_reduce", subs: "10K" },
+      { name: "@beindvz", subs: "—" },
+      { name: "@constructor_brand", subs: "—" },
+      { name: "@dmsk_bag", subs: "—" },
+      { name: "@exclusive_art_upcycling", subs: "—" },
+      { name: "@hodveshey", subs: "—" },
+      { name: "@kip_n_flip", subs: "—" },
+      { name: "@melme", subs: "—" },
+      { name: "@mvpeople", subs: "—" },
+      { name: "@skrvshch", subs: "—" },
+      { name: "@swop_market_msk", subs: "—" },
+      { name: "@syyyyyyyr", subs: "—" },
+      { name: "@tutryadom", subs: "—" },
+      { name: "@yergaworkshop", subs: "—" },
+      { name: "@zelenyy_syr", subs: "—" },
     ],
     events: [
       { title: "Swap-вечеринка Artplay", date: "15 мар" },
@@ -377,23 +401,48 @@ function ClassCard({ item, onPick, isAvailable, idx }: {
           <Text fontSize="8px" fontWeight="800" letterSpacing="0.08em" textTransform="uppercase" color={G} mb="2">
             Каналы
           </Text>
-          <Flex gap="1.5" flexWrap="wrap">
+          <Flex gap="2" flexWrap="wrap">
             {useRotating ? (
               <RotatingSlots
                 items={item.channels}
                 slotOffsets={chSlotOffsets}
                 render={(ch) => (
-                  <Flex key={ch.name} bg={`${K}06`} px="2" py="0.5" align="center" gap="1" borderRadius="0">
-                    <Text fontSize="9px" fontWeight="700" color={K}>{ch.name}</Text>
-                    <Text fontSize="7px" fontWeight="600" color={B}>{ch.subs}</Text>
+                  <Flex key={ch.name} direction="column" align="center" gap="0.5" flexShrink={0}>
+                    <Box
+                      w="36px"
+                      h="36px"
+                      borderRadius="md"
+                      overflow="hidden"
+                      border={`2px solid ${B}30`}
+                      flexShrink={0}
+                    >
+                      <Image
+                        src={channelImageSrc(ch, item.id === "eco")}
+                        alt=""
+                        w="100%"
+                        h="100%"
+                        objectFit="cover"
+                        display="block"
+                        onError={(e) => { (e.target as HTMLImageElement).src = channelThumb(ch.name) }}
+                      />
+                    </Box>
+                    <Text fontSize="7px" fontWeight="700" color={K} textAlign="center" lineHeight="1.1" noOfLines={1} maxW="44px">
+                      {ch.name.replace(/^@/, "")}
+                    </Text>
+                    <Text fontSize="6px" fontWeight="600" color={B}>{ch.subs}</Text>
                   </Flex>
                 )}
               />
             ) : (
               item.channels.slice(0, SLOTS).map((ch) => (
-                <Flex key={ch.name} bg={`${K}06`} px="2" py="0.5" align="center" gap="1" borderRadius="0">
-                  <Text fontSize="9px" fontWeight="700" color={K}>{ch.name}</Text>
-                  <Text fontSize="7px" fontWeight="600" color={B}>{ch.subs}</Text>
+                <Flex key={ch.name} direction="column" align="center" gap="0.5" flexShrink={0}>
+                  <Box w="36px" h="36px" borderRadius="md" overflow="hidden" border={`2px solid ${B}30`} flexShrink={0}>
+                    <Image src={channelImageSrc(ch, item.id === "eco")} alt="" w="100%" h="100%" objectFit="cover" display="block" onError={(e) => { (e.target as HTMLImageElement).src = channelThumb(ch.name) }} />
+                  </Box>
+                  <Text fontSize="7px" fontWeight="700" color={K} textAlign="center" lineHeight="1.1" noOfLines={1} maxW="44px">
+                    {ch.name.replace(/^@/, "")}
+                  </Text>
+                  <Text fontSize="6px" fontWeight="600" color={B}>{ch.subs}</Text>
                 </Flex>
               ))
             )}
@@ -533,23 +582,33 @@ function InterestCard({ item, onPick, selected, idx }: {
           <Text fontSize="8px" fontWeight="800" letterSpacing="0.08em" textTransform="uppercase" color={G} mb="2">
             Каналы
           </Text>
-          <Flex gap="1.5" flexWrap="wrap">
+          <Flex gap="2" flexWrap="wrap">
             {useRotating ? (
               <RotatingSlots
                 items={item.channels}
                 slotOffsets={chSlotOffsets}
                 render={(ch) => (
-                  <Flex key={ch.name} bg={`${K}06`} px="2" py="0.5" align="center" gap="1">
-                    <Text fontSize="9px" fontWeight="700" color={K}>{ch.name}</Text>
-                    <Text fontSize="7px" fontWeight="600" color={B}>{ch.subs}</Text>
+                  <Flex key={ch.name} direction="column" align="center" gap="0.5" flexShrink={0}>
+                    <Box w="36px" h="36px" borderRadius="md" overflow="hidden" border={`2px solid ${B}30`} flexShrink={0}>
+                      <Image src={channelImageSrc(ch, item.id === "eco")} alt="" w="100%" h="100%" objectFit="cover" display="block" onError={(e) => { (e.target as HTMLImageElement).src = channelThumb(ch.name) }} />
+                    </Box>
+                    <Text fontSize="7px" fontWeight="700" color={K} textAlign="center" lineHeight="1.1" noOfLines={1} maxW="44px">
+                      {ch.name.replace(/^@/, "")}
+                    </Text>
+                    <Text fontSize="6px" fontWeight="600" color={B}>{ch.subs}</Text>
                   </Flex>
                 )}
               />
             ) : (
               item.channels.slice(0, SLOTS).map((ch) => (
-                <Flex key={ch.name} bg={`${K}06`} px="2" py="0.5" align="center" gap="1">
-                  <Text fontSize="9px" fontWeight="700" color={K}>{ch.name}</Text>
-                  <Text fontSize="7px" fontWeight="600" color={B}>{ch.subs}</Text>
+                <Flex key={ch.name} direction="column" align="center" gap="0.5" flexShrink={0}>
+                  <Box w="36px" h="36px" borderRadius="md" overflow="hidden" border={`2px solid ${B}30`} flexShrink={0}>
+                    <Image src={channelImageSrc(ch, item.id === "eco")} alt="" w="100%" h="100%" objectFit="cover" display="block" onError={(e) => { (e.target as HTMLImageElement).src = channelThumb(ch.name) }} />
+                  </Box>
+                  <Text fontSize="7px" fontWeight="700" color={K} textAlign="center" lineHeight="1.1" noOfLines={1} maxW="44px">
+                    {ch.name.replace(/^@/, "")}
+                  </Text>
+                  <Text fontSize="6px" fontWeight="600" color={B}>{ch.subs}</Text>
                 </Flex>
               ))
             )}
@@ -627,6 +686,34 @@ export default function PipeRotate() {
   const [selectedInterests, setSelectedInterests] = useState<Set<string>>(
     () => new Set(loadSelected())
   )
+  const [ecoChannels, setEcoChannels] = useState<ChannelItem[] | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    let retryId: ReturnType<typeof setTimeout> | null = null
+    const load = () => {
+      fetch(`${API}/debug/eco-channels`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data: Array<{ name: string; subs: string; avatar: string | null }> | null) => {
+          if (cancelled || !Array.isArray(data)) return
+          setEcoChannels(
+            data.map((ch) => ({
+              name: ch.name,
+              subs: ch.subs,
+              thumb: ch.avatar ? `${API}${ch.avatar}` : undefined,
+            }))
+          )
+        })
+        .catch(() => {
+          if (!cancelled) retryId = setTimeout(load, 2000)
+        })
+    }
+    load()
+    return () => {
+      cancelled = true
+      if (retryId) clearTimeout(retryId)
+    }
+  }, [])
 
   const toggleInterest = useCallback((id: string) => {
     setSelectedInterests((prev) => {
@@ -699,7 +786,7 @@ export default function PipeRotate() {
                 {USER_CLASSES.map((cls, idx) => (
                   <Box key={cls.id} flexShrink={0} style={{ scrollSnapAlign: "center" }}>
                     <ClassCard
-                      item={cls}
+                      item={cls.id === "eco" && ecoChannels?.length ? { ...cls, channels: ecoChannels } : cls}
                       onPick={() => handleSelectClass(cls)}
                       isAvailable={cls.available}
                       idx={idx}

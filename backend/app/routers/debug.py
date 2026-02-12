@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 
 from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi.responses import RedirectResponse
 
 from app.config import Settings
 from app.ingest.telegram import TelegramIngestor
@@ -83,6 +84,57 @@ async def telegram_delete_events(request: Request) -> dict[str, int | str]:
     repo = _get_events_repo(request)
     deleted = await repo.delete_all()
     return {"status": "ok", "deleted": deleted}
+
+
+REP_DES_ART_CHANNEL = "rep_des_art"
+ECO_CHANNELS = [
+    "beindvz", "constructor_brand", "dmsk_bag", "exclusive_art_upcycling",
+    "hodveshey", "kip_n_flip", "melme", "mvpeople", "skrvshch", "swop_market_msk",
+    "syyyyyyyr", "tutryadom", "yergaworkshop", "zelenyy_syr",
+]
+
+
+@router.get("/eco-channels")
+async def eco_channels(request: Request) -> list[dict[str, str | None]]:
+    """Return avatar paths and subs for eco card channels (warms avatar cache)."""
+    repo = _get_events_repo(request)
+    settings = Settings()
+    ingestor = TelegramIngestor(settings=settings, repo=repo)
+    return await ingestor.fetch_channels_info(ECO_CHANNELS)
+
+
+@router.post("/fetch-rep-des-art")
+async def fetch_rep_des_art(
+    request: Request,
+    limit: int = Query(100, ge=1, le=500),
+    ingest: bool = Query(True, description="Ingest posts into events DB"),
+) -> dict[str, object]:
+    """Fetch posts from @rep_des_art, extract advertised channel links, optionally ingest to DB."""
+    repo = _get_events_repo(request)
+    settings = Settings()
+    ingestor = TelegramIngestor(settings=settings, repo=repo)
+    result = await ingestor.fetch_from_channel(
+        source_channel=REP_DES_ART_CHANNEL,
+        limit=limit,
+        ingest_to_db=ingest,
+    )
+    return {"status": "ok", "result": result}
+
+
+@router.get("/channel-avatar")
+async def channel_avatar(
+    request: Request,
+    channel: str = Query(..., min_length=1, description="Channel username with or without @"),
+) -> RedirectResponse:
+    """Redirect to cached channel profile image in /media/ or 404 if not available."""
+    settings = Settings()
+    repo = _get_events_repo(request)
+    ingestor = TelegramIngestor(settings=settings, repo=repo)
+    url_path = await ingestor.fetch_channel_avatar(channel)
+    if not url_path:
+        logger.debug("Channel avatar not available: channel=%s", channel)
+        raise HTTPException(status_code=404, detail="Channel avatar not available")
+    return RedirectResponse(url=url_path, status_code=302)
 
 
 
