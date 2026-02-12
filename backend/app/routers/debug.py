@@ -95,23 +95,28 @@ async def telegram_fetch_event_posts(
     request: Request,
     per_channel_limit: int = Query(15, ge=1, le=50),
     pause_between_channels_seconds: float = Query(1.0, ge=0.0, le=10.0),
-    event_only: bool = Query(True, description="If false, ingest all posts (no keyword filter)."),
+    event_only: bool = Query(True, description="If true, use microservice event-posts (keyword filter). If false, ingest all."),
 ) -> dict[str, object]:
-    """Fetch posts from telegram channels; optionally keep only event-related (by keywords), upsert to DB."""
-    settings = Settings()
-    channel_ids = settings.telegram_channel_ids or [f"@{c}" for c in ECO_CHANNELS]
-    if not channel_ids:
-        raise HTTPException(status_code=400, detail="No channel_ids")
+    """Fetch posts from telegram (event search in microservice if event_only), upsert to DB; show in Ивенты block."""
+    channel_ids = [f"@{c}" for c in ECO_CHANNELS]
     repo = _get_events_repo(request)
     client = _get_telegram_client(request)
     try:
-        data = await client.ingest(
-            channel_ids=channel_ids,
-            per_channel_limit=per_channel_limit,
-            pause_between_channels=pause_between_channels_seconds,
-            pause_between_messages=0.0,
-            event_keywords=DEFAULT_EVENT_KEYWORDS if event_only else None,
-        )
+        if event_only:
+            data = await client.fetch_event_posts(
+                channel_ids=channel_ids,
+                per_channel_limit=per_channel_limit,
+                pause_between_channels=pause_between_channels_seconds,
+            )
+        else:
+            data = await client.ingest(
+                channel_ids=channel_ids,
+                per_channel_limit=per_channel_limit,
+                pause_between_channels=pause_between_channels_seconds,
+                pause_between_messages=0.0,
+                collect_media=False,
+                event_keywords=None,
+            )
     except httpx.HTTPError as e:
         logger.exception("telegram-fetch-event-posts: microservice error")
         raise HTTPException(status_code=502, detail="Telegram service unavailable") from e
@@ -146,6 +151,52 @@ ECO_CHANNELS = [
     "hodveshey", "kip_n_flip", "melme", "mvpeople", "skrvshch", "swop_market_msk",
     "syyyyyyyr", "tutryadom", "yergaworkshop", "zelenyy_syr",
 ]
+
+
+@router.get("/telegram-event-posts-preview")
+async def telegram_event_posts_preview(
+    request: Request,
+    per_channel_limit: int = Query(5, ge=1, le=20),
+    event_only: bool = Query(True, description="Use keyword filter (microservice /event-posts)."),
+) -> dict[str, object]:
+    """Call microservice event-posts (or ingest) without writing to DB. Check if fetch + filter works."""
+    channel_ids = [f"@{c}" for c in ECO_CHANNELS]
+    client = _get_telegram_client(request)
+    try:
+        if event_only:
+            data = await client.fetch_event_posts(
+                channel_ids=channel_ids,
+                per_channel_limit=per_channel_limit,
+                pause_between_channels=1.0,
+            )
+        else:
+            data = await client.ingest(
+                channel_ids=channel_ids,
+                per_channel_limit=per_channel_limit,
+                pause_between_channels=1.0,
+                pause_between_messages=0.0,
+                collect_media=False,
+                event_keywords=None,
+            )
+    except httpx.HTTPError as e:
+        logger.exception("telegram-event-posts-preview: microservice error")
+        raise HTTPException(status_code=502, detail=f"Telegram service unavailable: {e!s}") from e
+    events = data.get("events") or []
+    sample = [
+        {
+            "channel": e.get("channel"),
+            "title": (e.get("text") or "")[:80],
+            "message_id": e.get("message_id"),
+        }
+        for e in events[:5]
+    ]
+    return {
+        "status": "ok",
+        "events_count": len(events),
+        "channels_ok": data.get("channels_ok", []),
+        "channels_failed": data.get("channels_failed", {}),
+        "sample": sample,
+    }
 
 
 @router.get("/eco-channels")

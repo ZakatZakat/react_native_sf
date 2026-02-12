@@ -177,14 +177,16 @@ function buildEcoInterests(
       : []
     const channelSet = new Set(g.channelNames.map((c) => c.toLowerCase()))
     const groupEvents =
-      ecoEvents
-        ?.filter((e) => channelSet.has(norm(e.channel)))
-        .slice(0, SLOTS)
-        .map((e) => ({
-          title: e.title || "Без названия",
-          date: formatEventDate(e.event_time ?? e.created_at),
-        })) ?? []
-    const events = groupEvents.length > 0 ? groupEvents : g.events
+      ecoEvents === null
+        ? []
+        : ecoEvents
+            .filter((e) => channelSet.has(norm(e.channel)))
+            .slice(0, SLOTS)
+            .map((e) => ({
+              title: e.title || "Без названия",
+              date: formatEventDate(e.event_time ?? e.created_at),
+            }))
+    const events = ecoEvents === null ? g.events : groupEvents
     return {
       ...g,
       channels,
@@ -520,7 +522,9 @@ function InterestCard({ item, onPick, selected, idx }: {
           <Text fontSize="8px" fontWeight="800" letterSpacing="0.08em" textTransform="uppercase" color={G} mb="2">
             Ивенты
           </Text>
-          {useRotating ? (
+          {item.events.length === 0 ? (
+            <Text fontSize="10px" color={G}>Нет ивентов</Text>
+          ) : useRotating ? (
             <RotatingSlots
               items={item.events}
               slotOffsets={evSlotOffsets}
@@ -589,6 +593,7 @@ export default function PipeRotate() {
   )
   const [ecoChannels, setEcoChannels] = useState<ChannelItem[] | null>(null)
   const [ecoEvents, setEcoEvents] = useState<ApiEventCard[] | null>(null)
+  const [loadingEvents, setLoadingEvents] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -628,13 +633,21 @@ export default function PipeRotate() {
   useEffect(() => {
     if (step !== "interests") return
     let cancelled = false
-    fetch(`${API}/events?limit=60`)
-      .then((r) => (r.ok ? r.json() : null))
+    setLoadingEvents(true)
+    fetch(
+      `${API}/debug/telegram-fetch-event-posts?per_channel_limit=15&event_only=false`,
+      { method: "POST" }
+    )
+      .then(() => (cancelled ? null : fetch(`${API}/events?limit=60`)))
+      .then((r) => (r && r.ok ? r.json() : null))
       .then((data: ApiEventCard[] | null) => {
         if (!cancelled) setEcoEvents(Array.isArray(data) ? data : [])
       })
       .catch(() => {
         if (!cancelled) setEcoEvents([])
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingEvents(false)
       })
     return () => { cancelled = true }
   }, [step])
@@ -819,8 +832,9 @@ export default function PipeRotate() {
                 textTransform="uppercase"
                 _hover={{ opacity: 0.9 }}
                 onClick={handleContinue}
+                isDisabled={loadingEvents}
               >
-                Продолжить →
+                {loadingEvents ? "Загрузка ивентов…" : "Продолжить →"}
               </Button>
             </Flex>
           </>

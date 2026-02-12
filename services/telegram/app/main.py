@@ -71,6 +71,36 @@ async def ingest(body: IngestRequest) -> dict:
     )
 
 
+DEFAULT_EVENT_KEYWORDS = [
+    "ивент", "встреча", "март", "апр", "мая", "июн", "июл", "сент", "октяб", "нояб", "дек",
+    "swap", "маркет", "фестиваль", "концерт", "мастер-класс", "дата", "воскресенье", "суббот",
+    "вечеринк", "выставк", "ярмарк", "фэр", "pop-up", "popup", "вход", "бесплатно", "регистрация",
+    "лекция", "воркшоп", "workshop", "fair", "market", "event",
+]
+
+
+class EventPostsRequest(BaseModel):
+    channel_ids: list[str]
+    per_channel_limit: int = 20
+    pause_between_channels: float = 1.0
+    collect_media: bool = False
+    event_keywords: list[str] | None = None
+
+
+@app.post("/event-posts")
+async def event_posts(body: EventPostsRequest) -> dict:
+    """Search/collect event-like posts: fetch from channels, filter by event keywords, return only those."""
+    keywords = body.event_keywords if body.event_keywords is not None else DEFAULT_EVENT_KEYWORDS
+    return await service.ingest(
+        channel_ids=body.channel_ids,
+        per_channel_limit=body.per_channel_limit,
+        pause_between_channels=body.pause_between_channels,
+        pause_between_messages=0.0,
+        collect_media=body.collect_media,
+        event_keywords=keywords,
+    )
+
+
 class FetchChannelRequest(BaseModel):
     source_channel: str
     limit: int = 100

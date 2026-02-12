@@ -225,6 +225,9 @@ class TelegramService:
                     wait = max(0, int(getattr(e, "seconds", 0)))
                     logger.warning("FloodWait %ss on %s", wait, channel)
                     failed[channel] = f"FloodWait({wait}s)"
+                except ValueError as e:
+                    logger.warning("Channel not found or invalid: %s — %s", channel, e)
+                    failed[channel] = str(e)[:500]
                 except Exception as e:
                     logger.exception("Ingest failed channel=%s", channel)
                     failed[channel] = str(e)[:500]

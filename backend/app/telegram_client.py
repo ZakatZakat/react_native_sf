@@ -60,6 +60,28 @@ class TelegramServiceClient:
             r.raise_for_status()
             return r.json()
 
+    async def fetch_event_posts(
+        self,
+        channel_ids: list[str],
+        per_channel_limit: int = 20,
+        pause_between_channels: float = 1.0,
+        event_keywords: list[str] | None = None,
+        collect_media: bool = False,
+    ) -> dict:
+        """POST /event-posts. Returns { channels_ok, channels_failed, events } (event-like posts only)."""
+        payload: dict = {
+            "channel_ids": channel_ids,
+            "per_channel_limit": per_channel_limit,
+            "pause_between_channels": pause_between_channels,
+            "collect_media": collect_media,
+        }
+        if event_keywords is not None:
+            payload["event_keywords"] = event_keywords
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            r = await client.post(f"{self._base}/event-posts", json=payload)
+            r.raise_for_status()
+            return r.json()
+
     async def fetch_channel(
         self,
         source_channel: str,
