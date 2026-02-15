@@ -46,37 +46,11 @@ type UserClass = {
 
 const USER_CLASSES: UserClass[] = [
   {
-    id: "eco", label: "Эко-энтузиаст", icon: "🌿", rotation: -1.2, available: true,
-    desc: "Upcycle, фэры, sustainable-бренды",
-    channels: [
-      { name: "@beindvz", subs: "—" },
-      { name: "@constructor_brand", subs: "—" },
-      { name: "@dmsk_bag", subs: "—" },
-      { name: "@exclusive_art_upcycling", subs: "—" },
-      { name: "@hodveshey", subs: "—" },
-      { name: "@melme", subs: "—" },
-      { name: "@skrvshch", subs: "—" },
-      { name: "@swop_market_msk", subs: "—" },
-      { name: "@syyyyyyyr", subs: "—" },
-      { name: "@tutryadom", subs: "—" },
-      { name: "@yergaworkshop", subs: "—" },
-      { name: "@zelenyy_syr", subs: "—" },
-    ],
-    events: [
-      { title: "Swap-вечеринка Artplay", date: "15 мар" },
-      { title: "Eco Fair Хлебозавод", date: "22 мар" },
-      { title: "Upcycle Weekend", date: "5 апр" },
-      { title: "Фёр Zerowaste", date: "18 мар" },
-      { title: "Green Market Винзавод", date: "28 мар" },
-      { title: "Sustainable Meetup", date: "2 апр" },
-      { title: "Eco Design Week", date: "10 апр" },
-      { title: "Zero Waste Festival", date: "18 апр" },
-      { title: "Thrift Pop-Up ВДНХ", date: "25 апр" },
-      { title: "Climate Forum", date: "3 мая" },
-      { title: "Organic Food Market", date: "12 мая" },
-      { title: "Repair Cafe Moscow", date: "20 мая" },
-    ],
-    stat: "40+ каналов · 120 ивентов/мес",
+    id: "eco", label: "Эко-энтузиаст", icon: "🌿", rotation: -1.2, available: false,
+    desc: "В разработке",
+    channels: [],
+    events: [],
+    stat: "В разработке",
   },
   {
     id: "business", label: "Бизнес", icon: "💼", rotation: 0.8, available: false,
@@ -764,7 +738,7 @@ export default function PipeRotate() {
                 {USER_CLASSES.map((cls, idx) => (
                   <Box key={cls.id} flexShrink={0} style={{ scrollSnapAlign: "center" }}>
                     <ClassCard
-                      item={cls.id === "eco" && ecoChannels?.length ? { ...cls, channels: ecoChannels } : cls}
+                      item={cls.id === "eco" && cls.available && ecoChannels?.length ? { ...cls, channels: ecoChannels } : cls}
                       onPick={() => handleSelectClass(cls)}
                       isAvailable={cls.available}
                       idx={idx}
