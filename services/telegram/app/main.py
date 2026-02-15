@@ -83,7 +83,7 @@ class EventPostsRequest(BaseModel):
     channel_ids: list[str]
     per_channel_limit: int = 20
     pause_between_channels: float = 1.0
-    collect_media: bool = False
+    collect_media: bool = True
     event_keywords: list[str] | None = None
 
 

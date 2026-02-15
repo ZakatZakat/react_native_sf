@@ -107,6 +107,7 @@ async def telegram_fetch_event_posts(
                 channel_ids=channel_ids,
                 per_channel_limit=per_channel_limit,
                 pause_between_channels=pause_between_channels_seconds,
+                collect_media=True,
             )
         else:
             data = await client.ingest(
@@ -121,8 +122,13 @@ async def telegram_fetch_event_posts(
         logger.exception("telegram-fetch-event-posts: microservice error")
         raise HTTPException(status_code=502, detail="Telegram service unavailable") from e
     events = data.get("events") or []
+    settings = Settings()
+    media_base = _media_base(settings).rstrip("/")
     for ev in events:
-        await repo.upsert(event_payload_to_ingest_request(ev))
+        raw_media = ev.get("media_urls") or []
+        full_media = [m if m.startswith("http") else f"{media_base}{m}" for m in raw_media]
+        payload = {**ev, "media_urls": full_media}
+        await repo.upsert(event_payload_to_ingest_request(payload))
     return {
         "status": "ok",
         "channels_ok": len(data.get("channels_ok") or []),
