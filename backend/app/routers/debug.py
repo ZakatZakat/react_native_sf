@@ -148,7 +148,7 @@ DEFAULT_EVENT_KEYWORDS = [
 REP_DES_ART_CHANNEL = "rep_des_art"
 ECO_CHANNELS = [
     "beindvz", "constructor_brand", "dmsk_bag", "exclusive_art_upcycling",
-    "hodveshey", "kip_n_flip", "melme", "mvpeople", "skrvshch", "swop_market_msk",
+    "hodveshey", "melme", "skrvshch", "swop_market_msk",
     "syyyyyyyr", "tutryadom", "yergaworkshop", "zelenyy_syr",
 ]
 

@@ -101,13 +101,16 @@ class TelegramService:
                 avatar_path: str | None = None
                 subs_count: int | None = None
                 try:
-                    entity = await client.get_entity(name)
                     sanitized = re.sub(r"[^a-zA-Z0-9_]", "_", name)[:64]
                     cache_name = f"channel_avatar_{sanitized}.jpg"
                     cache_path = self.media_root / cache_name
-                    path = await client.download_profile_photo(entity, file=str(cache_path))
-                    if path and Path(path).exists():
+                    if cache_path.exists():
                         avatar_path = f"/media/{cache_name}"
+                    entity = await client.get_entity(name)
+                    if not avatar_path:
+                        path = await client.download_profile_photo(entity, file=str(cache_path))
+                        if path and Path(path).exists():
+                            avatar_path = f"/media/{cache_name}"
                     full = await client(GetFullChannelRequest(await client.get_input_entity(entity)))
                     subs_count = getattr(full.full_chat, "participants_count", None)
                 except Exception as e:
@@ -165,7 +168,6 @@ class TelegramService:
     async def _collect_media(self, client: TelegramClient, message: Message) -> list[str]:
         if not message.media:
             return []
-        urls: list[str] = []
         suffix = ".jpg"
         try:
             fname = getattr(message.file, "name", None) if hasattr(message, "file") else None
@@ -173,12 +175,15 @@ class TelegramService:
                 suffix = Path(fname).suffix
         except Exception:
             pass
-        filename = f"{message.peer_id.channel_id if getattr(message.peer_id, 'channel_id', None) else 'ch'}_{message.id}{suffix}"
+        channel_id = getattr(message.peer_id, "channel_id", None) or 0
+        filename = f"{channel_id}_{message.id}{suffix}"
         dest = self.media_root / filename
+        if dest.exists():
+            return [f"/media/{filename}"]
         path = await client.download_media(message, file=str(dest))
         if path:
-            urls.append(f"/media/{Path(path).name}")
-        return urls
+            return [f"/media/{Path(path).name}"]
+        return []
 
     def _message_to_payload(self, channel: str, message: Message, media_urls: list[str]) -> dict[str, Any]:
         published_at = (

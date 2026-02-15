@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react"
 import { Box, Button, Flex, Text, Image } from "@chakra-ui/react"
 import { useNavigate } from "@tanstack/react-router"
-import { API, type EventCard as ApiEventCard, PageWipe, PIPE_ROTATE_STORAGE } from "./pipe/shared"
+import { API, type EventCard as ApiEventCard, PageWipe, PIPE_ROTATE_STORAGE, isImg, resolveMedia } from "./pipe/shared"
 
 const K = "#0D0D0D"
 const W = "#FFFFFF"
@@ -54,9 +54,7 @@ const USER_CLASSES: UserClass[] = [
       { name: "@dmsk_bag", subs: "—" },
       { name: "@exclusive_art_upcycling", subs: "—" },
       { name: "@hodveshey", subs: "—" },
-      { name: "@kip_n_flip", subs: "—" },
       { name: "@melme", subs: "—" },
-      { name: "@mvpeople", subs: "—" },
       { name: "@skrvshch", subs: "—" },
       { name: "@swop_market_msk", subs: "—" },
       { name: "@syyyyyyyr", subs: "—" },
@@ -103,13 +101,15 @@ const USER_CLASSES: UserClass[] = [
   },
 ]
 
+type InterestEvent = { id?: string; title: string; date: string; media_urls?: string[] }
+
 type EcoInterest = {
   id: string
   label: string
   icon: string
   keywords: string[]
   channels: ChannelItem[]
-  events: { title: string; date: string }[]
+  events: InterestEvent[]
   stat: string
 }
 
@@ -124,7 +124,7 @@ const ECO_INTEREST_GROUPS: {
   {
     id: "upcycle", label: "Upcycle одежда", icon: "♻️",
     keywords: ["upcycle", "апсайкл", "переработк", "second hand"],
-    channelNames: ["constructor_brand", "exclusive_art_upcycling", "hodveshey", "kip_n_flip", "dmsk_bag", "melme"],
+    channelNames: ["constructor_brand", "exclusive_art_upcycling", "hodveshey", "dmsk_bag", "melme"],
     events: [
       { title: "Swap Party Artplay", date: "15 мар" },
       { title: "Upcycle Мастерская", date: "20 мар" },
@@ -134,7 +134,7 @@ const ECO_INTEREST_GROUPS: {
   {
     id: "fairs", label: "Фэры и маркеты", icon: "🛒",
     keywords: ["фэр", "маркет", "ярмарк", "блошинг", "fleamarket"],
-    channelNames: ["swop_market_msk", "tutryadom", "mvpeople", "beindvz"],
+    channelNames: ["swop_market_msk", "tutryadom", "beindvz"],
     events: [
       { title: "Ламбада-маркет", date: "кажд. вс" },
       { title: "Хлебозавод Fair", date: "22 мар" },
@@ -183,10 +183,12 @@ function buildEcoInterests(
             .filter((e) => channelSet.has(norm(e.channel)))
             .slice(0, SLOTS)
             .map((e) => ({
+              id: e.id,
               title: e.title || "Без названия",
               date: formatEventDate(e.event_time ?? e.created_at),
+              media_urls: e.media_urls,
             }))
-    const events = ecoEvents === null ? g.events : groupEvents
+    const events = groupEvents
     return {
       ...g,
       channels,
@@ -199,7 +201,7 @@ function buildEcoInterests(
 const SLOTS = 6
 const SLOT_ROTATE_MS = 5000
 
-function RotatingSlots<T extends { name?: string; title?: string }>({
+function RotatingSlots<T extends { id?: string; name?: string; title?: string }>({
   items,
   slotOffsets,
   render,
@@ -215,7 +217,7 @@ function RotatingSlots<T extends { name?: string; title?: string }>({
         const idx = (i + slotOffsets[i]! * half) % items.length
         const item = items[idx]
         if (!item) return null
-        const key = "name" in item ? item.name : (item as { title: string }).title
+        const key = (item as { id?: string }).id ?? ("name" in item ? item.name : (item as { title: string }).title)
         return (
           <Box key={`${i}-${slotOffsets[i]}-${key}`} className="pipe-rotate-slot">
             {render(item)}
@@ -407,8 +409,50 @@ function ClassCard({ item, onPick, isAvailable, idx }: {
   )
 }
 
-function InterestCard({ item, onPick, selected, idx }: {
+function EventMiniCard({
+  ev,
+  failedImgs,
+  onImageError,
+}: { ev: InterestEvent; failedImgs: Record<string, true>; onImageError: () => void }) {
+  const key = ev.id ?? `ev-${ev.title}-${ev.date}`
+  const media = ev.media_urls?.find(isImg) ?? ev.media_urls?.[0]
+  const imgSrc = media && isImg(media) && !failedImgs[key] ? resolveMedia(media) : null
+  return (
+    <Box
+      border={`2px solid ${K}`}
+      overflow="hidden"
+      flexShrink={0}
+      _hover={{ boxShadow: `3px 3px 0 ${B}` }}
+      transition="box-shadow 0.15s"
+    >
+      {imgSrc && (
+        <Box borderBottom={`1px solid ${K}`} h="72px" overflow="hidden">
+          <Image
+            src={imgSrc}
+            alt=""
+            w="100%"
+            h="100%"
+            objectFit="cover"
+            display="block"
+            onError={onImageError}
+          />
+        </Box>
+      )}
+      <Box px="2" py="1.5">
+        <Text fontSize="9px" fontWeight="700" letterSpacing="0.06em" color={G} textTransform="uppercase" mb="0.5">
+          {ev.date}
+        </Text>
+        <Text fontSize="10px" fontWeight="800" lineHeight="1.2" noOfLines={2} textTransform="uppercase" letterSpacing="-0.01em">
+          {ev.title}
+        </Text>
+      </Box>
+    </Box>
+  )
+}
+
+function InterestCard({ item, onPick, selected, idx, failedEventImgs, setFailedEventImgs }: {
   item: EcoInterest; onPick: () => void; selected: boolean; idx: number
+  failedEventImgs: Record<string, true>; setFailedEventImgs: React.Dispatch<React.SetStateAction<Record<string, true>>>
 }) {
   const rotation = [-1.2, 0.8, -0.6][idx % 3] ?? 0
   const border = selected ? B : `${W}20`
@@ -529,29 +573,25 @@ function InterestCard({ item, onPick, selected, idx }: {
               items={item.events}
               slotOffsets={evSlotOffsets}
               render={(ev) => (
-                <Flex align="center" gap="2" mb="1.5">
-                  <Box w="3px" h="14px" bg={B} flexShrink={0} />
-                  <Box flex="1" minW={0}>
-                    <Text fontSize="10px" fontWeight="700" color={K} lineHeight="1.2" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {ev.title}
-                    </Text>
-                  </Box>
-                  <Text fontSize="8px" fontWeight="600" color={G} flexShrink={0}>{ev.date}</Text>
-                </Flex>
+                <EventMiniCard
+                  ev={ev}
+                  failedImgs={failedEventImgs}
+                  onImageError={() => setFailedEventImgs((p) => ({ ...p, [ev.id ?? `ev-${ev.title}-${ev.date}`]: true }))}
+                />
               )}
             />
           ) : (
-            item.events.slice(0, SLOTS).map((ev) => (
-              <Flex key={ev.title} align="center" gap="2" mb="1.5">
-                <Box w="3px" h="14px" bg={B} flexShrink={0} />
-                <Box flex="1" minW={0}>
-                  <Text fontSize="10px" fontWeight="700" color={K} lineHeight="1.2" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {ev.title}
-                  </Text>
+            <Flex gap="2" wrap="wrap" justify="flex-start">
+              {item.events.slice(0, SLOTS).map((ev) => (
+                <Box key={ev.id ?? `${ev.title}-${ev.date}`} flex="1 1 45%" minW="0" maxW="50%">
+                  <EventMiniCard
+                    ev={ev}
+                    failedImgs={failedEventImgs}
+                    onImageError={() => setFailedEventImgs((p) => ({ ...p, [ev.id ?? `ev-${ev.title}-${ev.date}`]: true }))}
+                  />
                 </Box>
-                <Text fontSize="8px" fontWeight="600" color={G} flexShrink={0}>{ev.date}</Text>
-              </Flex>
-            ))
+              ))}
+            </Flex>
           )}
         </Box>
 
@@ -593,6 +633,7 @@ export default function PipeRotate() {
   )
   const [ecoChannels, setEcoChannels] = useState<ChannelItem[] | null>(null)
   const [ecoEvents, setEcoEvents] = useState<ApiEventCard[] | null>(null)
+  const [failedEventImgs, setFailedEventImgs] = useState<Record<string, true>>({})
   const [loadingEvents, setLoadingEvents] = useState(false)
 
   useEffect(() => {
@@ -795,6 +836,8 @@ export default function PipeRotate() {
                       onPick={() => toggleInterest(it.id)}
                       selected={selectedInterests.has(it.id)}
                       idx={idx}
+                      failedEventImgs={failedEventImgs}
+                      setFailedEventImgs={setFailedEventImgs}
                     />
                   </Box>
                 ))}
