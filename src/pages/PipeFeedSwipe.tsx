@@ -10,10 +10,9 @@ import {
   type EventCard,
 } from "./pipe/shared"
 
-const K = "#0D0D0D"
 const W = "#FFFFFF"
 const B = "#0055FF"
-const G = "rgba(13,13,13,0.35)"
+const G = "rgba(0,85,255,0.55)"
 
 const STACK_OFFSET = 24
 const SWIPE_THRESHOLD = 50
@@ -118,13 +117,11 @@ function EventCardStackCard({
       height={cardH}
       zIndex={zIndex}
       transform={`translateX(${translateX}px)`}
-      border={`2.5px solid ${K}`}
-      boxShadow={isTop ? `4px 4px 0 ${B}` : `2px 2px 8px ${K}25`}
-      bg={K}
+      border={`2.5px solid ${B}`}
+      bg={W}
       cursor={isTop ? "grab" : "default"}
       overflow="hidden"
-      transition={isTop && dragOffsetX === 0 ? "box-shadow 0.2s, transform 0.25s ease-out" : "box-shadow 0.2s"}
-      _hover={isTop ? { boxShadow: `6px 6px 0 ${B}` } : undefined}
+      transition={isTop && dragOffsetX === 0 ? "transform 0.25s ease-out" : undefined}
       _active={isTop ? { cursor: "grabbing" } : undefined}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
@@ -142,7 +139,7 @@ function EventCardStackCard({
         top={0}
         right={0}
         bottom={0}
-        bg={K}
+        bg={W}
         backgroundImage={imgSrc ? `url(${imgSrc})` : undefined}
         backgroundSize="contain"
         backgroundPosition="center"
@@ -164,17 +161,8 @@ function EventCardStackCard({
           />
         )}
         {!imgSrc && (
-          <Box position="absolute" left={0} top={0} right={0} bottom={0} bg={`${B}20`} />
+          <Box position="absolute" left={0} top={0} right={0} bottom={0} bg={`${B}18`} />
         )}
-        <Box
-          position="absolute"
-          left={0}
-          top={0}
-          right={0}
-          bottom={0}
-          bg="linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.5) 35%, transparent 70%)"
-          pointerEvents="none"
-        />
       </Box>
       <Flex
         position="absolute"
@@ -192,7 +180,7 @@ function EventCardStackCard({
             fontWeight="700"
             letterSpacing="0.15em"
             textTransform="uppercase"
-            color={`${W}99`}
+            color={B}
           >
             {card.channel.replace(/^@/, "").slice(0, 20)}
           </Text>
@@ -223,7 +211,7 @@ function EventCardStackCard({
         >
           {title}
         </Text>
-        <Flex mt="3" align="center" justify="space-between">
+        <Flex mt="3" align="center" justify="space-between" borderTop={`1px solid rgba(255,255,255,0.12)`} pt="3">
           <Text
             fontSize="10px"
             fontWeight="700"
@@ -233,9 +221,7 @@ function EventCardStackCard({
           >
             Подробнее
           </Text>
-          <Text fontSize="14px" fontWeight="900" color={B}>
-            →
-          </Text>
+          <Box as="span" color={B} fontSize="14px" fontWeight="900">→</Box>
         </Flex>
       </Flex>
     </Box>
@@ -356,7 +342,7 @@ export default function PipeFeedSwipe() {
     <Box
       minH="100dvh"
       bg={W}
-      color={K}
+      color={B}
       position="relative"
       css={{ WebkitTapHighlightColor: "transparent" }}
       style={{
@@ -385,7 +371,7 @@ export default function PipeFeedSwipe() {
             fontWeight="800"
             letterSpacing="0.1em"
             textTransform="uppercase"
-            color={K}
+            color={B}
             _hover={{ color: B }}
             transition="color 0.15s"
           >
@@ -466,26 +452,24 @@ export default function PipeFeedSwipe() {
               justify="center"
               w="48px"
               h="48px"
-              border={`2px solid ${K}`}
-              bg={hasPrev ? W : `${K}08`}
-              color={K}
+              border={`2px solid ${hasPrev ? B : `${B}40`}`}
+              bg={hasPrev ? W : `${B}08`}
+              color={B}
               cursor={hasPrev ? "pointer" : "not-allowed"}
               opacity={hasPrev ? 1 : 0.5}
-              _hover={hasPrev ? { bg: `${K}08` } : undefined}
+              _hover={hasPrev ? { bg: `${B}12`, borderColor: B } : undefined}
               _disabled={{ cursor: "not-allowed", opacity: 0.5 }}
               transition="all 0.15s"
               pointerEvents={hasPrev ? "auto" : "none"}
             >
-              <Text fontSize="20px" fontWeight="900">
-                ←
-              </Text>
+              <Text fontSize="20px" fontWeight="900">←</Text>
             </Flex>
             <Text
               fontSize="12px"
               fontWeight="800"
               letterSpacing="0.1em"
               alignSelf="center"
-              color={G}
+              color={B}
             >
               {index + 1} / {display.length}
             </Text>
@@ -497,19 +481,17 @@ export default function PipeFeedSwipe() {
               justify="center"
               w="48px"
               h="48px"
-              border={`2px solid ${K}`}
-              bg={hasNext ? W : `${K}08`}
-              color={K}
+              border={`2px solid ${hasNext ? B : `${B}40`}`}
+              bg={hasNext ? W : `${B}08`}
+              color={B}
               cursor={hasNext ? "pointer" : "not-allowed"}
               opacity={hasNext ? 1 : 0.5}
-              _hover={hasNext ? { bg: `${K}08` } : undefined}
+              _hover={hasNext ? { bg: `${B}12`, borderColor: B } : undefined}
               _disabled={{ cursor: "not-allowed", opacity: 0.5 }}
               transition="all 0.15s"
               pointerEvents={hasNext ? "auto" : "none"}
             >
-              <Text fontSize="20px" fontWeight="900">
-                →
-              </Text>
+              <Text fontSize="20px" fontWeight="900">→</Text>
             </Flex>
           </Flex>
         )}
@@ -522,17 +504,16 @@ export default function PipeFeedSwipe() {
             <Dialog.Content
               maxW="min(92vw, 420px)"
               mx="auto"
-              border={`3px solid ${K}`}
+              border={`3px solid ${B}`}
               borderRadius="0"
               overflow="hidden"
-              boxShadow={`6px 6px 0 ${B}`}
               style={{
                 animation: "p5-dialog-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards",
               }}
             >
               <Dialog.CloseTrigger />
               <Dialog.Header
-                bg={K}
+                bg={B}
                 px="5"
                 py="3"
                 position="relative"
@@ -566,7 +547,7 @@ export default function PipeFeedSwipe() {
                   {selImg &&
                     selected &&
                     !failedImgs[selected.id] && (
-                      <Box border={`2px solid ${K}`} overflow="hidden">
+                      <Box border={`2px solid ${B}`} overflow="hidden">
                         <Image
                           src={selImg}
                           alt={selTitle}
@@ -595,7 +576,7 @@ export default function PipeFeedSwipe() {
                   )}
                   <Text
                     fontSize="sm"
-                    color={K}
+                    color={B}
                     whiteSpace="pre-wrap"
                     lineHeight="1.5"
                   >
@@ -607,7 +588,7 @@ export default function PipeFeedSwipe() {
                 px="5"
                 py="3"
                 bg={W}
-                borderTop={`1px solid ${K}12`}
+                borderTop={`1px solid rgba(0,85,255,0.2)`}
               >
                 <Flex
                   as="button"
