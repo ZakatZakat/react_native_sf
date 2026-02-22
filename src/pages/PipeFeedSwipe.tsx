@@ -605,7 +605,7 @@ export default function PipeFeedSwipe() {
                           alt={selTitle}
                           width="100%"
                           height="auto"
-                          maxH="300px"
+                          maxH="min(480px, 70vh)"
                           objectFit="contain"
                           display="block"
                           onError={() => {
