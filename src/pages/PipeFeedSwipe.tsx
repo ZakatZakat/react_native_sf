@@ -18,7 +18,6 @@ const G = "rgba(13,13,13,0.35)"
 const STACK_OFFSET = 24
 const SWIPE_THRESHOLD = 50
 const CARD_MIN_HEIGHT = 580
-const CARD_IMAGE_MAX_H = 320
 const STACK_VISIBLE = 4
 
 function EventCardStackCard({
@@ -137,29 +136,45 @@ function EventCardStackCard({
       onClick={isTop ? onTap : undefined}
       style={{ touchAction: "pan-y" }}
     >
-      {imgSrc ? (
-        <Box overflow="hidden" borderBottom={`2px solid ${K}`} h={`${CARD_IMAGE_MAX_H}px`}>
+      <Box position="absolute" inset="0">
+        {imgSrc ? (
           <Image
             src={imgSrc}
             alt={title}
+            position="absolute"
+            inset="0"
             width="100%"
             height="100%"
             objectFit="cover"
             display="block"
             onError={() => setFailedImgs((p) => ({ ...p, [card.id]: true }))}
           />
-        </Box>
-      ) : (
-        <Box h={`${CARD_IMAGE_MAX_H}px`} bg={`${B}12`} borderBottom={`2px solid ${K}`} />
-      )}
-      <Box px="4" py="4" display="flex" flexDirection="column">
+        ) : (
+          <Box position="absolute" inset="0" bg={`${B}20`} />
+        )}
+        <Box
+          position="absolute"
+          inset="0"
+          bg="linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.5) 35%, transparent 70%)"
+        />
+      </Box>
+      <Flex
+        position="absolute"
+        left="0"
+        right="0"
+        bottom="0"
+        direction="column"
+        px="4"
+        py="5"
+        color={W}
+      >
         <Flex justify="space-between" align="center" mb="2">
           <Text
             fontSize="10px"
             fontWeight="700"
             letterSpacing="0.15em"
             textTransform="uppercase"
-            color={B}
+            color={`${W}99`}
           >
             {card.channel.replace(/^@/, "").slice(0, 20)}
           </Text>
@@ -168,7 +183,7 @@ function EventCardStackCard({
               fontSize="10px"
               fontWeight="600"
               letterSpacing="0.08em"
-              color={G}
+              color={`${W}99`}
               textTransform="uppercase"
             >
               {date}
@@ -176,33 +191,27 @@ function EventCardStackCard({
           )}
         </Flex>
         <Text
-          fontSize="16px"
+          fontSize="18px"
           fontWeight="900"
           lineHeight="1.2"
           textTransform="uppercase"
           letterSpacing="-0.01em"
           style={{
             display: "-webkit-box",
-            WebkitLineClamp: 4,
+            WebkitLineClamp: 3,
             WebkitBoxOrient: "vertical",
             overflow: "hidden",
           }}
         >
           {title}
         </Text>
-        <Flex
-          mt="4"
-          align="center"
-          justify="space-between"
-          borderTop={`1px solid ${K}12`}
-          pt="3"
-        >
+        <Flex mt="3" align="center" justify="space-between">
           <Text
             fontSize="10px"
             fontWeight="700"
             letterSpacing="0.1em"
             textTransform="uppercase"
-            color={G}
+            color={`${W}99`}
           >
             Подробнее
           </Text>
@@ -210,7 +219,7 @@ function EventCardStackCard({
             →
           </Text>
         </Flex>
-      </Box>
+      </Flex>
     </Box>
   )
 }
@@ -546,7 +555,7 @@ export default function PipeFeedSwipe() {
                           width="100%"
                           height="auto"
                           maxH="300px"
-                          objectFit="cover"
+                          objectFit="contain"
                           display="block"
                           onError={() => {
                             if (selected)
