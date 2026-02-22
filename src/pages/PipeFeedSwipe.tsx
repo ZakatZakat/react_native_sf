@@ -10,14 +10,21 @@ import {
   type EventCard,
 } from "./pipe/shared"
 
+const K = "#0D0D0D"
 const W = "#FFFFFF"
 const B = "#0055FF"
-const G = "rgba(0,85,255,0.55)"
+const G = "rgba(13,13,13,0.35)"
 
 const STACK_OFFSET = 24
 const SWIPE_THRESHOLD = 50
-const CARD_MIN_HEIGHT = 580
+const CARD_MIN_HEIGHT = 400
+const CARD_MAX_HEIGHT = 720
+const CONTENT_BLOCK_HEIGHT = 118
 const STACK_VISIBLE = 4
+
+const CHAOS_ROTATE = [-1.2, 0.9, -0.6, 1.1, -0.8]
+const chaosRotate = (i: number) => CHAOS_ROTATE[i % CHAOS_ROTATE.length]!
+const chaosJitter = (i: number, seed: number) => ((i * seed) % 7) - 3
 
 function EventCardStackCard({
   card,
@@ -25,9 +32,11 @@ function EventCardStackCard({
   total,
   isTop,
   dragOffsetX,
+  cardHeight,
   failedImgs,
   setFailedImgs,
   onTap,
+  onImageLoad,
   onSwipeStart,
   onSwipeMove,
   onSwipeEnd,
@@ -38,9 +47,11 @@ function EventCardStackCard({
   total: number
   isTop: boolean
   dragOffsetX: number
+  cardHeight: number
   failedImgs: Record<string, true>
   setFailedImgs: React.Dispatch<React.SetStateAction<Record<string, true>>>
   onTap: () => void
+  onImageLoad?: (id: string, w: number, h: number) => void
   onSwipeStart: (x: number) => void
   onSwipeMove: (x: number) => void
   onSwipeEnd: (x: number) => void
@@ -57,7 +68,10 @@ function EventCardStackCard({
   const translateX = isTop ? dragOffsetX : 0
   const peek = (total - 1) * STACK_OFFSET
   const cardW = `calc(100% - ${peek}px)`
-  const cardH = `calc(100% - ${peek}px)`
+  const imageBlockHeight = cardHeight - CONTENT_BLOCK_HEIGHT
+  const rotate = chaosRotate(index)
+  const jitterX = chaosJitter(index, 11)
+  const jitterY = chaosJitter(index, 13)
 
   const handleTouchStart = useCallback(
     (e: React.TouchEvent) => {
@@ -111,17 +125,20 @@ function EventCardStackCard({
   return (
     <Box
       position="absolute"
-      left={`${offsetPx}px`}
-      top={`${offsetPx}px`}
+      left={`${offsetPx + jitterX}px`}
+      top={`${offsetPx + jitterY}px`}
       width={cardW}
-      height={cardH}
+      height={`${cardHeight}px`}
       zIndex={zIndex}
-      transform={`translateX(${translateX}px)`}
-      border={`2.5px solid ${B}`}
+      transform={`translateX(${translateX}px) rotate(${rotate}deg)`}
+      transformOrigin="center center"
+      border={`2.5px solid ${K}`}
+      boxShadow={isTop ? `4px 4px 0 ${B}` : `2px 2px 6px ${K}20`}
       bg={W}
       cursor={isTop ? "grab" : "default"}
       overflow="hidden"
-      transition={isTop && dragOffsetX === 0 ? "transform 0.25s ease-out" : undefined}
+      transition={isTop && dragOffsetX === 0 ? "transform 0.25s ease-out, box-shadow 0.15s" : undefined}
+      _hover={isTop ? { boxShadow: `6px 6px 0 ${B}` } : undefined}
       _active={isTop ? { cursor: "grabbing" } : undefined}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
@@ -132,76 +149,46 @@ function EventCardStackCard({
       onMouseLeave={() => isTop && onSwipeCancel()}
       onClick={isTop ? onTap : undefined}
       style={{ touchAction: "pan-y" }}
+      display="flex"
+      flexDirection="column"
     >
-      <Box
-        position="absolute"
-        left={0}
-        top={0}
-        right={0}
-        bottom={0}
-        bg={W}
-        backgroundImage={imgSrc ? `url(${imgSrc})` : undefined}
-        backgroundSize="contain"
-        backgroundPosition="center"
-        backgroundRepeat="no-repeat"
-        style={{
-          backgroundImage: imgSrc ? `url("${imgSrc.replace(/"/g, "%22")}")` : undefined,
-          backgroundSize: "contain",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
-        }}
-      >
-        {imgSrc && (
-          <img
+      {imgSrc ? (
+        <Box overflow="hidden" borderBottom={`2px solid ${K}`} h={`${imageBlockHeight}px`} flexShrink={0}>
+          <Image
             src={imgSrc}
-            alt=""
-            aria-hidden
+            alt={title}
+            width="100%"
+            height="100%"
+            objectFit="contain"
+            display="block"
+            onLoad={(e) => {
+              const img = e.target as HTMLImageElement
+              onImageLoad?.(card.id, img.naturalWidth, img.naturalHeight)
+            }}
             onError={() => setFailedImgs((p) => ({ ...p, [card.id]: true }))}
-            style={{ position: "absolute", width: 0, height: 0, opacity: 0, pointerEvents: "none" }}
           />
-        )}
-        {!imgSrc && (
-          <Box position="absolute" left={0} top={0} right={0} bottom={0} bg={`${B}18`} />
-        )}
-      </Box>
-      <Flex
-        position="absolute"
-        left="0"
-        right="0"
-        bottom="0"
-        direction="column"
-        px="4"
-        py="5"
-        color={W}
-      >
+        </Box>
+      ) : (
+        <Box h={`${imageBlockHeight}px`} flexShrink={0} bg={`${B}12`} borderBottom={`2px solid ${K}`} />
+      )}
+      <Box px="4" py="3" flexShrink={0}>
         <Flex justify="space-between" align="center" mb="2">
-          <Text
-            fontSize="10px"
-            fontWeight="700"
-            letterSpacing="0.15em"
-            textTransform="uppercase"
-            color={B}
-          >
-            {card.channel.replace(/^@/, "").slice(0, 20)}
+          <Text fontSize="10px" fontWeight="700" letterSpacing="0.15em" textTransform="uppercase" color={B}>
+            {card.channel.replace(/^@/, "").slice(0, 24)}
           </Text>
           {date && (
-            <Text
-              fontSize="10px"
-              fontWeight="600"
-              letterSpacing="0.08em"
-              color={`${W}99`}
-              textTransform="uppercase"
-            >
+            <Text fontSize="10px" fontWeight="600" letterSpacing="0.08em" color={G} textTransform="uppercase">
               {date}
             </Text>
           )}
         </Flex>
         <Text
-          fontSize="18px"
+          fontSize="16px"
           fontWeight="900"
-          lineHeight="1.2"
+          lineHeight="1.15"
           textTransform="uppercase"
           letterSpacing="-0.01em"
+          color={K}
           style={{
             display: "-webkit-box",
             WebkitLineClamp: 3,
@@ -211,19 +198,13 @@ function EventCardStackCard({
         >
           {title}
         </Text>
-        <Flex mt="3" align="center" justify="space-between" borderTop={`1px solid rgba(255,255,255,0.12)`} pt="3">
-          <Text
-            fontSize="10px"
-            fontWeight="700"
-            letterSpacing="0.1em"
-            textTransform="uppercase"
-            color={`${W}99`}
-          >
+        <Flex mt="3" align="center" justify="space-between" borderTop={`1px solid ${K}12`} pt="2">
+          <Text fontSize="10px" fontWeight="700" letterSpacing="0.1em" textTransform="uppercase" color={G}>
             Подробнее
           </Text>
-          <Box as="span" color={B} fontSize="14px" fontWeight="900">→</Box>
+          <Text fontSize="14px" fontWeight="900" color={B}>→</Text>
         </Flex>
-      </Flex>
+      </Box>
     </Box>
   )
 }
@@ -237,8 +218,12 @@ export default function PipeFeedSwipe() {
   const [selected, setSelected] = useState<EventCard | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
   const [dragOffsetX, setDragOffsetX] = useState(0)
+  const [imageSizes, setImageSizes] = useState<Record<string, { w: number; h: number }>>({})
+  const [containerWidth, setContainerWidth] = useState(0)
+  const stackRef = useRef<HTMLDivElement>(null)
   const touchStartX = useRef(0)
   const justSwiped = useRef(false)
+
 
   useEffect(() => {
     (async () => {
@@ -257,6 +242,18 @@ export default function PipeFeedSwipe() {
     () => items.filter((ev) => ev.media_urls?.some(isImg)),
     [items]
   )
+
+  useEffect(() => {
+    const el = stackRef.current
+    if (!el) return
+    const ro = new ResizeObserver((entries) => {
+      const entry = entries[0]
+      if (entry) setContainerWidth(entry.contentRect.width)
+    })
+    ro.observe(el)
+    setContainerWidth(el.getBoundingClientRect().width)
+    return () => ro.disconnect()
+  }, [display.length])
 
   const hasNext = index < display.length - 1
   const hasPrev = index > 0
@@ -319,6 +316,24 @@ export default function PipeFeedSwipe() {
   }, [selected])
 
   const visibleCards = display.slice(index, index + STACK_VISIBLE)
+  const peekPx = (STACK_VISIBLE - 1) * STACK_OFFSET
+  const cardWidthPx = Math.max(0, containerWidth - peekPx)
+
+  const frontCardHeight = useMemo(() => {
+    const front = display[index]
+    if (!front || !cardWidthPx) return CARD_MIN_HEIGHT
+    const sizes = imageSizes[front.id]
+    if (!sizes || sizes.w <= 0) return CARD_MIN_HEIGHT
+    const imageHeight = cardWidthPx * (sizes.h / sizes.w)
+    const total = Math.round(imageHeight) + CONTENT_BLOCK_HEIGHT
+    return Math.min(CARD_MAX_HEIGHT, Math.max(CARD_MIN_HEIGHT, total))
+  }, [display, index, imageSizes, cardWidthPx])
+
+  const stackHeight = frontCardHeight + peekPx
+
+  const handleImageLoad = useCallback((id: string, w: number, h: number) => {
+    setImageSizes((prev) => (prev[id]?.w === w && prev[id]?.h === h ? prev : { ...prev, [id]: { w, h } }))
+  }, [])
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -335,8 +350,6 @@ export default function PipeFeedSwipe() {
     document.addEventListener("mouseup", up)
     return () => document.removeEventListener("mouseup", up)
   }, [dragOffsetX, onSwipeEnd])
-
-  const stackHeight = CARD_MIN_HEIGHT + (STACK_VISIBLE - 1) * STACK_OFFSET
 
   return (
     <Box
@@ -421,7 +434,7 @@ export default function PipeFeedSwipe() {
             Нет событий с изображениями
           </Text>
         ) : (
-          <Box position="relative" w="100%" h={`${stackHeight}px`}>
+          <Box ref={stackRef} position="relative" w="100%" h={`${stackHeight}px`}>
             {visibleCards.map((card, i) => (
               <EventCardStackCard
                 key={`${card.id}-${index + i}`}
@@ -430,9 +443,11 @@ export default function PipeFeedSwipe() {
                 total={visibleCards.length}
                 isTop={i === 0}
                 dragOffsetX={i === 0 ? dragOffsetX : 0}
+                cardHeight={frontCardHeight}
                 failedImgs={failedImgs}
                 setFailedImgs={setFailedImgs}
                 onTap={() => openDetail(card)}
+                onImageLoad={handleImageLoad}
                 onSwipeStart={onSwipeStart}
                 onSwipeMove={onSwipeMove}
                 onSwipeEnd={onSwipeEnd}
@@ -504,16 +519,17 @@ export default function PipeFeedSwipe() {
             <Dialog.Content
               maxW="min(92vw, 420px)"
               mx="auto"
-              border={`3px solid ${B}`}
+              border={`3px solid ${K}`}
               borderRadius="0"
               overflow="hidden"
+              boxShadow={`6px 6px 0 ${B}`}
               style={{
                 animation: "p5-dialog-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards",
               }}
             >
               <Dialog.CloseTrigger />
               <Dialog.Header
-                bg={B}
+                bg={K}
                 px="5"
                 py="3"
                 position="relative"
@@ -547,7 +563,7 @@ export default function PipeFeedSwipe() {
                   {selImg &&
                     selected &&
                     !failedImgs[selected.id] && (
-                      <Box border={`2px solid ${B}`} overflow="hidden">
+                      <Box border={`2px solid ${K}`} overflow="hidden">
                         <Image
                           src={selImg}
                           alt={selTitle}
@@ -576,7 +592,7 @@ export default function PipeFeedSwipe() {
                   )}
                   <Text
                     fontSize="sm"
-                    color={B}
+                    color={K}
                     whiteSpace="pre-wrap"
                     lineHeight="1.5"
                   >
@@ -588,7 +604,7 @@ export default function PipeFeedSwipe() {
                 px="5"
                 py="3"
                 bg={W}
-                borderTop={`1px solid rgba(0,85,255,0.2)`}
+                borderTop={`1px solid ${K}12`}
               >
                 <Flex
                   as="button"
