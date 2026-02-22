@@ -259,10 +259,28 @@ const COLLAGE_SLOTS: { left: number; top: number; w: number; rotate: number; z: 
   { left: 4, top: 5 * ROW_HEIGHT + 5 * CARD_GAP, w: 45, rotate: -0.6, z: 1 },
 ]
 
-type FeedTag = { id: string; label: string; icon: string; keywords: string[]; stat?: string }
+export type FeedTag = { id: string; label: string; icon: string; keywords: string[]; stat?: string }
+
+export function getFeedTagsForPage(): FeedTag[] {
+  const ecoIds = loadPipeRotateSelected()
+  if (ecoIds.length > 0) {
+    return ecoIds
+      .map((id) => ECO_INTERESTS.find((e) => e.id === id))
+      .filter((e): e is NonNullable<typeof e> => !!e)
+  }
+  const profile = loadProfile()
+  const selectedCats = CATEGORIES.filter((c) => profile.selected.includes(c.id))
+  return selectedCats.map((c) => ({
+    id: c.id,
+    label: c.label,
+    icon: c.icon,
+    keywords: c.keywords,
+    stat: `${c.channels} кан. · ${c.posts} пост.`,
+  }))
+}
 
 /* ── Personal Feed ── */
-function PersonalFeed({ tags, onBack }: { tags: FeedTag[]; onBack: () => void }) {
+export function PersonalFeed({ tags, onBack }: { tags: FeedTag[]; onBack: () => void }) {
   const [items, setItems] = useState<EventCard[]>([])
   const [loading, setLoading] = useState(true)
   const [failedImgs, setFailedImgs] = useState<Record<string, true>>({})
@@ -666,7 +684,9 @@ function PersonalFeed({ tags, onBack }: { tags: FeedTag[]; onBack: () => void })
 /* ── Main Page ── */
 export default function PipeMyProfile() {
   const location = useLocation()
-  const openFeed = (location.state as { openFeed?: boolean } | undefined)?.openFeed
+  const openFeedFromState = (location.state as { openFeed?: boolean } | undefined)?.openFeed
+  const openFeedFromQuery = new URLSearchParams(location.search).get("feed") === "1"
+  const openFeed = openFeedFromState || openFeedFromQuery
   const [profile, setProfile] = useState<ProfileData>(loadProfile)
   const [view, setView] = useState<"profile" | "transition" | "feed">(openFeed ? "feed" : "profile")
 

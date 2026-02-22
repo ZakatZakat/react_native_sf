@@ -12,6 +12,7 @@ const PIPE_ROUTES = [
   { label: "Pipe Landing Page", to: "/pipe-landing" },
   { label: "Pipe Rotate", to: "/pipe-rotate" },
   { label: "Pipe My Profile", to: "/pipe-personal" },
+  { label: "Pipe Personal Feed", to: "/pipe-personal-feed" },
   { label: "Pipe Feed", to: "/pipe-feed" },
   { label: "Pipe Example Only Blue", to: "/pipe-example-only-blue" },
   { label: "Pipe Feed Only Blue", to: "/pipe-feed-only-blue" },
@@ -56,8 +57,10 @@ export default function App() {
 
   const currentPath = React.useMemo(() => {
     const p = location.pathname
+    const full = p + (location.search ?? "")
+    if (ALL_ROUTES.some((r) => r.to === full)) return full
     return ALL_ROUTES.some((r) => r.to === p) ? p : ""
-  }, [location.pathname])
+  }, [location.pathname, location.search])
 
   return (
     <Box minH="100dvh" bg={bg} color={fg}>
