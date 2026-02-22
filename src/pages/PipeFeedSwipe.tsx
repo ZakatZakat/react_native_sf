@@ -120,7 +120,7 @@ function EventCardStackCard({
       transform={`translateX(${translateX}px)`}
       border={`2.5px solid ${K}`}
       boxShadow={isTop ? `4px 4px 0 ${B}` : `2px 2px 8px ${K}25`}
-      bg={W}
+      bg={K}
       cursor={isTop ? "grab" : "default"}
       overflow="hidden"
       transition={isTop && dragOffsetX === 0 ? "box-shadow 0.2s, transform 0.25s ease-out" : "box-shadow 0.2s"}
@@ -136,26 +136,44 @@ function EventCardStackCard({
       onClick={isTop ? onTap : undefined}
       style={{ touchAction: "pan-y" }}
     >
-      <Box position="absolute" inset="0">
-        {imgSrc ? (
-          <Image
+      <Box
+        position="absolute"
+        left={0}
+        top={0}
+        right={0}
+        bottom={0}
+        bg={K}
+        backgroundImage={imgSrc ? `url(${imgSrc})` : undefined}
+        backgroundSize="contain"
+        backgroundPosition="center"
+        backgroundRepeat="no-repeat"
+        style={{
+          backgroundImage: imgSrc ? `url("${imgSrc.replace(/"/g, "%22")}")` : undefined,
+          backgroundSize: "contain",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+        }}
+      >
+        {imgSrc && (
+          <img
             src={imgSrc}
-            alt={title}
-            position="absolute"
-            inset="0"
-            width="100%"
-            height="100%"
-            objectFit="cover"
-            display="block"
+            alt=""
+            aria-hidden
             onError={() => setFailedImgs((p) => ({ ...p, [card.id]: true }))}
+            style={{ position: "absolute", width: 0, height: 0, opacity: 0, pointerEvents: "none" }}
           />
-        ) : (
-          <Box position="absolute" inset="0" bg={`${B}20`} />
+        )}
+        {!imgSrc && (
+          <Box position="absolute" left={0} top={0} right={0} bottom={0} bg={`${B}20`} />
         )}
         <Box
           position="absolute"
-          inset="0"
+          left={0}
+          top={0}
+          right={0}
+          bottom={0}
           bg="linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.5) 35%, transparent 70%)"
+          pointerEvents="none"
         />
       </Box>
       <Flex
