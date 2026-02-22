@@ -19,7 +19,7 @@ const STACK_OFFSET = 24
 const SWIPE_THRESHOLD = 50
 const CARD_MIN_HEIGHT = 400
 const CARD_MAX_HEIGHT = 720
-const CONTENT_BLOCK_HEIGHT = 118
+const CONTENT_BLOCK_HEIGHT = 172
 const STACK_VISIBLE = 4
 
 const CHAOS_ROTATE = [-1.2, 0.9, -0.6, 1.1, -0.8]
@@ -62,6 +62,15 @@ function EventCardStackCard({
   const imgSrc = rawSrc && isImg(rawSrc) && !failedImgs[card.id] ? rawSrc : null
   const title = firstLine(card.title) || firstLine(card.description) || "Событие"
   const date = formatDate(card.event_time || card.created_at)
+  const rawDesc = (card.description ?? "").trim()
+  const firstLineOfDesc = rawDesc.split("\n")[0]?.trim() ?? ""
+  const sameAsTitle =
+    firstLineOfDesc.length > 0 &&
+    (title.slice(0, 25).toLowerCase() === firstLineOfDesc.slice(0, 25).toLowerCase() ||
+      firstLineOfDesc.length < 40 && title.toLowerCase().includes(firstLineOfDesc.toLowerCase()))
+  const body = sameAsTitle && rawDesc.includes("\n")
+    ? rawDesc.split("\n").slice(1).join("\n").trim().slice(0, 480)
+    : rawDesc.slice(0, 480)
 
   const offsetPx = index * STACK_OFFSET
   const zIndex = total - index
@@ -191,13 +200,40 @@ function EventCardStackCard({
           color={K}
           style={{
             display: "-webkit-box",
-            WebkitLineClamp: 3,
+            WebkitLineClamp: 2,
             WebkitBoxOrient: "vertical",
             overflow: "hidden",
           }}
         >
           {title}
         </Text>
+        {body ? (
+          <Box position="relative" mt="2" maxH="52px" overflow="hidden">
+            <Text
+              fontSize="11px"
+              lineHeight="1.35"
+              color={G}
+              whiteSpace="pre-wrap"
+              style={{
+                display: "-webkit-box",
+                WebkitLineClamp: 3,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+              }}
+            >
+              {body}
+            </Text>
+            <Box
+              position="absolute"
+              bottom={0}
+              left={0}
+              right={0}
+              h="24px"
+              bg={`linear-gradient(to top, ${W} 30%, transparent)`}
+              pointerEvents="none"
+            />
+          </Box>
+        ) : null}
         <Flex mt="3" align="center" justify="space-between" borderTop={`1px solid ${K}12`} pt="2">
           <Text fontSize="10px" fontWeight="700" letterSpacing="0.1em" textTransform="uppercase" color={G}>
             Подробнее
