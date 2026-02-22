@@ -427,32 +427,23 @@ export default function PipeFeedSwipe() {
             <Text fontSize="16px">←</Text>
             Назад
           </Flex>
-          <Text
-            fontSize="10px"
-            fontWeight="700"
-            letterSpacing="0.15em"
-            textTransform="uppercase"
-            color={G}
-          >
-            Лента
-          </Text>
         </Flex>
 
         <Text
-          fontSize="28px"
+          fontSize="36px"
           fontWeight="900"
           lineHeight="0.92"
           letterSpacing="-0.03em"
           textTransform="uppercase"
-          mb="2"
+          pb="6"
         >
-          Свайпай
-          <Text as="span" color={B}> карточки</Text>
+          <Text as="span" color={K}>Свайпай </Text>
+          <Text as="span" color={B}>карточки</Text>
         </Text>
 
         <Text
           fontSize="10px"
-          fontWeight="700"
+          fontWeight="800"
           letterSpacing="0.12em"
           textTransform="uppercase"
           color={G}

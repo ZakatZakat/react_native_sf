@@ -8,18 +8,18 @@ declare global {
 }
 
 const PIPE_ROUTES = [
-  { label: "Pipe Example", to: "/pipe-example" },
   { label: "Pipe Landing Page", to: "/pipe-landing" },
   { label: "Pipe Feed Swipe", to: "/pipe-feed-swipe" },
+] as const
+
+const ALT_ROUTES = [
+  { label: "Pipe Example", to: "/pipe-example" },
   { label: "Pipe Rotate", to: "/pipe-rotate" },
   { label: "Pipe My Profile", to: "/pipe-personal" },
   { label: "Pipe Personal Feed", to: "/pipe-personal-feed" },
   { label: "Pipe Feed", to: "/pipe-feed" },
   { label: "Pipe Example Only Blue", to: "/pipe-example-only-blue" },
   { label: "Pipe Feed Only Blue", to: "/pipe-feed-only-blue" },
-] as const
-
-const ALT_ROUTES = [
   { label: "Landing", to: "/" },
   { label: "Landing 2", to: "/landing-2" },
   { label: "Landing 3", to: "/landing-3" },
