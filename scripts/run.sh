@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MODE="${1:-docker}"
-PORT="${PORT:-5173}"
+PORT="${PORT:-5175}"
 IMAGE_NAME="tg-miniapp-dev"
 
 ensure_traefik_network() {
@@ -31,6 +31,11 @@ run_local() {
   npm run dev -- --host 0.0.0.0 --port "$PORT"
 }
 
+run_dev() {
+  cd "$ROOT_DIR"
+  npm run dev
+}
+
 run_compose_local() {
   cd "$ROOT_DIR"
   docker compose -f docker-compose.local.yml up --build
@@ -40,9 +45,10 @@ case "$MODE" in
   docker) run_docker_traefik ;;
   docker-local) run_docker_local ;;
   local) run_local ;;
+  dev) run_dev ;;
   compose-local) run_compose_local ;;
   *)
-    echo "Usage: $0 [docker|docker-local|local|compose-local]" >&2
+    echo "Usage: $0 [docker|docker-local|local|dev|compose-local]" >&2
     exit 1
     ;;
 esac

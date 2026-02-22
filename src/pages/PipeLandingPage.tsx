@@ -141,7 +141,7 @@ export default function PipeLandingPage() {
           letterSpacing="0.04em"
           _hover={{ opacity: 0.9 }}
           _active={{ opacity: 0.85 }}
-          onClick={() => navigate({ to: "/pipe-rotate" })}
+          onClick={() => navigate({ to: "/pipe-feed-swipe" })}
         >
           Попробовать
         </Button>
