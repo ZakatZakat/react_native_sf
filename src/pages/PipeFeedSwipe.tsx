@@ -599,7 +599,7 @@ export default function PipeFeedSwipe() {
                   {selImg &&
                     selected &&
                     !failedImgs[selected.id] && (
-                      <Box border={`2px solid ${K}`} overflow="hidden">
+                      <Box overflow="hidden">
                         <Image
                           src={selImg}
                           alt={selTitle}
