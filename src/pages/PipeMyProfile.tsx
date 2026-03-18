@@ -4,7 +4,6 @@ import { Box, Flex, Stack, Text, Image, Dialog, Portal } from "@chakra-ui/react"
 import {
   PageWipe, PipeFooter, useCountUp, useScrollReveal,
   API, isImg, resolveMedia, firstLine, formatDate,
-  loadPipeRotateSelected, ECO_INTERESTS,
   type EventCard,
 } from "./pipe/shared"
 
@@ -26,6 +25,7 @@ type Category = {
 }
 
 const CATEGORIES: Category[] = [
+  { id: "events",       label: "Events",      icon: "✹", rotation: -1.0, channels: 4,   posts: 0,   keywords: [] },
   { id: "contemporary", label: "Совриск",     icon: "◆", rotation: -1.2, channels: 38,  posts: 214, keywords: ["совриск", "выстав", "экспоз", "галере", "арт", "art", "инсталляц"] },
   { id: "music",        label: "Музыка",      icon: "♫", rotation: 0.8,  channels: 52,  posts: 487, keywords: ["концерт", "gig", "live", "выступ", "музы", "фестивал"] },
   { id: "theatre",      label: "Театр",       icon: "◉", rotation: -0.6, channels: 27,  posts: 163, keywords: ["театр", "спектакл", "пьеса", "постановк"] },
@@ -262,12 +262,6 @@ const COLLAGE_SLOTS: { left: number; top: number; w: number; rotate: number; z: 
 export type FeedTag = { id: string; label: string; icon: string; keywords: string[]; stat?: string }
 
 export function getFeedTagsForPage(): FeedTag[] {
-  const ecoIds = loadPipeRotateSelected()
-  if (ecoIds.length > 0) {
-    return ecoIds
-      .map((id) => ECO_INTERESTS.find((e) => e.id === id))
-      .filter((e): e is NonNullable<typeof e> => !!e)
-  }
   const profile = loadProfile()
   const selectedCats = CATEGORIES.filter((c) => profile.selected.includes(c.id))
   return selectedCats.map((c) => ({
@@ -700,12 +694,6 @@ export default function PipeMyProfile() {
   const selectedCats = CATEGORIES.filter((c) => selected.has(c.id))
 
   const feedTags = useMemo((): FeedTag[] => {
-    const ecoIds = loadPipeRotateSelected()
-    if (ecoIds.length > 0) {
-      return ecoIds
-        .map((id) => ECO_INTERESTS.find((e) => e.id === id))
-        .filter((e): e is NonNullable<typeof e> => !!e)
-    }
     return selectedCats.map((c) => ({
       id: c.id,
       label: c.label,

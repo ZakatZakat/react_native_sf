@@ -138,21 +138,5 @@ export function formatDate(iso: string | null | undefined): string {
   }
 }
 
-/* ── Pipe Rotate (Eco) selection ── */
+/* ── Pipe Rotate selection ── */
 export const PIPE_ROTATE_STORAGE = "pipe-rotate-class"
-
-export type EcoInterest = { id: string; label: string; icon: string; keywords: string[]; stat?: string }
-
-export const ECO_INTERESTS: EcoInterest[] = [
-  { id: "upcycle", label: "Upcycle одежда", icon: "♻️", keywords: ["upcycle", "апсайкл", "переработк", "second hand"], stat: "15 кан. · 30 ивент." },
-  { id: "fairs", label: "Фэры и маркеты", icon: "🛒", keywords: ["фэр", "маркет", "ярмарк", "блошинг", "fleamarket"], stat: "20 кан. · 45 ивент." },
-  { id: "niche", label: "Нишевые бренды", icon: "🏷", keywords: ["sustainable", "эко", "локальн", "handmade"], stat: "12 кан. · 25 ивент." },
-]
-
-export function loadPipeRotateSelected(): string[] {
-  try {
-    const raw = localStorage.getItem(PIPE_ROTATE_STORAGE)
-    if (raw) return JSON.parse(raw)
-  } catch { /* noop */ }
-  return []
-}

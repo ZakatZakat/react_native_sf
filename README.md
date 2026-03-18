@@ -14,7 +14,7 @@ From repo root, ensure `.env` has Telegram credentials and Postgres vars (see `b
 - **API:** http://localhost:8000
 - **Telegram microservice:** http://localhost:8002 (used by API for avatars/ingest; avatars in browser load from this URL)
 
-Check: http://localhost:5175 → open a page that uses `/debug/eco-channels` or `/debug/channel-avatar` (e.g. PipeRotate) and confirm avatars load. API calls telegram at `http://telegram:8000` inside Docker; redirects/avatar URLs use `TELEGRAM_MEDIA_PUBLIC_URL=http://localhost:8002` so the browser can load images.
+Check: http://localhost:5175 → open a page that uses `/debug/channel-avatar` (e.g. PipeRotate) and confirm avatars load. API calls telegram at `http://telegram:8000` inside Docker; redirects/avatar URLs use `TELEGRAM_MEDIA_PUBLIC_URL=http://localhost:8002` so the browser can load images.
 
 Currently, two official plugins are available:
 

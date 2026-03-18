@@ -56,6 +56,13 @@ def _get_telegram_client(request: Request) -> TelegramServiceClient:
     return request.app.state.telegram_client  # type: ignore[attr-defined]
 
 
+def _get_configured_channels(settings: Settings) -> list[str]:
+    channel_ids = settings.telegram_channel_ids or []
+    if not channel_ids:
+        raise HTTPException(status_code=400, detail="telegram_channel_ids not configured")
+    return channel_ids
+
+
 @router.post("/telegram-fetch-recent")
 async def telegram_fetch_recent(
     request: Request,
@@ -64,9 +71,7 @@ async def telegram_fetch_recent(
     pause_between_messages_seconds: float = Query(0.0, ge=0.0, le=2.0),
 ) -> dict[str, object]:
     settings = Settings()
-    channel_ids = settings.telegram_channel_ids or []
-    if not channel_ids:
-        raise HTTPException(status_code=400, detail="telegram_channel_ids not configured")
+    channel_ids = _get_configured_channels(settings)
     repo = _get_events_repo(request)
     client = _get_telegram_client(request)
     try:
@@ -98,7 +103,8 @@ async def telegram_fetch_event_posts(
     event_only: bool = Query(True, description="If true, use microservice event-posts (keyword filter). If false, ingest all."),
 ) -> dict[str, object]:
     """Fetch posts from telegram (event search in microservice if event_only), upsert to DB; show in Ивенты block."""
-    channel_ids = [f"@{c}" for c in ECO_CHANNELS]
+    settings = Settings()
+    channel_ids = _get_configured_channels(settings)
     repo = _get_events_repo(request)
     client = _get_telegram_client(request)
     try:
@@ -122,7 +128,6 @@ async def telegram_fetch_event_posts(
         logger.exception("telegram-fetch-event-posts: microservice error")
         raise HTTPException(status_code=502, detail="Telegram service unavailable") from e
     events = data.get("events") or []
-    settings = Settings()
     media_base = _media_base(settings).rstrip("/")
     for ev in events:
         raw_media = ev.get("media_urls") or []
@@ -152,11 +157,6 @@ DEFAULT_EVENT_KEYWORDS = [
 ]
 
 REP_DES_ART_CHANNEL = "rep_des_art"
-ECO_CHANNELS = [
-    "beindvz", "constructor_brand", "dmsk_bag", "exclusive_art_upcycling",
-    "hodveshey", "melme", "skrvshch", "swop_market_msk",
-    "syyyyyyyr", "tutryadom", "yergaworkshop", "zelenyy_syr",
-]
 
 
 @router.get("/telegram-event-posts-preview")
@@ -166,7 +166,8 @@ async def telegram_event_posts_preview(
     event_only: bool = Query(True, description="Use keyword filter (microservice /event-posts)."),
 ) -> dict[str, object]:
     """Call microservice event-posts (or ingest) without writing to DB. Check if fetch + filter works."""
-    channel_ids = [f"@{c}" for c in ECO_CHANNELS]
+    settings = Settings()
+    channel_ids = _get_configured_channels(settings)
     client = _get_telegram_client(request)
     try:
         if event_only:
@@ -205,24 +206,6 @@ async def telegram_event_posts_preview(
     }
 
 
-@router.get("/eco-channels")
-async def eco_channels(request: Request) -> list[dict[str, str | None]]:
-    """Return avatar URLs and subs for eco card channels (warms avatar cache)."""
-    client = _get_telegram_client(request)
-    settings = Settings()
-    base = _media_base(settings)
-    try:
-        rows = await client.channels_info(ECO_CHANNELS)
-    except httpx.HTTPError as e:
-        logger.exception("eco-channels: microservice error")
-        raise HTTPException(status_code=502, detail="Telegram service unavailable") from e
-    out: list[dict[str, str | None]] = []
-    for r in rows:
-        avatar = r.get("avatar")
-        if avatar and isinstance(avatar, str) and not avatar.startswith("http"):
-            avatar = f"{base}{avatar}" if avatar.startswith("/") else f"{base}/{avatar}"
-        out.append({"name": r.get("name"), "subs": r.get("subs"), "avatar": avatar})
-    return out
 
 
 @router.post("/fetch-rep-des-art")

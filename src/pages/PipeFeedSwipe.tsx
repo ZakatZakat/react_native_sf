@@ -262,10 +262,23 @@ export default function PipeFeedSwipe() {
 
 
   useEffect(() => {
-    (async () => {
+    const pickRandom = (list: EventCard[], count: number) => {
+      const arr = [...list]
+      for (let i = arr.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1))
+        ;[arr[i], arr[j]] = [arr[j], arr[i]]
+      }
+      return arr.slice(0, count)
+    }
+
+    ;(async () => {
       try {
-        const res = await fetch(`${API}/events?limit=40`, { cache: "no-store" })
-        if (res.ok) setItems(await res.json())
+        const res = await fetch(`${API}/events?limit=200`, { cache: "no-store" })
+        if (res.ok) {
+          const all: EventCard[] = await res.json()
+          const withImages = all.filter((ev) => ev.media_urls?.some(isImg))
+          setItems(pickRandom(withImages, 20))
+        }
       } catch {
         /* */
       } finally {
@@ -274,10 +287,7 @@ export default function PipeFeedSwipe() {
     })()
   }, [])
 
-  const display = useMemo(
-    () => items.filter((ev) => ev.media_urls?.some(isImg)),
-    [items]
-  )
+  const display = useMemo(() => items, [items])
 
   useEffect(() => {
     const el = stackRef.current
