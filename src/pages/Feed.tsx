@@ -23,6 +23,8 @@ type TelegramCreds = {
 const palette = ["#F9D7C3", "#FFEAB6", "#FFB4A8", "#B7FFD4", "#E6E0FF", "#E0F4FF"]
 const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8000"
 
+const FETCH_TIMEOUT_MS = 25_000
+
 function isLikelyImageUrl(url: string): boolean {
   const u = url.toLowerCase()
   return u.endsWith(".jpg") || u.endsWith(".jpeg") || u.endsWith(".png") || u.endsWith(".webp") || u.endsWith(".gif")
@@ -111,6 +113,7 @@ export default function Feed() {
   const [lastUpdatedAt, setLastUpdatedAt] = React.useState<string | null>(null)
   const [syncing, setSyncing] = React.useState(false)
   const [syncError, setSyncError] = React.useState<string | null>(null)
+  const [loadError, setLoadError] = React.useState<string | null>(null)
   const [failedImages, setFailedImages] = React.useState<Record<string, true>>({})
   const [activeFilterKey, setActiveFilterKey] = React.useState<string>("all")
   const [selected, setSelected] = React.useState<EventCard | null>(null)
@@ -130,23 +133,46 @@ export default function Feed() {
 
   const load = React.useCallback(async () => {
     setLoading(true)
+    setLoadError(null)
+    const ac = new AbortController()
+    let timedOut = false
+    const t = window.setTimeout(() => {
+      timedOut = true
+      ac.abort()
+    }, FETCH_TIMEOUT_MS)
     try {
-      const [eventsRes, credsRes] = await Promise.all([
-        fetch(`${apiUrl}/events?limit=100`, { cache: "no-store" }),
-        fetch(`${apiUrl}/debug/telegram-creds`, { cache: "no-store" }),
-      ])
-      if (!eventsRes.ok) throw new Error(`events status ${eventsRes.status}`)
+      const eventsRes = await fetch(`${apiUrl}/events?limit=100`, {
+        cache: "no-store",
+        signal: ac.signal,
+      })
+      if (!eventsRes.ok) throw new Error(`events: HTTP ${eventsRes.status}`)
       const data: EventCard[] = await eventsRes.json()
       setItems(data)
-      if (credsRes.ok) {
-        const credsData: TelegramCreds = await credsRes.json()
-        setCreds(credsData)
-      }
       setLastUpdatedAt(new Date().toISOString())
       setSyncError(null)
+
+      void (async () => {
+        try {
+          const credsRes = await fetch(`${apiUrl}/debug/telegram-creds`, { cache: "no-store" })
+          if (credsRes.ok) setCreds((await credsRes.json()) as TelegramCreds)
+        } catch {
+          /* optional */
+        }
+      })()
     } catch (err) {
       console.error("fetch events", err)
+      setItems([])
+      const msg =
+        timedOut
+          ? `Нет ответа от API за ${FETCH_TIMEOUT_MS / 1000} с (${apiUrl}). Запустите backend или поправьте VITE_API_URL.`
+          : err instanceof Error
+            ? err.message.includes("Failed to fetch") || err.message === "Load failed"
+              ? `Не удалось связаться с ${apiUrl}. Запущен ли backend (часто uvicorn на :8000)?`
+              : err.message
+            : "Не удалось загрузить события"
+      setLoadError(msg)
     } finally {
+      window.clearTimeout(t)
       setLoading(false)
     }
   }, [])
@@ -309,6 +335,14 @@ export default function Feed() {
         ) : null}
 
         {loading ? <Text color="rgba(0,0,0,0.55)">Загружаем...</Text> : null}
+
+        {!loading && loadError ? (
+          <Box borderWidth="1px" borderColor="red.200" bg="red.50" borderRadius="lg" p="3">
+            <Text fontSize="sm" color="red.800">
+              {loadError}
+            </Text>
+          </Box>
+        ) : null}
 
         {!loading ? (
           <>

@@ -22,7 +22,7 @@ run_docker_traefik() {
 run_docker_local() {
   cd "$ROOT_DIR"
   docker build --target dev -t "$IMAGE_NAME" .
-  docker run --rm -it -p "$PORT:5173" "$IMAGE_NAME"
+  docker run --rm -it -p "$PORT:5175" "$IMAGE_NAME"
 }
 
 run_local() {
