@@ -9,6 +9,20 @@ import {
   formatDate,
   type EventCard,
 } from "./pipe/shared"
+import {
+  addHidden,
+  addSaved,
+  getHidden,
+  removeHidden,
+  removeSaved,
+  useSavedEvents,
+} from "./pipe/savedEvents"
+import {
+  getInterests,
+  hasOnboarded,
+  rankEvents,
+  useInterests,
+} from "./pipe/preferences"
 
 const K = "#0D0D0D"
 const W = "#FFFFFF"
@@ -330,8 +344,8 @@ function DeluxeCard({
     transition = "transform 0.32s cubic-bezier(0.22, 1, 0.36, 1)"
   }
 
-  const showLikeBadge = isTop && dragOffsetX < -20 && flingDir === 0
-  const showPrevBadge = isTop && dragOffsetX > 20 && flingDir === 0
+  const showLikeBadge = isTop && dragOffsetX > 20 && flingDir === 0
+  const showNopeBadge = isTop && dragOffsetX < -20 && flingDir === 0
   const badgeOpacity = Math.min(1, Math.abs(dragOffsetX) / 90)
 
   const handleTouchStart = useCallback(
@@ -487,54 +501,54 @@ function DeluxeCard({
           pointerEvents="none"
         />
 
-      {showLikeBadge && (
-        <Box
-          position="absolute"
-          top="22%"
-          right="18px"
-          px="4"
-          py="2"
-          bg={B}
-          color={W}
-          border={`3px solid ${W}`}
-          boxShadow={`4px 4px 0 ${K}`}
-          fontSize="22px"
-          fontWeight="900"
-          letterSpacing="0.18em"
-          textTransform="uppercase"
-          pointerEvents="none"
-          style={{
-            opacity: badgeOpacity,
-            transform: `rotate(14deg) scale(${0.85 + badgeOpacity * 0.25})`,
-          }}
-        >
-          Like
-        </Box>
-      )}
-      {showPrevBadge && (
-        <Box
-          position="absolute"
-          top="22%"
-          left="18px"
-          px="4"
-          py="2"
-          bg={K}
-          color={W}
-          border={`3px solid ${W}`}
-          boxShadow={`-4px 4px 0 ${B}`}
-          fontSize="22px"
-          fontWeight="900"
-          letterSpacing="0.18em"
-          textTransform="uppercase"
-          pointerEvents="none"
-          style={{
-            opacity: badgeOpacity,
-            transform: `rotate(-14deg) scale(${0.85 + badgeOpacity * 0.25})`,
-          }}
-        >
-          Nope
-        </Box>
-      )}
+        {showLikeBadge && (
+          <Box
+            position="absolute"
+            top="14%"
+            left="18px"
+            px="4"
+            py="2"
+            bg={B}
+            color={W}
+            border={`3px solid ${W}`}
+            boxShadow={`-4px 4px 0 ${K}`}
+            fontSize="26px"
+            fontWeight="900"
+            letterSpacing="0.18em"
+            textTransform="uppercase"
+            pointerEvents="none"
+            style={{
+              opacity: badgeOpacity,
+              transform: `rotate(-14deg) scale(${0.85 + badgeOpacity * 0.25})`,
+            }}
+          >
+            ♥ Like
+          </Box>
+        )}
+        {showNopeBadge && (
+          <Box
+            position="absolute"
+            top="14%"
+            right="18px"
+            px="4"
+            py="2"
+            bg={K}
+            color={W}
+            border={`3px solid ${W}`}
+            boxShadow={`4px 4px 0 ${B}`}
+            fontSize="26px"
+            fontWeight="900"
+            letterSpacing="0.18em"
+            textTransform="uppercase"
+            pointerEvents="none"
+            style={{
+              opacity: badgeOpacity,
+              transform: `rotate(14deg) scale(${0.85 + badgeOpacity * 0.25})`,
+            }}
+          >
+            ✕ Nope
+          </Box>
+        )}
 
         <Box position="absolute" left="0" right="0" bottom="0" px="5" pb="5" pt="6" pointerEvents="none">
           <Text
@@ -747,7 +761,15 @@ function CoverflowCard({
 
 export default function PipeFeedSwipe() {
   const navigate = useNavigate()
+  const { saved } = useSavedEvents()
+  const interests = useInterests()
   const [mode, setMode] = useState<Mode>("deluxe")
+
+  useEffect(() => {
+    if (!hasOnboarded()) {
+      navigate({ to: "/pipe-onboarding" })
+    }
+  }, [navigate])
   const [items, setItems] = useState<EventCard[]>([])
   const [loading, setLoading] = useState(true)
   const [failedImgs, setFailedImgs] = useState<Record<string, true>>({})
@@ -781,8 +803,15 @@ export default function PipeFeedSwipe() {
         const res = await fetch(`${API}/events?limit=200`, { cache: "no-store" })
         if (res.ok) {
           const all: EventCard[] = await res.json()
-          const withImages = all.filter((ev) => ev.media_urls?.some(isImg))
-          setItems(pickRandom(withImages, 20))
+          const hidden = new Set(getHidden())
+          const withImages = all.filter((ev) => ev.media_urls?.some(isImg) && !hidden.has(ev.id))
+          const interestKeys = getInterests()
+          if (interestKeys.length > 0) {
+            const ranked = rankEvents(withImages, interestKeys)
+            setItems(ranked.slice(0, 20))
+          } else {
+            setItems(pickRandom(withImages, 20))
+          }
         }
       } catch {
         /* */
@@ -809,32 +838,72 @@ export default function PipeFeedSwipe() {
   const hasNext = index < display.length - 1
   const hasPrev = index > 0
 
-  const advanceWithFling = useCallback(
-    (dir: 1 | -1) => {
-      const can = dir === 1 ? hasNext : hasPrev
-      if (!can) {
+  const undoTimerRef = useRef<number | null>(null)
+  const [undo, setUndo] = useState<{ type: "like" | "nope"; card: EventCard; prevIndex: number } | null>(null)
+
+  const triggerUndo = useCallback((type: "like" | "nope", card: EventCard, prevIndex: number) => {
+    if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current)
+    setUndo({ type, card, prevIndex })
+    undoTimerRef.current = window.setTimeout(() => setUndo(null), 4000)
+  }, [])
+
+  const performUndo = useCallback(() => {
+    setUndo((u) => {
+      if (!u) return null
+      if (u.type === "like") removeSaved(u.card.id)
+      else removeHidden(u.card.id)
+      setIndex(u.prevIndex)
+      setDragOffsetX(0)
+      setFlingDir(0)
+      return null
+    })
+    if (undoTimerRef.current) {
+      window.clearTimeout(undoTimerRef.current)
+      undoTimerRef.current = null
+    }
+  }, [])
+
+  const performAction = useCallback(
+    (kind: "like" | "nope") => {
+      const card = display[index]
+      if (!card) {
         setDragOffsetX(0)
         return
       }
-      if (mode === "deluxe") {
-        justSwiped.current = true
-        setFlingDir(dir)
-        window.setTimeout(() => {
-          setIndex((i) => (dir === 1 ? i + 1 : i - 1))
-          setDragOffsetX(0)
-          setFlingDir(0)
-        }, FLING_DURATION)
-      } else {
-        justSwiped.current = true
-        setIndex((i) => (dir === 1 ? i + 1 : i - 1))
+      if (kind === "like") addSaved(card)
+      else addHidden(card.id)
+      triggerUndo(kind, card, index)
+      justSwiped.current = true
+      const dir: 1 | -1 = kind === "like" ? 1 : -1
+      setFlingDir(dir)
+      window.setTimeout(() => {
+        setIndex((i) => i + 1)
         setDragOffsetX(0)
-      }
+        setFlingDir(0)
+      }, FLING_DURATION)
     },
-    [hasNext, hasPrev, mode]
+    [display, index, triggerUndo]
   )
 
-  const goNext = useCallback(() => advanceWithFling(1), [advanceWithFling])
-  const goPrev = useCallback(() => advanceWithFling(-1), [advanceWithFling])
+  const goNext = useCallback(() => {
+    if (!hasNext) {
+      setDragOffsetX(0)
+      return
+    }
+    justSwiped.current = true
+    setIndex((i) => i + 1)
+    setDragOffsetX(0)
+  }, [hasNext])
+
+  const goPrev = useCallback(() => {
+    if (!hasPrev) {
+      setDragOffsetX(0)
+      return
+    }
+    justSwiped.current = true
+    setIndex((i) => i - 1)
+    setDragOffsetX(0)
+  }, [hasPrev])
 
   const onSwipeStart = useCallback((x: number) => {
     if (flingDir !== 0) return
@@ -855,11 +924,15 @@ export default function PipeFeedSwipe() {
       lastMoveX.current = x
       lastMoveT.current = now
       const raw = x - touchStartX.current
+      if (mode === "deluxe") {
+        setDragOffsetX(raw)
+        return
+      }
       const canDir = raw < 0 ? hasNext : hasPrev
       const eased = canDir ? raw : Math.sign(raw) * Math.sqrt(Math.abs(raw)) * 6
       setDragOffsetX(eased)
     },
-    [flingDir, hasNext, hasPrev]
+    [flingDir, hasNext, hasPrev, mode]
   )
 
   const onSwipeEnd = useCallback(
@@ -869,13 +942,21 @@ export default function PipeFeedSwipe() {
       const v = velocity.current
       const fastLeft = v < -SWIPE_VELOCITY_THRESHOLD
       const fastRight = v > SWIPE_VELOCITY_THRESHOLD
-      if (dx < -SWIPE_THRESHOLD || fastLeft) goNext()
-      else if (dx > SWIPE_THRESHOLD || fastRight) goPrev()
-      else setDragOffsetX(0)
+      const isRight = dx > SWIPE_THRESHOLD || fastRight
+      const isLeft = dx < -SWIPE_THRESHOLD || fastLeft
+      if (mode === "deluxe") {
+        if (isRight) performAction("like")
+        else if (isLeft) performAction("nope")
+        else setDragOffsetX(0)
+      } else {
+        if (isLeft) goNext()
+        else if (isRight) goPrev()
+        else setDragOffsetX(0)
+      }
       touchStartX.current = endX
       velocity.current = 0
     },
-    [goNext, goPrev, flingDir]
+    [goNext, goPrev, flingDir, mode, performAction]
   )
 
   const onSwipeCancel = useCallback(() => setDragOffsetX(0), [])
@@ -971,7 +1052,7 @@ export default function PipeFeedSwipe() {
         direction="column"
         align="stretch"
       >
-        <Flex align="center" justify="space-between" mb="4">
+        <Flex align="center" justify="space-between" mb="4" gap="2">
           <Flex
             as="button"
             onClick={() => navigate({ to: "/pipe-landing" })}
@@ -987,6 +1068,62 @@ export default function PipeFeedSwipe() {
           >
             <Text fontSize="16px">←</Text>
             Назад
+          </Flex>
+          <Flex align="center" gap="2">
+            <Flex
+              as="button"
+              onClick={() => navigate({ to: "/pipe-onboarding" })}
+              align="center"
+              gap="1.5"
+              px="2.5"
+              py="1.5"
+              border={`2px solid ${K}`}
+              bg={W}
+              color={K}
+              boxShadow={`2px 2px 0 ${K}`}
+              fontSize="10px"
+              fontWeight="900"
+              letterSpacing="0.16em"
+              textTransform="uppercase"
+              cursor="pointer"
+              _hover={{ transform: "translate(-1px,-1px)", boxShadow: `3px 3px 0 ${K}` }}
+              transition="all 0.12s"
+              title="Изменить интересы"
+            >
+              <Text fontSize="11px">◤</Text>
+              {interests.length > 0 && (
+                <Box bg={K} color={W} px="1.5" minW="16px" textAlign="center" fontSize="9px" fontWeight="900">
+                  {interests.length}
+                </Box>
+              )}
+            </Flex>
+          <Flex
+            as="button"
+            onClick={() => navigate({ to: "/pipe-my-events" })}
+            align="center"
+            gap="2"
+            px="3"
+            py="1.5"
+            border={`2px solid ${K}`}
+            bg={W}
+            color={K}
+            boxShadow={`3px 3px 0 ${B}`}
+            fontSize="10px"
+            fontWeight="900"
+            letterSpacing="0.16em"
+            textTransform="uppercase"
+            cursor="pointer"
+            _hover={{ transform: "translate(-1px,-1px)", boxShadow: `4px 4px 0 ${B}` }}
+            transition="all 0.12s"
+          >
+            <Text fontSize="13px" color={B}>♥</Text>
+            <Text>Мои</Text>
+            {saved.length > 0 && (
+              <Box bg={B} color={W} px="1.5" minW="18px" textAlign="center" fontSize="10px" fontWeight="900">
+                {saved.length}
+              </Box>
+            )}
+          </Flex>
           </Flex>
         </Flex>
 
@@ -1058,6 +1195,60 @@ export default function PipeFeedSwipe() {
           <Text color={G} fontSize="sm" py="10" textAlign="center">
             Нет событий с изображениями
           </Text>
+        ) : index >= display.length && mode === "deluxe" ? (
+          <Flex direction="column" align="center" gap="4" py="10" textAlign="center">
+            <Text fontSize="48px" fontWeight="900" lineHeight="1" color={K}>
+              ✓
+            </Text>
+            <Text fontSize="20px" fontWeight="900" textTransform="uppercase" letterSpacing="-0.01em" color={K}>
+              Колода кончилась
+            </Text>
+            <Text fontSize="11px" fontWeight="700" letterSpacing="0.1em" textTransform="uppercase" color={G}>
+              {saved.length > 0 ? `Сохранено: ${saved.length}` : "Ничего не сохранено"}
+            </Text>
+            <Flex gap="3" mt="2">
+              <Flex
+                as="button"
+                onClick={() => setIndex(0)}
+                px="4"
+                py="2.5"
+                bg={W}
+                color={K}
+                border={`2.5px solid ${K}`}
+                boxShadow={`3px 3px 0 ${K}`}
+                fontSize="11px"
+                fontWeight="900"
+                letterSpacing="0.16em"
+                textTransform="uppercase"
+                cursor="pointer"
+                _hover={{ transform: "translate(-1px,-1px)", boxShadow: `4px 4px 0 ${K}` }}
+                transition="all 0.12s"
+              >
+                По новой
+              </Flex>
+              {saved.length > 0 && (
+                <Flex
+                  as="button"
+                  onClick={() => navigate({ to: "/pipe-my-events" })}
+                  px="4"
+                  py="2.5"
+                  bg={B}
+                  color={W}
+                  border={`2.5px solid ${K}`}
+                  boxShadow={`3px 3px 0 ${K}`}
+                  fontSize="11px"
+                  fontWeight="900"
+                  letterSpacing="0.16em"
+                  textTransform="uppercase"
+                  cursor="pointer"
+                  _hover={{ transform: "translate(-1px,-1px)", boxShadow: `4px 4px 0 ${K}` }}
+                  transition="all 0.12s"
+                >
+                  Мои события →
+                </Flex>
+              )}
+            </Flex>
+          </Flex>
         ) : (
           mode === "coverflow" ? (
             <Box
@@ -1147,38 +1338,38 @@ export default function PipeFeedSwipe() {
           )
         )}
 
-        {display.length > 0 && mode === "deluxe" ? (
-          <Flex justify="center" align="center" gap="5" mt="8">
+        {display.length > 0 && mode === "deluxe" && index < display.length ? (
+          <Flex justify="center" align="center" gap="6" mt="8">
             <Flex
               as="button"
-              onClick={goPrev}
-              aria-disabled={!hasPrev}
+              onClick={() => performAction("nope")}
+              aria-disabled={index >= display.length || flingDir !== 0}
               align="center"
               justify="center"
-              w="56px"
-              h="56px"
+              w="60px"
+              h="60px"
               borderRadius="50%"
               border={`3px solid ${K}`}
               bg={W}
               color={K}
-              boxShadow={hasPrev ? `4px 4px 0 ${K}` : `2px 2px 0 ${K}30`}
-              cursor={hasPrev ? "pointer" : "not-allowed"}
-              opacity={hasPrev ? 1 : 0.45}
-              _hover={hasPrev ? { transform: "translate(-2px,-2px)", boxShadow: `6px 6px 0 ${K}` } : undefined}
+              boxShadow={index < display.length ? `4px 4px 0 ${K}` : `2px 2px 0 ${K}30`}
+              cursor={index < display.length ? "pointer" : "not-allowed"}
+              opacity={index < display.length ? 1 : 0.45}
+              _hover={index < display.length ? { transform: "translate(-2px,-2px)", boxShadow: `6px 6px 0 ${K}` } : undefined}
               _active={{ transform: "translate(2px,2px)", boxShadow: `0px 0px 0 ${K}` }}
               transition="all 0.12s"
-              pointerEvents={hasPrev ? "auto" : "none"}
-              style={{ fontSize: "22px", fontWeight: 900 }}
+              pointerEvents={index < display.length && flingDir === 0 ? "auto" : "none"}
+              style={{ fontSize: "26px", fontWeight: 900 }}
             >
-              ←
+              ✕
             </Flex>
             <Flex
               direction="column"
               align="center"
-              minW="64px"
+              minW="56px"
             >
-              <Text fontSize="22px" fontWeight="900" color={K} lineHeight="1">
-                {index + 1}
+              <Text fontSize="20px" fontWeight="900" color={K} lineHeight="1">
+                {Math.min(index + 1, display.length)}
               </Text>
               <Text fontSize="9px" fontWeight="800" letterSpacing="0.18em" color={G} mt="1">
                 / {display.length}
@@ -1186,24 +1377,24 @@ export default function PipeFeedSwipe() {
             </Flex>
             <Flex
               as="button"
-              onClick={goNext}
-              aria-disabled={!hasNext}
+              onClick={() => performAction("like")}
+              aria-disabled={index >= display.length || flingDir !== 0}
               align="center"
               justify="center"
-              w="68px"
-              h="68px"
+              w="72px"
+              h="72px"
               borderRadius="50%"
               border={`3px solid ${K}`}
               bg={B}
               color={W}
-              boxShadow={hasNext ? `5px 5px 0 ${K}` : `2px 2px 0 ${K}30`}
-              cursor={hasNext ? "pointer" : "not-allowed"}
-              opacity={hasNext ? 1 : 0.45}
-              _hover={hasNext ? { transform: "translate(-2px,-2px)", boxShadow: `7px 7px 0 ${K}` } : undefined}
+              boxShadow={index < display.length ? `5px 5px 0 ${K}` : `2px 2px 0 ${K}30`}
+              cursor={index < display.length ? "pointer" : "not-allowed"}
+              opacity={index < display.length ? 1 : 0.45}
+              _hover={index < display.length ? { transform: "translate(-2px,-2px)", boxShadow: `7px 7px 0 ${K}` } : undefined}
               _active={{ transform: "translate(2px,2px)", boxShadow: `0px 0px 0 ${K}` }}
               transition="all 0.12s"
-              pointerEvents={hasNext ? "auto" : "none"}
-              style={{ fontSize: "26px", fontWeight: 900 }}
+              pointerEvents={index < display.length && flingDir === 0 ? "auto" : "none"}
+              style={{ fontSize: "30px", fontWeight: 900 }}
             >
               ♥
             </Flex>
@@ -1262,6 +1453,55 @@ export default function PipeFeedSwipe() {
           </Flex>
         ) : null}
       </Flex>
+
+      {undo && (
+        <Box
+          position="fixed"
+          left="50%"
+          bottom="max(1.25rem, env(safe-area-inset-bottom))"
+          zIndex={50}
+          style={{ transform: "translateX(-50%)", animation: "p5-toast-in 0.25s ease-out" }}
+        >
+          <Flex
+            align="center"
+            gap="3"
+            bg={K}
+            color={W}
+            border={`2.5px solid ${K}`}
+            boxShadow={`5px 5px 0 ${B}`}
+            px="4"
+            py="2.5"
+          >
+            <Box
+              w="8px"
+              h="8px"
+              bg={undo.type === "like" ? B : W}
+              border={`1.5px solid ${W}`}
+              flexShrink={0}
+            />
+            <Text fontSize="11px" fontWeight="800" letterSpacing="0.12em" textTransform="uppercase">
+              {undo.type === "like" ? "Сохранено" : "Скрыто"}
+            </Text>
+            <Flex
+              as="button"
+              onClick={performUndo}
+              px="2.5"
+              py="1"
+              bg={B}
+              color={W}
+              fontSize="10px"
+              fontWeight="900"
+              letterSpacing="0.18em"
+              textTransform="uppercase"
+              cursor="pointer"
+              _hover={{ opacity: 0.85 }}
+              transition="opacity 0.12s"
+            >
+              Вернуть
+            </Flex>
+          </Flex>
+        </Box>
+      )}
 
       <Dialog.Root open={detailOpen} onOpenChange={(d) => setDetailOpen(d.open)}>
         <Portal>
