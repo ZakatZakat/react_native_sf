@@ -10,7 +10,8 @@ export const CURATOR_BASE = (
   import.meta.env.VITE_CURATOR_URL || "http://localhost:8003"
 ).replace(/\/$/, "")
 
-const DEV_USER_ID = import.meta.env.VITE_DEV_USER_ID || ""
+// Fallback for browser dev: any non-empty id makes curator (in AUTH_DEV_MODE) auth as that user
+const DEV_USER_ID = import.meta.env.VITE_DEV_USER_ID || "12345"
 
 function readInitData(): string {
   try {

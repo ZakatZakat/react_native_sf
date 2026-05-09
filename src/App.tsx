@@ -12,6 +12,7 @@ const PIPE_ROUTES = [
   { label: "Pipe Onboarding", to: "/pipe-onboarding" },
   { label: "Pipe Feed Swipe", to: "/pipe-feed-swipe" },
   { label: "Pipe My Events", to: "/pipe-my-events" },
+  { label: "Pipe Admin Moderation", to: "/pipe-admin-moderation" },
 ] as const
 
 const ALT_ROUTES = [

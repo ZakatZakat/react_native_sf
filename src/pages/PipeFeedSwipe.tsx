@@ -9,6 +9,7 @@ import {
   type EventCard,
 } from "./pipe/shared"
 import { Curator } from "../lib/curator"
+import { pushState, subscribeToPush, unsubscribeFromPush, type PushState } from "../lib/push"
 import {
   addHidden,
   addSaved,
@@ -788,6 +789,7 @@ export default function PipeFeedSwipe() {
   const justSwiped = useRef(false)
 
 
+  const [refreshTick, setRefreshTick] = useState(0)
   useEffect(() => {
     let cancelled = false
     setLoading(true)
@@ -821,7 +823,17 @@ export default function PipeFeedSwipe() {
       }
     })()
     return () => { cancelled = true }
-  }, [interests])
+  }, [interests, refreshTick])
+
+  // Re-fetch on tab refocus (so newly approved events appear without manual reload)
+  useEffect(() => {
+    const onFocus = () => setRefreshTick((t) => t + 1)
+    window.addEventListener("focus", onFocus)
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") onFocus()
+    })
+    return () => window.removeEventListener("focus", onFocus)
+  }, [])
 
   // Server already filtered/ranked. Cap at 20 for swipe deck UX.
   const display = useMemo(() => items.slice(0, 20), [items])
@@ -847,6 +859,24 @@ export default function PipeFeedSwipe() {
 
   const hasNext = index < display.length - 1
   const hasPrev = index > 0
+
+  // Web push state for header button
+  const [pushSt, setPushSt] = useState<PushState>("default")
+  useEffect(() => { pushState().then(setPushSt) }, [])
+  const togglePush = useCallback(async () => {
+    if (pushSt === "subscribed") {
+      await unsubscribeFromPush()
+      setPushSt(await pushState())
+      return
+    }
+    if (pushSt === "denied") {
+      window.alert("Уведомления заблокированы в настройках браузера")
+      return
+    }
+    const r = await subscribeToPush()
+    if (!r.ok) window.alert(r.reason)
+    setPushSt(await pushState())
+  }, [pushSt])
 
   const undoTimerRef = useRef<number | null>(null)
   const [undo, setUndo] = useState<{ type: "like" | "nope"; card: EventCard; prevIndex: number } | null>(null)
@@ -1082,6 +1112,26 @@ export default function PipeFeedSwipe() {
             Назад
           </Flex>
           <Flex align="center" gap="2">
+            {pushSt !== "unsupported" && (
+              <Flex
+                as="button"
+                onClick={togglePush}
+                align="center"
+                px="2.5"
+                py="1.5"
+                border={`2px solid ${K}`}
+                bg={pushSt === "subscribed" ? B : W}
+                color={pushSt === "subscribed" ? W : K}
+                boxShadow={`2px 2px 0 ${K}`}
+                fontSize="13px"
+                cursor="pointer"
+                _hover={{ transform: "translate(-1px,-1px)", boxShadow: `3px 3px 0 ${K}` }}
+                transition="all 0.12s"
+                title={pushSt === "subscribed" ? "Отписаться" : pushSt === "denied" ? "Разрешения нет" : "Подписаться на уведомления"}
+              >
+                🔔
+              </Flex>
+            )}
             <Flex
               as="button"
               onClick={() => navigate({ to: "/pipe-onboarding" })}
