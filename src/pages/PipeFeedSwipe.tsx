@@ -1784,6 +1784,11 @@ function FloatingFeedCard({
   const imgSrc = rawSrc && isImg(rawSrc) && !failedImgs[card.id] ? rawSrc : null
   const title = firstLine(card.title) || firstLine(card.description) || "Событие"
   const date = formatDate(card.event_time || card.created_at)
+  const [imgAspect, setImgAspect] = useState<number | null>(null)
+  // Default aspect while loading (1/1.25 ≈ 0.8)
+  const aspect = imgAspect ?? 0.8
+  // Clamp so super-tall posters don't blow up the card and super-wide ones still feel tall
+  const clamped = Math.max(0.55, Math.min(1.4, aspect))
   const floatClass = ["p5-float-a", "p5-float-b", "p5-float-c"][index % 3]
   const accent = index % 2 === 0 ? B : K
   const animDelay = `${(index % 6) * 0.35}s`
@@ -1800,7 +1805,12 @@ function FloatingFeedCard({
       <Box
         position="relative"
         w="100%"
-        style={{ transform: `rotate(${tilt}deg)`, transformOrigin: "center center" }}
+        style={{
+          transform: `translateZ(0) rotate(${tilt}deg)`,
+          transformOrigin: "center center",
+          backfaceVisibility: "hidden",
+          WebkitFontSmoothing: "antialiased",
+        }}
       >
       <Box
         as="button"
@@ -1811,13 +1821,12 @@ function FloatingFeedCard({
         textAlign="left"
         border={`2.5px solid ${K}`}
         bg={W}
-        boxShadow={`4px 6px 0 ${accent}, 0 14px 28px -14px rgba(13,13,13,0.55)`}
+        boxShadow={`4px 6px 1px ${accent}, 0 14px 28px -14px rgba(13,13,13,0.55)`}
         overflow="hidden"
-        _hover={{ transform: "translate(-2px,-2px) scale(1.03)", boxShadow: `6px 8px 0 ${accent}, 0 16px 32px -14px rgba(13,13,13,0.6)` }}
+        _hover={{ transform: "translate(-2px,-2px) scale(1.03)", boxShadow: `6px 8px 1px ${accent}, 0 16px 32px -14px rgba(13,13,13,0.6)` }}
         transition="all 0.18s cubic-bezier(0.22, 1, 0.36, 1)"
         display="flex"
         flexDirection="column"
-        style={{ aspectRatio: "4 / 7" }}
       >
         {/* Header strip — channel chip + date chip */}
         <Flex
@@ -1862,8 +1871,15 @@ function FloatingFeedCard({
           )}
         </Flex>
 
-        {/* Image area */}
-        <Box position="relative" flex="1" overflow="hidden" borderBottom={`2px solid ${K}`}>
+        {/* Image area — aspect matches the actual poster, no cropping */}
+        <Box
+          position="relative"
+          w="100%"
+          overflow="hidden"
+          borderBottom={`2px solid ${K}`}
+          flexShrink={0}
+          style={{ aspectRatio: `1 / ${clamped}`, transition: "aspect-ratio 0.25s ease-out" }}
+        >
           {imgSrc ? (
             <Image
               src={imgSrc}
@@ -1875,6 +1891,10 @@ function FloatingFeedCard({
               objectFit="cover"
               display="block"
               draggable={false}
+              onLoad={(e) => {
+                const img = e.target as HTMLImageElement
+                if (img.naturalWidth > 0) setImgAspect(img.naturalHeight / img.naturalWidth)
+              }}
               onError={() => setFailedImgs((p) => ({ ...p, [card.id]: true }))}
             />
           ) : (
@@ -1882,40 +1902,18 @@ function FloatingFeedCard({
           )}
         </Box>
 
-        {/* Bottom panel — 3D-style: channel + date, title, divider, "Тапни →" */}
-        <Box bg={W} px="3" py="2.5" flexShrink={0}>
-          <Flex justify="space-between" align="center" mb="1.5">
-            <Text fontSize="9px" fontWeight="700" letterSpacing="0.14em" textTransform="uppercase" color={B} style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {card.channel.replace(/^@/, "").slice(0, 16)}
-            </Text>
-            {date && (
-              <Text fontSize="9px" fontWeight="600" letterSpacing="0.08em" color={G} textTransform="uppercase" flexShrink={0} ml="2">
-                {date}
-              </Text>
-            )}
-          </Flex>
+        {/* Bottom panel — title only, can grow as needed */}
+        <Box bg={W} px="2.5" py="2.5" flexShrink={0}>
           <Text
-            fontSize="13px"
+            fontSize="12px"
             fontWeight="900"
-            lineHeight="1.15"
+            lineHeight="1.18"
             textTransform="uppercase"
             letterSpacing="-0.01em"
             color={K}
-            style={{
-              display: "-webkit-box",
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: "vertical",
-              overflow: "hidden",
-            }}
           >
             {title}
           </Text>
-          <Flex mt="2" align="center" justify="space-between" borderTop={`1px solid ${K}12`} pt="1.5">
-            <Text fontSize="9px" fontWeight="700" letterSpacing="0.1em" textTransform="uppercase" color={G}>
-              Тапни
-            </Text>
-            <Text fontSize="13px" fontWeight="900" color={B} lineHeight="1">→</Text>
-          </Flex>
         </Box>
       </Box>
       </Box>
