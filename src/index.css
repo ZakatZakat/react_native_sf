@@ -411,3 +411,86 @@ html.dark #root {
   from { opacity: 0; transform: translate(-50%, 12px); }
   to { opacity: 1; transform: translate(-50%, 0); }
 }
+
+/* Smooth-rise entry for onboarding cards */
+.p5-rise {
+  opacity: 0;
+  transform: translate3d(0, 28px, 0) scale(0.96);
+  filter: blur(4px);
+  will-change: transform, opacity, filter;
+}
+
+.p5-rise.p5-rise-in {
+  animation: p5-rise-anim 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes p5-rise-anim {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 28px, 0) scale(0.96);
+    filter: blur(4px);
+  }
+  60% {
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: blur(0);
+  }
+}
+
+/* Scroll container: smooth scroll behavior */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Per-card parallax via CSS var (set by JS) */
+.p5-parallax {
+  transform: translate3d(0, var(--p5-parallax, 0), 0);
+  transition: transform 0.12s linear;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .p5-rise, .p5-rise.p5-rise-in {
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+    animation: none !important;
+  }
+  html { scroll-behavior: auto; }
+}
+
+/* Interest preview sheet — slides from top */
+@keyframes p5-sheet-down {
+  from { transform: translateY(-12%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes p5-sheet-backdrop {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Soft floating for feed cards inside sheet */
+@keyframes p5-float-soft-a {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(-0.4deg); }
+  50%      { transform: translate3d(0, -5px, 0) rotate(0.3deg); }
+}
+@keyframes p5-float-soft-b {
+  0%, 100% { transform: translate3d(0, -2px, 0) rotate(0.5deg); }
+  50%      { transform: translate3d(0, 3px, 0) rotate(-0.4deg); }
+}
+@keyframes p5-float-soft-c {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0.2deg); }
+  50%      { transform: translate3d(0, -3px, 0) rotate(-0.5deg); }
+}
+
+.p5-float-a { animation: p5-float-soft-a 5.4s ease-in-out infinite; }
+.p5-float-b { animation: p5-float-soft-b 6.2s ease-in-out infinite; }
+.p5-float-c { animation: p5-float-soft-c 5.8s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .p5-float-a, .p5-float-b, .p5-float-c { animation: none !important; }
+}

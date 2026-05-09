@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { useNavigate } from "@tanstack/react-router"
-import { Box, Flex, Text, Image, Dialog, Portal } from "@chakra-ui/react"
+import { Box, Flex, Text, Image, Dialog, Portal, Grid } from "@chakra-ui/react"
 import {
   API,
   isImg,
@@ -18,9 +18,12 @@ import {
   useSavedEvents,
 } from "./pipe/savedEvents"
 import {
+  INTERESTS,
   getInterests,
   hasOnboarded,
   rankEvents,
+  scoreEvent,
+  setInterests,
   useInterests,
 } from "./pipe/preferences"
 
@@ -259,7 +262,7 @@ function EventCardStackCard({
   )
 }
 
-type Mode = "classic" | "deluxe" | "coverflow"
+type Mode = "classic" | "deluxe" | "coverflow" | "cards"
 
 const FLING_DURATION = 280
 const SWIPE_VELOCITY_THRESHOLD = 0.55
@@ -805,13 +808,8 @@ export default function PipeFeedSwipe() {
           const all: EventCard[] = await res.json()
           const hidden = new Set(getHidden())
           const withImages = all.filter((ev) => ev.media_urls?.some(isImg) && !hidden.has(ev.id))
-          const interestKeys = getInterests()
-          if (interestKeys.length > 0) {
-            const ranked = rankEvents(withImages, interestKeys)
-            setItems(ranked.slice(0, 20))
-          } else {
-            setItems(pickRandom(withImages, 20))
-          }
+          // Stable random order — re-shuffle once on load; filtering happens in display memo
+          setItems(pickRandom(withImages, withImages.length))
         }
       } catch {
         /* */
@@ -821,7 +819,18 @@ export default function PipeFeedSwipe() {
     })()
   }, [])
 
-  const display = useMemo(() => items, [items])
+  const display = useMemo(() => {
+    if (interests.length === 0) return items.slice(0, 20)
+    const matched = items.filter((ev) => scoreEvent(ev, interests) > 0)
+    return rankEvents(matched, interests).slice(0, 20)
+  }, [items, interests])
+
+  // Reset index when filter changes
+  useEffect(() => {
+    setIndex(0)
+    setDragOffsetX(0)
+    setFlingDir(0)
+  }, [interests])
 
   useEffect(() => {
     const el = stackRef.current
@@ -1139,6 +1148,75 @@ export default function PipeFeedSwipe() {
           <Text as="span" color={B}>карточки</Text>
         </Text>
 
+        {interests.length > 0 && (
+          <Box mb="5">
+            <Flex align="center" gap="2" mb="2">
+              <Box w="8px" h="8px" bg={B} flexShrink={0} />
+              <Text fontSize="9px" fontWeight="900" letterSpacing="0.2em" textTransform="uppercase" color={K}>
+                Фильтр
+              </Text>
+              <Text fontSize="9px" fontWeight="700" letterSpacing="0.14em" color={G}>
+                · {interests.length} {interests.length === 1 ? "категория" : "категории"}
+              </Text>
+            </Flex>
+            <Flex wrap="wrap" gap="2">
+              {interests.map((key) => {
+                const interest = INTERESTS.find((i) => i.key === key)
+                if (!interest) return null
+                return (
+                  <Flex
+                    key={key}
+                    as="button"
+                    onClick={() => setInterests(interests.filter((k) => k !== key))}
+                    align="center"
+                    gap="1.5"
+                    px="2.5"
+                    py="1"
+                    bg={K}
+                    color={W}
+                    border={`2px solid ${K}`}
+                    boxShadow={`2px 2px 0 ${B}`}
+                    fontSize="10px"
+                    fontWeight="900"
+                    letterSpacing="0.14em"
+                    textTransform="uppercase"
+                    cursor="pointer"
+                    _hover={{ bg: B, transform: "translate(-1px,-1px)", boxShadow: `3px 3px 0 ${K}` }}
+                    transition="all 0.12s"
+                    title="Убрать из фильтра"
+                  >
+                    <Text as="span" fontSize="11px" lineHeight="1">{interest.symbol}</Text>
+                    <Text as="span">{interest.label}</Text>
+                    <Text as="span" fontSize="11px" opacity={0.7} ml="0.5">×</Text>
+                  </Flex>
+                )
+              })}
+              {interests.length > 0 && (
+                <Flex
+                  as="button"
+                  onClick={() => setInterests([])}
+                  align="center"
+                  px="2.5"
+                  py="1"
+                  bg={W}
+                  color={K}
+                  border={`2px solid ${K}`}
+                  fontSize="10px"
+                  fontWeight="900"
+                  letterSpacing="0.14em"
+                  textTransform="uppercase"
+                  cursor="pointer"
+                  _hover={{ bg: K, color: W }}
+                  transition="all 0.12s"
+                  title="Сбросить фильтр"
+                >
+                  Все
+                </Flex>
+              )}
+            </Flex>
+          </Box>
+        )}
+
         <Flex
           mb="5"
           border={`2.5px solid ${K}`}
@@ -1146,9 +1224,9 @@ export default function PipeFeedSwipe() {
           boxShadow={`3px 3px 0 ${B}`}
           alignSelf="flex-start"
         >
-          {(["classic", "deluxe", "coverflow"] as Mode[]).map((m, idx, arr) => {
+          {(["classic", "deluxe", "coverflow", "cards"] as Mode[]).map((m, idx, arr) => {
             const active = mode === m
-            const label = m === "classic" ? "Старый" : m === "deluxe" ? "Новый" : "3D"
+            const label = m === "classic" ? "Старый" : m === "deluxe" ? "Новый" : m === "coverflow" ? "3D" : "Карточки"
             return (
               <Flex
                 key={m}
@@ -1192,9 +1270,59 @@ export default function PipeFeedSwipe() {
             Загружаем события...
           </Text>
         ) : display.length === 0 ? (
-          <Text color={G} fontSize="sm" py="10" textAlign="center">
-            Нет событий с изображениями
-          </Text>
+          <Flex direction="column" align="center" gap="3" py="12" textAlign="center">
+            <Text fontSize="36px" color={`${K}30`} lineHeight="1">∅</Text>
+            <Text fontSize="16px" fontWeight="900" textTransform="uppercase" letterSpacing="-0.01em" color={K}>
+              {interests.length > 0 ? "По фильтру ничего нет" : "Нет событий с изображениями"}
+            </Text>
+            {interests.length > 0 && (
+              <>
+                <Text fontSize="11px" fontWeight="700" letterSpacing="0.1em" textTransform="uppercase" color={G}>
+                  Расширь интересы или сбрось фильтр
+                </Text>
+                <Flex gap="2" mt="2">
+                  <Flex
+                    as="button"
+                    onClick={() => setInterests([])}
+                    px="3.5"
+                    py="2"
+                    bg={W}
+                    color={K}
+                    border={`2.5px solid ${K}`}
+                    boxShadow={`3px 3px 0 ${K}`}
+                    fontSize="11px"
+                    fontWeight="900"
+                    letterSpacing="0.16em"
+                    textTransform="uppercase"
+                    cursor="pointer"
+                    _hover={{ transform: "translate(-1px,-1px)", boxShadow: `4px 4px 0 ${K}` }}
+                    transition="all 0.12s"
+                  >
+                    Показать всё
+                  </Flex>
+                  <Flex
+                    as="button"
+                    onClick={() => navigate({ to: "/pipe-onboarding" })}
+                    px="3.5"
+                    py="2"
+                    bg={B}
+                    color={W}
+                    border={`2.5px solid ${K}`}
+                    boxShadow={`3px 3px 0 ${K}`}
+                    fontSize="11px"
+                    fontWeight="900"
+                    letterSpacing="0.16em"
+                    textTransform="uppercase"
+                    cursor="pointer"
+                    _hover={{ transform: "translate(-1px,-1px)", boxShadow: `4px 4px 0 ${K}` }}
+                    transition="all 0.12s"
+                  >
+                    Изменить →
+                  </Flex>
+                </Flex>
+              </>
+            )}
+          </Flex>
         ) : index >= display.length && mode === "deluxe" ? (
           <Flex direction="column" align="center" gap="4" py="10" textAlign="center">
             <Text fontSize="48px" fontWeight="900" lineHeight="1" color={K}>
@@ -1249,6 +1377,21 @@ export default function PipeFeedSwipe() {
               )}
             </Flex>
           </Flex>
+        ) : mode === "cards" ? (
+          <Box ref={stackRef} w="100%" overflow="visible" pt="2" pb="6">
+            <Grid templateColumns="repeat(2, 1fr)" columnGap="4" rowGap="6">
+              {display.map((card, i) => (
+                <FloatingFeedCard
+                  key={card.id}
+                  card={card}
+                  index={i}
+                  failedImgs={failedImgs}
+                  setFailedImgs={setFailedImgs}
+                  onTap={() => openDetail(card)}
+                />
+              ))}
+            </Grid>
+          </Box>
         ) : (
           mode === "coverflow" ? (
             <Box
@@ -1399,7 +1542,7 @@ export default function PipeFeedSwipe() {
               ♥
             </Flex>
           </Flex>
-        ) : display.length > 0 ? (
+        ) : display.length > 0 && mode !== "cards" ? (
           <Flex justify="center" gap="4" mt="6">
             <Flex
               as="button"
@@ -1619,6 +1762,163 @@ export default function PipeFeedSwipe() {
           </Dialog.Positioner>
         </Portal>
       </Dialog.Root>
+    </Box>
+  )
+}
+
+function FloatingFeedCard({
+  card,
+  index,
+  failedImgs,
+  setFailedImgs,
+  onTap,
+}: {
+  card: EventCard
+  index: number
+  failedImgs: Record<string, true>
+  setFailedImgs: React.Dispatch<React.SetStateAction<Record<string, true>>>
+  onTap: () => void
+}) {
+  const media = card.media_urls?.find(isImg) ?? card.media_urls?.[0]
+  const rawSrc = resolveMedia(media)
+  const imgSrc = rawSrc && isImg(rawSrc) && !failedImgs[card.id] ? rawSrc : null
+  const title = firstLine(card.title) || firstLine(card.description) || "Событие"
+  const date = formatDate(card.event_time || card.created_at)
+  const floatClass = ["p5-float-a", "p5-float-b", "p5-float-c"][index % 3]
+  const accent = index % 2 === 0 ? B : K
+  const animDelay = `${(index % 6) * 0.35}s`
+  const TILTS = [-2.4, 1.8, -1.4, 2.2, -2.0, 1.2, -2.6, 1.6, -1.0, 2.0, -1.8, 0.9, -2.2, 1.4, -1.6, 2.0, -2.0, 1.0, -1.2, 1.8]
+  const tilt = TILTS[index % TILTS.length]
+  // Stagger every other column slightly down, plus shift even rows in even cols
+  const offsetY = (index % 4 === 1 || index % 4 === 2) ? "14px" : "0px"
+
+  return (
+    <Box
+      className={floatClass}
+      style={{ animationDelay: animDelay, marginTop: offsetY }}
+    >
+      <Box
+        position="relative"
+        w="100%"
+        style={{ transform: `rotate(${tilt}deg)`, transformOrigin: "center center" }}
+      >
+      <Box
+        as="button"
+        onClick={onTap}
+        position="relative"
+        w="100%"
+        cursor="pointer"
+        textAlign="left"
+        border={`2.5px solid ${K}`}
+        bg={W}
+        boxShadow={`4px 6px 0 ${accent}, 0 14px 28px -14px rgba(13,13,13,0.55)`}
+        overflow="hidden"
+        _hover={{ transform: "translate(-2px,-2px) scale(1.03)", boxShadow: `6px 8px 0 ${accent}, 0 16px 32px -14px rgba(13,13,13,0.6)` }}
+        transition="all 0.18s cubic-bezier(0.22, 1, 0.36, 1)"
+        display="flex"
+        flexDirection="column"
+        style={{ aspectRatio: "4 / 7" }}
+      >
+        {/* Header strip — channel chip + date chip */}
+        <Flex
+          position="relative"
+          zIndex={2}
+          flexShrink={0}
+          h="32px"
+          bg={W}
+          borderBottom={`2.5px solid ${K}`}
+          align="center"
+          justify="space-between"
+          px="2"
+          gap="1.5"
+        >
+          <Flex align="center" gap="1.5" minW="0">
+            <Box w="6px" h="6px" bg={B} flexShrink={0} />
+            <Text
+              fontSize="9px"
+              fontWeight="900"
+              letterSpacing="0.14em"
+              textTransform="uppercase"
+              color={K}
+              style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+            >
+              {card.channel.replace(/^@/, "").slice(0, 16)}
+            </Text>
+          </Flex>
+          {date && (
+            <Box
+              bg={K}
+              color={W}
+              px="1.5"
+              py="0.5"
+              fontSize="8px"
+              fontWeight="900"
+              letterSpacing="0.12em"
+              textTransform="uppercase"
+              flexShrink={0}
+            >
+              {date}
+            </Box>
+          )}
+        </Flex>
+
+        {/* Image area */}
+        <Box position="relative" flex="1" overflow="hidden" borderBottom={`2px solid ${K}`}>
+          {imgSrc ? (
+            <Image
+              src={imgSrc}
+              alt={title}
+              position="absolute"
+              inset="0"
+              width="100%"
+              height="100%"
+              objectFit="cover"
+              display="block"
+              draggable={false}
+              onError={() => setFailedImgs((p) => ({ ...p, [card.id]: true }))}
+            />
+          ) : (
+            <Box position="absolute" inset="0" bg={`linear-gradient(135deg, ${B}22, ${K}18)`} />
+          )}
+        </Box>
+
+        {/* Bottom panel — 3D-style: channel + date, title, divider, "Тапни →" */}
+        <Box bg={W} px="3" py="2.5" flexShrink={0}>
+          <Flex justify="space-between" align="center" mb="1.5">
+            <Text fontSize="9px" fontWeight="700" letterSpacing="0.14em" textTransform="uppercase" color={B} style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {card.channel.replace(/^@/, "").slice(0, 16)}
+            </Text>
+            {date && (
+              <Text fontSize="9px" fontWeight="600" letterSpacing="0.08em" color={G} textTransform="uppercase" flexShrink={0} ml="2">
+                {date}
+              </Text>
+            )}
+          </Flex>
+          <Text
+            fontSize="13px"
+            fontWeight="900"
+            lineHeight="1.15"
+            textTransform="uppercase"
+            letterSpacing="-0.01em"
+            color={K}
+            style={{
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+            }}
+          >
+            {title}
+          </Text>
+          <Flex mt="2" align="center" justify="space-between" borderTop={`1px solid ${K}12`} pt="1.5">
+            <Text fontSize="9px" fontWeight="700" letterSpacing="0.1em" textTransform="uppercase" color={G}>
+              Тапни
+            </Text>
+            <Text fontSize="13px" fontWeight="900" color={B} lineHeight="1">→</Text>
+          </Flex>
+        </Box>
+      </Box>
+      </Box>
     </Box>
   )
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import { Box, Flex, Text, Grid } from "@chakra-ui/react"
 import { INTERESTS, getInterests, scoreEvent, setInterests } from "./pipe/preferences"
@@ -13,7 +13,6 @@ export default function PipeOnboarding() {
   const navigate = useNavigate()
   const [picked, setPicked] = useState<Set<string>>(() => new Set(getInterests()))
   const [events, setEvents] = useState<EventCard[]>([])
-
   useEffect(() => {
     let cancelled = false
     ;(async () => {
@@ -226,14 +225,15 @@ export default function PipeOnboarding() {
           autoFlow="dense"
         >
           {INTERESTS.map((interest, i) => (
-            <InterestCard
-              key={interest.key}
-              interest={interest}
-              index={i}
-              active={picked.has(interest.key)}
-              bgImages={interestImages[interest.key] ?? []}
-              onToggle={() => toggle(interest.key)}
-            />
+            <RisingTile key={interest.key} index={i} layout={LAYOUTS[i]}>
+              <InterestCard
+                interest={interest}
+                index={i}
+                active={picked.has(interest.key)}
+                bgImages={interestImages[interest.key] ?? []}
+                onToggle={() => toggle(interest.key)}
+              />
+            </RisingTile>
           ))}
         </Grid>
       </Flex>
@@ -287,6 +287,7 @@ export default function PipeOnboarding() {
           </Flex>
         </Flex>
       </Flex>
+
     </Box>
   )
 }
@@ -406,8 +407,8 @@ function InterestCard({
       as="button"
       onClick={onToggle}
       position="relative"
-      gridColumn={wide ? "span 2" : undefined}
-      gridRow={`span ${rowSpan}`}
+      w="100%"
+      h="100%"
       border={`${borderWidth} solid ${borderColor}`}
       bg={finalBg}
       color={finalFg}
@@ -677,5 +678,95 @@ function ComboVariant({
         </Text>
       </Box>
     </Flex>
+  )
+}
+
+function RisingTile({
+  index,
+  layout,
+  children,
+}: {
+  index: number
+  layout?: Layout
+  children: React.ReactNode
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [revealed, setRevealed] = useState(false)
+  const wide = layout?.wide
+  const rowSpan = layout?.rowSpan ?? 4
+
+  // Reveal on enter viewport (one-shot)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    if (typeof IntersectionObserver === "undefined") {
+      setRevealed(true)
+      return
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        const e = entries[0]
+        if (e?.isIntersecting) {
+          setRevealed(true)
+          io.disconnect()
+        }
+      },
+      { threshold: 0.12, rootMargin: "0px 0px -8% 0px" }
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+
+  // Subtle parallax: slower for variant=image (heavier elements feel anchored),
+  // a bit faster for text — gives layered depth on scroll
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
+
+    const variant = layout?.variant ?? "image"
+    const factor = variant === "image" ? -0.06 : variant === "combo" ? -0.04 : 0.05
+    let raf = 0
+    let pending = false
+
+    const update = () => {
+      pending = false
+      const rect = el.getBoundingClientRect()
+      const vh = window.innerHeight
+      // distance from viewport center; normalized roughly to [-1, 1]
+      const center = rect.top + rect.height / 2
+      const delta = (center - vh / 2)
+      const offset = delta * factor
+      el.style.setProperty("--p5-parallax", `${offset.toFixed(2)}px`)
+    }
+
+    const onScroll = () => {
+      if (pending) return
+      pending = true
+      raf = window.requestAnimationFrame(update)
+    }
+
+    update()
+    window.addEventListener("scroll", onScroll, { passive: true })
+    window.addEventListener("resize", onScroll)
+    return () => {
+      window.removeEventListener("scroll", onScroll)
+      window.removeEventListener("resize", onScroll)
+      if (raf) window.cancelAnimationFrame(raf)
+    }
+  }, [layout?.variant])
+
+  return (
+    <Box
+      ref={ref}
+      className={`p5-rise p5-parallax ${revealed ? "p5-rise-in" : ""}`}
+      gridColumn={wide ? "span 2" : undefined}
+      gridRow={`span ${rowSpan}`}
+      style={{
+        animationDelay: revealed ? `${(index % 8) * 60}ms` : undefined,
+      }}
+    >
+      {children}
+    </Box>
   )
 }
