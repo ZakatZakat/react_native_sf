@@ -2,13 +2,13 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import { Box, Flex, Text, Image, Dialog, Portal, Grid } from "@chakra-ui/react"
 import {
-  API,
   isImg,
   resolveMedia,
   firstLine,
   formatDate,
   type EventCard,
 } from "./pipe/shared"
+import { Curator } from "../lib/curator"
 import {
   addHidden,
   addSaved,
@@ -19,10 +19,7 @@ import {
 } from "./pipe/savedEvents"
 import {
   INTERESTS,
-  getInterests,
   hasOnboarded,
-  rankEvents,
-  scoreEvent,
   setInterests,
   useInterests,
 } from "./pipe/preferences"
@@ -792,38 +789,42 @@ export default function PipeFeedSwipe() {
 
 
   useEffect(() => {
-    const pickRandom = (list: EventCard[], count: number) => {
-      const arr = [...list]
-      for (let i = arr.length - 1; i > 0; i -= 1) {
-        const j = Math.floor(Math.random() * (i + 1))
-        ;[arr[i], arr[j]] = [arr[j], arr[i]]
-      }
-      return arr.slice(0, count)
-    }
-
+    let cancelled = false
+    setLoading(true)
     ;(async () => {
       try {
-        const res = await fetch(`${API}/events?limit=200`, { cache: "no-store" })
-        if (res.ok) {
-          const all: EventCard[] = await res.json()
-          const hidden = new Set(getHidden())
-          const withImages = all.filter((ev) => ev.media_urls?.some(isImg) && !hidden.has(ev.id))
-          // Stable random order — re-shuffle once on load; filtering happens in display memo
-          setItems(pickRandom(withImages, withImages.length))
-        }
-      } catch {
-        /* */
+        const feed = await Curator.getFeed({
+          limit: 50,
+          tags: interests.length ? interests : undefined,
+        })
+        if (cancelled) return
+        const hidden = new Set(getHidden())
+        // Map curator FeedItem → EventCard shape used by the page
+        const items: EventCard[] = feed
+          .filter((f) => f.media_urls?.some(isImg) && !hidden.has(f.id))
+          .map((f) => ({
+            id: f.id,
+            title: f.title,
+            description: f.description,
+            channel: f.channel,
+            message_id: f.message_id,
+            event_time: f.event_time,
+            media_urls: f.media_urls,
+            created_at: f.created_at,
+          }))
+        setItems(items)
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn("[curator] feed fetch failed:", e)
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     })()
-  }, [])
+    return () => { cancelled = true }
+  }, [interests])
 
-  const display = useMemo(() => {
-    if (interests.length === 0) return items.slice(0, 20)
-    const matched = items.filter((ev) => scoreEvent(ev, interests) > 0)
-    return rankEvents(matched, interests).slice(0, 20)
-  }, [items, interests])
+  // Server already filtered/ranked. Cap at 20 for swipe deck UX.
+  const display = useMemo(() => items.slice(0, 20), [items])
 
   // Reset index when filter changes
   useEffect(() => {
@@ -881,6 +882,8 @@ export default function PipeFeedSwipe() {
       }
       if (kind === "like") addSaved(card)
       else addHidden(card.id)
+      // Sync to server (best-effort, don't block UX)
+      Curator.feedback(card.id, kind === "like" ? "save" : "hide").catch(() => {})
       triggerUndo(kind, card, index)
       justSwiped.current = true
       const dir: 1 | -1 = kind === "like" ? 1 : -1

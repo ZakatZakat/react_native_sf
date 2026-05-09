@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router"
 import { Box, Flex, Text, Grid } from "@chakra-ui/react"
 import { INTERESTS, getInterests, scoreEvent, setInterests } from "./pipe/preferences"
 import { API, isImg, resolveMedia, type EventCard } from "./pipe/shared"
+import { Curator } from "../lib/curator"
 
 const K = "#0D0D0D"
 const W = "#FFFFFF"
@@ -104,15 +105,32 @@ export default function PipeOnboarding() {
     })
   }
 
-  const finish = () => {
-    setInterests([...picked])
+  const finish = async () => {
+    const keys = [...picked]
+    setInterests(keys) // local cache
+    try { await Curator.setInterests(keys) } catch { /* offline ok */ }
     navigate({ to: "/pipe-feed-swipe" })
   }
 
-  const skip = () => {
+  const skip = async () => {
     setInterests([])
+    try { await Curator.setInterests([]) } catch { /* */ }
     navigate({ to: "/pipe-feed-swipe" })
   }
+
+  // Pre-load existing interests from server (overwrites local cache)
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const remote = await Curator.getInterests()
+        if (cancelled || !Array.isArray(remote)) return
+        setPicked(new Set(remote))
+        setInterests(remote)
+      } catch { /* */ }
+    })()
+    return () => { cancelled = true }
+  }, [])
 
   const count = picked.size
   const canFinish = count > 0
