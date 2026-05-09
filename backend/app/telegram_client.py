@@ -10,7 +10,7 @@ from app.schemas import EventIngestRequest
 
 
 class TelegramServiceClient:
-    def __init__(self, base_url: str, timeout: float = 60.0) -> None:
+    def __init__(self, base_url: str, timeout: float = 600.0) -> None:
         self._base = base_url.rstrip("/")
         self._timeout = timeout
 

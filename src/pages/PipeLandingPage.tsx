@@ -47,23 +47,22 @@ export default function PipeLandingPage() {
       <Flex
         flexDirection="column"
         align="center"
-        justify="space-evenly"
+        justify="center"
+        gap={{ base: "6", sm: "8" }}
         flex="1"
         w="100%"
         maxW="min(96vw, 680px)"
         px={{ base: "5", sm: "6" }}
         py={{ base: "4", sm: "6" }}
       >
-        <Box mb={TEXT_TO_IMAGE_SPACING}>
-          <Text
-            fontSize={{ base: "xl", sm: "2xl" }}
-            fontWeight="800"
-            letterSpacing="-0.02em"
-            textAlign="center"
-          >
-            Подбираем <Text as="span" color={B}>ивенты</Text> под вас
-          </Text>
-        </Box>
+        <Text
+          fontSize={{ base: "xl", sm: "2xl" }}
+          fontWeight="800"
+          letterSpacing="-0.02em"
+          textAlign="center"
+        >
+          Подбираем <Text as="span" color={B}>ивенты</Text> под вас
+        </Text>
         <Flex
           align="center"
           justify="center"
@@ -88,7 +87,8 @@ export default function PipeLandingPage() {
             flexShrink={0}
             border={`2.5px solid ${K}`}
             overflow="hidden"
-            boxShadow={`4px 4px 0 ${B}`}
+            boxShadow={`0 10px 28px -10px rgba(13,13,13,0.45)`}
+            bg={W}
           >
               {POSTER_URLS.map((src, i) => (
                 <Box
@@ -98,14 +98,21 @@ export default function PipeLandingPage() {
                   opacity={i === activeIdx ? 1 : 0}
                   zIndex={i === activeIdx ? 2 : 1}
                   transition="opacity 1.2s ease-in-out"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
                 >
                   <Image
                     src={src}
                     alt=""
-                    w="100%"
-                    h="100%"
+                    maxW="100%"
+                    maxH="100%"
+                    w="auto"
+                    h="auto"
                     objectFit="contain"
                     display="block"
+                    mx="auto"
+                    my="auto"
                   />
                 </Box>
               ))}
@@ -120,19 +127,16 @@ export default function PipeLandingPage() {
             PE
           </Text>
         </Flex>
-        <Box mt={TEXT_TO_IMAGE_SPACING}>
-          <Text
-            fontSize={{ base: "sm", sm: "md" }}
-            fontWeight="600"
-            color={G}
-            letterSpacing="0.02em"
-            textAlign="center"
-          >
-            На основе анализа 1000+ каналов <Text as="span" color={B}>ии-агентами</Text>
-          </Text>
-        </Box>
+        <Text
+          fontSize={{ base: "sm", sm: "md" }}
+          fontWeight="600"
+          color={G}
+          letterSpacing="0.02em"
+          textAlign="center"
+        >
+          На основе анализа 1000+ каналов <Text as="span" color={B}>ии-агентами</Text>
+        </Text>
         <Button
-          mt="6"
           bg={B}
           color={W}
           size="lg"
