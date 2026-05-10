@@ -16,6 +16,7 @@ const PIPE_ROUTES = [
 ] as const
 
 const ALT_ROUTES = [
+  { label: "Pipe Landing (bauhaus blocks)", to: "/pipe-landing-bauhaus" },
   { label: "Pipe Landing (classic)", to: "/pipe-landing-classic" },
   { label: "Pipe Onboarding (classic)", to: "/pipe-onboarding-classic" },
   { label: "Pipe Radar / Кино", to: "/pipe-radar/cinema" },
