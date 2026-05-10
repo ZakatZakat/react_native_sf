@@ -43,3 +43,6 @@ ENV/
 # Temporary files
 *.tmp
 *.temp
+
+# Media
+backend/media/

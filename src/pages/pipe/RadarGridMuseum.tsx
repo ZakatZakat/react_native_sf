@@ -14,6 +14,7 @@
  */
 
 import { Box, Flex, Grid, Text } from "@chakra-ui/react"
+import { useNavigate } from "@tanstack/react-router"
 import { INTERESTS, type Interest } from "./preferences"
 
 // Palette — restricted modernist
@@ -55,7 +56,9 @@ function MuseumCard({
   active: boolean
   onToggle: () => void
 }) {
+  const navigate = useNavigate()
   const num = String(index + 1).padStart(2, "0")
+  const goPreview = () => navigate({ to: "/pipe-radar/$key", params: { key: interest.key } })
   const Shape = SHAPES[index % SHAPES.length] ?? Shape0
   const TYPO = TYPOGRAPHY[index % TYPOGRAPHY.length] ?? TYPOGRAPHY[0]
 
@@ -68,7 +71,7 @@ function MuseumCard({
   return (
     <Box
       as="button"
-      onClick={onToggle}
+      onClick={goPreview}
       position="relative"
       w="100%"
       bg={bg}

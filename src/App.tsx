@@ -17,6 +17,8 @@ const PIPE_ROUTES = [
 
 const ALT_ROUTES = [
   { label: "Pipe Onboarding (classic)", to: "/pipe-onboarding-classic" },
+  { label: "Pipe Radar / Кино", to: "/pipe-radar/cinema" },
+  { label: "Pipe Radar / Совр. иск.", to: "/pipe-radar/contemporary" },
   { label: "Pipe Example", to: "/pipe-example" },
   { label: "Pipe Rotate", to: "/pipe-rotate" },
   { label: "Pipe My Profile", to: "/pipe-personal" },
