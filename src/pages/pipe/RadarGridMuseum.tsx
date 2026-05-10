@@ -17,10 +17,10 @@ import { Box, Flex, Grid, Text } from "@chakra-ui/react"
 import { useNavigate } from "@tanstack/react-router"
 import { INTERESTS, type Interest } from "./preferences"
 
-// Palette — restricted modernist
-const PAPER = "#F4EEE3"   // cream
-const INK = "#0D0D0D"     // black
-const ULTRA = "#2042D8"   // ultramarine
+// Unified with the rest of the app — same K/W/B
+const PAPER = "#FFFFFF"
+const INK = "#0D0D0D"
+const ULTRA = "#0055FF"
 const INK_DIM = "rgba(13,13,13,0.55)"
 
 export function RadarGridMuseum({
