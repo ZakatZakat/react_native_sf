@@ -31,7 +31,17 @@ type Step = "intro" | "radar"
 
 export default function PipeOnboarding() {
   const navigate = useNavigate()
-  const [step, setStep] = useState<Step>("intro")
+  // Allow skipping the intro via ?step=radar (used when arriving from PipeLandingPage)
+  const initialStep: Step = (() => {
+    try {
+      if (typeof window === "undefined") return "intro"
+      const p = new URLSearchParams(window.location.search).get("step")
+      return p === "radar" ? "radar" : "intro"
+    } catch {
+      return "intro"
+    }
+  })()
+  const [step, setStep] = useState<Step>(initialStep)
   const [picked, setPicked] = useState<Set<string>>(() => new Set(getInterests()))
   const [events, setEvents] = useState<EventCard[]>([])
 
