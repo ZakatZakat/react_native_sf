@@ -594,10 +594,16 @@ function VariantBento({ onCta, dd, mm, yy, dateLong, posters: _posters, events }
         minH="100dvh"
         gap="5"
       >
-        {/* TOP — editorial info section (Grafist-style) */}
-        <Flex direction={{ base: "column", sm: "row" }} gap="6" align="flex-start">
-          {/* Left col — title + date */}
-          <Box flex="1.1" minW="0">
+        {/* TOP — editorial info section. Uses the SAME 8-col grid as the bento below
+            so the right text block lines up with card #2 (slot 1, cols 6-8). */}
+        <Box
+          display="grid"
+          gridTemplateColumns={{ base: "1fr", sm: "repeat(8, 1fr)" }}
+          gap="2"
+          alignItems="flex-start"
+        >
+          {/* Left col — title + date (cols 1-5, same as the big TALL slot below) */}
+          <Box gridColumn={{ base: "1 / -1", sm: "span 5" }} minW="0">
             <Flex align="flex-start" gap="2">
               <Text
                 fontSize={{ base: "44px", sm: "60px" }}
@@ -634,8 +640,8 @@ function VariantBento({ onCta, dd, mm, yy, dateLong, posters: _posters, events }
             </Flex>
           </Box>
 
-          {/* Right col — sources / programme */}
-          <Box flex="1" minW="0">
+          {/* Right col — sources / programme (cols 6-8, lines up with card #2 above) */}
+          <Box gridColumn={{ base: "1 / -1", sm: "span 3" }} minW="0">
             <Flex direction="column" gap="0.5">
               <Text fontSize="13px" fontWeight="900" color={K}>Garagemca</Text>
               <Text fontSize="13px" fontWeight="900" color={K}>Faux_monnayage</Text>
@@ -670,7 +676,7 @@ function VariantBento({ onCta, dd, mm, yy, dateLong, posters: _posters, events }
               </Text>
             </Box>
           </Box>
-        </Flex>
+        </Box>
 
         {/* EVENT CARDS — bento grid with varying sizes + auto-rotation */}
         <Box mt="2" pb="3">
