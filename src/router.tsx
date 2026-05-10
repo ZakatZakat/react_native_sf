@@ -18,6 +18,7 @@ import PipeFeed from "./pages/PipeFeed"
 import PipeFeedSwipe from "./pages/PipeFeedSwipe"
 import PipeMyEvents from "./pages/PipeMyEvents"
 import PipeOnboarding from "./pages/PipeOnboarding"
+import PipeOnboardingClassic from "./pages/PipeOnboardingClassic"
 import PipeAdminModeration from "./pages/PipeAdminModeration"
 import PipeExampleOnlyBlue from "./pages/PipeExampleOnlyBlue"
 import PipeFeedOnlyBlue from "./pages/PipeFeedOnlyBlue"
@@ -55,6 +56,7 @@ const pipeFeedRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pip
 const pipeFeedSwipeRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-feed-swipe", component: PipeFeedSwipe })
 const pipeMyEventsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-my-events", component: PipeMyEvents })
 const pipeOnboardingRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-onboarding", component: PipeOnboarding })
+const pipeOnboardingClassicRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-onboarding-classic", component: PipeOnboardingClassic })
 const pipeAdminModerationRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-admin-moderation", component: PipeAdminModeration })
 const pipeExampleOnlyBlueRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-example-only-blue", component: PipeExampleOnlyBlue })
 const pipeFeedOnlyBlueRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-feed-only-blue", component: PipeFeedOnlyBlue })
@@ -86,6 +88,7 @@ const routeTree = rootRoute.addChildren([
   pipeFeedSwipeRoute,
   pipeMyEventsRoute,
   pipeOnboardingRoute,
+  pipeOnboardingClassicRoute,
   pipeAdminModerationRoute,
   pipeExampleOnlyBlueRoute,
   pipeFeedOnlyBlueRoute,

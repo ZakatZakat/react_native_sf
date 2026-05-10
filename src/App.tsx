@@ -16,6 +16,7 @@ const PIPE_ROUTES = [
 ] as const
 
 const ALT_ROUTES = [
+  { label: "Pipe Onboarding (classic)", to: "/pipe-onboarding-classic" },
   { label: "Pipe Example", to: "/pipe-example" },
   { label: "Pipe Rotate", to: "/pipe-rotate" },
   { label: "Pipe My Profile", to: "/pipe-personal" },

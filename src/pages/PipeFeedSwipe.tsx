@@ -766,6 +766,25 @@ export default function PipeFeedSwipe() {
   const interests = useInterests()
   const [mode, setMode] = useState<Mode>("deluxe")
 
+  // "Радар поймал N событий" banner when arriving from new onboarding
+  const [radarBanner, setRadarBanner] = useState<number | null>(() => {
+    if (typeof window === "undefined") return null
+    const params = new URLSearchParams(window.location.search)
+    const n = params.get("radar")
+    return n ? parseInt(n, 10) || null : null
+  })
+  useEffect(() => {
+    if (radarBanner == null) return
+    const t = window.setTimeout(() => {
+      setRadarBanner(null)
+      // strip ?radar= from URL without reload
+      const u = new URL(window.location.href)
+      u.searchParams.delete("radar")
+      window.history.replaceState({}, "", u.toString())
+    }, 6000)
+    return () => window.clearTimeout(t)
+  }, [radarBanner])
+
   useEffect(() => {
     if (!hasOnboarded()) {
       navigate({ to: "/pipe-onboarding" })
@@ -1200,6 +1219,47 @@ export default function PipeFeedSwipe() {
           <Text as="span" color={K}>Свайпай </Text>
           <Text as="span" color={B}>карточки</Text>
         </Text>
+
+        {radarBanner != null && (
+          <Flex
+            mb="4"
+            align="center"
+            justify="space-between"
+            bg={K}
+            color={W}
+            border={`2.5px solid ${K}`}
+            boxShadow={`4px 4px 0 ${B}`}
+            px="3"
+            py="2.5"
+            style={{ animation: "p5-toast-in 0.3s ease-out" }}
+          >
+            <Box>
+              <Text fontSize="9px" fontWeight="900" letterSpacing="0.22em" textTransform="uppercase" color={W} opacity={0.75}>
+                Твой радар
+              </Text>
+              <Text fontSize="18px" fontWeight="900" letterSpacing="-0.02em" textTransform="uppercase" lineHeight="1" mt="1">
+                поймал {radarBanner} {radarBanner === 1 ? "событие" : radarBanner < 5 ? "события" : "событий"}
+              </Text>
+            </Box>
+            <Box
+              as="button"
+              onClick={() => setRadarBanner(null)}
+              w="28px"
+              h="28px"
+              border={`2px solid ${W}`}
+              bg="transparent"
+              color={W}
+              fontSize="14px"
+              fontWeight="900"
+              cursor="pointer"
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+            >
+              ✕
+            </Box>
+          </Flex>
+        )}
 
         {interests.length > 0 && (
           <Box mb="5">
