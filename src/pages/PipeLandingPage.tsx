@@ -35,7 +35,7 @@ export default function PipeLandingPage() {
     let cancelled = false
     ;(async () => {
       try {
-        const feed = await Curator.getFeed({ limit: 36 })
+        const feed = await Curator.getFeed({ limit: 80 })
         if (cancelled) return
         const urls: string[] = []
         for (const ev of feed) {
@@ -45,8 +45,9 @@ export default function PipeLandingPage() {
           if (urls.length >= 12) break
         }
         setPosters(urls)
-        // For variant D — keep events with image. Need pool >= 5 for rotation.
-        setEvents(feed.filter((ev) => ev.media_urls?.some(isImg)).slice(0, 16))
+        // For variant D — keep events with image. Bigger pool → smart-assignment has more
+        // candidates to filter against the per-slot aspect threshold.
+        setEvents(feed.filter((ev) => ev.media_urls?.some(isImg)).slice(0, 60))
       } catch { /* offline ok */ }
     })()
     return () => { cancelled = true }
@@ -546,32 +547,40 @@ function VariantBento({ onCta, dd, mm, yy, dateLong, posters: _posters, events }
         }}
       />
 
-      {/* ── Bauhaus 4 blue corner blocks ── */}
+      {/* ── Bauhaus 4 blue pixel-clusters — same cell size everywhere ── */}
+      {/* Container size = grid cols/rows × cell size (22px on mobile, 26px on sm+). */}
       <Box
         position="absolute" top="0" left="0"
-        w={{ base: "200px", sm: "300px" }} h={{ base: "220px", sm: "320px" }}
-        bg={B} zIndex={0} pointerEvents="none" opacity={0.95}
-        style={{ clipPath: "polygon(0 0, 78% 0, 78% 14%, 100% 14%, 100% 36%, 88% 36%, 88% 56%, 70% 56%, 70% 80%, 42% 80%, 42% 100%, 0 100%)" }}
-      />
+        w={{ base: `${TOP_LEFT_GRID[0].length * 22}px`, sm: `${TOP_LEFT_GRID[0].length * 26}px` }}
+        h={{ base: `${TOP_LEFT_GRID.length * 22}px`,    sm: `${TOP_LEFT_GRID.length * 26}px` }}
+        zIndex={0} pointerEvents="none" opacity={0.95}
+      >
+        <PixelCluster grid={TOP_LEFT_GRID} color={B} shimmerSeed={0} />
+      </Box>
       <Box
         position="absolute" top={{ base: "320px", sm: "400px" }} right="0"
-        w={{ base: "100px", sm: "160px" }} h={{ base: "180px", sm: "240px" }}
-        bg={B} zIndex={0} pointerEvents="none" opacity={0.95}
-        style={{ clipPath: "polygon(0 0, 100% 0, 100% 100%, 30% 100%, 30% 70%, 0 70%)" }}
-      />
+        w={{ base: `${MID_RIGHT_GRID[0].length * 22}px`, sm: `${MID_RIGHT_GRID[0].length * 26}px` }}
+        h={{ base: `${MID_RIGHT_GRID.length * 22}px`,    sm: `${MID_RIGHT_GRID.length * 26}px` }}
+        zIndex={0} pointerEvents="none" opacity={0.95}
+      >
+        <PixelCluster grid={MID_RIGHT_GRID} color={B} shimmerSeed={400} />
+      </Box>
       <Box
         position="absolute" bottom={{ base: "120px", sm: "160px" }} left="0"
-        w={{ base: "150px", sm: "210px" }} h={{ base: "150px", sm: "210px" }}
+        w={{ base: `${BOTTOM_LEFT_GRID[0].length * 22}px`, sm: `${BOTTOM_LEFT_GRID[0].length * 26}px` }}
+        h={{ base: `${BOTTOM_LEFT_GRID.length * 22}px`,    sm: `${BOTTOM_LEFT_GRID.length * 26}px` }}
         zIndex={0} pointerEvents="none" opacity={0.85}
       >
-        <PixelCluster color={B} />
+        <PixelCluster grid={BOTTOM_LEFT_GRID} color={B} shimmerSeed={900} />
       </Box>
       <Box
         position="absolute" bottom="0" right="0"
-        w={{ base: "180px", sm: "260px" }} h={{ base: "130px", sm: "170px" }}
-        bg={B} zIndex={0} pointerEvents="none" opacity={0.95}
-        style={{ clipPath: "polygon(0 36%, 24% 36%, 24% 0, 100% 0, 100% 100%, 0 100%)" }}
-      />
+        w={{ base: `${BOTTOM_RIGHT_GRID[0].length * 22}px`, sm: `${BOTTOM_RIGHT_GRID[0].length * 26}px` }}
+        h={{ base: `${BOTTOM_RIGHT_GRID.length * 22}px`,    sm: `${BOTTOM_RIGHT_GRID.length * 26}px` }}
+        zIndex={0} pointerEvents="none" opacity={0.95}
+      >
+        <PixelCluster grid={BOTTOM_RIGHT_GRID} color={B} shimmerSeed={1500} />
+      </Box>
 
       <Flex
         maxW="640px"
@@ -867,19 +876,29 @@ type SlotConfig = {
   rowSpan: number
   shape: SlotShape
   accent: "blue" | "black"
-  /** Approx W/H aspect of the rendered image area in this slot — used to match posters. */
+  /** ACTUAL W/H aspect of the rendered image area — used by smart-assignment to pick best-fitting poster. */
   targetAspect: number
+  /** TALL/SQUARE — fraction of card height occupied by the image (0..1). Default 0.7. */
+  imageRatio?: number
+  /** WIDE — fraction of card width occupied by the image (0..1). Default 0.38. */
+  imageWidth?: number
 }
 
 // 5 slot bento layout (8-col grid, ~68px row units, dense flow).
-// targetAspect is roughly (colSpan * colWidth) / (rowSpan * 68px) — for matching against image aspects.
-// Assuming container ≈ 720px wide → colWidth ≈ 90px. Tweak by shape to account for text panels.
+// Per-slot imageRatio / imageWidth lets big slots devote more space to the poster
+// (and shrink the text panel). targetAspect is set to MATCH the resulting image area.
+// Container ≈ 720px wide → colWidth ≈ 83px (with 8px gaps). Row 68px + 8px gap.
 const BENTO_SLOTS: SlotConfig[] = [
-  { colSpan: 5, rowSpan: 5, shape: "tall",      accent: "blue",  targetAspect: 0.85 }, // big portrait
-  { colSpan: 3, rowSpan: 2, shape: "wide",      accent: "black", targetAspect: 0.55 }, // image is 38% of wide → narrow tall
-  { colSpan: 3, rowSpan: 3, shape: "tallSmall", accent: "blue",  targetAspect: 0.80 }, // medium portrait
-  { colSpan: 4, rowSpan: 3, shape: "wide",      accent: "black", targetAspect: 0.65 }, // image is 38% of wide
-  { colSpan: 4, rowSpan: 3, shape: "square",    accent: "blue",  targetAspect: 1.50 }, // wide square area
+  // 5×5 TALL big poster: cardW=447, cardH=372. imageRatio 0.72 → imgH≈268, text≈104px → aspect ≈ 1.67
+  { colSpan: 5, rowSpan: 5, shape: "tall",      accent: "blue",  targetAspect: 1.65, imageRatio: 0.72 },
+  // 3×2 WIDE small: cardW=265, cardH=144. imageWidth 0.38 → imgW≈100, imgH=144 → aspect ≈ 0.70
+  { colSpan: 3, rowSpan: 2, shape: "wide",      accent: "black", targetAspect: 0.70, imageWidth: 0.38 },
+  // 3×3 TALLSMALL: cardW=265, cardH=220. imageRatio 0.68 → imgH≈150, text≈70px → aspect ≈ 1.77
+  { colSpan: 3, rowSpan: 3, shape: "tallSmall", accent: "blue",  targetAspect: 1.75, imageRatio: 0.68 },
+  // 4×3 WIDE: cardW=356, cardH=220. imageWidth 0.45 → imgW≈160, imgH=220 → aspect ≈ 0.73
+  { colSpan: 4, rowSpan: 3, shape: "wide",      accent: "black", targetAspect: 0.73, imageWidth: 0.45 },
+  // 4×3 SQUARE: cardW=356, cardH=220. imageRatio 0.65 → imgH≈143, text≈77px → aspect ≈ 2.49
+  { colSpan: 4, rowSpan: 3, shape: "square",    accent: "blue",  targetAspect: 2.45, imageRatio: 0.65 },
 ]
 
 const ROTATE_INTERVAL_MS = 5000
@@ -918,8 +937,23 @@ function useImageAspects(urls: (string | null)[]) {
 }
 
 /**
- * Greedy assignment: for each slot (in order), pick the unused event whose image aspect
- * is closest to slot.targetAspect. Events without images go last as fallback.
+ * Maximum log-distance between an image's natural aspect and a slot's targetAspect
+ * for it to be considered a "good fit". 0.35 ≈ image aspect within ±42% of target
+ * (e.g. target 1.0 → accepts 0.70 .. 1.42). Anything past this gets dropped.
+ */
+const FIT_THRESHOLD = 0.35
+/** Looser fallback if strict pass leaves slots empty (rare with a 60-event pool). */
+const FALLBACK_THRESHOLD = 0.65
+
+function aspectDistance(aspect: number | null, target: number): number {
+  if (aspect == null) return Infinity
+  return Math.abs(Math.log(aspect) - Math.log(target))
+}
+
+/**
+ * Smart assignment: for each slot, pick the best-fitting unused event whose image
+ * aspect is within FIT_THRESHOLD of slot.targetAspect. If no candidate qualifies,
+ * relax to FALLBACK_THRESHOLD. Events without loaded image dimensions are skipped.
  */
 function assignEventsToSlots(
   events: FeedItem[],
@@ -927,26 +961,22 @@ function assignEventsToSlots(
 ): FeedItem[] {
   const used = new Set<string>()
   const result: FeedItem[] = []
-  for (const slot of BENTO_SLOTS) {
+  const pickFor = (slot: SlotConfig, threshold: number): FeedItem | null => {
     let best: FeedItem | null = null
-    let bestDist = Infinity
+    let bestDist = threshold
     for (const ev of events) {
       if (used.has(ev.id)) continue
       const url = eventPosterUrl(ev)
-      const aspect = url ? (aspects[url] ?? null) : null
-      // events without loaded image get a large penalty so they're picked last
-      const dist = aspect == null
-        ? 10 + (url ? 0 : 5)
-        : Math.abs(Math.log(aspect) - Math.log(slot.targetAspect))
-      if (dist < bestDist) {
-        bestDist = dist
-        best = ev
-      }
+      if (!url) continue
+      const aspect = aspects[url]
+      const dist = aspectDistance(aspect ?? null, slot.targetAspect)
+      if (dist < bestDist) { bestDist = dist; best = ev }
     }
-    if (best) {
-      used.add(best.id)
-      result.push(best)
-    }
+    return best
+  }
+  for (const slot of BENTO_SLOTS) {
+    const ev = pickFor(slot, FIT_THRESHOLD) ?? pickFor(slot, FALLBACK_THRESHOLD)
+    if (ev) { used.add(ev.id); result.push(ev) }
   }
   return result
 }
@@ -966,24 +996,26 @@ function BentoEventWall({ events }: { events: FeedItem[] }) {
     poolIdxRef.current = BENTO_SLOTS.length
     if (events.length <= BENTO_SLOTS.length) return
     const id = window.setInterval(() => {
-      // pick a random slot, replace with the best-fitting unused event for that slot
+      // pick a random slot, swap in the best-fitting unused event with image fit < threshold
       setSlotEvents((prev) => {
         const slotIdx = Math.floor(Math.random() * BENTO_SLOTS.length)
         const slot = BENTO_SLOTS[slotIdx]
         const usedIds = new Set(prev.map((e) => e.id))
-        let best: FeedItem | null = null
-        let bestDist = Infinity
-        for (const ev of events) {
-          if (usedIds.has(ev.id)) continue
-          const url = eventPosterUrl(ev)
-          const aspect = url ? (aspects[url] ?? null) : null
-          const dist = aspect == null
-            ? 10 + (url ? 0 : 5)
-            : Math.abs(Math.log(aspect) - Math.log(slot.targetAspect))
-          if (dist < bestDist) { bestDist = dist; best = ev }
+        const findBest = (threshold: number): FeedItem | null => {
+          let best: FeedItem | null = null
+          let bestDist = threshold
+          for (const ev of events) {
+            if (usedIds.has(ev.id)) continue
+            const url = eventPosterUrl(ev)
+            if (!url) continue
+            const dist = aspectDistance(aspects[url] ?? null, slot.targetAspect)
+            if (dist < bestDist) { bestDist = dist; best = ev }
+          }
+          return best
         }
-        if (!best) return prev
-        return prev.map((e, i) => (i === slotIdx ? best! : e))
+        const next = findBest(FIT_THRESHOLD) ?? findBest(FALLBACK_THRESHOLD)
+        if (!next) return prev // no qualifying replacement — keep current
+        return prev.map((e, i) => (i === slotIdx ? next : e))
       })
       poolIdxRef.current += 1
     }, ROTATE_INTERVAL_MS)
@@ -1024,7 +1056,15 @@ function BentoEventWall({ events }: { events: FeedItem[] }) {
               overflow="hidden"
             >
               {ev ? (
-                <BentoCard key={ev.id} ev={ev} shape={slot.shape} accent={slot.accent} index={i} />
+                <BentoCard
+                  key={ev.id}
+                  ev={ev}
+                  shape={slot.shape}
+                  accent={slot.accent}
+                  index={i}
+                  imageRatio={slot.imageRatio ?? 0.7}
+                  imageWidth={slot.imageWidth ?? 0.38}
+                />
               ) : (
                 <Box w="100%" h="100%" bg={`${K}06`} border={`2px solid ${K}10`} />
               )}
@@ -1037,13 +1077,20 @@ function BentoEventWall({ events }: { events: FeedItem[] }) {
 }
 
 function BentoCard({
-  ev, shape, accent, index,
+  ev, shape, accent, index, imageRatio = 0.7, imageWidth = 0.38,
 }: {
   ev: FeedItem
   shape: SlotShape
   accent: "blue" | "black"
   index: number
+  /** TALL/SQUARE — fraction of card height for the image (0..1). */
+  imageRatio?: number
+  /** WIDE — fraction of card width for the image (0..1). */
+  imageWidth?: number
 }) {
+  // Convert ratios to flex weights (×100 for whole numbers).
+  const imgFlex = Math.round(imageRatio * 100)
+  const txtFlex = Math.round((1 - imageRatio) * 100)
   const m = ev.media_urls?.find(isImg) ?? ev.media_urls?.[0]
   const r = resolveMedia(m ?? null)
   const src = r && isImg(r) ? r : null
@@ -1057,92 +1104,10 @@ function BentoCard({
   const accentColor = accent === "blue" ? B : K
   const accentTextColor = accent === "blue" ? W : W
 
-  // SQUARE — title overlaid on image with bottom gradient
+  // SQUARE — image on top, white text panel below (same pattern as TALL)
   if (shape === "square") {
     return (
-      <Box
-        className="bento-card-anim"
-        position="relative"
-        w="100%"
-        h="100%"
-        bg={K}
-        border={`2px solid ${K}`}
-        overflow="hidden"
-      >
-        {src && (
-          <Box
-            position="absolute"
-            inset="0"
-            style={{
-              backgroundImage: `url(${src})`,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-              filter: "grayscale(0.7) contrast(1.05)",
-            }}
-          />
-        )}
-        <Box
-          position="absolute"
-          inset="0"
-          bg="linear-gradient(180deg, rgba(13,13,13,0.1) 0%, rgba(13,13,13,0) 35%, rgba(13,13,13,0.85) 100%)"
-          pointerEvents="none"
-        />
-        {/* Top markers */}
-        <Flex position="absolute" top="6px" left="8px" right="8px" justify="space-between" align="center">
-          <Text fontSize="9px" fontWeight="900" letterSpacing="0.18em" color={W} style={{ textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>
-            № {num}
-          </Text>
-          {date && (
-            <Box bg={B} color={W} px="1.5" py="0.5" fontSize="9px" fontWeight="900" letterSpacing="0.14em">
-              {date}
-            </Box>
-          )}
-        </Flex>
-        {/* Title bottom */}
-        <Box position="absolute" bottom="8px" left="8px" right="8px">
-          <Text
-            fontSize="10px"
-            fontWeight="900"
-            letterSpacing="0.14em"
-            color={B}
-            mb="1"
-            style={{
-              textShadow: "0 1px 4px rgba(0,0,0,0.5)",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}
-          >
-            {channelStr}
-          </Text>
-          <Text
-            fontSize="14px"
-            fontWeight="900"
-            lineHeight="1.08"
-            letterSpacing="-0.018em"
-            textTransform="uppercase"
-            color={W}
-            style={{
-              display: "-webkit-box",
-              WebkitLineClamp: 3,
-              WebkitBoxOrient: "vertical",
-              overflow: "hidden",
-              textShadow: "0 2px 10px rgba(0,0,0,0.7)",
-              wordBreak: "break-word",
-            }}
-          >
-            {title}
-          </Text>
-        </Box>
-      </Box>
-    )
-  }
-
-  // TALL — image top (60-70%), text bottom
-  if (shape === "tall" || shape === "tallSmall") {
-    return (
       <Flex
-        className="bento-card-anim"
         direction="column"
         w="100%"
         h="100%"
@@ -1150,7 +1115,87 @@ function BentoCard({
         border={`2px solid ${K}`}
         overflow="hidden"
       >
-        <Box position="relative" flex={shape === "tall" ? "1.6" : "1.3"} minH="0" bg={K} overflow="hidden" borderBottom={`2px solid ${K}`}>
+        <Box position="relative" flex={imgFlex} minH="0" bg={K} overflow="hidden" borderBottom={`2px solid ${K}`}>
+          {src && (
+            <Box
+              position="absolute"
+              inset="0"
+              style={{
+                backgroundImage: `url(${src})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+                filter: "grayscale(0.7) contrast(1.05)",
+              }}
+            />
+          )}
+          {date && (
+            <Box position="absolute" bottom="0" left="0" bg={B} color={W} px="2" py="0.5" fontSize="10px" fontWeight="900" letterSpacing="0.14em" lineHeight="1.4">
+              {date}
+            </Box>
+          )}
+          <Text position="absolute" top="6px" right="8px" fontSize="9px" fontWeight="900" letterSpacing="0.18em" color={W} style={{ textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>
+            № {num}
+          </Text>
+        </Box>
+        <Flex direction="column" justify="space-between" px="2.5" py="2" flex={txtFlex} minH="0" gap="1">
+          <Box minW="0">
+            <Flex align="center" gap="1.5" mb="1" minW="0">
+              <Box w="6px" h="6px" bg={B} flexShrink={0} />
+              <Text
+                fontSize="10px"
+                fontWeight="900"
+                letterSpacing="0.12em"
+                color={B}
+                style={{
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  minWidth: 0,
+                  flex: 1,
+                }}
+              >
+                {channelStr}
+              </Text>
+            </Flex>
+            <Text
+              fontSize="12px"
+              fontWeight="900"
+              lineHeight="1.1"
+              letterSpacing="-0.012em"
+              textTransform="uppercase"
+              color={K}
+              style={{
+                display: "-webkit-box",
+                WebkitLineClamp: 3,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+                wordBreak: "break-word",
+              }}
+            >
+              {title}
+            </Text>
+          </Box>
+          <Flex justify="space-between" align="center" mt="1">
+            <Box w="16px" h="2px" bg={K} />
+            <Text fontSize="12px" fontWeight="900" color={accentColor} lineHeight="1">↗</Text>
+          </Flex>
+        </Flex>
+      </Flex>
+    )
+  }
+
+  // TALL — image top (60-70%), text bottom
+  if (shape === "tall" || shape === "tallSmall") {
+    return (
+      <Flex
+        direction="column"
+        w="100%"
+        h="100%"
+        bg={W}
+        border={`2px solid ${K}`}
+        overflow="hidden"
+      >
+        <Box position="relative" flex={imgFlex} minH="0" bg={K} overflow="hidden" borderBottom={`2px solid ${K}`}>
           {src && (
             <Box
               position="absolute"
@@ -1172,7 +1217,7 @@ function BentoCard({
             № {num}
           </Text>
         </Box>
-        <Flex direction="column" justify="space-between" px="2.5" py="2" flex="1" minH="0" gap="1">
+        <Flex direction="column" justify="space-between" px="2.5" py="2" flex={txtFlex} minH="0" gap="1">
           <Box minW="0">
             <Flex align="center" gap="1.5" mb="1" minW="0">
               <Box w="6px" h="6px" bg={B} flexShrink={0} />
@@ -1201,7 +1246,7 @@ function BentoCard({
               color={K}
               style={{
                 display: "-webkit-box",
-                WebkitLineClamp: shape === "tall" ? 4 : 3,
+                WebkitLineClamp: shape === "tall" ? 3 : 2,
                 WebkitBoxOrient: "vertical",
                 overflow: "hidden",
                 wordBreak: "break-word",
@@ -1222,7 +1267,6 @@ function BentoCard({
   // WIDE — image left, text right
   return (
     <Flex
-      className="bento-card-anim"
       align="stretch"
       w="100%"
       h="100%"
@@ -1230,7 +1274,7 @@ function BentoCard({
       border={`2px solid ${K}`}
       overflow="hidden"
     >
-      <Box position="relative" w="38%" bg={K} overflow="hidden" borderRight={`2px solid ${K}`} flexShrink={0}>
+      <Box position="relative" w={`${Math.round(imageWidth * 100)}%`} bg={K} overflow="hidden" borderRight={`2px solid ${K}`} flexShrink={0}>
         {src && (
           <Box
             position="absolute"
@@ -1289,26 +1333,320 @@ function BentoCard({
 }
 
 /**
- * 8×8 grid of small squares with hand-tuned cut-outs — pixel-cluster supergraphic
- * (used in the Bauhaus background of Variant D).
+ * Hand-tuned blue-blob grids for the 4 corner supergraphics.
+ * Each is a 2D array of 0 / 1 — same convention as the original PixelCluster.
+ * All rendered by `PixelCluster` with identical cell rect + sub-pixel gap look.
  */
-function PixelCluster({ color }: { color: string }) {
-  const grid = [
-    [0, 0, 0, 1, 1, 1, 0, 0],
-    [0, 0, 1, 1, 1, 1, 1, 0],
-    [0, 1, 1, 1, 1, 1, 1, 1],
-    [0, 1, 1, 1, 0, 1, 1, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1, 0, 1, 1],
-    [1, 1, 1, 1, 1, 1, 1, 0],
-    [1, 1, 0, 1, 1, 1, 0, 0],
-  ]
+const TOP_LEFT_GRID = [
+  [1,1,1,1,1,1,1,0],
+  [1,1,1,1,1,1,1,0],
+  [1,1,0,1,1,1,1,1],   // hole
+  [1,1,1,1,1,1,1,1],
+  [1,1,1,1,1,0,1,1],   // hole
+  [1,1,1,1,1,0,0,0],
+  [1,1,1,1,1,0,0,0],
+  [1,1,1,0,1,0,0,0],   // hole + step
+  [1,1,1,0,0,0,0,0],
+  [1,1,0,0,0,0,0,0],
+]
+
+const MID_RIGHT_GRID = [
+  [1,1,1,1,1],
+  [1,1,1,1,1],
+  [1,0,1,1,1],   // hole
+  [1,1,1,1,1],
+  [1,1,1,0,1],   // hole
+  [1,1,1,1,1],
+  [0,1,1,1,1],
+  [0,1,1,1,1],
+]
+
+const BOTTOM_RIGHT_GRID = [
+  [0,0,1,1,1,1,1,1],
+  [0,0,1,1,1,0,1,1],   // hole
+  [1,1,1,1,1,1,1,1],
+  [1,1,0,1,1,1,0,1],   // 2 holes
+  [1,1,1,1,1,1,1,1],
+]
+
+const BOTTOM_LEFT_GRID = [
+  [0,0,0,1,1,1,0,0],
+  [0,0,1,1,1,1,1,0],
+  [0,1,1,1,1,1,1,1],
+  [0,1,1,1,0,1,1,1],
+  [1,1,1,1,1,1,1,1],
+  [1,1,1,1,1,0,1,1],
+  [1,1,1,1,1,1,1,0],
+  [1,1,0,1,1,1,0,0],
+]
+
+/**
+ * Renders a grid of pixel cells the same way for every shape — chunky `<rect>`s
+ * with no explicit gap (sub-pixel anti-aliasing creates the white gridlines).
+ *
+ * EDGE cells (those touching emptiness or grid boundary) animate as a
+ * "spotlight" rotating around the perimeter — phase based on each cell's
+ * angle from the cluster centroid. Interior cells stay solid.
+ */
+const ROTATE_DURATION_MS = 4200
+
+function PixelCluster({
+  grid,
+  color,
+  shimmerSeed = 0,
+}: {
+  grid: number[][]
+  color: string
+  /** Offset in ms — pass different values to desync clusters from each other. */
+  shimmerSeed?: number
+}) {
+  const rows = grid.length
+  const cols = grid[0]?.length ?? 0
+
+  // Compute centroid + per-cell phase delay (only matters for edge cells).
+  const cellMeta = useMemo(() => {
+    let sumX = 0, sumY = 0, n = 0
+    for (let y = 0; y < rows; y++) {
+      for (let x = 0; x < cols; x++) {
+        if (grid[y][x] === 1) { sumX += x; sumY += y; n++ }
+      }
+    }
+    const cx = n ? sumX / n : cols / 2
+    const cy = n ? sumY / n : rows / 2
+    const meta: Array<Array<{ isEdge: boolean; delayMs: number }>> = []
+    for (let y = 0; y < rows; y++) {
+      const row: Array<{ isEdge: boolean; delayMs: number }> = []
+      for (let x = 0; x < cols; x++) {
+        let isEdge = false
+        if (grid[y][x] === 1) {
+          // edge if any 4-neighbor is empty or off-grid
+          for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]] as const) {
+            const ny = y + dy, nx = x + dx
+            if (ny < 0 || ny >= rows || nx < 0 || nx >= cols || grid[ny][nx] !== 1) {
+              isEdge = true
+              break
+            }
+          }
+        }
+        // angle 0..2π → delay 0..duration. Negative delay so animation runs already in-progress.
+        const angle = Math.atan2(y - cy, x - cx) // -π..π
+        const norm = (angle + Math.PI) / (2 * Math.PI) // 0..1
+        const delayMs = -Math.round(norm * ROTATE_DURATION_MS) + shimmerSeed
+        row.push({ isEdge, delayMs })
+      }
+      meta.push(row)
+    }
+    return meta
+  }, [grid, rows, cols, shimmerSeed])
+
   return (
-    <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg" style={{ width: "100%", height: "100%", display: "block" }}>
+    <svg
+      viewBox={`0 0 ${cols * 10} ${rows * 10}`}
+      preserveAspectRatio="none"
+      xmlns="http://www.w3.org/2000/svg"
+      style={{ width: "100%", height: "100%", display: "block" }}
+    >
+      <style>{`
+        @keyframes edge-orbit {
+          0%   { opacity: 0.35; }
+          18%  { opacity: 1;    }
+          36%  { opacity: 0.65; }
+          100% { opacity: 0.35; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .edge-cell { animation: none !important; opacity: 1 !important; }
+        }
+      `}</style>
       {grid.map((row, y) =>
-        row.map((cell, x) =>
-          cell === 1 ? (
-            <rect key={`${x}-${y}`} x={x * 10} y={y * 10} width="10" height="10" fill={color} />
+        row.map((cell, x) => {
+          if (cell !== 1) return null
+          const { isEdge, delayMs } = cellMeta[y][x]
+          return (
+            <rect
+              key={`${x}-${y}`}
+              className={isEdge ? "edge-cell" : undefined}
+              x={x * 10}
+              y={y * 10}
+              width="10"
+              height="10"
+              fill={color}
+              style={
+                isEdge
+                  ? {
+                      animation: `edge-orbit ${ROTATE_DURATION_MS}ms linear infinite`,
+                      animationDelay: `${delayMs}ms`,
+                    }
+                  : undefined
+              }
+            />
+          )
+        })
+      )}
+    </svg>
+  )
+}
+
+/* ─── Below: AnimatedPixelShape — kept for future use, not currently rendered. ─── */
+
+type PixelGrid = number[][]
+
+const SHAPE_GRIDS: Record<string, PixelGrid> = {
+  // top-left "stair" descending towards bottom-right
+  topLeft: [
+    [1,1,1,1,1,1,1,1],
+    [1,1,1,1,1,1,1,1],
+    [1,1,1,1,1,1,1,0],
+    [1,1,1,1,1,1,1,0],
+    [1,1,1,1,1,1,0,0],
+    [1,1,1,1,1,0,0,0],
+    [1,1,1,1,1,0,0,0],
+    [1,1,1,1,0,0,0,0],
+    [1,1,1,0,0,0,0,0],
+    [1,1,0,0,0,0,0,0],
+  ],
+  // mid-right L-shape (notch at bottom-left)
+  midRight: [
+    [1,1,1,1,1],
+    [1,1,1,1,1],
+    [1,1,1,1,1],
+    [1,1,1,1,1],
+    [1,1,1,1,1],
+    [1,1,1,1,1],
+    [0,1,1,1,1],
+    [0,1,1,1,1],
+  ],
+  // bottom-left cluster (organic blob with holes)
+  bottomLeft: [
+    [0,0,0,1,1,1,0,0],
+    [0,0,1,1,1,1,1,0],
+    [0,1,1,1,1,1,1,1],
+    [0,1,1,1,0,1,1,1],
+    [1,1,1,1,1,1,1,1],
+    [1,1,1,1,1,0,1,1],
+    [1,1,1,1,1,1,1,0],
+    [1,1,0,1,1,1,0,0],
+  ],
+  // bottom-right rectangle with notch top-left
+  bottomRight: [
+    [0,0,1,1,1,1,1,1],
+    [0,0,1,1,1,1,1,1],
+    [1,1,1,1,1,1,1,1],
+    [1,1,1,1,1,1,1,1],
+    [1,1,1,1,1,1,1,1],
+  ],
+}
+
+/** Count live neighbors of cell (x,y) in `state` grid. */
+function countNeighbors(state: boolean[][], x: number, y: number): number {
+  const rows = state.length
+  const cols = state[0].length
+  let n = 0
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      if (dx === 0 && dy === 0) continue
+      const ny = y + dy, nx = x + dx
+      if (ny >= 0 && ny < rows && nx >= 0 && nx < cols && state[ny][nx]) n++
+    }
+  }
+  return n
+}
+
+/**
+ * Pixel shape with optional Game-of-Life animation along its edges.
+ * Interior cells (filled with all 8 neighbors filled in the original silhouette)
+ * are immutable. Border cells (anything else within reach of the silhouette)
+ * follow GoL rules — flickering, marching, sparkling on the perimeter.
+ */
+function AnimatedPixelShape({
+  grid,
+  color,
+  cellSize = 10,
+  gap = 1.4,
+  intervalMs = 700,
+}: {
+  grid: PixelGrid
+  color: string
+  cellSize?: number
+  gap?: number
+  intervalMs?: number
+}) {
+  const rows = grid.length
+  const cols = grid[0]?.length ?? 0
+
+  // Compute static interior + animated border once per grid.
+  const { isInterior, borderCells } = useMemo(() => {
+    const isInt: boolean[][] = Array.from({ length: rows }, () => Array(cols).fill(false))
+    const border: Array<[number, number]> = []
+    const original = grid.map((row) => row.map((c) => c === 1))
+    for (let y = 0; y < rows; y++) {
+      for (let x = 0; x < cols; x++) {
+        // count filled neighbors in original silhouette
+        let filledNb = 0
+        let totalNb = 0
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (dx === 0 && dy === 0) continue
+            const ny = y + dy, nx = x + dx
+            if (ny < 0 || ny >= rows || nx < 0 || nx >= cols) continue
+            totalNb++
+            if (original[ny][nx]) filledNb++
+          }
+        }
+        if (original[y][x] && filledNb === totalNb && totalNb === 8) {
+          isInt[y][x] = true
+        } else if (original[y][x] || filledNb > 0) {
+          border.push([x, y])
+        }
+      }
+    }
+    return { isInterior: isInt, borderCells: border }
+  }, [grid, rows, cols])
+
+  const [state, setState] = useState<boolean[][]>(() => grid.map((row) => row.map((c) => c === 1)))
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setState((prev) => {
+        const next = prev.map((r) => [...r])
+        for (const [x, y] of borderCells) {
+          if (isInterior[y][x]) continue
+          const n = countNeighbors(prev, x, y)
+          if (prev[y][x]) {
+            // alive: stays alive on 2-3 neighbors, else dies
+            next[y][x] = n === 2 || n === 3 || n === 4
+          } else {
+            // dead: born on exactly 3 neighbors
+            next[y][x] = n === 3
+          }
+        }
+        return next
+      })
+    }, intervalMs)
+    return () => window.clearInterval(id)
+  }, [borderCells, isInterior, intervalMs])
+
+  const inner = cellSize - gap
+  const w = cols * cellSize
+  const h = rows * cellSize
+
+  return (
+    <svg
+      viewBox={`0 0 ${w} ${h}`}
+      preserveAspectRatio="none"
+      xmlns="http://www.w3.org/2000/svg"
+      style={{ width: "100%", height: "100%", display: "block" }}
+    >
+      {state.map((row, y) =>
+        row.map((alive, x) =>
+          alive ? (
+            <rect
+              key={`${x}-${y}`}
+              x={x * cellSize + gap / 2}
+              y={y * cellSize + gap / 2}
+              width={inner}
+              height={inner}
+              fill={color}
+            />
           ) : null
         )
       )}
