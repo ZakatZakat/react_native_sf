@@ -21,27 +21,15 @@ import { Curator } from "../lib/curator"
 import { buildInterestImages } from "./pipe/RadarGrid"
 import { RadarGridSwiss } from "./pipe/RadarGridSwiss"
 import { RadarGridMuseum } from "./pipe/RadarGridMuseum"
+import { RadarGridBrussels, RadarGridTriptic, RadarGridBlockParty, RadarGridOscilloscope } from "./pipe/RadarGridEditorial"
 
 const K = "#0D0D0D"
 const W = "#FFFFFF"
 const B = "#0055FF"
 const G = "rgba(13,13,13,0.55)"
 
-type Step = "intro" | "radar"
-
 export default function PipeOnboarding() {
   const navigate = useNavigate()
-  // Allow skipping the intro via ?step=radar (used when arriving from PipeLandingPage)
-  const initialStep: Step = (() => {
-    try {
-      if (typeof window === "undefined") return "intro"
-      const p = new URLSearchParams(window.location.search).get("step")
-      return p === "radar" ? "radar" : "intro"
-    } catch {
-      return "intro"
-    }
-  })()
-  const [step, setStep] = useState<Step>(initialStep)
   const [picked, setPicked] = useState<Set<string>>(() => new Set(getInterests()))
   const [events, setEvents] = useState<EventCard[]>([])
 
@@ -63,7 +51,6 @@ export default function PipeOnboarding() {
 
   // Preload events to feed RadarGrid backgrounds
   useEffect(() => {
-    if (step !== "radar") return
     let cancelled = false
     ;(async () => {
       try {
@@ -75,7 +62,7 @@ export default function PipeOnboarding() {
       } catch { /* */ }
     })()
     return () => { cancelled = true }
-  }, [step])
+  }, [])
 
   const interestImages = useMemo(() => buildInterestImages(events), [events])
 
@@ -86,12 +73,6 @@ export default function PipeOnboarding() {
       else next.add(key)
       return next
     })
-  }
-
-  const goSeeAll = async () => {
-    setInterests([])
-    try { await Curator.setInterests([]) } catch { /* */ }
-    navigate({ to: "/pipe-feed-swipe" })
   }
 
   const finishRadar = async () => {
@@ -107,249 +88,31 @@ export default function PipeOnboarding() {
     navigate({ to: "/pipe-feed-swipe", search: count > 0 ? { radar: String(count) } : undefined })
   }
 
-  if (step === "intro") {
-    return <IntroScreen onRadar={() => setStep("radar")} onSeeAll={goSeeAll} />
-  }
   return (
     <RadarStep
       picked={picked}
       onToggle={toggle}
-      onBack={() => setStep("intro")}
+      onBack={() => navigate({ to: "/pipe-landing" })}
       onFinish={finishRadar}
       interestImages={interestImages}
     />
   )
 }
 
-/* ───────────────────────────────────────────────────────────────── */
-/* STEP 1 — INTRO POSTER                                            */
-/* ───────────────────────────────────────────────────────────────── */
-
-function IntroScreen({ onRadar, onSeeAll }: { onRadar: () => void; onSeeAll: () => void }) {
-  return (
-    <Box
-      minH="100dvh"
-      bg={W}
-      color={K}
-      position="relative"
-      overflow="hidden"
-      css={{ WebkitTapHighlightColor: "transparent" }}
-      style={{
-        paddingTop: "max(1rem, env(safe-area-inset-top))",
-        paddingBottom: "max(1rem, env(safe-area-inset-bottom))",
-        fontFamily:
-          "'Helvetica Neue', 'Inter', system-ui, sans-serif",
-      }}
-    >
-      {/* Faint diagonal grid lines — Swiss-poster construction marks */}
-      <Box
-        position="absolute"
-        inset="0"
-        pointerEvents="none"
-        opacity={0.06}
-        style={{
-          backgroundImage:
-            `linear-gradient(${K} 1px, transparent 1px), linear-gradient(90deg, ${K} 1px, transparent 1px)`,
-          backgroundSize: "48px 48px",
-        }}
-      />
-
-      <Flex
-        maxW="520px"
-        mx="auto"
-        px="6"
-        pt="6"
-        pb="6"
-        direction="column"
-        position="relative"
-        zIndex={1}
-        minH="100dvh"
-        gap="6"
-      >
-        {/* Top header — editorial markers */}
-        <Flex justify="space-between" align="flex-start" w="100%">
-          <Box>
-            <Text fontSize="10px" fontWeight="900" letterSpacing="0.32em" textTransform="uppercase" color={K}>
-              N° 001
-            </Text>
-            <Text fontSize="10px" fontWeight="700" letterSpacing="0.22em" textTransform="uppercase" color={G} mt="1">
-              v 0 . 1 — radar issue
-            </Text>
-          </Box>
-          <Box textAlign="right">
-            <Text fontSize="10px" fontWeight="900" letterSpacing="0.32em" textTransform="uppercase" color={K}>
-              MOSCOW / SPB
-            </Text>
-            <Text fontSize="10px" fontWeight="700" letterSpacing="0.22em" textTransform="uppercase" color={G} mt="1">
-              {new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" })
-                .format(new Date())
-                .toUpperCase()}
-            </Text>
-          </Box>
-        </Flex>
-
-        {/* The hero block */}
-        <Flex direction="column" gap="5" flex="1" justify="center">
-          {/* Big WORDMARK */}
-          <Box>
-            <Box
-              h="3px"
-              bg={K}
-              w="100%"
-              mb="3"
-            />
-            <Text
-              fontSize={{ base: "64px", sm: "96px" }}
-              fontWeight="900"
-              lineHeight="0.86"
-              letterSpacing="-0.05em"
-              textTransform="uppercase"
-              color={K}
-            >
-              CITY
-            </Text>
-            <Text
-              fontSize={{ base: "64px", sm: "96px" }}
-              fontWeight="900"
-              lineHeight="0.86"
-              letterSpacing="-0.05em"
-              textTransform="uppercase"
-              color={B}
-            >
-              SIGNAL
-            </Text>
-            <Box
-              h="3px"
-              bg={K}
-              w="100%"
-              mt="3"
-            />
-          </Box>
-
-          {/* Promise / lede paragraph */}
-          <Box>
-            <Text
-              fontSize={{ base: "20px", sm: "24px" }}
-              fontWeight="900"
-              lineHeight="1.1"
-              letterSpacing="-0.02em"
-              color={K}
-              textTransform="none"
-            >
-              События, которые не попали в обычные афиши.
-            </Text>
-            <Text
-              mt="3"
-              fontSize="13px"
-              fontWeight="700"
-              lineHeight="1.45"
-              color={G}
-              maxW="420px"
-            >
-              Телеграм-каналы, подвалы, галереи, клубы, кинопоказы,
-              лекции и странные штуки на сегодня.
-            </Text>
-          </Box>
-
-          {/* Side meta — looks like a poster spec sheet */}
-          <Flex gap="0" borderTop={`1.5px solid ${K}`} borderBottom={`1.5px solid ${K}`} mt="2">
-            <SpecCol label="Источники" value="35+" />
-            <SpecCol label="Сигналов" value="12" middle />
-            <SpecCol label="Период" value="LIVE" />
-          </Flex>
-        </Flex>
-
-        {/* Bottom CTAs */}
-        <Flex direction="column" gap="3" pb="2">
-          {/* Primary */}
-          <Flex
-            as="button"
-            onClick={onRadar}
-            align="center"
-            justify="space-between"
-            px="5"
-            py="4"
-            bg={K}
-            color={W}
-            border={`3px solid ${K}`}
-            cursor="pointer"
-            _hover={{ bg: B, borderColor: B }}
-            _active={{ transform: "translate(2px, 2px)" }}
-            transition="all 0.14s cubic-bezier(0.22, 1, 0.36, 1)"
-          >
-            <Text
-              fontSize={{ base: "16px", sm: "20px" }}
-              fontWeight="900"
-              letterSpacing="0.05em"
-              textTransform="uppercase"
-            >
-              Собрать радар
-            </Text>
-            <Text fontSize="22px" fontWeight="900" lineHeight="1">→</Text>
-          </Flex>
-
-          {/* Secondary */}
-          <Flex
-            as="button"
-            onClick={onSeeAll}
-            align="center"
-            justify="space-between"
-            px="5"
-            py="3.5"
-            bg={W}
-            color={K}
-            border={`3px solid ${K}`}
-            cursor="pointer"
-            _hover={{ bg: K, color: W }}
-            _active={{ transform: "translate(2px, 2px)" }}
-            transition="all 0.14s cubic-bezier(0.22, 1, 0.36, 1)"
-          >
-            <Text
-              fontSize={{ base: "14px", sm: "16px" }}
-              fontWeight="900"
-              letterSpacing="0.05em"
-              textTransform="uppercase"
-            >
-              Смотреть всё
-            </Text>
-            <Text fontSize="18px" fontWeight="900" lineHeight="1" opacity={0.7}>→</Text>
-          </Flex>
-
-          {/* Tiny footnote */}
-          <Text fontSize="9px" fontWeight="700" letterSpacing="0.22em" textTransform="uppercase" color={G} mt="1" textAlign="center">
-            Радар можно собрать позже. Любой выбор обратимый.
-          </Text>
-        </Flex>
-      </Flex>
-    </Box>
-  )
-}
-
-function SpecCol({ label, value, middle = false }: { label: string; value: string; middle?: boolean }) {
-  return (
-    <Flex
-      direction="column"
-      flex="1"
-      px="3"
-      py="3"
-      borderLeft={middle ? `1.5px solid ${K}` : undefined}
-      borderRight={middle ? `1.5px solid ${K}` : undefined}
-    >
-      <Text fontSize="9px" fontWeight="900" letterSpacing="0.22em" textTransform="uppercase" color={G}>
-        {label}
-      </Text>
-      <Text fontSize="24px" fontWeight="900" letterSpacing="-0.03em" color={K} lineHeight="1.05" mt="1">
-        {value}
-      </Text>
-    </Flex>
-  )
-}
 
 /* ───────────────────────────────────────────────────────────────── */
 /* STEP 2 — RADAR GRID                                               */
 /* ───────────────────────────────────────────────────────────────── */
 
-type GridStyle = "swiss" | "museum"
+type GridStyle = "museum" | "swiss" | "brussels" | "triptic" | "blockparty" | "radar"
+const GRID_STYLES: { key: GridStyle; letter: string; label: string }[] = [
+  { key: "museum",    letter: "A", label: "Museum"      },
+  { key: "swiss",     letter: "B", label: "Swiss"       },
+  { key: "brussels",  letter: "C", label: "Brussels"    },
+  { key: "triptic",   letter: "D", label: "Triptic"     },
+  { key: "blockparty", letter: "E", label: "Block Party" },
+  { key: "radar",     letter: "F", label: "Radar"       },
+]
 
 function RadarStep({
   picked, onToggle, onBack, onFinish, interestImages,
@@ -402,7 +165,7 @@ function RadarStep({
             <Text fontSize="14px" lineHeight="1">←</Text> Назад
           </Flex>
           <Box bg={K} color={W} px="2.5" py="1" fontSize="10px" fontWeight="900" letterSpacing="0.18em" textTransform="uppercase">
-            Шаг 02 / 02
+            Радар
           </Box>
         </Flex>
 
@@ -453,43 +216,46 @@ function RadarStep({
           <Text as="span" color={K} fontWeight="800">{recommended}–5 штук</Text> хватит, чтобы лента поймала своё.
         </Text>
 
-        {/* Grid style toggle — Swiss / Museum */}
-        <Flex
-          mb="4"
-          border={`1.5px solid ${K}`}
-          alignSelf="flex-start"
-        >
-          {(["museum", "swiss"] as GridStyle[]).map((s, idx, arr) => {
-            const activeStyle = gridStyle === s
-            const label = s === "swiss" ? "Старый" : "Новый"
-            return (
-              <Flex
-                key={s}
-                as="button"
-                onClick={() => setGridStyle(s)}
-                px="4"
-                py="2"
-                bg={activeStyle ? K : W}
-                color={activeStyle ? W : K}
-                fontSize="10px"
-                fontWeight="900"
-                letterSpacing="0.22em"
-                textTransform="uppercase"
-                cursor="pointer"
-                borderRight={idx < arr.length - 1 ? `1.5px solid ${K}` : undefined}
-                transition="background 0.12s, color 0.12s"
-              >
-                {label}
-              </Flex>
-            )
-          })}
-        </Flex>
+        {gridStyle === "museum"     && <RadarGridMuseum     picked={picked} onToggle={onToggle} />}
+        {gridStyle === "swiss"      && <RadarGridSwiss      picked={picked} onToggle={onToggle} interestImages={interestImages} />}
+        {gridStyle === "brussels"   && <RadarGridBrussels   picked={picked} onToggle={onToggle} />}
+        {gridStyle === "triptic"    && <RadarGridTriptic    picked={picked} onToggle={onToggle} />}
+        {gridStyle === "blockparty" && <RadarGridBlockParty picked={picked} onToggle={onToggle} interestImages={interestImages} />}
+        {gridStyle === "radar"      && <RadarGridOscilloscope picked={picked} onToggle={onToggle} />}
+      </Flex>
 
-        {gridStyle === "museum" ? (
-          <RadarGridMuseum picked={picked} onToggle={onToggle} />
-        ) : (
-          <RadarGridSwiss picked={picked} onToggle={onToggle} interestImages={interestImages} />
-        )}
+      {/* SIDE TOGGLE — vertical pills on the left edge, one per layout */}
+      <Flex
+        position="fixed"
+        top="50%"
+        left="12px"
+        direction="column"
+        gap="2"
+        zIndex={20}
+        style={{ transform: "translateY(-50%)" }}
+      >
+        {GRID_STYLES.map(({ key: s, letter }) => {
+          const activeStyle = gridStyle === s
+          return (
+            <Box
+              key={s}
+              as="button"
+              onClick={() => setGridStyle(s)}
+              w="40px" h="40px"
+              border={`2px solid ${K}`}
+              bg={activeStyle ? K : W}
+              color={activeStyle ? W : K}
+              fontSize="14px" fontWeight="900" letterSpacing="0.04em"
+              cursor="pointer"
+              display="flex" alignItems="center" justifyContent="center"
+              transition="all 0.12s"
+              _hover={{ transform: "translateX(2px)" }}
+              boxShadow={activeStyle ? `3px 3px 0 ${B}` : `2px 2px 0 ${K}`}
+            >
+              {letter}
+            </Box>
+          )
+        })}
       </Flex>
 
       {/* Sticky bottom action bar */}

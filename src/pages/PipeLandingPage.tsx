@@ -23,7 +23,8 @@ const G = "rgba(13,13,13,0.55)"
 const PAPER_A = "#EBEAE6"
 const BLOCK_A = "#D2D0CA"
 
-type Variant = "A" | "B" | "C" | "D"
+type Variant = "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K" | "L" | "M" | "N" | "O" | "P" | "Q" | "R" | "S"
+type BgStyle = "pixels" | "strips" | "folio" | "tags" | "circles" | "bars" | "solid" | "halftone" | "typeshape" | "diagram" | "ruler" | "accent" | "hairline" | "dotgrid" | "plain" | "swissgrid"
 
 export default function PipeLandingPage() {
   const navigate = useNavigate()
@@ -82,7 +83,7 @@ export default function PipeLandingPage() {
         zIndex={20}
         style={{ transform: "translateY(-50%)" }}
       >
-        {(["A", "B", "C", "D"] as Variant[]).map((v) => {
+        {(["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S"] as Variant[]).map((v) => {
           const isActive = variant === v
           return (
             <Box
@@ -114,7 +115,22 @@ export default function PipeLandingPage() {
       {variant === "A" && <VariantBlock onCta={goRadar} dd={dd} mm={mm} yy={yy} dateLong={dateLong} />}
       {variant === "B" && <VariantShape onCta={goRadar} dateLong={dateLong} />}
       {variant === "C" && <VariantWave onCta={goRadar} dd={dd} mm={mm} yy={yy} dateLong={dateLong} />}
-      {variant === "D" && <VariantBento onCta={goRadar} dd={dd} mm={mm} yy={yy} dateLong={dateLong} posters={posters} events={events} />}
+      {variant === "D" && <VariantBento onCta={goRadar} dd={dd} mm={mm} yy={yy} dateLong={dateLong} posters={posters} events={events} bgStyle="pixels" />}
+      {variant === "E" && <VariantBento onCta={goRadar} dd={dd} mm={mm} yy={yy} dateLong={dateLong} posters={posters} events={events} bgStyle="strips" />}
+      {variant === "F" && <VariantBento onCta={goRadar} dd={dd} mm={mm} yy={yy} dateLong={dateLong} posters={posters} events={events} bgStyle="folio" />}
+      {variant === "G" && <VariantBento onCta={goRadar} dd={dd} mm={mm} yy={yy} dateLong={dateLong} posters={posters} events={events} bgStyle="tags" />}
+      {variant === "H" && <VariantBento onCta={goRadar} dd={dd} mm={mm} yy={yy} dateLong={dateLong} posters={posters} events={events} bgStyle="circles" />}
+      {variant === "I" && <VariantBento onCta={goRadar} dd={dd} mm={mm} yy={yy} dateLong={dateLong} posters={posters} events={events} bgStyle="bars" />}
+      {variant === "J" && <VariantBento onCta={goRadar} dd={dd} mm={mm} yy={yy} dateLong={dateLong} posters={posters} events={events} bgStyle="solid" />}
+      {variant === "K" && <VariantBento onCta={goRadar} dd={dd} mm={mm} yy={yy} dateLong={dateLong} posters={posters} events={events} bgStyle="halftone" />}
+      {variant === "L" && <VariantBento onCta={goRadar} dd={dd} mm={mm} yy={yy} dateLong={dateLong} posters={posters} events={events} bgStyle="typeshape" />}
+      {variant === "M" && <VariantBento onCta={goRadar} dd={dd} mm={mm} yy={yy} dateLong={dateLong} posters={posters} events={events} bgStyle="diagram" />}
+      {variant === "N" && <VariantBento onCta={goRadar} dd={dd} mm={mm} yy={yy} dateLong={dateLong} posters={posters} events={events} bgStyle="ruler" />}
+      {variant === "O" && <VariantBento onCta={goRadar} dd={dd} mm={mm} yy={yy} dateLong={dateLong} posters={posters} events={events} bgStyle="accent" />}
+      {variant === "P" && <VariantBento onCta={goRadar} dd={dd} mm={mm} yy={yy} dateLong={dateLong} posters={posters} events={events} bgStyle="hairline" />}
+      {variant === "Q" && <VariantBento onCta={goRadar} dd={dd} mm={mm} yy={yy} dateLong={dateLong} posters={posters} events={events} bgStyle="dotgrid" />}
+      {variant === "R" && <VariantBento onCta={goRadar} dd={dd} mm={mm} yy={yy} dateLong={dateLong} posters={posters} events={events} bgStyle="plain" />}
+      {variant === "S" && <VariantBento onCta={goRadar} dd={dd} mm={mm} yy={yy} dateLong={dateLong} posters={posters} events={events} bgStyle="swissgrid" />}
     </Box>
   )
 }
@@ -152,7 +168,8 @@ function VariantBlock({ onCta, dd, mm, yy, dateLong }: { onCta: () => void; dd: 
       <Flex
         maxW="540px"
         mx="auto"
-        px="6"
+        pl={{ base: "60px", sm: "6" }}
+        pr="6"
         pt="6"
         pb="6"
         direction="column"
@@ -289,11 +306,11 @@ function VariantShape({ onCta, dateLong }: { onCta: () => void; dateLong: string
         paddingBottom: "max(1rem, env(safe-area-inset-bottom))",
       }}
     >
-      {/* Vertical text — left edge */}
+      {/* Vertical text — left edge (kept clear of A–S sidebar on mobile) */}
       <Box
         position="absolute"
         top="6%"
-        left="14px"
+        left={{ base: "60px", sm: "14px" }}
         color={K}
         fontSize="11px"
         fontWeight="700"
@@ -319,8 +336,15 @@ function VariantShape({ onCta, dateLong }: { onCta: () => void; dateLong: string
         ✱ MOSCOW JUMEX
       </Box>
 
-      {/* Composition — words on diagonal lines */}
-      <Box position="relative" w="100%" h="100dvh" px="14">
+      {/* Composition — words on diagonal lines. On mobile, push the whole
+          composition right so it clears the A–S sidebar. */}
+      <Box
+        position="relative"
+        h="100dvh"
+        ml={{ base: "56px", sm: "0" }}
+        w={{ base: "calc(100% - 56px)", sm: "100%" }}
+        px="14"
+      >
         {lines.map((l, i) => (
           <Box
             key={i}
@@ -415,7 +439,7 @@ function VariantWave({ onCta, dd, mm, yy, dateLong }: { onCta: () => void; dd: s
       </Box>
 
       {/* Content inside the white island */}
-      <Flex maxW="540px" mx="auto" px="6" pt="6" pb="6" direction="column" position="relative" zIndex={2} minH="100dvh">
+      <Flex maxW="540px" mx="auto" pl={{ base: "60px", sm: "6" }} pr="6" pt="6" pb="6" direction="column" position="relative" zIndex={2} minH="100dvh">
         <Box maxW={{ base: "92%", sm: "70%" }} ml="auto" textAlign="left">
           <Text fontSize="11px" fontWeight="800" lineHeight="1.25" color={K}>
             international<br />
@@ -517,11 +541,12 @@ function VariantWave({ onCta, dd, mm, yy, dateLong }: { onCta: () => void; dd: s
 /* on the bottom. Bauhaus dotted bg, white + blue palette.     */
 /* ─────────────────────────────────────────────────────────── */
 
-function VariantBento({ onCta, dd, mm, yy, dateLong, posters: _posters, events }: {
+function VariantBento({ onCta, dd, mm, yy, dateLong, posters: _posters, events, bgStyle = "pixels" }: {
   onCta: () => void
   dd: string; mm: string; yy: string; dateLong: string
   posters: string[]
   events: FeedItem[]
+  bgStyle?: BgStyle
 }) {
   return (
     <Box
@@ -535,57 +560,43 @@ function VariantBento({ onCta, dd, mm, yy, dateLong, posters: _posters, events }
         paddingBottom: "max(1rem, env(safe-area-inset-bottom))",
       }}
     >
-      {/* Dotted bauhaus bg */}
-      <Box
-        position="absolute"
-        inset="0"
-        pointerEvents="none"
-        opacity={0.55}
-        style={{
-          backgroundImage: `radial-gradient(rgba(13,13,13,0.18) 1px, transparent 1.4px)`,
-          backgroundSize: "12px 12px",
-        }}
-      />
+      {/* Dotted bauhaus bg — base layer for most variants. Variants that bring
+          their own background grid (S — swissgrid) opt out. */}
+      {bgStyle !== "swissgrid" && (
+        <Box
+          position="absolute"
+          inset="0"
+          pointerEvents="none"
+          opacity={0.55}
+          style={{
+            backgroundImage: `radial-gradient(rgba(13,13,13,0.18) 1px, transparent 1.4px)`,
+            backgroundSize: "12px 12px",
+          }}
+        />
+      )}
 
-      {/* ── Bauhaus 4 blue pixel-clusters — same cell size everywhere ── */}
-      {/* Container size = grid cols/rows × cell size (22px on mobile, 26px on sm+). */}
-      <Box
-        position="absolute" top="0" left="0"
-        w={{ base: `${TOP_LEFT_GRID[0].length * 22}px`, sm: `${TOP_LEFT_GRID[0].length * 26}px` }}
-        h={{ base: `${TOP_LEFT_GRID.length * 22}px`,    sm: `${TOP_LEFT_GRID.length * 26}px` }}
-        zIndex={0} pointerEvents="none" opacity={0.95}
-      >
-        <PixelCluster grid={TOP_LEFT_GRID} color={B} shimmerSeed={0} />
-      </Box>
-      <Box
-        position="absolute" top={{ base: "320px", sm: "400px" }} right="0"
-        w={{ base: `${MID_RIGHT_GRID[0].length * 22}px`, sm: `${MID_RIGHT_GRID[0].length * 26}px` }}
-        h={{ base: `${MID_RIGHT_GRID.length * 22}px`,    sm: `${MID_RIGHT_GRID.length * 26}px` }}
-        zIndex={0} pointerEvents="none" opacity={0.95}
-      >
-        <PixelCluster grid={MID_RIGHT_GRID} color={B} shimmerSeed={400} />
-      </Box>
-      <Box
-        position="absolute" bottom={{ base: "120px", sm: "160px" }} left="0"
-        w={{ base: `${BOTTOM_LEFT_GRID[0].length * 22}px`, sm: `${BOTTOM_LEFT_GRID[0].length * 26}px` }}
-        h={{ base: `${BOTTOM_LEFT_GRID.length * 22}px`,    sm: `${BOTTOM_LEFT_GRID.length * 26}px` }}
-        zIndex={0} pointerEvents="none" opacity={0.85}
-      >
-        <PixelCluster grid={BOTTOM_LEFT_GRID} color={B} shimmerSeed={900} />
-      </Box>
-      <Box
-        position="absolute" bottom="0" right="0"
-        w={{ base: `${BOTTOM_RIGHT_GRID[0].length * 22}px`, sm: `${BOTTOM_RIGHT_GRID[0].length * 26}px` }}
-        h={{ base: `${BOTTOM_RIGHT_GRID.length * 22}px`,    sm: `${BOTTOM_RIGHT_GRID.length * 26}px` }}
-        zIndex={0} pointerEvents="none" opacity={0.95}
-      >
-        <PixelCluster grid={BOTTOM_RIGHT_GRID} color={B} shimmerSeed={1500} />
-      </Box>
+      {bgStyle === "pixels"  && <BgPixels  />}
+      {bgStyle === "strips"  && <BgStrips  />}
+      {bgStyle === "folio"   && <BgFolio   />}
+      {bgStyle === "tags"    && <BgTags    />}
+      {bgStyle === "circles"   && <BgCircles   />}
+      {bgStyle === "bars"      && <BgBars      />}
+      {bgStyle === "solid"     && <BgSolid     />}
+      {bgStyle === "halftone"  && <BgHalftone  />}
+      {bgStyle === "typeshape" && <BgTypeShape />}
+      {bgStyle === "diagram"   && <BgDiagram   />}
+      {bgStyle === "ruler"     && <BgRuler     />}
+      {bgStyle === "accent"    && <BgAccent    />}
+      {bgStyle === "hairline"  && <BgHairline  />}
+      {bgStyle === "dotgrid"   && <BgDotGrid   />}
+      {bgStyle === "plain"     && <BgPlain     />}
+      {bgStyle === "swissgrid" && <BgSwissGrid />}
 
       <Flex
         maxW="640px"
         mx="auto"
-        px="6"
+        pl={{ base: "60px", sm: "6" }}
+        pr="6"
         pt="6"
         pb="6"
         direction="column"
@@ -1335,6 +1346,717 @@ function BentoCard({
         </Flex>
       </Flex>
     </Flex>
+  )
+}
+
+/* ─────────────────────────────────────────────────────────── */
+/* Background variants for VariantBento                        */
+/* ─────────────────────────────────────────────────────────── */
+
+/** D — pixels: 4 blue pixel-clusters in the corners (the existing default). */
+function BgPixels() {
+  return (
+    <>
+      <Box
+        position="absolute" top="0" left="0"
+        w={{ base: `${TOP_LEFT_GRID[0].length * 22}px`, sm: `${TOP_LEFT_GRID[0].length * 26}px` }}
+        h={{ base: `${TOP_LEFT_GRID.length * 22}px`,    sm: `${TOP_LEFT_GRID.length * 26}px` }}
+        zIndex={0} pointerEvents="none" opacity={0.95}
+      >
+        <PixelCluster grid={TOP_LEFT_GRID} color={B} shimmerSeed={0} />
+      </Box>
+      <Box
+        position="absolute" top={{ base: "320px", sm: "400px" }} right="0"
+        w={{ base: `${MID_RIGHT_GRID[0].length * 22}px`, sm: `${MID_RIGHT_GRID[0].length * 26}px` }}
+        h={{ base: `${MID_RIGHT_GRID.length * 22}px`,    sm: `${MID_RIGHT_GRID.length * 26}px` }}
+        zIndex={0} pointerEvents="none" opacity={0.95}
+      >
+        <PixelCluster grid={MID_RIGHT_GRID} color={B} shimmerSeed={400} />
+      </Box>
+      <Box
+        position="absolute" bottom={{ base: "120px", sm: "160px" }} left="0"
+        w={{ base: `${BOTTOM_LEFT_GRID[0].length * 22}px`, sm: `${BOTTOM_LEFT_GRID[0].length * 26}px` }}
+        h={{ base: `${BOTTOM_LEFT_GRID.length * 22}px`,    sm: `${BOTTOM_LEFT_GRID.length * 26}px` }}
+        zIndex={0} pointerEvents="none" opacity={0.85}
+      >
+        <PixelCluster grid={BOTTOM_LEFT_GRID} color={B} shimmerSeed={900} />
+      </Box>
+      <Box
+        position="absolute" bottom="0" right="0"
+        w={{ base: `${BOTTOM_RIGHT_GRID[0].length * 22}px`, sm: `${BOTTOM_RIGHT_GRID[0].length * 26}px` }}
+        h={{ base: `${BOTTOM_RIGHT_GRID.length * 22}px`,    sm: `${BOTTOM_RIGHT_GRID.length * 26}px` }}
+        zIndex={0} pointerEvents="none" opacity={0.95}
+      >
+        <PixelCluster grid={BOTTOM_RIGHT_GRID} color={B} shimmerSeed={1500} />
+      </Box>
+    </>
+  )
+}
+
+/**
+ * E — strips: full-bleed colored bands (top/bottom horizontal + left vertical),
+ * reversed white condensed caps. Eye magazine / Acne Paper editorial header.
+ */
+function BgStrips() {
+  const topText  = "NO 001 · WEEKLY SIGNAL · 10 MAY 2026 · MOSCOW–SPB · CITY SIGNAL · NO 001 · WEEKLY SIGNAL · 10 MAY 2026 · MOSCOW–SPB · CITY SIGNAL · "
+  const botText  = "↗ FIELD GUIDE · CURATED · SCANS 35+ TG-CHANNELS · LIVE · UPDATED EVERY 30 MIN · ↗ FIELD GUIDE · CURATED · SCANS 35+ TG-CHANNELS · LIVE · "
+  const sideText = "RADAR · ISSUE 001 · MOSCOW–SPB · LIVE · CURATED · WEEKLY"
+  return (
+    <>
+      <Flex position="absolute" top="0" left="0" right="0" h="32px" bg={B} zIndex={1} align="center" overflow="hidden">
+        <Text fontSize="11px" color={W} fontWeight="900" letterSpacing="0.22em" px="3" style={{ whiteSpace: "nowrap" }}>{topText.repeat(2)}</Text>
+      </Flex>
+      <Flex position="absolute" bottom="0" left="0" right="0" h="32px" bg={K} zIndex={1} align="center" overflow="hidden">
+        <Text fontSize="11px" color={W} fontWeight="900" letterSpacing="0.22em" px="3" style={{ whiteSpace: "nowrap" }}>{botText.repeat(2)}</Text>
+      </Flex>
+      <Flex position="absolute" top="44px" bottom="44px" left="0" w="22px" bg={B} zIndex={0} align="center" justify="center">
+        <Text
+          fontSize="9px" color={W} fontWeight="900" letterSpacing="0.32em"
+          style={{ writingMode: "vertical-rl", transform: "rotate(180deg)", whiteSpace: "nowrap" }}
+        >
+          {sideText}
+        </Text>
+      </Flex>
+    </>
+  )
+}
+
+/**
+ * F — folio: technical/publication marks. + at grid intersections, edge ruler ticks,
+ * tiny corner folios. Karel Martens / Lars Müller minimalism.
+ */
+function BgFolio() {
+  const cols = 18
+  const rows = 28
+  return (
+    <>
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 0 }}
+      >
+        {Array.from({ length: rows }, (_, y) =>
+          Array.from({ length: cols }, (_, x) => (
+            <text
+              key={`${x}-${y}`}
+              x={`${((x + 0.5) / cols) * 100}%`}
+              y={`${((y + 0.5) / rows) * 100}%`}
+              fill="rgba(13,13,13,0.18)"
+              fontSize="11"
+              textAnchor="middle"
+              dominantBaseline="middle"
+              style={{ fontWeight: 900 }}
+            >
+              +
+            </text>
+          ))
+        )}
+      </svg>
+      {/* Corner folios */}
+      <Text position="absolute" top="14px" left="14px" fontSize="9px" fontWeight="900" letterSpacing="0.18em" color={K} zIndex={0}>
+        001 / 005
+      </Text>
+      <Text position="absolute" top="14px" right="14px" fontSize="9px" fontWeight="900" letterSpacing="0.18em" color={K} zIndex={0}>
+        FOLIO · A
+      </Text>
+      <Text position="absolute" bottom="14px" left="14px" fontSize="9px" fontWeight="900" letterSpacing="0.18em" color={K} zIndex={0}>
+        ↗ N
+      </Text>
+      <Text position="absolute" bottom="14px" right="14px" fontSize="9px" fontWeight="900" letterSpacing="0.18em" color={K} zIndex={0}>
+        10 · 05 · 26
+      </Text>
+      {/* Left edge ruler ticks */}
+      <Box position="absolute" top="40px" bottom="40px" left="0" w="14px" zIndex={0}>
+        {Array.from({ length: 28 }, (_, i) => (
+          <Box
+            key={i}
+            position="absolute"
+            left="0"
+            top={`${(i / 27) * 100}%`}
+            w={i % 5 === 0 ? "12px" : "6px"}
+            h="1px"
+            bg={K}
+            opacity={0.5}
+          />
+        ))}
+      </Box>
+      {/* Right edge crop marks */}
+      <Box position="absolute" top="40px" right="0" w="14px" h="14px" borderTop={`1.5px solid ${K}`} borderRight={`1.5px solid ${K}`} opacity={0.7} zIndex={0} />
+      <Box position="absolute" bottom="40px" right="0" w="14px" h="14px" borderBottom={`1.5px solid ${K}`} borderRight={`1.5px solid ${K}`} opacity={0.7} zIndex={0} />
+    </>
+  )
+}
+
+/**
+ * G — tags: scattered black/blue mini-plates floating in negative space — like
+ * editorial stickers / Tschichold tag accents.
+ */
+function BgTags() {
+  const Tag = (props: { bg?: string; color?: string; outline?: boolean; children: React.ReactNode }) => (
+    <Box
+      bg={props.outline ? "transparent" : props.bg ?? K}
+      color={props.color ?? W}
+      px="2"
+      py="1"
+      fontSize="9px"
+      fontWeight="900"
+      letterSpacing="0.18em"
+      border={props.outline ? `1.5px solid ${props.color ?? K}` : undefined}
+      style={{ whiteSpace: "nowrap" }}
+    >
+      {props.children}
+    </Box>
+  )
+  return (
+    <>
+      <Box position="absolute" top="40px"  left="14px"   zIndex={1}><Tag bg={K}><Box as="span" color={B}>●</Box> LIVE</Tag></Box>
+      <Box position="absolute" top="92px"  right="14px"  zIndex={1}><Tag outline color={B}>WEEKLY</Tag></Box>
+      <Box position="absolute" top="200px" left="22px"   zIndex={1}><Tag bg={B}>№ 001</Tag></Box>
+      <Box position="absolute" top="320px" right="22px"  zIndex={1}><Tag bg={K}>FIELD GUIDE</Tag></Box>
+      <Box position="absolute" top="430px" left="14px"   zIndex={1}><Tag outline color={K}>↗ MOSCOW</Tag></Box>
+      <Box position="absolute" bottom="180px" right="20px" zIndex={1}><Tag bg={K}>UPDATED · 30M</Tag></Box>
+      <Box position="absolute" bottom="80px"  left="80px"  zIndex={1}><Tag bg={B}>SUB-SIGNAL</Tag></Box>
+      <Box position="absolute" bottom="40px"  right="80px" zIndex={1}><Tag outline color={K}>SCANS 35+</Tag></Box>
+    </>
+  )
+}
+
+/**
+ * H — circles: big solid circles & half-circles bleeding off the edges.
+ * Müller-Brockmann / Lohse — pure geometric primitives, lots of negative space.
+ */
+function BgCircles() {
+  return (
+    <>
+      {/* Top-right big circle, half off-canvas */}
+      <Box
+        position="absolute"
+        top={{ base: "-120px", sm: "-160px" }}
+        right={{ base: "-140px", sm: "-200px" }}
+        w={{ base: "320px", sm: "480px" }}
+        h={{ base: "320px", sm: "480px" }}
+        bg={B}
+        borderRadius="50%"
+        zIndex={0} pointerEvents="none" opacity={0.95}
+      />
+      {/* Bottom-left half-circle, bleeding off bottom + left */}
+      <Box
+        position="absolute"
+        bottom={{ base: "-120px", sm: "-160px" }}
+        left={{ base: "-100px", sm: "-140px" }}
+        w={{ base: "260px", sm: "380px" }}
+        h={{ base: "260px", sm: "380px" }}
+        bg={K}
+        borderRadius="50%"
+        zIndex={0} pointerEvents="none"
+      />
+      {/* Mid-right small accent disc — fully on-canvas */}
+      <Box
+        position="absolute"
+        top={{ base: "440px", sm: "560px" }}
+        right={{ base: "20px", sm: "60px" }}
+        w={{ base: "80px", sm: "110px" }}
+        h={{ base: "80px", sm: "110px" }}
+        bg={B}
+        borderRadius="50%"
+        zIndex={0} pointerEvents="none"
+      />
+      {/* Mid-left ring (outline circle) */}
+      <Box
+        position="absolute"
+        top={{ base: "320px", sm: "420px" }}
+        left={{ base: "-30px", sm: "-40px" }}
+        w={{ base: "120px", sm: "180px" }}
+        h={{ base: "120px", sm: "180px" }}
+        border={`6px solid ${K}`}
+        borderRadius="50%"
+        zIndex={0} pointerEvents="none"
+      />
+    </>
+  )
+}
+
+/**
+ * I — bars: heavy horizontal/vertical rectangles marking the typographic grid.
+ * Wim Crouwel / The Designers Republic.
+ */
+function BgBars() {
+  return (
+    <>
+      {/* Top horizontal rule, blue */}
+      <Box position="absolute" top="0" left="0" right="0" h="14px" bg={B} zIndex={0} />
+      {/* Second top rule, black, narrower */}
+      <Box position="absolute" top="22px" left="0" w={{ base: "60%", sm: "55%" }} h="6px" bg={K} zIndex={0} />
+      {/* Right vertical bar, blue, full-height */}
+      <Box position="absolute" top="0" bottom="0" right="0" w={{ base: "16px", sm: "24px" }} bg={B} zIndex={0} />
+      {/* Left vertical bar, black, partial height */}
+      <Box position="absolute" top={{ base: "120px", sm: "180px" }} bottom={{ base: "180px", sm: "240px" }} left="0" w="10px" bg={K} zIndex={0} />
+      {/* Mid-right horizontal accent bar */}
+      <Box position="absolute" top={{ base: "400px", sm: "520px" }} right="0" w={{ base: "55%", sm: "45%" }} h="10px" bg={K} zIndex={0} />
+      {/* Bottom horizontal rule, blue */}
+      <Box position="absolute" bottom="0" left="0" right="0" h="18px" bg={B} zIndex={0} />
+      {/* Second bottom rule, black, offset */}
+      <Box position="absolute" bottom="28px" right={{ base: "40px", sm: "80px" }} w={{ base: "40%", sm: "35%" }} h="6px" bg={K} zIndex={0} />
+    </>
+  )
+}
+
+/**
+ * J — solid: full-bleed colored columns. Right column entirely blue with the
+ * marker plate; left edge has a narrow black gutter strip.
+ */
+function BgSolid() {
+  return (
+    <>
+      {/* Full-height blue column on the right (~12% width = 1 of 8 cols) */}
+      <Box
+        position="absolute"
+        top="0" bottom="0" right="0"
+        w={{ base: "44px", sm: "12.5%" }}
+        bg={B}
+        zIndex={0}
+      >
+        <Flex direction="column" h="100%" justify="space-between" align="center" py="6">
+          <Text
+            fontSize={{ base: "10px", sm: "11px" }}
+            color={W}
+            fontWeight="900"
+            letterSpacing="0.32em"
+            style={{ writingMode: "vertical-rl", whiteSpace: "nowrap" }}
+          >
+            CITY SIGNAL · WEEKLY · 001
+          </Text>
+          <Text
+            fontSize={{ base: "44px", sm: "60px" }}
+            color={W}
+            fontWeight="900"
+            letterSpacing="-0.04em"
+            lineHeight="0.86"
+            style={{ writingMode: "vertical-rl" }}
+          >
+            №01
+          </Text>
+          <Text
+            fontSize={{ base: "10px", sm: "11px" }}
+            color={W}
+            fontWeight="900"
+            letterSpacing="0.32em"
+            style={{ writingMode: "vertical-rl", whiteSpace: "nowrap" }}
+          >
+            ↗ MOSCOW · SPB · LIVE
+          </Text>
+        </Flex>
+      </Box>
+      {/* Narrow black gutter on the far left */}
+      <Box position="absolute" top="0" bottom="0" left="0" w="14px" bg={K} zIndex={0} />
+      {/* Top horizontal rule above content */}
+      <Box position="absolute" top="0" left="14px" right={{ base: "44px", sm: "12.5%" }} h="6px" bg={K} zIndex={0} />
+      {/* Bottom horizontal rule */}
+      <Box position="absolute" bottom="0" left="14px" right={{ base: "44px", sm: "12.5%" }} h="6px" bg={K} zIndex={0} />
+    </>
+  )
+}
+
+/**
+ * K — halftone: big blue half-sphere gradient with raster-dot texture.
+ * The Designers Republic / Tomato. SVG `<radialGradient>` + dot pattern overlay.
+ */
+function BgHalftone() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 0 }}
+    >
+      <defs>
+        <radialGradient id="halftone-blue" cx="80%" cy="0%" r="75%">
+          <stop offset="0%"  stopColor={B} stopOpacity="1" />
+          <stop offset="55%" stopColor={B} stopOpacity="0.8" />
+          <stop offset="85%" stopColor={B} stopOpacity="0.15" />
+          <stop offset="100%" stopColor={B} stopOpacity="0" />
+        </radialGradient>
+        <radialGradient id="halftone-black" cx="20%" cy="100%" r="55%">
+          <stop offset="0%"  stopColor={K} stopOpacity="0.95" />
+          <stop offset="60%" stopColor={K} stopOpacity="0.5" />
+          <stop offset="100%" stopColor={K} stopOpacity="0" />
+        </radialGradient>
+        <pattern id="halftone-dots" x="0" y="0" width="6" height="6" patternUnits="userSpaceOnUse">
+          <circle cx="3" cy="3" r="1.4" fill="rgba(255,255,255,0.55)" />
+        </pattern>
+      </defs>
+      {/* Big top-right blue blob */}
+      <rect x="0" y="0" width="100%" height="100%" fill="url(#halftone-blue)" />
+      {/* Halftone dots over blue area */}
+      <rect x="0" y="0" width="100%" height="100%" fill="url(#halftone-dots)" opacity="0.85" />
+      {/* Bottom-left dark blob */}
+      <rect x="0" y="0" width="100%" height="100%" fill="url(#halftone-black)" />
+    </svg>
+  )
+}
+
+/**
+ * L — type-as-shape: a phrase repeated so densely it becomes a textural block.
+ * Yale-school / Sulki & Min. Single super-tight wall of caps in the corners.
+ */
+function BgTypeShape() {
+  const phrase = "CITY·SIGNAL·"
+  // Build very long string so wrapping forms a textural slab
+  const long = phrase.repeat(80)
+  return (
+    <>
+      {/* Top-left dense slab */}
+      <Box
+        position="absolute"
+        top="0"
+        left="0"
+        w={{ base: "240px", sm: "360px" }}
+        h={{ base: "260px", sm: "360px" }}
+        zIndex={0}
+        pointerEvents="none"
+        overflow="hidden"
+        style={{
+          fontFamily: "'Helvetica Neue', sans-serif",
+          fontWeight: 900,
+          letterSpacing: "0.04em",
+          lineHeight: 0.95,
+          fontSize: "11px",
+          color: K,
+          wordBreak: "break-all",
+        }}
+      >
+        {long}
+      </Box>
+      {/* Bottom-right blue dense slab */}
+      <Box
+        position="absolute"
+        bottom="0"
+        right="0"
+        w={{ base: "200px", sm: "300px" }}
+        h={{ base: "200px", sm: "280px" }}
+        zIndex={0}
+        pointerEvents="none"
+        overflow="hidden"
+        style={{
+          fontFamily: "'Helvetica Neue', sans-serif",
+          fontWeight: 900,
+          letterSpacing: "0.04em",
+          lineHeight: 0.95,
+          fontSize: "11px",
+          color: B,
+          wordBreak: "break-all",
+        }}
+      >
+        {long}
+      </Box>
+      {/* Mid-right vertical column of repeating word */}
+      <Box
+        position="absolute"
+        top={{ base: "260px", sm: "340px" }}
+        right="0"
+        w={{ base: "60px", sm: "80px" }}
+        h={{ base: "320px", sm: "440px" }}
+        zIndex={0}
+        pointerEvents="none"
+        overflow="hidden"
+        style={{
+          fontFamily: "'Helvetica Neue', sans-serif",
+          fontWeight: 900,
+          letterSpacing: "0.04em",
+          lineHeight: 0.92,
+          fontSize: "10px",
+          color: K,
+          wordBreak: "break-all",
+        }}
+      >
+        {phrase.repeat(60)}
+      </Box>
+    </>
+  )
+}
+
+/**
+ * M — diagram: thin-line architectural / isometric drawing in blue.
+ * Single-stroke abstract building / radar plan, no fills.
+ */
+function BgDiagram() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 0 }}
+    >
+      <g stroke={B} strokeWidth="1.5" fill="none" opacity="0.85">
+        {/* Top-right isometric cube */}
+        <g transform="translate(75%, 80) scale(1)">
+          <polygon points="0,0 60,-30 120,0 60,30" />          {/* top diamond */}
+          <line x1="0" y1="0" x2="0" y2="80" />
+          <line x1="60" y1="30" x2="60" y2="110" />
+          <line x1="120" y1="0" x2="120" y2="80" />
+          <polygon points="0,80 60,110 120,80" />              {/* bottom diamond top */}
+        </g>
+        {/* Top-left radar concentric arcs */}
+        <g transform="translate(40, 60)">
+          {[40, 80, 120, 160].map((r) => (
+            <path key={r} d={`M 0,${r} A ${r},${r} 0 0 1 ${r},0`} />
+          ))}
+          <line x1="0" y1="0" x2="170" y2="170" />
+          <line x1="0" y1="0" x2="170" y2="0" strokeDasharray="3 4" />
+          <circle cx="120" cy="40" r="3" fill={B} />
+        </g>
+        {/* Bottom-right plan with rooms */}
+        <g transform="translate(64%, 80%) scale(1)">
+          <rect x="0" y="0" width="220" height="120" />
+          <line x1="120" y1="0" x2="120" y2="120" />
+          <line x1="0" y1="60" x2="120" y2="60" />
+          <line x1="120" y1="80" x2="220" y2="80" />
+          <line x1="160" y1="80" x2="160" y2="120" />
+          <line x1="60" y1="60" x2="60" y2="120" />
+        </g>
+        {/* Bottom-left axis with labelled point */}
+        <g transform="translate(30, 70%)">
+          <line x1="0" y1="160" x2="180" y2="160" />
+          <line x1="0" y1="160" x2="0" y2="0" />
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <line key={`hx${i}`} x1={i * 30} y1="160" x2={i * 30} y2="155" />
+          ))}
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <line key={`hy${i}`} x1="0" y1={i * 30} x2="5" y2={i * 30} />
+          ))}
+          <circle cx="100" cy="60" r="4" fill={B} />
+          <line x1="100" y1="60" x2="100" y2="160" strokeDasharray="3 3" />
+          <line x1="100" y1="60" x2="0" y2="60" strokeDasharray="3 3" />
+        </g>
+      </g>
+    </svg>
+  )
+}
+
+/**
+ * N — ruler: architectural-style measurement scale running along the page edges.
+ * Major ticks every 5 units with numeric labels, minor ticks each unit.
+ */
+function BgRuler() {
+  const N = 60
+  return (
+    <>
+      {/* Left edge vertical ruler */}
+      <Box position="absolute" top="0" bottom="0" left="0" w={{ base: "26px", sm: "34px" }} zIndex={0} pointerEvents="none">
+        {Array.from({ length: N }, (_, i) => {
+          const major = i % 5 === 0
+          return (
+            <Box
+              key={`l${i}`}
+              position="absolute"
+              left="0"
+              top={`${(i / (N - 1)) * 100}%`}
+              w={major ? "16px" : "8px"}
+              h={major ? "1.5px" : "1px"}
+              bg={K}
+              opacity={major ? 0.85 : 0.4}
+            />
+          )
+        })}
+        {Array.from({ length: Math.floor(N / 5) }, (_, j) => (
+          <Text
+            key={`l-lbl-${j}`}
+            position="absolute"
+            left="20px"
+            top={`${((j * 5) / (N - 1)) * 100}%`}
+            fontSize="8px"
+            fontWeight="900"
+            letterSpacing="0.08em"
+            color={K}
+            opacity={0.7}
+            style={{ transform: "translateY(-50%)" }}
+          >
+            {String(j * 5).padStart(2, "0")}
+          </Text>
+        ))}
+      </Box>
+      {/* Right edge vertical ruler — blue */}
+      <Box position="absolute" top="0" bottom="0" right="0" w={{ base: "20px", sm: "26px" }} zIndex={0} pointerEvents="none">
+        {Array.from({ length: N }, (_, i) => {
+          const major = i % 5 === 0
+          return (
+            <Box
+              key={`r${i}`}
+              position="absolute"
+              right="0"
+              top={`${(i / (N - 1)) * 100}%`}
+              w={major ? "12px" : "6px"}
+              h={major ? "1.5px" : "1px"}
+              bg={B}
+              opacity={major ? 0.95 : 0.55}
+            />
+          )
+        })}
+      </Box>
+      {/* Top horizontal ruler */}
+      <Box position="absolute" top="0" left={{ base: "26px", sm: "34px" }} right={{ base: "20px", sm: "26px" }} h="22px" zIndex={0} pointerEvents="none">
+        {Array.from({ length: 80 }, (_, i) => {
+          const major = i % 5 === 0
+          return (
+            <Box
+              key={`t${i}`}
+              position="absolute"
+              top="0"
+              left={`${(i / 79) * 100}%`}
+              h={major ? "12px" : "6px"}
+              w={major ? "1.5px" : "1px"}
+              bg={K}
+              opacity={major ? 0.85 : 0.4}
+            />
+          )
+        })}
+      </Box>
+      {/* Bottom horizontal ruler */}
+      <Box position="absolute" bottom="0" left={{ base: "26px", sm: "34px" }} right={{ base: "20px", sm: "26px" }} h="22px" zIndex={0} pointerEvents="none">
+        {Array.from({ length: 80 }, (_, i) => {
+          const major = i % 5 === 0
+          return (
+            <Box
+              key={`b${i}`}
+              position="absolute"
+              bottom="0"
+              left={`${(i / 79) * 100}%`}
+              h={major ? "12px" : "6px"}
+              w={major ? "1.5px" : "1px"}
+              bg={B}
+              opacity={major ? 0.95 : 0.55}
+            />
+          )
+        })}
+      </Box>
+    </>
+  )
+}
+
+/**
+ * O — accent: a single big graphic mark (▲ in blue, ● in black) sits in the corner.
+ * Lars Müller — one shape, lots of breathing room.
+ */
+function BgAccent() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 1000 1400"
+      preserveAspectRatio="xMidYMid slice"
+      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 0 }}
+    >
+      {/* Big blue triangle, top-right corner — bleeds off canvas */}
+      <polygon points="1000,-30 1300,420 700,420" fill={B} opacity="0.95" />
+      {/* Big black filled circle, bottom-left — partial bleed */}
+      <circle cx="80" cy="1320" r="220" fill={K} />
+    </svg>
+  )
+}
+
+/**
+ * P — hairline: only thin 0.5–1px frame lines on left and right margins.
+ * Ultra-restrained. Karel Martens / Lars Müller editorial framework.
+ */
+function BgHairline() {
+  return (
+    <>
+      {/* Left margin double-rule */}
+      <Box position="absolute" top="0" bottom="0" left={{ base: "8px", sm: "20px" }} w="1px" bg={K} opacity={0.7} zIndex={0} />
+      <Box position="absolute" top="0" bottom="0" left={{ base: "13px", sm: "27px" }} w="1px" bg={B} opacity={0.85} zIndex={0} />
+      {/* Right margin single rule */}
+      <Box position="absolute" top="0" bottom="0" right={{ base: "8px", sm: "20px" }} w="1px" bg={K} opacity={0.7} zIndex={0} />
+      {/* Tiny corner ticks */}
+      <Box position="absolute" top="20px" left={{ base: "8px", sm: "20px" }} w="14px" h="1px" bg={K} opacity={0.7} zIndex={0} />
+      <Box position="absolute" bottom="20px" left={{ base: "8px", sm: "20px" }} w="14px" h="1px" bg={K} opacity={0.7} zIndex={0} />
+      <Box position="absolute" top="20px" right={{ base: "8px", sm: "20px" }} w="14px" h="1px" bg={K} opacity={0.7} zIndex={0} />
+      <Box position="absolute" bottom="20px" right={{ base: "8px", sm: "20px" }} w="14px" h="1px" bg={K} opacity={0.7} zIndex={0} />
+    </>
+  )
+}
+
+/**
+ * Q — dotgrid: same dotted background, but density modulated by a radial
+ * gradient — empty cells become small filled squares in "hot" zones.
+ */
+function BgDotGrid() {
+  // 32 cols × 56 rows feels dense enough on phone & desktop.
+  const cols = 32
+  const rows = 56
+  // Centers of the two density "hot zones" in normalized 0..1
+  const hot1 = { x: 0.78, y: 0.18, r: 0.32 }   // top-right
+  const hot2 = { x: 0.18, y: 0.82, r: 0.28 }   // bottom-left
+  const cells: React.ReactNode[] = []
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      const nx = x / (cols - 1)
+      const ny = y / (rows - 1)
+      const d1 = Math.hypot(nx - hot1.x, ny - hot1.y) / hot1.r
+      const d2 = Math.hypot(nx - hot2.x, ny - hot2.y) / hot2.r
+      const intensity = Math.max(0, 1 - Math.min(d1, d2))   // 0..1
+      // base small dot everywhere; intensify into bigger square in hot zones
+      let size = 1.4
+      let color: string = "rgba(13,13,13,0.35)"
+      if (intensity > 0.75) { size = 5; color = d1 < d2 ? B : K }
+      else if (intensity > 0.5) { size = 3.5; color = d1 < d2 ? "rgba(0,85,255,0.85)" : "rgba(13,13,13,0.85)" }
+      else if (intensity > 0.25) { size = 2.4; color = "rgba(13,13,13,0.55)" }
+      cells.push(
+        <rect
+          key={`${x}-${y}`}
+          x={`${(nx) * 100}%`}
+          y={`${(ny) * 100}%`}
+          width={size}
+          height={size}
+          fill={color}
+          transform={`translate(-${size / 2},-${size / 2})`}
+        />
+      )
+    }
+  }
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 0 }}
+    >
+      {cells}
+    </svg>
+  )
+}
+
+/**
+ * R — plain: same dotted "Bauhaus" grid as PipeLandingBauhaus, nothing else.
+ * No corner supergraphics, no shapes, no tags — just the underlying grid.
+ * Slightly darker / more pronounced dots than VariantBento's default base.
+ */
+function BgPlain() {
+  return (
+    <Box
+      position="absolute"
+      inset="0"
+      pointerEvents="none"
+      opacity={0.75}
+      style={{
+        backgroundImage: "radial-gradient(rgba(13,13,13,0.28) 1.1px, transparent 1.5px)",
+        backgroundSize: "12px 12px",
+      }}
+      zIndex={0}
+    />
+  )
+}
+
+/**
+ * S — swissgrid: thin crosshatch grid (vertical + horizontal lines, 48×48 px),
+ * the same construction-marks grid used in PipeOnboarding.
+ * Suitable for Swiss-poster / drafting-paper aesthetic.
+ */
+function BgSwissGrid() {
+  return (
+    <Box
+      position="absolute"
+      inset="0"
+      pointerEvents="none"
+      opacity={0.1}
+      style={{
+        backgroundImage:
+          `linear-gradient(${K} 1px, transparent 1px), linear-gradient(90deg, ${K} 1px, transparent 1px)`,
+        backgroundSize: "48px 48px",
+      }}
+      zIndex={0}
+    />
   )
 }
 
