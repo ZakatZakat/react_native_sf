@@ -168,8 +168,7 @@ function VariantBlock({ onCta, dd, mm, yy, dateLong }: { onCta: () => void; dd: 
       <Flex
         maxW="540px"
         mx="auto"
-        pl={{ base: "60px", sm: "6" }}
-        pr="6"
+        px="6"
         pt="6"
         pb="6"
         direction="column"
@@ -306,11 +305,11 @@ function VariantShape({ onCta, dateLong }: { onCta: () => void; dateLong: string
         paddingBottom: "max(1rem, env(safe-area-inset-bottom))",
       }}
     >
-      {/* Vertical text — left edge (kept clear of A–S sidebar on mobile) */}
+      {/* Vertical text — left edge */}
       <Box
         position="absolute"
         top="6%"
-        left={{ base: "60px", sm: "14px" }}
+        left="14px"
         color={K}
         fontSize="11px"
         fontWeight="700"
@@ -336,15 +335,8 @@ function VariantShape({ onCta, dateLong }: { onCta: () => void; dateLong: string
         ✱ MOSCOW JUMEX
       </Box>
 
-      {/* Composition — words on diagonal lines. On mobile, push the whole
-          composition right so it clears the A–S sidebar. */}
-      <Box
-        position="relative"
-        h="100dvh"
-        ml={{ base: "56px", sm: "0" }}
-        w={{ base: "calc(100% - 56px)", sm: "100%" }}
-        px="14"
-      >
+      {/* Composition — words on diagonal lines */}
+      <Box position="relative" w="100%" h="100dvh" px="14">
         {lines.map((l, i) => (
           <Box
             key={i}
@@ -439,7 +431,7 @@ function VariantWave({ onCta, dd, mm, yy, dateLong }: { onCta: () => void; dd: s
       </Box>
 
       {/* Content inside the white island */}
-      <Flex maxW="540px" mx="auto" pl={{ base: "60px", sm: "6" }} pr="6" pt="6" pb="6" direction="column" position="relative" zIndex={2} minH="100dvh">
+      <Flex maxW="540px" mx="auto" px="6" pt="6" pb="6" direction="column" position="relative" zIndex={2} minH="100dvh">
         <Box maxW={{ base: "92%", sm: "70%" }} ml="auto" textAlign="left">
           <Text fontSize="11px" fontWeight="800" lineHeight="1.25" color={K}>
             international<br />
@@ -595,8 +587,7 @@ function VariantBento({ onCta, dd, mm, yy, dateLong, posters: _posters, events, 
       <Flex
         maxW="640px"
         mx="auto"
-        pl={{ base: "60px", sm: "6" }}
-        pr="6"
+        px="6"
         pt="6"
         pb="6"
         direction="column"
