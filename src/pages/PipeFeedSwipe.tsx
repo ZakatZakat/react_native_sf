@@ -767,7 +767,7 @@ export default function PipeFeedSwipe() {
   const interests = useInterests()
   const [mode, setMode] = useState<Mode>("deluxe")
 
-  // "Радар поймал N событий" banner when arriving from new onboarding
+  // "Подобрали N ивентов" banner when arriving from new onboarding
   const [radarBanner, setRadarBanner] = useState<number | null>(() => {
     if (typeof window === "undefined") return null
     const params = new URLSearchParams(window.location.search)
@@ -1236,10 +1236,10 @@ export default function PipeFeedSwipe() {
           >
             <Box>
               <Text fontSize="9px" fontWeight="900" letterSpacing="0.22em" textTransform="uppercase" color={W} opacity={0.75}>
-                Твой радар
+                Подобрали
               </Text>
               <Text fontSize="18px" fontWeight="900" letterSpacing="-0.02em" textTransform="uppercase" lineHeight="1" mt="1">
-                поймал {radarBanner} {radarBanner === 1 ? "событие" : radarBanner < 5 ? "события" : "событий"}
+                {radarBanner} {radarBanner === 1 ? "ивент" : radarBanner < 5 ? "ивента" : "ивентов"}
               </Text>
             </Box>
             <Box

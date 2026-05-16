@@ -4,7 +4,7 @@
  * Two-step flow inspired by Swiss/International Typographic Style + brutalist
  * editorial poster grids:
  *   1. INTRO — brand poster: "CITY SIGNAL" + promise + two CTAs
- *      ▸ "СОБРАТЬ РАДАР" → step 2
+ *      ▸ "ПОКАЗАТЬ ВАРИАНТЫ" → step 2
  *      ▸ "СМОТРЕТЬ ВСЁ"  → straight to /pipe-feed-swipe with empty interests
  *   2. RADAR — chaotic bento grid (RadarGrid) with new framing
  *      ▸ "ЗАПУСТИТЬ" → save interests, navigate to feed with ?radar=N count
@@ -21,7 +21,7 @@ import { Curator } from "../lib/curator"
 import { buildInterestImages } from "./pipe/RadarGrid"
 import { RadarGridSwiss } from "./pipe/RadarGridSwiss"
 import { RadarGridMuseum } from "./pipe/RadarGridMuseum"
-import { RadarGridBrussels, RadarGridTriptic, RadarGridBlockParty, RadarGridOscilloscope, RadarGridBento } from "./pipe/RadarGridEditorial"
+import { RadarGridTriptic, RadarGridBlockParty, RadarGridBento } from "./pipe/RadarGridEditorial"
 import { PixelClusterBackdrop } from "./pipe/PixelClusters"
 
 const K = "#0D0D0D"
@@ -105,15 +105,13 @@ export default function PipeOnboarding() {
 /* STEP 2 — RADAR GRID                                               */
 /* ───────────────────────────────────────────────────────────────── */
 
-type GridStyle = "museum" | "swiss" | "brussels" | "triptic" | "blockparty" | "radar" | "bento"
+type GridStyle = "museum" | "swiss" | "triptic" | "blockparty" | "bento"
 const GRID_STYLES: { key: GridStyle; letter: string; label: string }[] = [
   { key: "museum",    letter: "A", label: "Museum"      },
   { key: "swiss",     letter: "B", label: "Swiss"       },
-  { key: "brussels",  letter: "C", label: "Brussels"    },
-  { key: "triptic",   letter: "D", label: "Triptic"     },
-  { key: "blockparty", letter: "E", label: "Block Party" },
-  { key: "radar",     letter: "F", label: "Radar"       },
-  { key: "bento",     letter: "G", label: "Bento"       },
+  { key: "triptic",   letter: "C", label: "Triptic"     },
+  { key: "blockparty", letter: "D", label: "Block Party" },
+  { key: "bento",     letter: "E", label: "Bento"       },
 ]
 
 function RadarStep({
@@ -190,7 +188,7 @@ function RadarStep({
                 <Text fontSize="14px" lineHeight="1">←</Text> Назад
               </Flex>
               <Box bg={K} color={W} px="2.5" py="1" fontSize="10px" fontWeight="900" letterSpacing="0.18em" textTransform="uppercase">
-                Радар
+                Варианты
               </Box>
             </Flex>
 
@@ -199,10 +197,10 @@ function RadarStep({
               <Box h="2px" bg={K} w="100%" />
               <Flex justify="space-between" align="flex-end" mt="2" mb="1">
                 <Text fontSize="9px" fontWeight="900" letterSpacing="0.32em" textTransform="uppercase" color={G}>
-                  Section / Радар
+                  Section / Варианты
                 </Text>
                 <Text fontSize="9px" fontWeight="900" letterSpacing="0.32em" textTransform="uppercase" color={G}>
-                  {INTERESTS.length} сигналов
+                  {INTERESTS.length} вариантов
                 </Text>
               </Flex>
             </Box>
@@ -216,7 +214,7 @@ function RadarStep({
                 textTransform="uppercase"
                 color={K}
               >
-                Собери
+                Покажи
               </Text>
               <Text
                 fontSize={{ base: "44px", sm: "56px" }}
@@ -227,7 +225,7 @@ function RadarStep({
                 color={B}
                 ml="4"
               >
-                свой радар
+                варианты
               </Text>
             </Box>
 
@@ -236,7 +234,7 @@ function RadarStep({
               fontSize="13px" fontWeight="700" lineHeight="1.4"
               color={G} maxW="360px"
             >
-              Выбирай не жанры, а сигналы.
+              Выбирай варианты — что тебе по душе.
               {' '}
               <Text as="span" color={K} fontWeight="800">{recommended}–5 штук</Text> хватит, чтобы лента поймала своё.
             </Text>
@@ -245,10 +243,8 @@ function RadarStep({
 
         {gridStyle === "museum"     && <RadarGridMuseum     picked={picked} onToggle={onToggle} />}
         {gridStyle === "swiss"      && <RadarGridSwiss      picked={picked} onToggle={onToggle} interestImages={interestImages} />}
-        {gridStyle === "brussels"   && <RadarGridBrussels   picked={picked} onToggle={onToggle} />}
         {gridStyle === "triptic"    && <RadarGridTriptic    picked={picked} onToggle={onToggle} />}
         {gridStyle === "blockparty" && <RadarGridBlockParty picked={picked} onToggle={onToggle} interestImages={interestImages} />}
-        {gridStyle === "radar"      && <RadarGridOscilloscope picked={picked} onToggle={onToggle} />}
         {gridStyle === "bento"      && <RadarGridBento picked={picked} onToggle={onToggle} interestImages={interestImages} />}
       </Flex>
 
@@ -296,7 +292,7 @@ function RadarStep({
         <Flex maxW="430px" w="100%" align="center" gap="3">
           <Box flex="1">
             <Text fontSize="9px" fontWeight="900" letterSpacing="0.22em" color={G} textTransform="uppercase">
-              На радаре
+              Выбрано
             </Text>
             <Flex align="baseline" gap="1.5">
               <Text fontSize="28px" fontWeight="900" color={K} lineHeight="1" letterSpacing="-0.03em">
@@ -335,7 +331,7 @@ function RadarStep({
 
 /**
  * Bento editorial header — landing page variant D style transposed onto the
- * onboarding radar page. Big "Собери / свой радар" wordmark + date / tags row +
+ * onboarding picker page. Big "Покажи / варианты" wordmark + date / tags row +
  * tagline, instead of the back-button + section-ruler chrome.
  */
 function BentoEditorialHeader({
@@ -381,7 +377,7 @@ function BentoEditorialHeader({
           textTransform="uppercase"
           ml="4"
         >
-          свой радар
+          варианты
         </Text>
       </Box>
 
@@ -390,14 +386,14 @@ function BentoEditorialHeader({
         <Box h="2px" bg={K} w="100%" mb="2" />
         <Flex align="center" justify="space-between" mb="3">
           <Text fontSize="9px" fontWeight="900" letterSpacing="0.32em" textTransform="uppercase" color={G}>
-            Section / Радар
+            Section / Варианты
           </Text>
           <Text fontSize="9px" fontWeight="900" letterSpacing="0.32em" textTransform="uppercase" color={G}>
-            {INTERESTS.length} сигналов
+            {INTERESTS.length} вариантов
           </Text>
         </Flex>
         <Text fontSize="12px" fontWeight="700" lineHeight="1.4" color={G}>
-          Выбирай не жанры, а сигналы.
+          Выбирай варианты — что тебе по душе.
           {' '}
           <Text as="span" color={K} fontWeight="800">{recommended}–5 штук</Text> хватит, чтобы лента поймала своё.
         </Text>

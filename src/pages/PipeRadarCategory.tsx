@@ -133,7 +133,7 @@ export default function PipeRadarCategory() {
           <Box h="2px" bg={INK} w="100%" />
           <Flex justify="space-between" align="center" mt="2">
             <Text fontSize="9px" fontWeight="900" letterSpacing="0.32em" textTransform="uppercase" color={INK_DIM}>
-              Section / Сигнал
+              Section / Вариант
             </Text>
             <Text fontSize="9px" fontWeight="900" letterSpacing="0.32em" textTransform="uppercase" color={INK_DIM}>
               {feed.length} в эфире
@@ -171,8 +171,8 @@ export default function PipeRadarCategory() {
         <Box mt="1">
           <Text fontSize="13px" fontWeight="700" lineHeight="1.4" color={INK_DIM} maxW="320px">
             {feed.length > 0
-              ? `Радар поймал ${feed.length} ${plural(feed.length, "событие", "события", "событий")} по этому сигналу.`
-              : "Сейчас тихо — событий пока нет. Зайди позже."}
+              ? `Нашли ${feed.length} ${plural(feed.length, "ивент", "ивента", "ивентов")} в этом варианте.`
+              : "Сейчас пусто — ивентов пока нет. Зайди позже."}
           </Text>
         </Box>
 
@@ -194,7 +194,7 @@ export default function PipeRadarCategory() {
           transition="all 0.14s cubic-bezier(0.22, 1, 0.36, 1)"
         >
           <Text fontSize="14px" fontWeight="900" letterSpacing="0.06em" textTransform="uppercase">
-            {isPicked ? "✓ В РАДАРЕ" : "+ В РАДАР"}
+            {isPicked ? "✓ ВЫБРАНО" : "+ ВЫБРАТЬ"}
           </Text>
           <Text fontSize="18px" fontWeight="900" lineHeight="1">→</Text>
         </Flex>
@@ -307,10 +307,10 @@ function EmptyState() {
     <Flex direction="column" align="center" gap="3" mt="10" textAlign="center">
       <Text fontSize="48px" lineHeight="1" color={ULTRA}>○</Text>
       <Text fontSize="13px" fontWeight="900" letterSpacing="0.22em" textTransform="uppercase" color={INK}>
-        Пусто на этом сигнале
+        Пусто в этом варианте
       </Text>
       <Text fontSize="11px" fontWeight="700" color={INK_DIM} letterSpacing="0.06em" maxW="280px">
-        Радар работает — заходи позже, может что-то поймает.
+        Скоро будут ивенты — заходи позже.
       </Text>
     </Flex>
   )
@@ -435,7 +435,7 @@ function StripVariant({
         <Box h="2px" bg={INK} w="100%" />
         <Flex justify="space-between" align="center" mt="2">
           <Text fontSize="9px" fontWeight="900" letterSpacing="0.32em" textTransform="uppercase" color={INK_DIM}>
-            Index / Подсигналы
+            Index / Подборки
           </Text>
           <Text fontSize="9px" fontWeight="900" letterSpacing="0.32em" textTransform="uppercase" color={INK_DIM}>
             {subCats.length} осей
@@ -637,7 +637,7 @@ function SectionHead({ index, label, count }: { index: number; label: string; co
           </Text>
           <Box>
             <Text fontSize="9px" fontWeight="900" letterSpacing="0.32em" textTransform="uppercase" color={INK_DIM}>
-              Section / Подсигнал
+              Section / Подборка
             </Text>
             <Text
               fontSize="22px"
@@ -695,10 +695,10 @@ function PanelVariant({
       <Flex justify="space-between" align="end" mb="2">
         <Box>
           <Text fontSize="9px" fontWeight="900" letterSpacing="0.32em" textTransform="uppercase" color={INK_DIM}>
-            Index / Подсигналы
+            Index / Подборки
           </Text>
           <Text fontSize="20px" fontWeight="900" letterSpacing="-0.025em" color={INK} lineHeight="1" mt="1">
-            Срезы сигнала
+            Срезы по дате
           </Text>
         </Box>
         <Box textAlign="right">

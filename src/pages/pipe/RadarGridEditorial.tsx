@@ -177,7 +177,7 @@ export function RadarGridTriptic({ picked, onToggle }: GridProps) {
       >
         <Text fontSize="12px" fontWeight="900" letterSpacing="0.18em">▾</Text>
         <Text fontSize="14px" fontWeight="900" letterSpacing="0.32em" textTransform="uppercase">
-          Triptic / Радар
+          Triptic / Варианты
         </Text>
         <Text fontSize="12px" fontWeight="900" letterSpacing="0.18em">▾</Text>
       </Flex>

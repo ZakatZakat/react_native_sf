@@ -23,8 +23,8 @@ const G = "rgba(13,13,13,0.55)"
 const PAPER_A = "#EBEAE6"
 const BLOCK_A = "#D2D0CA"
 
-type Variant = "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K" | "L" | "M" | "N" | "O" | "P" | "Q" | "R" | "S"
-type BgStyle = "pixels" | "strips" | "folio" | "tags" | "circles" | "bars" | "solid" | "halftone" | "typeshape" | "diagram" | "ruler" | "accent" | "hairline" | "dotgrid" | "plain" | "swissgrid"
+type Variant = "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K" | "L" | "M" | "N" | "O" | "P"
+type BgStyle = "pixels" | "strips" | "folio" | "tags" | "circles" | "bars" | "solid" | "halftone" | "accent" | "hairline" | "dotgrid" | "plain" | "swissgrid"
 
 export default function PipeLandingPage() {
   const navigate = useNavigate()
@@ -108,7 +108,7 @@ export default function PipeLandingPage() {
           {sidebarOpen ? "‹" : "›"}
         </Box>
 
-        {sidebarOpen && (["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S"] as Variant[]).map((v) => {
+        {sidebarOpen && (["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P"] as Variant[]).map((v) => {
           const isActive = variant === v
           return (
             <Box
@@ -148,14 +148,11 @@ export default function PipeLandingPage() {
       {variant === "I" && <VariantBento onCta={goRadar} dd={dd} mm={mm} yy={yy} dateLong={dateLong} posters={posters} events={events} bgStyle="bars" />}
       {variant === "J" && <VariantBento onCta={goRadar} dd={dd} mm={mm} yy={yy} dateLong={dateLong} posters={posters} events={events} bgStyle="solid" />}
       {variant === "K" && <VariantBento onCta={goRadar} dd={dd} mm={mm} yy={yy} dateLong={dateLong} posters={posters} events={events} bgStyle="halftone" />}
-      {variant === "L" && <VariantBento onCta={goRadar} dd={dd} mm={mm} yy={yy} dateLong={dateLong} posters={posters} events={events} bgStyle="typeshape" />}
-      {variant === "M" && <VariantBento onCta={goRadar} dd={dd} mm={mm} yy={yy} dateLong={dateLong} posters={posters} events={events} bgStyle="diagram" />}
-      {variant === "N" && <VariantBento onCta={goRadar} dd={dd} mm={mm} yy={yy} dateLong={dateLong} posters={posters} events={events} bgStyle="ruler" />}
-      {variant === "O" && <VariantBento onCta={goRadar} dd={dd} mm={mm} yy={yy} dateLong={dateLong} posters={posters} events={events} bgStyle="accent" />}
-      {variant === "P" && <VariantBento onCta={goRadar} dd={dd} mm={mm} yy={yy} dateLong={dateLong} posters={posters} events={events} bgStyle="hairline" />}
-      {variant === "Q" && <VariantBento onCta={goRadar} dd={dd} mm={mm} yy={yy} dateLong={dateLong} posters={posters} events={events} bgStyle="dotgrid" />}
-      {variant === "R" && <VariantBento onCta={goRadar} dd={dd} mm={mm} yy={yy} dateLong={dateLong} posters={posters} events={events} bgStyle="plain" />}
-      {variant === "S" && <VariantBento onCta={goRadar} dd={dd} mm={mm} yy={yy} dateLong={dateLong} posters={posters} events={events} bgStyle="swissgrid" />}
+      {variant === "L" && <VariantBento onCta={goRadar} dd={dd} mm={mm} yy={yy} dateLong={dateLong} posters={posters} events={events} bgStyle="accent" />}
+      {variant === "M" && <VariantBento onCta={goRadar} dd={dd} mm={mm} yy={yy} dateLong={dateLong} posters={posters} events={events} bgStyle="hairline" />}
+      {variant === "N" && <VariantBento onCta={goRadar} dd={dd} mm={mm} yy={yy} dateLong={dateLong} posters={posters} events={events} bgStyle="dotgrid" />}
+      {variant === "O" && <VariantBento onCta={goRadar} dd={dd} mm={mm} yy={yy} dateLong={dateLong} posters={posters} events={events} bgStyle="plain" />}
+      {variant === "P" && <VariantBento onCta={goRadar} dd={dd} mm={mm} yy={yy} dateLong={dateLong} posters={posters} events={events} bgStyle="swissgrid" />}
     </Box>
   )
 }
@@ -258,7 +255,7 @@ function VariantBlock({ onCta, dd, mm, yy, dateLong }: { onCta: () => void; dd: 
           <Text fontSize="12px" fontWeight="900" letterSpacing="0.04em" textTransform="uppercase" lineHeight="1.3">
             Потому что афиши —<br />
             не единственный<br />
-            способ поймать сигнал.
+            способ найти ивент.
           </Text>
         </Box>
 
@@ -280,7 +277,7 @@ function VariantBlock({ onCta, dd, mm, yy, dateLong }: { onCta: () => void; dd: 
           transition="all 0.14s cubic-bezier(0.22, 1, 0.36, 1)"
         >
           <Text fontSize={{ base: "16px", sm: "20px" }} fontWeight="900" letterSpacing="0.05em" textTransform="uppercase">
-            Собрать радар
+            Показать варианты
           </Text>
           <Text fontSize="22px" fontWeight="900" lineHeight="1">→</Text>
         </Flex>
@@ -421,7 +418,7 @@ function VariantShape({ onCta, dateLong }: { onCta: () => void; dateLong: string
           transition="all 0.14s cubic-bezier(0.22, 1, 0.36, 1)"
         >
           <Text fontSize="16px" fontWeight="900" letterSpacing="0.05em" textTransform="uppercase">
-            Собрать радар
+            Показать варианты
           </Text>
           <Text fontSize="20px" fontWeight="900" lineHeight="1">→</Text>
         </Flex>
@@ -521,7 +518,7 @@ function VariantWave({ onCta, dd, mm, yy, dateLong }: { onCta: () => void; dd: s
           transition="all 0.14s cubic-bezier(0.22, 1, 0.36, 1)"
         >
           <Text fontSize={{ base: "16px", sm: "18px" }} fontWeight="900" letterSpacing="0.05em" textTransform="uppercase">
-            Собрать радар
+            Показать варианты
           </Text>
           <Text fontSize="20px" fontWeight="900" lineHeight="1">→</Text>
         </Flex>
@@ -600,9 +597,6 @@ function VariantBento({ onCta, dd, mm, yy, dateLong, posters: _posters, events, 
       {bgStyle === "bars"      && <BgBars      />}
       {bgStyle === "solid"     && <BgSolid     />}
       {bgStyle === "halftone"  && <BgHalftone  />}
-      {bgStyle === "typeshape" && <BgTypeShape />}
-      {bgStyle === "diagram"   && <BgDiagram   />}
-      {bgStyle === "ruler"     && <BgRuler     />}
       {bgStyle === "accent"    && <BgAccent    />}
       {bgStyle === "hairline"  && <BgHairline  />}
       {bgStyle === "dotgrid"   && <BgDotGrid   />}
@@ -649,7 +643,7 @@ function VariantBento({ onCta, dd, mm, yy, dateLong, posters: _posters, events, 
               fontSize={{ base: "11px", sm: "13px" }}
               fontWeight="800" color={K} mt={{ base: "2", sm: "3" }} lineHeight="1.3"
             >
-              Радар-выпуск № 001
+              Выпуск № 001
               {' · '}
               <Text as="span" fontStyle="italic" color={G}>Curated city signal weekly</Text>
             </Text>
@@ -697,7 +691,7 @@ function VariantBento({ onCta, dd, mm, yy, dateLong, posters: _posters, events, 
           transition="all 0.14s cubic-bezier(0.22, 1, 0.36, 1)"
         >
           <Text fontSize={{ base: "16px", sm: "20px" }} fontWeight="900" letterSpacing="0.05em" textTransform="uppercase">
-            Собрать радар
+            Показать варианты
           </Text>
           <Text fontSize="22px" fontWeight="900" lineHeight="1">→</Text>
         </Flex>
