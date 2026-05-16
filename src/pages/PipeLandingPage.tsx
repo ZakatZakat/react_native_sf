@@ -613,13 +613,13 @@ function VariantBento({ onCta, dd, mm, yy, dateLong, posters: _posters, events, 
         maxW="640px"
         mx="auto"
         px={{ base: "4", sm: "6" }}
-        pt={{ base: "5", sm: "6" }}
-        pb="6"
+        pt={{ base: "3", sm: "6" }}
+        pb={{ base: "3", sm: "6" }}
         direction="column"
         position="relative"
         zIndex={2}
         minH="100dvh"
-        gap={{ base: "6", sm: "5" }}
+        gap={{ base: "3", sm: "5" }}
       >
         {/* TOP — editorial info section. Uses the SAME 8-col grid as the bento below
             so the right text block lines up with card #2 (slot 1, cols 6-8). */}
@@ -633,7 +633,7 @@ function VariantBento({ onCta, dd, mm, yy, dateLong, posters: _posters, events, 
           <Box gridColumn={{ base: "1 / -1", sm: "span 5" }} minW="0">
             <Flex align="flex-start" gap="2">
               <Text
-                fontSize={{ base: "52px", sm: "60px" }}
+                fontSize={{ base: "40px", sm: "60px" }}
                 fontWeight="900"
                 lineHeight="0.86"
                 letterSpacing="-0.045em"
@@ -641,27 +641,29 @@ function VariantBento({ onCta, dd, mm, yy, dateLong, posters: _posters, events, 
               >
                 CitySignal
               </Text>
-              <Text fontSize="14px" fontWeight="900" color={K} mt="2">
+              <Text fontSize={{ base: "11px", sm: "14px" }} fontWeight="900" color={K} mt="1.5">
                 01
               </Text>
             </Flex>
-            <Text fontSize="13px" fontWeight="800" color={K} mt="3" lineHeight="1.3">
-              Радар-выпуск № 001<br />
+            <Text
+              fontSize={{ base: "11px", sm: "13px" }}
+              fontWeight="800" color={K} mt={{ base: "2", sm: "3" }} lineHeight="1.3"
+            >
+              Радар-выпуск № 001
+              {' · '}
               <Text as="span" fontStyle="italic" color={G}>Curated city signal weekly</Text>
             </Text>
-            <Text fontSize="11px" fontWeight="700" color={B} mt="3" letterSpacing="0.04em">
-              citysignal.io
-            </Text>
             <Text
-              fontSize="13px" fontWeight="900" color={K}
-              mt={{ base: "4", sm: "6" }} letterSpacing="-0.01em"
+              fontSize="11px" fontWeight="900" color={K}
+              mt={{ base: "2", sm: "6" }} letterSpacing="-0.01em"
             >
               {dd}.{mm}.{yy} —— {dateLong.split(" ").slice(0, 2).join(" ")}
+              <Text as="span" color={B} ml="2" letterSpacing="0.04em">citysignal.io</Text>
             </Text>
 
             {/* Tiny logo placeholders */}
-            <Flex gap="3" mt={{ base: "3", sm: "6" }} align="center" wrap="wrap">
-              <Box bg={K} color={W} px="2" py="1" fontSize="9px" fontWeight="900" letterSpacing="0.16em">
+            <Flex gap="2" mt={{ base: "2", sm: "6" }} align="center" wrap="wrap">
+              <Box bg={K} color={W} px="2" py="0.5" fontSize="9px" fontWeight="900" letterSpacing="0.16em">
                 PIPE/RD{yy.slice(2)}
               </Box>
               <Box border={`1.5px solid ${K}`} px="2" py="0.5" fontSize="9px" fontWeight="900" letterSpacing="0.16em">
@@ -1039,32 +1041,26 @@ function BentoEventWall({ events }: { events: FeedItem[] }) {
       `}</style>
 
       <Box
-        // Mobile: compact 2-col grid with small thumbnail-style cards so the
-        // whole feed plus CTA fits roughly one viewport.
+        // Mobile: 2-col grid with 170px row tracks — hero spans 2×2 so it stays
+        // the visual anchor, and the four small cards beneath grow to use the
+        // available viewport space cleanly instead of leaving a gap above CTA.
         // Desktop: original 8-col bento with rowSpan'd cells.
         display="grid"
         gridTemplateColumns={{ base: "repeat(2, 1fr)", sm: "repeat(8, 1fr)" }}
-        gridAutoRows={{ base: "auto", sm: "68px" }}
+        gridAutoRows={{ base: "170px", sm: "68px" }}
         gap="2"
         gridAutoFlow="dense"
       >
         {BENTO_SLOTS.map((slot, i) => {
           const ev = slotEvents[i]
-          // Slot 0 (the big TALL hero) spans full width on mobile; others sit in pairs.
+          // Hero (slot 0): full-width AND double-height. Rest: half-width single.
           const mobileColSpan = i === 0 ? 2 : 1
-          // Compact mobile heights so 5 cards + CTA fit on one screen.
-          const mobileH =
-            i === 0                    ? "220px" :   // hero (full width)
-            slot.shape === "wide"      ? "150px" :
-            slot.shape === "square"    ? "170px" :
-            slot.shape === "tallSmall" ? "180px" :
-            /* tall (half-width) */      "180px"
+          const mobileRowSpan = i === 0 ? 2 : 1
           return (
             <Box
               key={`slot-${i}`}
               gridColumn={{ base: `span ${mobileColSpan}`, sm: `span ${slot.colSpan}` }}
-              gridRow={{ base: "auto", sm: `span ${slot.rowSpan}` }}
-              h={{ base: mobileH, sm: "auto" }}
+              gridRow={{ base: `span ${mobileRowSpan}`, sm: `span ${slot.rowSpan}` }}
               position="relative"
               overflow="hidden"
             >
