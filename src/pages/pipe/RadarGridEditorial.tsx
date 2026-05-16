@@ -17,6 +17,8 @@ import { useState } from "react"
 import { Box, Flex, Grid, Text } from "@chakra-ui/react"
 import { useNavigate } from "@tanstack/react-router"
 import { INTERESTS, type Interest } from "./preferences"
+import { PixelClusterBackdrop } from "./PixelClusters"
+import { RadarGridMuseum } from "./RadarGridMuseum"
 
 const INK = "#0D0D0D"
 const PAPER = "#FFFFFF"
@@ -806,5 +808,36 @@ function BlockPartyCard({ interest, index, tone, image, mode, active, onToggle }
         </Text>
       </Flex>
     </Shell>
+  )
+}
+
+
+/* ════════════════════════════════════════════════════════════════ */
+/* G — BENTO (Museum cards inside landing variant D backdrop)       */
+/* Same dotted bauhaus bg + 4 blue pixel-cluster supergraphics      */
+/* as PipeLandingPage variant D, with the Museum interest cards     */
+/* sitting on top.                                                  */
+/* ════════════════════════════════════════════════════════════════ */
+
+export function RadarGridBento({ picked, onToggle }: GridProps) {
+  return (
+    <Box position="relative" w="100%" overflow="hidden" pb="6">
+      {/* Dotted bauhaus background — same recipe as PipeLandingPage variant D */}
+      <Box
+        position="absolute" inset="0" pointerEvents="none" opacity={0.55}
+        style={{
+          backgroundImage: `radial-gradient(rgba(13,13,13,0.18) 1px, transparent 1.4px)`,
+          backgroundSize: "12px 12px",
+        }}
+      />
+
+      {/* Blue pixel-cluster supergraphics in the 4 corners */}
+      <PixelClusterBackdrop />
+
+      {/* The Museum card grid sits on top */}
+      <Box position="relative" zIndex={2}>
+        <RadarGridMuseum picked={picked} onToggle={onToggle} />
+      </Box>
+    </Box>
   )
 }

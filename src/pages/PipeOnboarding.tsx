@@ -21,7 +21,8 @@ import { Curator } from "../lib/curator"
 import { buildInterestImages } from "./pipe/RadarGrid"
 import { RadarGridSwiss } from "./pipe/RadarGridSwiss"
 import { RadarGridMuseum } from "./pipe/RadarGridMuseum"
-import { RadarGridBrussels, RadarGridTriptic, RadarGridBlockParty, RadarGridOscilloscope } from "./pipe/RadarGridEditorial"
+import { RadarGridBrussels, RadarGridTriptic, RadarGridBlockParty, RadarGridOscilloscope, RadarGridBento } from "./pipe/RadarGridEditorial"
+import { PixelClusterBackdrop } from "./pipe/PixelClusters"
 
 const K = "#0D0D0D"
 const W = "#FFFFFF"
@@ -104,7 +105,7 @@ export default function PipeOnboarding() {
 /* STEP 2 — RADAR GRID                                               */
 /* ───────────────────────────────────────────────────────────────── */
 
-type GridStyle = "museum" | "swiss" | "brussels" | "triptic" | "blockparty" | "radar"
+type GridStyle = "museum" | "swiss" | "brussels" | "triptic" | "blockparty" | "radar" | "bento"
 const GRID_STYLES: { key: GridStyle; letter: string; label: string }[] = [
   { key: "museum",    letter: "A", label: "Museum"      },
   { key: "swiss",     letter: "B", label: "Swiss"       },
@@ -112,6 +113,7 @@ const GRID_STYLES: { key: GridStyle; letter: string; label: string }[] = [
   { key: "triptic",   letter: "D", label: "Triptic"     },
   { key: "blockparty", letter: "E", label: "Block Party" },
   { key: "radar",     letter: "F", label: "Radar"       },
+  { key: "bento",     letter: "G", label: "Bento"       },
 ]
 
 function RadarStep({
@@ -127,6 +129,7 @@ function RadarStep({
   const canFinish = count >= 1
   const recommended = 3
   const [gridStyle, setGridStyle] = useState<GridStyle>("museum")
+  const isBento = gridStyle === "bento"
 
   return (
     <Box
@@ -143,6 +146,21 @@ function RadarStep({
           "'Helvetica Neue', 'Inter', system-ui, sans-serif",
       }}
     >
+      {/* Bento (G) decorations live at the page root so they bleed into the
+          corners and don't get clipped by inner containers. */}
+      {isBento && (
+        <>
+          <Box
+            position="absolute" inset="0" pointerEvents="none" opacity={0.55} zIndex={0}
+            style={{
+              backgroundImage: `radial-gradient(rgba(13,13,13,0.18) 1px, transparent 1.4px)`,
+              backgroundSize: "12px 12px",
+            }}
+          />
+          <PixelClusterBackdrop />
+        </>
+      )}
+
       <Flex
         maxW="430px"
         mx="auto"
@@ -154,67 +172,76 @@ function RadarStep({
         position="relative"
         zIndex={1}
       >
-        {/* Editorial header row */}
-        <Flex align="center" justify="space-between" mb="4">
-          <Flex
-            as="button" onClick={onBack}
-            align="center" gap="2" cursor="pointer"
-            fontSize="10px" fontWeight="900" letterSpacing="0.18em" textTransform="uppercase" color={K}
-            _hover={{ color: B }} transition="color 0.12s"
-          >
-            <Text fontSize="14px" lineHeight="1">←</Text> Назад
-          </Flex>
-          <Box bg={K} color={W} px="2.5" py="1" fontSize="10px" fontWeight="900" letterSpacing="0.18em" textTransform="uppercase">
-            Радар
-          </Box>
-        </Flex>
+        {isBento ? (
+          <BentoEditorialHeader
+            onBack={onBack}
+            recommended={recommended}
+          />
+        ) : (
+          <>
+            {/* Editorial header row */}
+            <Flex align="center" justify="space-between" mb="4">
+              <Flex
+                as="button" onClick={onBack}
+                align="center" gap="2" cursor="pointer"
+                fontSize="10px" fontWeight="900" letterSpacing="0.18em" textTransform="uppercase" color={K}
+                _hover={{ color: B }} transition="color 0.12s"
+              >
+                <Text fontSize="14px" lineHeight="1">←</Text> Назад
+              </Flex>
+              <Box bg={K} color={W} px="2.5" py="1" fontSize="10px" fontWeight="900" letterSpacing="0.18em" textTransform="uppercase">
+                Радар
+              </Box>
+            </Flex>
 
-        {/* Section ruler + heading — Swiss poster style */}
-        <Box mb="2">
-          <Box h="2px" bg={K} w="100%" />
-          <Flex justify="space-between" align="flex-end" mt="2" mb="1">
-            <Text fontSize="9px" fontWeight="900" letterSpacing="0.32em" textTransform="uppercase" color={G}>
-              Section / Радар
+            {/* Section ruler + heading — Swiss poster style */}
+            <Box mb="2">
+              <Box h="2px" bg={K} w="100%" />
+              <Flex justify="space-between" align="flex-end" mt="2" mb="1">
+                <Text fontSize="9px" fontWeight="900" letterSpacing="0.32em" textTransform="uppercase" color={G}>
+                  Section / Радар
+                </Text>
+                <Text fontSize="9px" fontWeight="900" letterSpacing="0.32em" textTransform="uppercase" color={G}>
+                  {INTERESTS.length} сигналов
+                </Text>
+              </Flex>
+            </Box>
+
+            <Box pb="2">
+              <Text
+                fontSize={{ base: "44px", sm: "56px" }}
+                fontWeight="900"
+                lineHeight="0.86"
+                letterSpacing="-0.045em"
+                textTransform="uppercase"
+                color={K}
+              >
+                Собери
+              </Text>
+              <Text
+                fontSize={{ base: "44px", sm: "56px" }}
+                fontWeight="900"
+                lineHeight="0.86"
+                letterSpacing="-0.045em"
+                textTransform="uppercase"
+                color={B}
+                ml="4"
+              >
+                свой радар
+              </Text>
+            </Box>
+
+            <Text
+              mt="3" mb="4"
+              fontSize="13px" fontWeight="700" lineHeight="1.4"
+              color={G} maxW="360px"
+            >
+              Выбирай не жанры, а сигналы.
+              {' '}
+              <Text as="span" color={K} fontWeight="800">{recommended}–5 штук</Text> хватит, чтобы лента поймала своё.
             </Text>
-            <Text fontSize="9px" fontWeight="900" letterSpacing="0.32em" textTransform="uppercase" color={G}>
-              {INTERESTS.length} сигналов
-            </Text>
-          </Flex>
-        </Box>
-
-        <Box pb="2">
-          <Text
-            fontSize={{ base: "44px", sm: "56px" }}
-            fontWeight="900"
-            lineHeight="0.86"
-            letterSpacing="-0.045em"
-            textTransform="uppercase"
-            color={K}
-          >
-            Собери
-          </Text>
-          <Text
-            fontSize={{ base: "44px", sm: "56px" }}
-            fontWeight="900"
-            lineHeight="0.86"
-            letterSpacing="-0.045em"
-            textTransform="uppercase"
-            color={B}
-            ml="4"
-          >
-            свой радар
-          </Text>
-        </Box>
-
-        <Text
-          mt="3" mb="4"
-          fontSize="13px" fontWeight="700" lineHeight="1.4"
-          color={G} maxW="360px"
-        >
-          Выбирай не жанры, а сигналы.
-          {' '}
-          <Text as="span" color={K} fontWeight="800">{recommended}–5 штук</Text> хватит, чтобы лента поймала своё.
-        </Text>
+          </>
+        )}
 
         {gridStyle === "museum"     && <RadarGridMuseum     picked={picked} onToggle={onToggle} />}
         {gridStyle === "swiss"      && <RadarGridSwiss      picked={picked} onToggle={onToggle} interestImages={interestImages} />}
@@ -222,6 +249,7 @@ function RadarStep({
         {gridStyle === "triptic"    && <RadarGridTriptic    picked={picked} onToggle={onToggle} />}
         {gridStyle === "blockparty" && <RadarGridBlockParty picked={picked} onToggle={onToggle} interestImages={interestImages} />}
         {gridStyle === "radar"      && <RadarGridOscilloscope picked={picked} onToggle={onToggle} />}
+        {gridStyle === "bento"      && <RadarGridBento picked={picked} onToggle={onToggle} interestImages={interestImages} />}
       </Flex>
 
       {/* SIDE TOGGLE — vertical pills on the left edge, one per layout */}
@@ -301,6 +329,79 @@ function RadarStep({
           </Flex>
         </Flex>
       </Flex>
+    </Box>
+  )
+}
+
+/**
+ * Bento editorial header — landing page variant D style transposed onto the
+ * onboarding radar page. Big "Собери / свой радар" wordmark + date / tags row +
+ * tagline, instead of the back-button + section-ruler chrome.
+ */
+function BentoEditorialHeader({
+  onBack, recommended,
+}: {
+  onBack: () => void
+  recommended: number
+}) {
+  return (
+    <Box
+      display="grid"
+      gridTemplateColumns={{ base: "1fr", sm: "repeat(8, 1fr)" }}
+      gap="2"
+      alignItems="flex-start"
+      mb={{ base: "4", sm: "5" }}
+    >
+      {/* Left column — title + date + tags */}
+      <Box gridColumn={{ base: "1 / -1", sm: "span 5" }} minW="0">
+        <Flex
+          as="button" onClick={onBack}
+          align="center" gap="2" cursor="pointer"
+          fontSize="10px" fontWeight="900" letterSpacing="0.18em" textTransform="uppercase" color={K}
+          mb="2"
+          _hover={{ color: B }} transition="color 0.12s"
+        >
+          <Text fontSize="14px" lineHeight="1">←</Text> Назад
+        </Flex>
+        <Flex align="flex-start" gap="2">
+          <Text
+            fontSize={{ base: "40px", sm: "60px" }}
+            fontWeight="900" lineHeight="0.86" letterSpacing="-0.045em" color={K}
+            textTransform="uppercase"
+          >
+            Собери
+          </Text>
+          <Text fontSize={{ base: "11px", sm: "14px" }} fontWeight="900" color={K} mt="1.5">
+            01
+          </Text>
+        </Flex>
+        <Text
+          fontSize={{ base: "40px", sm: "60px" }}
+          fontWeight="900" lineHeight="0.86" letterSpacing="-0.045em" color={B}
+          textTransform="uppercase"
+          ml="4"
+        >
+          свой радар
+        </Text>
+      </Box>
+
+      {/* Right column — section ruler + signal count + tagline */}
+      <Box gridColumn={{ base: "1 / -1", sm: "span 3" }} minW="0" mt={{ base: "1", sm: "0" }}>
+        <Box h="2px" bg={K} w="100%" mb="2" />
+        <Flex align="center" justify="space-between" mb="3">
+          <Text fontSize="9px" fontWeight="900" letterSpacing="0.32em" textTransform="uppercase" color={G}>
+            Section / Радар
+          </Text>
+          <Text fontSize="9px" fontWeight="900" letterSpacing="0.32em" textTransform="uppercase" color={G}>
+            {INTERESTS.length} сигналов
+          </Text>
+        </Flex>
+        <Text fontSize="12px" fontWeight="700" lineHeight="1.4" color={G}>
+          Выбирай не жанры, а сигналы.
+          {' '}
+          <Text as="span" color={K} fontWeight="800">{recommended}–5 штук</Text> хватит, чтобы лента поймала своё.
+        </Text>
+      </Box>
     </Box>
   )
 }
