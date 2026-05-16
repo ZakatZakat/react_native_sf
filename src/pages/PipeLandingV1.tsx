@@ -41,15 +41,17 @@ function Mark({ children, color = K }: { children: React.ReactNode; color?: stri
   )
 }
 
-/** Duotone poster — blue/white duotone. Blue background + grayscale image
- *  with `mix-blend-mode: screen` so dark pixels become blue, light stay white. */
+/** Duotone poster — canonical CitySignal recipe (from shared.jsx):
+ *    white tile → grayscale image → BLUE OVERLAY with mix-blend-mode multiply
+ *    @ 0.85 opacity → tiny riso dot overlay on top.
+ *  When the image is still loading the tile shows blue (overlay over white). */
 function DuotonePoster({ src }: { src: string | null }) {
   return (
     <Box
       position="relative"
       w="100%"
       flexShrink={0}
-      bg={B}
+      bg={W}
       border={`1px solid ${K}`}
       overflow="hidden"
       style={{ aspectRatio: "1 / 1.32" }}
@@ -65,11 +67,31 @@ function DuotonePoster({ src }: { src: string | null }) {
             width: "100%",
             height: "100%",
             objectFit: "cover",
-            mixBlendMode: "screen",
-            filter: "grayscale(1) contrast(1.25) brightness(1.1)",
+            display: "block",
+            filter: "grayscale(1) contrast(1.18) brightness(0.95)",
           }}
         />
       )}
+      {/* Blue duotone overlay — multiplies onto the grayscale image */}
+      <Box
+        position="absolute"
+        inset="0"
+        bg={B}
+        opacity={0.85}
+        pointerEvents="none"
+        style={{ mixBlendMode: "multiply" }}
+      />
+      {/* Riso dot overlay — fine grain on top */}
+      <Box
+        position="absolute"
+        inset="0"
+        opacity={0.18}
+        pointerEvents="none"
+        style={{
+          backgroundImage: "radial-gradient(rgba(255,255,255,0.9) 0.6px, transparent 1.2px)",
+          backgroundSize: "4px 4px",
+        }}
+      />
     </Box>
   )
 }
@@ -148,12 +170,21 @@ export default function PipeLandingV1() {
     return () => { cancelled = true }
   }, [])
 
-  // Need at least 8 distinct posters per column for the loop not to feel
-  // repetitive. Pad with placeholders (null) up to 8 if we have fewer.
-  const pool: string[] = posters.length > 0 ? posters : Array(8).fill("")
-  const colA = pool.slice(0, Math.max(8, Math.ceil(pool.length / 3)))
-  const colB = [...pool].reverse().slice(0, Math.max(8, Math.ceil(pool.length / 3)))
-  const colC = pool.slice(Math.floor(pool.length / 2)).concat(pool.slice(0, Math.floor(pool.length / 2)))
+  // Build 3 column strips of EXACTLY equal length — different rotations of
+  // the same base so each column scrolls different content but the looping
+  // strip height is identical, which keeps the animation in sync and
+  // guarantees every column is filled top-to-bottom from the first frame.
+  const COL_LEN = 8
+  const rotate = (arr: string[], n: number) => [...arr.slice(n), ...arr.slice(0, n)]
+  const base: string[] = (() => {
+    const src = posters.length > 0 ? posters : Array(COL_LEN).fill("")
+    // pad by repeating to at least COL_LEN, then trim to exactly COL_LEN
+    const padded = src.length >= COL_LEN ? src : [...src, ...src, ...src].slice(0, COL_LEN)
+    return padded.slice(0, COL_LEN)
+  })()
+  const colA = base
+  const colB = rotate(base, Math.floor(COL_LEN / 3)).reverse()
+  const colC = rotate(base, Math.floor((COL_LEN * 2) / 3))
 
   const goNext = () => navigate({ to: "/pipe-onboarding" })
 
@@ -165,19 +196,16 @@ export default function PipeLandingV1() {
 
   return (
     <Box
-      minH="100dvh"
       bg={W}
       color={K}
-      position="relative"
+      // position:fixed pins us to the viewport regardless of any parent
+      // Container's padding, and prevents the document from growing tall
+      // enough to scroll past the CTA.
+      position="fixed"
+      top="0" left="0" right="0" bottom="0"
       overflow="hidden"
-      // Break out of any parent max-width container so the triptych truly
-      // covers the full viewport.
-      w="100vw"
-      ml="calc((100% - 100vw) / 2)"
       style={{
         fontFamily: "'Helvetica Neue', 'Inter', system-ui, sans-serif",
-        paddingTop: "max(1rem, env(safe-area-inset-top))",
-        paddingBottom: "max(1rem, env(safe-area-inset-bottom))",
       }}
     >
       {/* Triptych scroll keyframes */}
@@ -189,12 +217,13 @@ export default function PipeLandingV1() {
         }
       `}</style>
 
-      {/* Outer flex column — fills the full viewport. Header on top,
-          stage flex-grows to the bottom; the fixed CTA simply overlaps
-          the last 86px of the stage. */}
+      {/* Outer flex column — exactly viewport height. Strip + stage (flex 1)
+          + CTA are all in flow, so the stage's bottom edge sits right at the
+          CTA's top edge — and the bottom fade at `bottom: 0` of the stage
+          renders cleanly just above the CTA, exactly like the JSX mockup. */}
       <Flex
         direction="column"
-        minH="100dvh"
+        h="100%"
         w="100%"
       >
         {/* Edition strip — flush against the stage, no margin */}
@@ -215,7 +244,7 @@ export default function PipeLandingV1() {
         <Box
           position="relative"
           flex="1"
-          minH="520px"
+          minH="0"
           overflow="hidden"
         >
           {/* The 3 scrolling columns */}
@@ -230,24 +259,25 @@ export default function PipeLandingV1() {
             <TriptychColumn posters={colC} durSec={36} dir="down" borderRight={false} />
           </Box>
 
-          {/* fade top/bottom into white */}
+          {/* fade top/bottom into white — exact JSX recipe (40px, simple gradient) */}
           <Box
             position="absolute" top="0" left="0" right="0" h="40px"
             pointerEvents="none" zIndex={2}
-            bgGradient={`linear(to-b, ${W}, transparent)`}
+            style={{ background: `linear-gradient(to bottom, ${W}, transparent)` }}
           />
           <Box
-            position="absolute" bottom="86px" left="0" right="0" h="40px"
+            position="absolute" bottom="0" left="0" right="0" h="40px"
             pointerEvents="none" zIndex={2}
-            bgGradient={`linear(to-t, ${W}, transparent)`}
+            style={{ background: `linear-gradient(to top, ${W}, transparent)` }}
           />
 
-          {/* Centered overlay card with the manifesto */}
+          {/* Overlay card with the manifesto — sits in the upper third so the
+              triptych below has room to breathe and the fade above blends into it. */}
           <Box
             position="absolute"
             left={{ base: "10px", sm: "16px" }}
             right={{ base: "10px", sm: "16px" }}
-            top={{ base: "72px", sm: "96px" }}
+            top={{ base: "18%", sm: "20%" }}
             bg={W}
             border={`2.5px solid ${K}`}
             zIndex={5}
@@ -392,10 +422,10 @@ export default function PipeLandingV1() {
             </Flex>
           </Box>
 
-          {/* Bottom-of-stage labels — pinned above the fixed CTA so they stay visible */}
+          {/* Bottom-of-stage labels — sit at stage bottom edge, inside the fade */}
           <Flex
             position="absolute"
-            left="0" right="0" bottom="94px"
+            left="0" right="0" bottom="8px"
             px="4.5"
             zIndex={3}
             justify="space-between"
@@ -413,20 +443,18 @@ export default function PipeLandingV1() {
             <Text as="span">↓ MSC + SPB</Text>
           </Flex>
         </Box>
-      </Flex>
 
-      {/* Sticky bottom CTA — "Шаг 1 / 4 — Войти в эту картинку →" */}
+      {/* Bottom CTA — sits in the Flex flow right below the stage so the
+          stage's bottom edge (where the fade lives) butts directly against it. */}
       <Flex
         as="button"
         onClick={goNext}
-        position="fixed"
-        left="0" right="0" bottom="0"
         bg={K}
         color={W}
-        zIndex={30}
         align="center"
         justify="space-between"
         cursor="pointer"
+        flexShrink={0}
         style={{
           paddingTop: "14px",
           paddingBottom: "max(18px, env(safe-area-inset-bottom))",
@@ -453,6 +481,7 @@ export default function PipeLandingV1() {
           </Text>
         </Box>
         <Text fontSize="26px" lineHeight="1" fontWeight="900">→</Text>
+      </Flex>
       </Flex>
     </Box>
   )
