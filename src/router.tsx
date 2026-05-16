@@ -7,8 +7,6 @@ import Landing3 from "./pages/Landing3"
 import Landing4 from "./pages/Landing4"
 import Landing5ProjectBlue from "./pages/Landing5ProjectBlue"
 import Feed from "./pages/Feed"
-import Feed3ProjectBlue from "./pages/Feed3ProjectBlue"
-import ProfileCreateProjectBlue from "./pages/ProfileCreateProjectBlue"
 import PipeExample from "./pages/PipeExample"
 import PipeLandingPage from "./pages/PipeLandingPage"
 import PipeLandingClassic from "./pages/PipeLandingClassic"
@@ -26,11 +24,6 @@ import PipeRadarCategory from "./pages/PipeRadarCategory"
 import PipeExampleOnlyBlue from "./pages/PipeExampleOnlyBlue"
 import PipeFeedOnlyBlue from "./pages/PipeFeedOnlyBlue"
 import Feed2 from "./pages/Feed2"
-import Bauhaus from "./pages/Bauhaus"
-import Bauhaus2 from "./pages/Bauhaus2"
-import Profile1 from "./pages/Profile1"
-import Profile2 from "./pages/Profile2"
-import Profile21 from "./pages/Profile21"
 import About from "./pages/About"
 import Profile from "./pages/Profile"
 import RouteError from "./pages/RouteError"
@@ -48,8 +41,6 @@ const landing4Route = createRoute({ getParentRoute: () => rootRoute, path: "/lan
 const landing5ProjectBlueRoute = createRoute({ getParentRoute: () => rootRoute, path: "/landing-5-project-blue", component: Landing5ProjectBlue })
 const feedRoute = createRoute({ getParentRoute: () => rootRoute, path: "/feed", component: Feed })
 const feed2Route = createRoute({ getParentRoute: () => rootRoute, path: "/feed-2", component: Feed2 })
-const feed3ProjectBlueRoute = createRoute({ getParentRoute: () => rootRoute, path: "/feed-3-project-blue", component: Feed3ProjectBlue })
-const profileCreateProjectBlueRoute = createRoute({ getParentRoute: () => rootRoute, path: "/profile-create-project-blue", component: ProfileCreateProjectBlue })
 const pipeExampleRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-example", component: PipeExample })
 const pipeLandingRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-landing", component: PipeLandingPage })
 const pipeLandingClassicRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-landing-classic", component: PipeLandingClassic })
@@ -66,11 +57,6 @@ const pipeAdminModerationRoute = createRoute({ getParentRoute: () => rootRoute, 
 const pipeRadarCategoryRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-radar/$key", component: PipeRadarCategory })
 const pipeExampleOnlyBlueRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-example-only-blue", component: PipeExampleOnlyBlue })
 const pipeFeedOnlyBlueRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-feed-only-blue", component: PipeFeedOnlyBlue })
-const bauhausRoute = createRoute({ getParentRoute: () => rootRoute, path: "/bauhaus", component: Bauhaus })
-const bauhaus2Route = createRoute({ getParentRoute: () => rootRoute, path: "/bauhaus-2", component: Bauhaus2 })
-const profile1Route = createRoute({ getParentRoute: () => rootRoute, path: "/profile-1", component: Profile1 })
-const profile2Route = createRoute({ getParentRoute: () => rootRoute, path: "/profile-2", component: Profile2 })
-const profile21Route = createRoute({ getParentRoute: () => rootRoute, path: "/profile-2-1", component: Profile21 })
 const aboutRoute = createRoute({ getParentRoute: () => rootRoute, path: "/about", component: About })
 const profileRoute = createRoute({ getParentRoute: () => rootRoute, path: "/profile", component: Profile })
 const notFoundRoute = createRoute({ getParentRoute: () => rootRoute, path: "$", component: NotFound })
@@ -83,8 +69,6 @@ const routeTree = rootRoute.addChildren([
   landing5ProjectBlueRoute,
   feedRoute,
   feed2Route,
-  feed3ProjectBlueRoute,
-  profileCreateProjectBlueRoute,
   pipeExampleRoute,
   pipeLandingRoute,
   pipeLandingClassicRoute,
@@ -101,11 +85,6 @@ const routeTree = rootRoute.addChildren([
   pipeRadarCategoryRoute,
   pipeExampleOnlyBlueRoute,
   pipeFeedOnlyBlueRoute,
-  bauhausRoute,
-  bauhaus2Route,
-  profile1Route,
-  profile2Route,
-  profile21Route,
   aboutRoute,
   profileRoute,
   notFoundRoute,
