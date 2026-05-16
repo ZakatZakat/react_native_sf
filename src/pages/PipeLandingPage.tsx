@@ -31,6 +31,7 @@ export default function PipeLandingPage() {
   const [variant, setVariant] = useState<Variant>("D")
   const [posters, setPosters] = useState<string[]>([])
   const [events, setEvents] = useState<FeedItem[]>([])
+  const [sidebarOpen, setSidebarOpen] = useState(true)
 
   useEffect(() => {
     let cancelled = false
@@ -73,7 +74,7 @@ export default function PipeLandingPage() {
         fontFamily: "'Helvetica Neue', 'Inter', system-ui, sans-serif",
       }}
     >
-      {/* SIDE TOGGLE — fixed vertical pills */}
+      {/* SIDE TOGGLE — fixed vertical pills with show/hide */}
       <Flex
         position="fixed"
         top="50%"
@@ -81,9 +82,33 @@ export default function PipeLandingPage() {
         direction="column"
         gap="2"
         zIndex={20}
+        align="flex-start"
         style={{ transform: "translateY(-50%)" }}
       >
-        {(["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S"] as Variant[]).map((v) => {
+        {/* Collapse / expand button — small chevron pill on top */}
+        <Box
+          as="button"
+          onClick={() => setSidebarOpen((v) => !v)}
+          w="40px"
+          h="22px"
+          border={`1.5px solid ${K}`}
+          bg={W}
+          color={K}
+          fontSize="11px"
+          fontWeight="900"
+          cursor="pointer"
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          transition="all 0.12s"
+          _hover={{ bg: K, color: W }}
+          aria-label={sidebarOpen ? "Hide variants" : "Show variants"}
+          title={sidebarOpen ? "Скрыть переключатель" : "Показать переключатель"}
+        >
+          {sidebarOpen ? "‹" : "›"}
+        </Box>
+
+        {sidebarOpen && (["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S"] as Variant[]).map((v) => {
           const isActive = variant === v
           return (
             <Box
@@ -587,14 +612,14 @@ function VariantBento({ onCta, dd, mm, yy, dateLong, posters: _posters, events, 
       <Flex
         maxW="640px"
         mx="auto"
-        px="6"
-        pt="6"
+        px={{ base: "4", sm: "6" }}
+        pt={{ base: "5", sm: "6" }}
         pb="6"
         direction="column"
         position="relative"
         zIndex={2}
         minH="100dvh"
-        gap="5"
+        gap={{ base: "6", sm: "5" }}
       >
         {/* TOP — editorial info section. Uses the SAME 8-col grid as the bento below
             so the right text block lines up with card #2 (slot 1, cols 6-8). */}
@@ -608,10 +633,10 @@ function VariantBento({ onCta, dd, mm, yy, dateLong, posters: _posters, events, 
           <Box gridColumn={{ base: "1 / -1", sm: "span 5" }} minW="0">
             <Flex align="flex-start" gap="2">
               <Text
-                fontSize={{ base: "44px", sm: "60px" }}
+                fontSize={{ base: "52px", sm: "60px" }}
                 fontWeight="900"
                 lineHeight="0.86"
-                letterSpacing="-0.04em"
+                letterSpacing="-0.045em"
                 color={K}
               >
                 CitySignal
@@ -627,12 +652,15 @@ function VariantBento({ onCta, dd, mm, yy, dateLong, posters: _posters, events, 
             <Text fontSize="11px" fontWeight="700" color={B} mt="3" letterSpacing="0.04em">
               citysignal.io
             </Text>
-            <Text fontSize="13px" fontWeight="900" color={K} mt="6" letterSpacing="-0.01em">
+            <Text
+              fontSize="13px" fontWeight="900" color={K}
+              mt={{ base: "4", sm: "6" }} letterSpacing="-0.01em"
+            >
               {dd}.{mm}.{yy} —— {dateLong.split(" ").slice(0, 2).join(" ")}
             </Text>
 
             {/* Tiny logo placeholders */}
-            <Flex gap="3" mt="6" align="center">
+            <Flex gap="3" mt={{ base: "3", sm: "6" }} align="center" wrap="wrap">
               <Box bg={K} color={W} px="2" py="1" fontSize="9px" fontWeight="900" letterSpacing="0.16em">
                 PIPE/RD{yy.slice(2)}
               </Box>
@@ -642,42 +670,6 @@ function VariantBento({ onCta, dd, mm, yy, dateLong, posters: _posters, events, 
             </Flex>
           </Box>
 
-          {/* Right col — sources / programme (cols 6-8, lines up with card #2 above) */}
-          <Box gridColumn={{ base: "1 / -1", sm: "span 3" }} minW="0">
-            <Flex direction="column" gap="0.5">
-              <Text fontSize="13px" fontWeight="900" color={K}>Garagemca</Text>
-              <Text fontSize="13px" fontWeight="900" color={K}>Faux_monnayage</Text>
-              <Text fontSize="13px" fontWeight="900" color={K}>Random_culture</Text>
-              <Text fontSize="13px" fontWeight="900" color={K}>Cyclelab</Text>
-              <Text fontSize="13px" fontWeight="900" color={K}>Tancevat</Text>
-            </Flex>
-
-            <Box mt="5">
-              <Flex align="center" gap="1">
-                <Text fontSize="13px" fontWeight="900" color={B}>↗</Text>
-                <Text fontSize="13px" fontWeight="900" color={K}>
-                  Подсигналы / <Text as="span" fontStyle="italic" color={G}>Sub-signals</Text>
-                </Text>
-              </Flex>
-              <Text fontSize="13px" fontWeight="900" color={K} mt="1">
-                {dd}.{mm}.{yy} —— {dateLong.split(" ").slice(0, 2).join(" ")}
-              </Text>
-              <Text fontSize="11px" color={K} mt="1" lineHeight="1.4">
-                Кино / Театр / Музыка / Перформанс /<br />
-                Выставки / Лекции / Танец / Дизайн
-              </Text>
-
-              <Flex align="center" gap="1" mt="4">
-                <Text fontSize="13px" fontWeight="900" color={B}>↗</Text>
-                <Text fontSize="13px" fontWeight="900" color={K}>
-                  35+ ТГ-каналов / <Text as="span" fontStyle="italic" color={G}>Sources</Text>
-                </Text>
-              </Flex>
-              <Text fontSize="13px" fontWeight="900" color={K} mt="1">
-                LIVE / каждые 30 минут
-              </Text>
-            </Box>
-          </Box>
         </Box>
 
         {/* EVENT CARDS — bento grid with varying sizes + auto-rotation */}
@@ -1047,19 +1039,32 @@ function BentoEventWall({ events }: { events: FeedItem[] }) {
       `}</style>
 
       <Box
+        // Mobile: compact 2-col grid with small thumbnail-style cards so the
+        // whole feed plus CTA fits roughly one viewport.
+        // Desktop: original 8-col bento with rowSpan'd cells.
         display="grid"
-        gridTemplateColumns="repeat(8, 1fr)"
-        gridAutoRows="68px"
+        gridTemplateColumns={{ base: "repeat(2, 1fr)", sm: "repeat(8, 1fr)" }}
+        gridAutoRows={{ base: "auto", sm: "68px" }}
         gap="2"
         gridAutoFlow="dense"
       >
         {BENTO_SLOTS.map((slot, i) => {
           const ev = slotEvents[i]
+          // Slot 0 (the big TALL hero) spans full width on mobile; others sit in pairs.
+          const mobileColSpan = i === 0 ? 2 : 1
+          // Compact mobile heights so 5 cards + CTA fit on one screen.
+          const mobileH =
+            i === 0                    ? "220px" :   // hero (full width)
+            slot.shape === "wide"      ? "150px" :
+            slot.shape === "square"    ? "170px" :
+            slot.shape === "tallSmall" ? "180px" :
+            /* tall (half-width) */      "180px"
           return (
             <Box
               key={`slot-${i}`}
-              gridColumn={`span ${slot.colSpan}`}
-              gridRow={`span ${slot.rowSpan}`}
+              gridColumn={{ base: `span ${mobileColSpan}`, sm: `span ${slot.colSpan}` }}
+              gridRow={{ base: "auto", sm: `span ${slot.rowSpan}` }}
+              h={{ base: mobileH, sm: "auto" }}
               position="relative"
               overflow="hidden"
             >
@@ -1346,36 +1351,47 @@ function BentoCard({
 
 /** D — pixels: 4 blue pixel-clusters in the corners (the existing default). */
 function BgPixels() {
+  // cellSize is responsive — smaller on mobile, larger on sm+. Each cluster
+  // bleeds off its corner so the pixels read as edge decoration rather than
+  // blocks sitting on top of content.
   return (
     <>
       <Box
-        position="absolute" top="0" left="0"
-        w={{ base: `${TOP_LEFT_GRID[0].length * 22}px`, sm: `${TOP_LEFT_GRID[0].length * 26}px` }}
-        h={{ base: `${TOP_LEFT_GRID.length * 22}px`,    sm: `${TOP_LEFT_GRID.length * 26}px` }}
+        position="absolute"
+        top={{ base: "-44px", sm: "-30px" }}
+        left={{ base: "-44px", sm: "-30px" }}
+        w={{ base: `${TOP_LEFT_GRID[0].length * 14}px`, sm: `${TOP_LEFT_GRID[0].length * 26}px` }}
+        h={{ base: `${TOP_LEFT_GRID.length * 14}px`,    sm: `${TOP_LEFT_GRID.length * 26}px` }}
         zIndex={0} pointerEvents="none" opacity={0.95}
       >
         <PixelCluster grid={TOP_LEFT_GRID} color={B} shimmerSeed={0} />
       </Box>
       <Box
-        position="absolute" top={{ base: "320px", sm: "400px" }} right="0"
-        w={{ base: `${MID_RIGHT_GRID[0].length * 22}px`, sm: `${MID_RIGHT_GRID[0].length * 26}px` }}
-        h={{ base: `${MID_RIGHT_GRID.length * 22}px`,    sm: `${MID_RIGHT_GRID.length * 26}px` }}
-        zIndex={0} pointerEvents="none" opacity={0.95}
+        position="absolute"
+        top={{ base: "300px", sm: "400px" }}
+        right={{ base: "-30px", sm: "-20px" }}
+        w={{ base: `${MID_RIGHT_GRID[0].length * 14}px`, sm: `${MID_RIGHT_GRID[0].length * 26}px` }}
+        h={{ base: `${MID_RIGHT_GRID.length * 14}px`,    sm: `${MID_RIGHT_GRID.length * 26}px` }}
+        zIndex={0} pointerEvents="none" opacity={0.9}
       >
         <PixelCluster grid={MID_RIGHT_GRID} color={B} shimmerSeed={400} />
       </Box>
       <Box
-        position="absolute" bottom={{ base: "120px", sm: "160px" }} left="0"
-        w={{ base: `${BOTTOM_LEFT_GRID[0].length * 22}px`, sm: `${BOTTOM_LEFT_GRID[0].length * 26}px` }}
-        h={{ base: `${BOTTOM_LEFT_GRID.length * 22}px`,    sm: `${BOTTOM_LEFT_GRID.length * 26}px` }}
+        position="absolute"
+        bottom={{ base: "140px", sm: "160px" }}
+        left={{ base: "-30px", sm: "0" }}
+        w={{ base: `${BOTTOM_LEFT_GRID[0].length * 14}px`, sm: `${BOTTOM_LEFT_GRID[0].length * 26}px` }}
+        h={{ base: `${BOTTOM_LEFT_GRID.length * 14}px`,    sm: `${BOTTOM_LEFT_GRID.length * 26}px` }}
         zIndex={0} pointerEvents="none" opacity={0.85}
       >
         <PixelCluster grid={BOTTOM_LEFT_GRID} color={B} shimmerSeed={900} />
       </Box>
       <Box
-        position="absolute" bottom="0" right="0"
-        w={{ base: `${BOTTOM_RIGHT_GRID[0].length * 22}px`, sm: `${BOTTOM_RIGHT_GRID[0].length * 26}px` }}
-        h={{ base: `${BOTTOM_RIGHT_GRID.length * 22}px`,    sm: `${BOTTOM_RIGHT_GRID.length * 26}px` }}
+        position="absolute"
+        bottom={{ base: "-30px", sm: "0" }}
+        right={{ base: "-30px", sm: "0" }}
+        w={{ base: `${BOTTOM_RIGHT_GRID[0].length * 14}px`, sm: `${BOTTOM_RIGHT_GRID[0].length * 26}px` }}
+        h={{ base: `${BOTTOM_RIGHT_GRID.length * 14}px`,    sm: `${BOTTOM_RIGHT_GRID.length * 26}px` }}
         zIndex={0} pointerEvents="none" opacity={0.95}
       >
         <PixelCluster grid={BOTTOM_RIGHT_GRID} color={B} shimmerSeed={1500} />

@@ -107,7 +107,7 @@ export default function App() {
           <Spacer />
         </Flex>
       </Container>
-      <Container maxW="container.md" pb="8">
+      <Container maxW="container.md" pb="8" px="0">
         <Outlet />
       </Container>
     </Box>
