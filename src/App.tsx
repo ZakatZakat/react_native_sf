@@ -8,14 +8,15 @@ declare global {
 }
 
 const PIPE_ROUTES = [
+  { label: "Pipe Landing V1 (Triptych)", to: "/pipe-landing-v1" },
+] as const
+
+const ALT_ROUTES = [
   { label: "Pipe Landing Page", to: "/pipe-landing" },
   { label: "Pipe Onboarding", to: "/pipe-onboarding" },
   { label: "Pipe Feed Swipe", to: "/pipe-feed-swipe" },
   { label: "Pipe My Events", to: "/pipe-my-events" },
   { label: "Pipe Admin Moderation", to: "/pipe-admin-moderation" },
-] as const
-
-const ALT_ROUTES = [
   { label: "Pipe Landing (bauhaus blocks)", to: "/pipe-landing-bauhaus" },
   { label: "Pipe Landing (classic)", to: "/pipe-landing-classic" },
   { label: "Pipe Onboarding (classic)", to: "/pipe-onboarding-classic" },
@@ -82,13 +83,15 @@ export default function App() {
             fontSize="sm"
             maxW="220px"
           >
-            <optgroup label="Клиентский Путь">
-              {PIPE_ROUTES.map((r) => (
-                <option key={r.to} value={r.to}>
-                  {r.label}
-                </option>
-              ))}
-            </optgroup>
+            {PIPE_ROUTES.length > 0 && (
+              <optgroup label="Клиентский Путь">
+                {PIPE_ROUTES.map((r) => (
+                  <option key={r.to} value={r.to}>
+                    {r.label}
+                  </option>
+                ))}
+              </optgroup>
+            )}
             <optgroup label="Альтернативные Варианты">
               {ALT_ROUTES.map((r) => (
                 <option key={r.to} value={r.to}>
