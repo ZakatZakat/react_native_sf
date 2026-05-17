@@ -186,7 +186,7 @@ export default function PipeLandingV1() {
   const colB = rotate(base, Math.floor(COL_LEN / 3)).reverse()
   const colC = rotate(base, Math.floor((COL_LEN * 2) / 3))
 
-  const goNext = () => navigate({ to: "/pipe-onboarding" })
+  const goNext = () => navigate({ to: "/pipe-swipe-train" })
 
   // Edition week-of-year (approx — just for the strip label)
   const now = new Date()
