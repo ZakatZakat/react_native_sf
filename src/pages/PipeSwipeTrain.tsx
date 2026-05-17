@@ -734,12 +734,14 @@ export default function PipeSwipeTrain() {
   return (
     <Box
       bg={W} color={K}
-      // Lock to viewport: page never scrolls, content is bounded by 100dvh,
-      // the absolutely-positioned footer is always visible at the bottom.
+      // Swipe state: in-flow layout (minH 100dvh) so the action footer sits
+      // naturally under the card — short posters don't leave a yawning gap.
+      // Done state: locked viewport with absolute footer, so the CoverHero
+      // shelves can scroll while the CTA stays pinned.
       position="relative"
-      h="100dvh"
-      overflow="hidden"
-      pb="96px"
+      {...(done
+        ? { h: "100dvh", overflow: "hidden", pb: "96px" }
+        : {})}
       style={{ fontFamily: "'Helvetica Neue', 'Inter', system-ui, sans-serif" }}
     >
       {/* Dotted bauhaus background — same recipe as Pipe Landing Page variant D */}
@@ -877,11 +879,12 @@ export default function PipeSwipeTrain() {
           )}
         </Box>
 
-        {/* Footer — ✕ / ♥ during swipe; finish CTA on result. Absolute over
-            the scrollable page (PageShell pattern from Alt1Swipe). */}
+        {/* Footer — ✕ / ♥ during swipe (in flow, sits under the card so it
+            "pulls up" close to short posters); finish CTA on result
+            (absolute, so the shelves can scroll behind it). */}
         {!done ? (
           <Flex
-            position="absolute" left="0" right="0" bottom="0"
+            mt="6"
             zIndex={20}
             bg={W} borderTop={`2.5px solid ${K}`}
             gap="2.5"
