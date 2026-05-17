@@ -286,39 +286,32 @@ export function CoverHero({
         <Mark color={G55}>♥{liked} → {inferred.length} сигналов</Mark>
       </Flex>
 
-      {/* HERO — top category */}
+      {/* HERO — top category. Image is in-flow (width:100% / height:auto),
+          so the poster's natural aspect drives the block's height — same
+          stretching technique PipeFeedSwipe uses. maxHeight caps it so a
+          freakishly tall portrait can't blow up the layout. Overlays
+          (SHARE stat, bottom name strip) stay absolutely positioned. */}
       <Box
         position="relative" mt="2"
         border={`2.5px solid ${K}`}
         overflow="hidden"
         bg={K}
-        style={{ aspectRatio: "1.35 / 1" }}
       >
-        {topPoster && (
+        {topPoster ? (
           <img
             src={topPoster}
             alt=""
             style={{
-              position: "absolute", inset: 0,
-              width: "100%", height: "100%",
-              objectFit: "cover",
+              width: "100%",
+              height: "auto",
               display: "block",
+              maxHeight: "70dvh",
+              objectFit: "contain",
             }}
           />
+        ) : (
+          <Box w="100%" style={{ aspectRatio: "1 / 1.2" }} />
         )}
-
-        {/* Top-left badge */}
-        <Box
-          position="absolute" top="8px" left="8px" zIndex={3}
-          bg={W}
-          px="2" py="1"
-          fontFamily="'JetBrains Mono', ui-monospace, monospace"
-          fontSize="9px" color={K}
-          fontWeight="700" letterSpacing="0.06em"
-          border={`1.5px solid ${K}`}
-        >
-          N°01 · ГЛАВНЫЙ СИГНАЛ
-        </Box>
 
         {/* Top-right stat block */}
         <Box
@@ -344,39 +337,41 @@ export function CoverHero({
           </Text>
         </Box>
 
-        {/* Bottom: stats strip + huge name */}
-        <Box position="absolute" left="0" right="0" bottom="0" zIndex={3}>
-          {/* hits stats strip */}
-          <Flex
-            justify="space-between" align="center"
-            px="2.5" py="1"
-            bg={W}
-            borderTop={`1.5px solid ${K}`}
-            fontFamily="'JetBrains Mono', ui-monospace, monospace"
-            fontSize="9px" color={G55}
-            style={{ letterSpacing: "0.06em" }}
-          >
-            <Flex align="center" gap="0.5">
-              {Array.from({ length: top.n }).map((_, j) => (
-                <Box key={j} w="7px" h="12px" bg={B} />
-              ))}
-              <Text as="span" ml="1.5">×{top.n} hit</Text>
-            </Flex>
-            <Text as="span">+{top.cat.label}</Text>
+      </Box>
+
+      {/* Bottom: stats strip + huge name — in flow below the poster so the
+          image is never clipped by an overlay. */}
+      <Box border={`2.5px solid ${K}`} borderTop="0">
+        {/* hits stats strip */}
+        <Flex
+          justify="space-between" align="center"
+          px="2.5" py="1"
+          bg={W}
+          borderBottom={`1.5px solid ${K}`}
+          fontFamily="'JetBrains Mono', ui-monospace, monospace"
+          fontSize="9px" color={G55}
+          style={{ letterSpacing: "0.06em" }}
+        >
+          <Flex align="center" gap="0.5">
+            {Array.from({ length: top.n }).map((_, j) => (
+              <Box key={j} w="7px" h="12px" bg={B} />
+            ))}
+            <Text as="span" ml="1.5">×{top.n} hit</Text>
           </Flex>
-          {/* Big name */}
-          <Box
-            bg={K} color={W}
-            px="3" pt="2.5" pb="3"
-            fontWeight="900"
-            style={{
-              fontSize: "32px", lineHeight: "0.92",
-              letterSpacing: "-0.04em",
-              textTransform: "uppercase",
-            }}
-          >
-            {top.cat.label}
-          </Box>
+          <Text as="span">+{top.cat.label}</Text>
+        </Flex>
+        {/* Big name */}
+        <Box
+          bg={K} color={W}
+          px="3" pt="2.5" pb="3"
+          fontWeight="900"
+          style={{
+            fontSize: "32px", lineHeight: "0.92",
+            letterSpacing: "-0.04em",
+            textTransform: "uppercase",
+          }}
+        >
+          {top.cat.label}
         </Box>
       </Box>
 
