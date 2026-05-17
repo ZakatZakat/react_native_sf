@@ -112,6 +112,7 @@ function SwipeCard({
       }}
     >
       <Box
+        className="cs-shelf-card"
         w="100%"
         bg={W}
         border={`2.5px solid ${K}`}
@@ -207,14 +208,449 @@ function VerdictBadge({ verdict }: { verdict: "yes" | "no" | null }) {
 }
 
 /* ─────────────────────────────────────────────────────────── */
+/* CoverHero — magazine-cover result screen (B8)                */
+/* Port of alt1-result-b8-cover-hero.jsx                        */
+/* ─────────────────────────────────────────────────────────── */
+
+export function CoverHero({
+  inferred, liked, likedSamples, pool,
+}: {
+  inferred: { cat: Interest; n: number }[]
+  liked: number
+  likedSamples: Record<string, FeedItem>
+  pool: FeedItem[]
+}) {
+  if (inferred.length === 0) {
+    return (
+      <Box border={`2px solid ${K}`} p="4" style={{ boxShadow: `4px 4px 0 ${B}` }} mt="2">
+        <Mark color={G55}>На основе ♥ {liked}</Mark>
+        <Text fontWeight="700" fontSize="13px" color={G55} mt="2.5">
+          Ничего не зацепило — попробуй ещё.
+        </Text>
+      </Box>
+    )
+  }
+
+  const top = inferred[0]
+  const rest = inferred.slice(1)
+  const totalHits = inferred.reduce((s, x) => s + x.n, 0)
+  const topPct = Math.round((top.n / Math.max(1, totalHits)) * 100)
+
+  // Helper: poster URL for a category — first liked sample, else first pool event with that tag.
+  const posterFor = (catKey: string): string | null => {
+    const ev = likedSamples[catKey] ?? pool.find((e) => (e.tags ?? []).includes(catKey))
+    if (!ev) return null
+    const m = ev.media_urls?.find(isImg) ?? ev.media_urls?.[0]
+    const r = resolveMedia(m ?? null)
+    return r && isImg(r) ? r : null
+  }
+
+  // Build shelves — one row per inferred category, populated from the pool.
+  const shelves = inferred.map((x) => {
+    const events = pool
+      .filter((e) => (e.tags ?? []).includes(x.cat.key))
+      .slice(0, 8)
+    return { cat: x.cat, hits: x.n, events }
+  })
+  const totalFeed = shelves.reduce((s, x) => s + x.events.length, 0)
+
+  const topPoster = posterFor(top.cat.key)
+
+  return (
+    <Box style={{ fontFamily: "'Helvetica Neue', sans-serif" }} mt="1" pb="4">
+      {/* Shelf-card floating animation — lives inside CoverHero so it works
+          both when embedded in PipeSwipeTrain done-state AND PipeSwipeResult. */}
+      <style>{`
+        @keyframes cs-shelf-float {
+          0%, 100% { transform: translateY(0) rotate(0deg); }
+          25%      { transform: translateY(-3px) rotate(-0.6deg); }
+          50%      { transform: translateY(0)    rotate(0deg); }
+          75%      { transform: translateY(-2px) rotate(0.5deg); }
+        }
+        .cs-shelf-card {
+          animation: cs-shelf-float 4.2s ease-in-out infinite;
+          will-change: transform;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .cs-shelf-card { animation: none; }
+        }
+      `}</style>
+
+      {/* Edition strip */}
+      <Flex
+        justify="space-between" align="center"
+        py="2"
+        borderTop={`2px solid ${K}`} borderBottom={`2px solid ${K}`}
+      >
+        <Mark>Профиль</Mark>
+        <Mark color={G55}>♥{liked} → {inferred.length} сигналов</Mark>
+      </Flex>
+
+      {/* HERO — top category */}
+      <Box
+        position="relative" mt="2"
+        border={`2.5px solid ${K}`}
+        overflow="hidden"
+        bg={K}
+        style={{ aspectRatio: "1.35 / 1" }}
+      >
+        {topPoster && (
+          <img
+            src={topPoster}
+            alt=""
+            style={{
+              position: "absolute", inset: 0,
+              width: "100%", height: "100%",
+              objectFit: "cover",
+              display: "block",
+            }}
+          />
+        )}
+
+        {/* Top-left badge */}
+        <Box
+          position="absolute" top="8px" left="8px" zIndex={3}
+          bg={W}
+          px="2" py="1"
+          fontFamily="'JetBrains Mono', ui-monospace, monospace"
+          fontSize="9px" color={K}
+          fontWeight="700" letterSpacing="0.06em"
+          border={`1.5px solid ${K}`}
+        >
+          N°01 · ГЛАВНЫЙ СИГНАЛ
+        </Box>
+
+        {/* Top-right stat block */}
+        <Box
+          position="absolute" top="8px" right="8px" zIndex={3}
+          bg={K} color={W}
+          px="2.5" py="1.5"
+          textAlign="right"
+        >
+          <Text
+            fontFamily="'JetBrains Mono', ui-monospace, monospace"
+            fontSize="8.5px"
+            color="rgba(255,255,255,0.65)"
+            letterSpacing="0.16em"
+          >
+            SHARE
+          </Text>
+          <Text
+            fontWeight="900" fontSize="22px"
+            letterSpacing="-0.04em" lineHeight="1"
+            mt="0.5"
+          >
+            {topPct}%
+          </Text>
+        </Box>
+
+        {/* Bottom: stats strip + huge name */}
+        <Box position="absolute" left="0" right="0" bottom="0" zIndex={3}>
+          {/* hits stats strip */}
+          <Flex
+            justify="space-between" align="center"
+            px="2.5" py="1"
+            bg={W}
+            borderTop={`1.5px solid ${K}`}
+            fontFamily="'JetBrains Mono', ui-monospace, monospace"
+            fontSize="9px" color={G55}
+            style={{ letterSpacing: "0.06em" }}
+          >
+            <Flex align="center" gap="0.5">
+              {Array.from({ length: top.n }).map((_, j) => (
+                <Box key={j} w="7px" h="12px" bg={B} />
+              ))}
+              <Text as="span" ml="1.5">×{top.n} hit</Text>
+            </Flex>
+            <Text as="span">+{top.cat.label}</Text>
+          </Flex>
+          {/* Big name */}
+          <Box
+            bg={K} color={W}
+            px="3" pt="2.5" pb="3"
+            fontWeight="900"
+            style={{
+              fontSize: "32px", lineHeight: "0.92",
+              letterSpacing: "-0.04em",
+              textTransform: "uppercase",
+            }}
+          >
+            {top.cat.label}
+          </Box>
+        </Box>
+      </Box>
+
+      {/* Strip head for the rest */}
+      {rest.length > 0 && (
+        <>
+          <Flex
+            mt="3" pb="1.5"
+            borderBottom={`1.5px solid ${K}`}
+            justify="space-between"
+          >
+            <Mark>Поддержка / +{rest.length}</Mark>
+            <Mark color={G55}>тап — убрать</Mark>
+          </Flex>
+
+          {/* Supporting thumbnails grid */}
+          <Box
+            mt="2"
+            display="grid"
+            style={{
+              gridTemplateColumns: `repeat(${Math.min(rest.length, 5)}, 1fr)`,
+              gap: "6px",
+            }}
+          >
+            {rest.map((x, i) => {
+              const p = posterFor(x.cat.key)
+              return (
+                <Box
+                  key={x.cat.key}
+                  border={`1.5px solid ${K}`}
+                  bg={W}
+                  display="flex" flexDirection="column"
+                >
+                  <Box position="relative" style={{ aspectRatio: "1 / 1" }} overflow="hidden" bg={K}>
+                    {p && (
+                      <img
+                        src={p}
+                        alt=""
+                        style={{
+                          position: "absolute", inset: 0,
+                          width: "100%", height: "100%",
+                          objectFit: "cover",
+                          display: "block",
+                        }}
+                      />
+                    )}
+                    <Box
+                      position="absolute" top="3px" left="3px"
+                      bg={W}
+                      px="1" py="0"
+                      fontFamily="'JetBrains Mono', ui-monospace, monospace"
+                      fontSize="8px" fontWeight="700"
+                      border={`1px solid ${K}`}
+                    >
+                      {String(i + 2).padStart(2, "0")}
+                    </Box>
+                    <Flex
+                      position="absolute" top="3px" right="3px"
+                      gap="0.5"
+                      bg={W}
+                      px="0.5" py="0.5"
+                      border={`1px solid ${K}`}
+                    >
+                      {Array.from({ length: x.n }).map((_, j) => (
+                        <Box key={j} w="4px" h="5px" bg={B} />
+                      ))}
+                    </Flex>
+                  </Box>
+                  <Box px="1.5" pt="1" pb="1.5" borderTop={`1px solid ${K}`}>
+                    <Text
+                      fontWeight="900"
+                      style={{
+                        fontSize: "9.5px", lineHeight: "1",
+                        letterSpacing: "-0.015em",
+                        textTransform: "uppercase",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
+                      {x.cat.label}
+                    </Text>
+                    <Text
+                      fontFamily="'JetBrains Mono', ui-monospace, monospace"
+                      fontSize="8px" color={G55}
+                      mt="0.5"
+                    >
+                      ×{x.n}
+                    </Text>
+                  </Box>
+                </Box>
+              )
+            })}
+          </Box>
+        </>
+      )}
+
+      {/* Полки / Shelves */}
+      {shelves.length > 0 && (
+        <>
+          <Flex
+            mt="5" mb="1"
+            justify="space-between" align="baseline"
+          >
+            <Text
+              fontWeight="900" fontSize="10px" letterSpacing="0.18em"
+              textTransform="uppercase" color={K} lineHeight="1"
+            >
+              Полки / Shelves
+            </Text>
+            <Mark color={G55}>
+              {shelves.length} рядов · {totalFeed} ивентов
+            </Mark>
+          </Flex>
+          <Box mt="3">
+            {shelves.map((s, idx) => (
+              <Shelf key={s.cat.key} idx={idx} cat={s.cat} hits={s.hits} events={s.events} />
+            ))}
+          </Box>
+        </>
+      )}
+    </Box>
+  )
+}
+
+/** One horizontal shelf — row header + scrollable mini event cards. */
+function Shelf({
+  idx, cat, hits, events,
+}: {
+  idx: number
+  cat: Interest
+  hits: number
+  events: FeedItem[]
+}) {
+  return (
+    <Box mb="4">
+      {/* Row header */}
+      <Flex align="center" justify="space-between" mb="2">
+        <Flex align="center" gap="2.5" minW="0">
+          <Text
+            fontFamily="'JetBrains Mono', ui-monospace, monospace"
+            fontSize="10px" color={G55} flexShrink={0}
+          >
+            {String(idx + 1).padStart(2, "0")}
+          </Text>
+          <Text
+            fontWeight="900" fontSize="16px"
+            letterSpacing="-0.025em" textTransform="uppercase"
+            color={K}
+            style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+          >
+            {cat.label}
+          </Text>
+          <Flex gap="0.5" flexShrink={0}>
+            {Array.from({ length: hits }).map((_, j) => (
+              <Box key={j} w="6px" h="10px" bg={B} />
+            ))}
+          </Flex>
+        </Flex>
+        <Text
+          fontFamily="'JetBrains Mono', ui-monospace, monospace"
+          fontSize="10px" color={G55} flexShrink={0}
+        >
+          01 / {String(events.length).padStart(2, "0")} →
+        </Text>
+      </Flex>
+
+      {/* Horizontal scroll of event mini-cards. py adds room for the gentle
+          floating animation (cards rise up to -3px) — overflow-x:auto would
+          otherwise clip those few pixels off the top. */}
+      <Flex
+        gap="2"
+        overflowX="auto"
+        sx={{
+          scrollbarWidth: "none",
+          "&::-webkit-scrollbar": { display: "none" },
+        }}
+        mx="-4"
+        px="4"
+        py="2"
+      >
+        {events.map((ev, j) => {
+          const m = ev.media_urls?.find(isImg) ?? ev.media_urls?.[0]
+          const r = resolveMedia(m ?? null)
+          const poster = r && isImg(r) ? r : null
+          const date = ev.event_time
+            ? new Date(ev.event_time).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })
+            : ""
+          return (
+            <Box
+              key={`${ev.id}-${j}`}
+              className="cs-shelf-card"
+              flexShrink={0}
+              w={{ base: "160px", sm: "180px" }}
+              border={`1.5px solid ${K}`}
+              bg={W}
+              overflow="hidden"
+              style={{
+                // Each card uses a different delay so the strip drifts in a
+                // gentle, non-uniform rhythm — like posters caught in a breeze.
+                animationDelay: `${(idx * 0.7 + j * 0.45) % 4}s`,
+              }}
+            >
+              <Box position="relative" style={{ aspectRatio: "1 / 1" }} overflow="hidden" bg={K}>
+                {poster && (
+                  <img
+                    src={poster}
+                    alt=""
+                    style={{
+                      position: "absolute", inset: 0,
+                      width: "100%", height: "100%",
+                      objectFit: "cover",
+                      display: "block",
+                    }}
+                  />
+                )}
+                <Box
+                  position="absolute" top="4px" left="4px"
+                  bg={W} px="1.5" py="0.5"
+                  fontFamily="'JetBrains Mono', ui-monospace, monospace"
+                  fontSize="9px" fontWeight="700"
+                  border={`1px solid ${K}`}
+                >
+                  N°{String(j + 1).padStart(2, "0")}
+                </Box>
+                {date && (
+                  <Box
+                    position="absolute" top="4px" right="4px"
+                    bg={K} color={W}
+                    px="1.5" py="0.5"
+                    fontFamily="'JetBrains Mono', ui-monospace, monospace"
+                    fontSize="9px" letterSpacing="0.06em"
+                  >
+                    до {date}
+                  </Box>
+                )}
+              </Box>
+              <Box px="2" pt="1.5" pb="2" borderTop={`1px solid ${K}`}>
+                <Text
+                  fontWeight="900" fontSize="11px" lineHeight="1.1"
+                  letterSpacing="-0.015em" textTransform="uppercase"
+                  color={K}
+                  style={{
+                    display: "-webkit-box",
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
+                    wordBreak: "break-word",
+                  }}
+                >
+                  {ev.title || "Событие"}
+                </Text>
+              </Box>
+            </Box>
+          )
+        })}
+      </Flex>
+    </Box>
+  )
+}
+
+/* ─────────────────────────────────────────────────────────── */
 /* Page                                                          */
 /* ─────────────────────────────────────────────────────────── */
 
 export default function PipeSwipeTrain() {
   const navigate = useNavigate()
   const [deck, setDeck] = useState<FeedItem[]>([])
+  // Full pool — used to populate shelves on the result page with multiple
+  // events per category.
+  const [pool, setPool] = useState<FeedItem[]>([])
   const [i, setI] = useState(0)
   const [tally, setTally] = useState<Record<string, number>>({})
+  const [likedSamples, setLikedSamples] = useState<Record<string, FeedItem>>({})
   const [liked, setLiked] = useState(0)
   const [verdict, setVerdict] = useState<"yes" | "no" | null>(null)
 
@@ -247,6 +683,8 @@ export default function PipeSwipeTrain() {
         // top up if we don't have enough variety yet
         const out = [...picked, ...rest].slice(0, DECK_SIZE)
         setDeck(out)
+        // pool keeps everything with an image for shelves on the result page
+        setPool([...picked, ...rest])
       } catch {
         /* offline — empty deck, show "ничего не зацепило" state */
       }
@@ -265,6 +703,8 @@ export default function PipeSwipeTrain() {
       if (tags.length > 0) {
         const k = tags[0]
         setTally((t) => ({ ...t, [k]: (t[k] || 0) + 1 }))
+        // First liked event for this category becomes its hero poster
+        setLikedSamples((prev) => (prev[k] ? prev : { ...prev, [k]: top }))
       }
       setLiked((n) => n + 1)
     }
@@ -275,7 +715,7 @@ export default function PipeSwipeTrain() {
   }
 
   const reset = () => {
-    setI(0); setTally({}); setLiked(0); setVerdict(null)
+    setI(0); setTally({}); setLiked(0); setVerdict(null); setLikedSamples({})
   }
 
   // Top 4 inferred categories
@@ -312,6 +752,19 @@ export default function PipeSwipeTrain() {
           0% { opacity: 0; transform: translateX(-50%) scale(0.5) rotate(0deg); }
           100% { opacity: 1; }
         }
+        @keyframes cs-shelf-float {
+          0%, 100% { transform: translateY(0) rotate(0deg); }
+          25%      { transform: translateY(-3px) rotate(-0.6deg); }
+          50%      { transform: translateY(0)    rotate(0deg); }
+          75%      { transform: translateY(-2px) rotate(0.5deg); }
+        }
+        .cs-shelf-card {
+          animation: cs-shelf-float 4.2s ease-in-out infinite;
+          will-change: transform;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .cs-shelf-card { animation: none; }
+        }
       `}</style>
 
       <Box w="100%">
@@ -340,23 +793,28 @@ export default function PipeSwipeTrain() {
 
           <Box pb="1">
             <Text fontWeight="900" fontSize="40px" lineHeight="0.86" letterSpacing="-0.045em" textTransform="uppercase" color={K}>
-              {done ? "Готово." : "Пошёл бы?"}
+              {done ? "Похоже," : "Пошёл бы?"}
             </Text>
             <Text fontWeight="900" fontSize="40px" lineHeight="0.86" letterSpacing="-0.045em" textTransform="uppercase" color={B} ml="3.5">
-              {done ? "Лента" : "Жми."}
+              {done ? "ты про" : "Жми."}
             </Text>
           </Box>
           <Text fontWeight="700" fontSize="12.5px" lineHeight="1.4" color={G55} mt="2.5">
             {done ? (
-              <>Что тебя зацепило — стало <Text as="span" color={K} fontWeight="900">категориями</Text>. Можно поправить.</>
+              <>Сверху — <Text as="span" color={K} fontWeight="900">главный сигнал</Text>. Внизу — поддержка.</>
             ) : (
               <>Смотри карточки, тапай <Text as="span" color={K} fontWeight="900">✕ или ♥</Text>. Лента подстроится сама.</>
             )}
           </Text>
         </Box>
 
-        {/* Body — either swipe stack or result */}
-        <Box px="4" position="relative">
+        {/* Body — either swipe stack or result. In result-mode body becomes
+            scrollable so the cover hero + thumbnails can spill over. */}
+        <Box
+          px="4"
+          position="relative"
+          sx={done ? { overflowY: "auto", maxHeight: "calc(100dvh - 320px)" } : undefined}
+        >
           {!done ? (
             <Box>
               {/* Progress dots + counter */}
@@ -402,73 +860,12 @@ export default function PipeSwipeTrain() {
               </Box>
             </Box>
           ) : (
-            // Result card
-            <Box
-              border={`2px solid ${K}`}
-              p="4"
-              style={{ boxShadow: `4px 4px 0 ${B}` }}
-              mt="1"
-            >
-              <Mark color={G55}>На основе ♥ {liked} из {deck.length}</Mark>
-              <Text
-                fontWeight="900" fontSize="24px" lineHeight="1"
-                letterSpacing="-0.035em" textTransform="uppercase" mt="1.5"
-              >
-                Похоже, ты про
-              </Text>
-              <Flex direction="column" gap="2" mt="3.5">
-                {inferred.length === 0 ? (
-                  <Text fontWeight="600" fontSize="12px" color={G55}>
-                    Ничего не зацепило. Можно пройти ещё раз.
-                  </Text>
-                ) : (
-                  inferred.map((x, j) => (
-                    <Box
-                      key={x.cat.key}
-                      display="grid"
-                      gridTemplateColumns="24px 1fr auto"
-                      alignItems="center"
-                      gap="2.5"
-                      pb="1.5"
-                      borderBottom={`1px solid ${G18}`}
-                    >
-                      <Text
-                        fontFamily="'JetBrains Mono', ui-monospace, monospace"
-                        fontSize="10px" color={G55}
-                      >
-                        {String(j + 1).padStart(2, "0")}
-                      </Text>
-                      <Text
-                        fontWeight="900" fontSize="17px"
-                        letterSpacing="-0.025em" textTransform="uppercase"
-                      >
-                        {x.cat.label}
-                      </Text>
-                      <Text
-                        fontFamily="'JetBrains Mono', ui-monospace, monospace"
-                        fontSize="10px" color={B} textAlign="right"
-                      >
-                        +{x.n} ♥
-                      </Text>
-                    </Box>
-                  ))
-                )}
-              </Flex>
-              <Flex
-                as="button"
-                onClick={reset}
-                mt="3" w="100%"
-                cursor="pointer"
-                fontWeight="900" fontSize="11px" letterSpacing="0.18em" textTransform="uppercase"
-                p="2.5"
-                border={`2px solid ${K}`}
-                bg={W} color={K}
-                align="center" justify="center"
-                style={{ background: W, border: `2px solid ${K}` }}
-              >
-                ↻ Пройти ещё раз
-              </Flex>
-            </Box>
+            <CoverHero
+              inferred={inferred}
+              liked={liked}
+              likedSamples={likedSamples}
+              pool={pool}
+            />
           )}
         </Box>
 
