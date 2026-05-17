@@ -747,6 +747,19 @@ export default function PipeSwipeTrain() {
       pb="96px"
       style={{ fontFamily: "'Helvetica Neue', 'Inter', system-ui, sans-serif" }}
     >
+      {/* Dotted bauhaus background — same recipe as Pipe Landing Page variant D */}
+      <Box
+        position="absolute"
+        inset="0"
+        pointerEvents="none"
+        opacity={0.55}
+        zIndex={0}
+        style={{
+          backgroundImage: "radial-gradient(rgba(13,13,13,0.18) 1px, transparent 1.4px)",
+          backgroundSize: "12px 12px",
+        }}
+      />
+
       <style>{`
         @keyframes cs-stamp {
           0% { opacity: 0; transform: translateX(-50%) scale(0.5) rotate(0deg); }

@@ -12,6 +12,7 @@ import PipeLandingPage from "./pages/PipeLandingPage"
 import PipeLandingV1 from "./pages/PipeLandingV1"
 import PipeSwipeTrain from "./pages/PipeSwipeTrain"
 import PipeSwipeResult from "./pages/PipeSwipeResult"
+import PipeQuiz from "./pages/PipeQuiz"
 import PipeLandingClassic from "./pages/PipeLandingClassic"
 import PipeLandingBauhaus from "./pages/PipeLandingBauhaus"
 import PipeRotate from "./pages/PipeRotate"
@@ -49,6 +50,7 @@ const pipeLandingRoute = createRoute({ getParentRoute: () => rootRoute, path: "/
 const pipeLandingV1Route = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-landing-v1", component: PipeLandingV1 })
 const pipeSwipeTrainRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-swipe-train", component: PipeSwipeTrain })
 const pipeSwipeResultRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-swipe-result", component: PipeSwipeResult })
+const pipeQuizRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-quiz", component: PipeQuiz })
 const pipeLandingClassicRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-landing-classic", component: PipeLandingClassic })
 const pipeLandingBauhausRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-landing-bauhaus", component: PipeLandingBauhaus })
 const pipeRotateRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-rotate", component: PipeRotate })
@@ -80,6 +82,7 @@ const routeTree = rootRoute.addChildren([
   pipeLandingV1Route,
   pipeSwipeTrainRoute,
   pipeSwipeResultRoute,
+  pipeQuizRoute,
   pipeLandingClassicRoute,
   pipeLandingBauhausRoute,
   pipeRotateRoute,

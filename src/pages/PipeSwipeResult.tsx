@@ -82,6 +82,18 @@ export default function PipeSwipeResult() {
       overflow="hidden"
       style={{ fontFamily: "'Helvetica Neue', 'Inter', system-ui, sans-serif" }}
     >
+      {/* Dotted bauhaus background — same recipe as Pipe Landing Page variant D */}
+      <Box
+        position="absolute"
+        inset="0"
+        pointerEvents="none"
+        opacity={0.55}
+        zIndex={0}
+        style={{
+          backgroundImage: "radial-gradient(rgba(13,13,13,0.18) 1px, transparent 1.4px)",
+          backgroundSize: "12px 12px",
+        }}
+      />
       {/* Scrollable content area — matches alt1's PageShell pattern. Header,
           cover hero AND shelves all live here; paddingBottom reserves the
           110px slot for the absolutely-positioned footer below. */}

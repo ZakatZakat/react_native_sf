@@ -11,6 +11,7 @@ const PIPE_ROUTES = [
   { label: "Pipe Landing V1 (Triptych)", to: "/pipe-landing-v1" },
   { label: "Pipe Swipe Train", to: "/pipe-swipe-train" },
   { label: "Pipe Swipe Result (B8 Cover Hero)", to: "/pipe-swipe-result" },
+  { label: "Pipe Quiz (Alt 2)", to: "/pipe-quiz" },
 ] as const
 
 const ALT_ROUTES = [
