@@ -27,6 +27,13 @@ import PipeAdminModeration from "./pages/PipeAdminModeration"
 import PipeRadarCategory from "./pages/PipeRadarCategory"
 import PipeExampleOnlyBlue from "./pages/PipeExampleOnlyBlue"
 import PipeFeedOnlyBlue from "./pages/PipeFeedOnlyBlue"
+import CsLanding from "./pages/cs/Landing"
+import CsLoading from "./pages/cs/Loading"
+import CsName from "./pages/cs/Name"
+import CsPass from "./pages/cs/Pass"
+import CsSwipe from "./pages/cs/Swipe"
+import CsSummary from "./pages/cs/Summary"
+import CsFeed from "./pages/cs/Feed"
 import Feed2 from "./pages/Feed2"
 import About from "./pages/About"
 import Profile from "./pages/Profile"
@@ -65,6 +72,13 @@ const pipeAdminModerationRoute = createRoute({ getParentRoute: () => rootRoute, 
 const pipeRadarCategoryRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-radar/$key", component: PipeRadarCategory })
 const pipeExampleOnlyBlueRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-example-only-blue", component: PipeExampleOnlyBlue })
 const pipeFeedOnlyBlueRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-feed-only-blue", component: PipeFeedOnlyBlue })
+const csLandingRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/landing", component: CsLanding })
+const csLoadingRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/loading", component: CsLoading })
+const csNameRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/name", component: CsName })
+const csPassRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/pass", component: CsPass })
+const csSwipeRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/swipe", component: CsSwipe })
+const csSummaryRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/summary", component: CsSummary })
+const csFeedRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/feed", component: CsFeed })
 const aboutRoute = createRoute({ getParentRoute: () => rootRoute, path: "/about", component: About })
 const profileRoute = createRoute({ getParentRoute: () => rootRoute, path: "/profile", component: Profile })
 const notFoundRoute = createRoute({ getParentRoute: () => rootRoute, path: "$", component: NotFound })
@@ -97,6 +111,13 @@ const routeTree = rootRoute.addChildren([
   pipeRadarCategoryRoute,
   pipeExampleOnlyBlueRoute,
   pipeFeedOnlyBlueRoute,
+  csLandingRoute,
+  csLoadingRoute,
+  csNameRoute,
+  csPassRoute,
+  csSwipeRoute,
+  csSummaryRoute,
+  csFeedRoute,
   aboutRoute,
   profileRoute,
   notFoundRoute,

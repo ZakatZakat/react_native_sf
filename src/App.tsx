@@ -8,13 +8,22 @@ declare global {
 }
 
 const PIPE_ROUTES = [
+  { label: "01 · Лендинг",       to: "/cs/landing" },
+  { label: "02 · Загрузка",      to: "/cs/loading" },
+  { label: "03 · Имя",           to: "/cs/name" },
+  { label: "04 · Пропуск",       to: "/cs/pass" },
+  { label: "05 · Интересы",      to: "/cs/swipe" },
+  { label: "06 · Суммаризация",  to: "/cs/summary" },
+  { label: "07 · Лента",         to: "/cs/feed" },
+] as const
+
+const ALT_ROUTES = [
+  // Прежний клиентский путь (Triptych → Swipe → Result → Quiz)
   { label: "Pipe Landing V1 (Triptych)", to: "/pipe-landing-v1" },
   { label: "Pipe Swipe Train", to: "/pipe-swipe-train" },
   { label: "Pipe Swipe Result (B8 Cover Hero)", to: "/pipe-swipe-result" },
   { label: "Pipe Quiz (Alt 2)", to: "/pipe-quiz" },
-] as const
-
-const ALT_ROUTES = [
+  // Остальные альтернативы
   { label: "Pipe Landing Page", to: "/pipe-landing" },
   { label: "Pipe Onboarding", to: "/pipe-onboarding" },
   { label: "Pipe Feed Swipe", to: "/pipe-feed-swipe" },

@@ -1,0 +1,211 @@
+/* ─────────────────────────────────────────────────────────────
+   CITYSIGNAL — Design tokens
+   Swiss / ITS-influenced editorial system. Ink, paper, signal.
+   ───────────────────────────────────────────────────────────── */
+
+/* Inter is the open-source stand-in for Helvetica Neue — match metrics +
+   weight 900 (Black). JetBrains Mono covers all monospace ticket / code blocks.
+   If a final build wants pure Helvetica Neue Bold/Black, swap below. */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap");
+
+:root {
+  /* ── Core palette ─────────────────────────────────────────── */
+  --cs-ink:        #0D0D0D;   /* near-black, never pure */
+  --cs-paper:      #FFFFFF;
+  --cs-signal:     #0055FF;   /* ultramarine — single accent */
+  --cs-signal-ink: #2D2A8C;   /* legacy indigo (older Bauhaus pages) */
+
+  /* Ink at editorial alpha steps — never pure greys, always ink-on-paper */
+  --cs-ink-90:     rgba(13,13,13,0.90);
+  --cs-ink-70:     rgba(13,13,13,0.70);
+  --cs-ink-55:     rgba(13,13,13,0.55);  /* body de-emph */
+  --cs-ink-35:     rgba(13,13,13,0.35);  /* meta */
+  --cs-ink-18:     rgba(13,13,13,0.18);  /* dotted grid, hairlines */
+  --cs-ink-10:     rgba(13,13,13,0.10);
+  --cs-ink-06:     rgba(13,13,13,0.06);  /* tonal background plate */
+
+  /* Signal at alpha steps — for layering blocks, not type */
+  --cs-signal-55:  rgba(0,85,255,0.55);
+  --cs-signal-12:  rgba(0,85,255,0.12);
+
+  /* Status — pulled from the codebase. Use sparingly; signal does most work. */
+  --cs-live:       #0055FF;
+  --cs-warn:       #FFD500;   /* poster yellow — reserved supergraphic only */
+  --cs-bad:        #E0162B;
+
+  /* ── Type stacks ──────────────────────────────────────────── */
+  --cs-font-sans:  'Inter', 'Helvetica Neue', 'Helvetica', system-ui, sans-serif;
+  --cs-font-mono:  'JetBrains Mono', 'IBM Plex Mono', ui-monospace, monospace;
+
+  /* Weights — the system runs hot. Anything below 700 is meta only. */
+  --cs-w-regular:  400;
+  --cs-w-medium:   500;
+  --cs-w-semibold: 700;
+  --cs-w-bold:     800;
+  --cs-w-black:    900;
+
+  /* Type sizes — keyed off the actual codebase usage */
+  --cs-t-mega:     128px;   /* hero wordmark CITY/SIGNAL */
+  --cs-t-hero:     84px;
+  --cs-t-display:  56px;
+  --cs-t-h1:       44px;
+  --cs-t-h2:       30px;
+  --cs-t-h3:       22px;
+  --cs-t-lead:     18px;
+  --cs-t-body:     14px;
+  --cs-t-meta:     11px;
+  --cs-t-micro:    10px;
+  --cs-t-nano:     9px;
+
+  /* Tracking — Swiss rule: tighter as bigger, looser as smaller-caps */
+  --cs-track-mega:    -0.055em;
+  --cs-track-display: -0.045em;
+  --cs-track-h1:      -0.03em;
+  --cs-track-h2:      -0.025em;
+  --cs-track-body:     0;
+  --cs-track-label:    0.18em;   /* small caps label */
+  --cs-track-mark:     0.32em;   /* edition strip — N° 001, dates */
+
+  /* Leading */
+  --cs-lh-tight:   0.84;   /* display */
+  --cs-lh-snug:    1.05;
+  --cs-lh-normal:  1.4;
+  --cs-lh-loose:   1.55;
+
+  /* ── Spacing scale (4px base) ─────────────────────────────── */
+  --cs-s-1:  4px;
+  --cs-s-2:  8px;
+  --cs-s-3:  12px;
+  --cs-s-4:  16px;
+  --cs-s-5:  20px;
+  --cs-s-6:  24px;
+  --cs-s-8:  32px;
+  --cs-s-10: 40px;
+  --cs-s-12: 48px;
+  --cs-s-16: 64px;
+
+  /* ── Borders & rules ──────────────────────────────────────── */
+  --cs-rule-hair:   1px;
+  --cs-rule-thin:   1.5px;
+  --cs-rule:        2px;     /* default editorial rule */
+  --cs-rule-bold:   2.5px;
+  --cs-rule-heavy:  3px;     /* button frames */
+
+  /* CitySignal does NOT do soft drop shadows. Only hard-offset duotone. */
+  --cs-shadow-sm:   2px 2px 0 var(--cs-ink);
+  --cs-shadow:      3px 3px 0 var(--cs-ink);
+  --cs-shadow-lg:   4px 4px 0 var(--cs-ink);
+  --cs-shadow-blue: 3px 3px 0 var(--cs-signal);
+  --cs-shadow-blue-lg: 4px 6px 0 var(--cs-signal);
+
+  /* Radius — the system is RIGID. Almost everything is square. */
+  --cs-radius-0:    0;        /* default */
+  --cs-radius-sm:   2px;      /* badges only */
+  --cs-radius-pill: 999px;    /* counters / push-bell */
+
+  /* Motion */
+  --cs-ease:        cubic-bezier(0.22, 1, 0.36, 1);
+  --cs-ease-out:    cubic-bezier(0.4, 0.0, 0.2, 1);
+  --cs-dur-fast:    0.12s;
+  --cs-dur:         0.14s;
+  --cs-dur-med:     0.25s;
+  --cs-dur-slow:    0.45s;
+}
+
+/* ───────────────────────────────────────────────────────────── */
+/* Semantic type roles                                           */
+/* Use these classes when you want “a heading” without thinking. */
+/* ───────────────────────────────────────────────────────────── */
+
+.cs-wordmark {
+  font-family: var(--cs-font-sans);
+  font-weight: var(--cs-w-black);
+  font-size: var(--cs-t-mega);
+  line-height: var(--cs-lh-tight);
+  letter-spacing: var(--cs-track-mega);
+  text-transform: uppercase;
+  color: var(--cs-ink);
+}
+
+.cs-h1 {
+  font-family: var(--cs-font-sans);
+  font-weight: var(--cs-w-black);
+  font-size: var(--cs-t-h1);
+  line-height: var(--cs-lh-tight);
+  letter-spacing: var(--cs-track-h1);
+  text-transform: uppercase;
+}
+
+.cs-h2 {
+  font-family: var(--cs-font-sans);
+  font-weight: var(--cs-w-black);
+  font-size: var(--cs-t-h2);
+  line-height: var(--cs-lh-snug);
+  letter-spacing: var(--cs-track-h2);
+}
+
+.cs-h3 {
+  font-family: var(--cs-font-sans);
+  font-weight: var(--cs-w-black);
+  font-size: var(--cs-t-h3);
+  line-height: var(--cs-lh-snug);
+  letter-spacing: -0.015em;
+  text-transform: uppercase;
+}
+
+.cs-lead {
+  font-family: var(--cs-font-sans);
+  font-weight: var(--cs-w-semibold);
+  font-size: var(--cs-t-lead);
+  line-height: var(--cs-lh-normal);
+}
+
+.cs-body {
+  font-family: var(--cs-font-sans);
+  font-weight: var(--cs-w-medium);
+  font-size: var(--cs-t-body);
+  line-height: var(--cs-lh-loose);
+  color: var(--cs-ink-70);
+}
+
+/* Editorial labels — uppercase, super-tracked. The brand’s connective tissue. */
+.cs-label {
+  font-family: var(--cs-font-sans);
+  font-weight: var(--cs-w-black);
+  font-size: var(--cs-t-meta);
+  letter-spacing: var(--cs-track-label);
+  text-transform: uppercase;
+  line-height: 1;
+}
+.cs-label--small {
+  font-size: var(--cs-t-micro);
+  letter-spacing: var(--cs-track-label);
+}
+.cs-mark {
+  font-family: var(--cs-font-sans);
+  font-weight: var(--cs-w-black);
+  font-size: var(--cs-t-nano);
+  letter-spacing: var(--cs-track-mark);
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.cs-mono {
+  font-family: var(--cs-font-mono);
+  font-weight: var(--cs-w-medium);
+  font-size: var(--cs-t-meta);
+  letter-spacing: 0;
+}
+
+/* Highlight — inline yellow/blue plate (cf. “не попали” in landing) */
+.cs-hl {
+  background: var(--cs-signal);
+  color: var(--cs-paper);
+  padding: 0 0.25em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+.cs-hl--ink {
+  background: var(--cs-ink);
+  color: var(--cs-paper);
+}
