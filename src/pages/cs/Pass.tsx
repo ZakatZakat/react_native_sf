@@ -6,7 +6,7 @@
  */
 
 import { useNavigate } from "@tanstack/react-router"
-import { CsPage, CS, FONT_SANS, Mono, ScreenBG, initials, PBARS } from "./shared"
+import { CsPage, CS, FONT_MONO, FONT_SANS, Mark, Mono, ScreenBG, Monogram, PBARS } from "./shared"
 import { useJourneyState } from "./useJourney"
 import { analytics } from "../../lib/analytics"
 
@@ -29,31 +29,57 @@ export default function CsPass() {
           <button onClick={() => navigate({ to: "/cs/name" })} style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}><Mono color={CS.B}>← Имя</Mono></button>
           <Mono>Пропуск</Mono>
         </div>
-        {/* Card sits near the top, blurb hugs the CTA — `space-between`
-            distributes the leftover height as a single gap between them
-            instead of dead space on both sides of a centred card. Card
-            is back to its original compact size; only the bottom blurb
-            scales up to fill the remaining room. */}
+        {/* City Pass — replaces the old knockout card.
+            Vertical blue spine + identity block on the right (monogram +
+            name + barcode). Same shape as the Profile screen's pass. */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between", marginTop: 20, gap: 16 }}>
-          <div style={{ position: "relative", border: `2.5px solid ${CS.K}`, background: CS.B, color: CS.W, padding: "18px 18px 20px", overflow: "hidden", boxShadow: `7px 7px 0 ${CS.K}`, animation: "cs-j-spring 0.6s cubic-bezier(0.34,1.56,0.64,1) both" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <Mono color="rgba(255,255,255,0.7)">CitySignal</Mono>
-              <div style={{ width: 44, height: 44, border: `2.5px solid ${CS.W}`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 17, color: CS.W }}>{initials(safeName)}</div>
+          <div style={{
+            border: `2.5px solid ${CS.K}`, background: CS.W,
+            display: "flex",
+            boxShadow: `7px 7px 0 ${CS.K}`,
+            animation: "cs-j-spring 0.6s cubic-bezier(0.34,1.56,0.64,1) both",
+          }}>
+            {/* Vertical blue spine */}
+            <div style={{
+              width: 46, flexShrink: 0,
+              background: CS.B, color: CS.W,
+              borderRight: `2.5px solid ${CS.K}`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <span style={{
+                writingMode: "vertical-rl", transform: "rotate(180deg)",
+                fontWeight: 900, fontSize: 10.5, letterSpacing: "0.26em",
+                textTransform: "uppercase", whiteSpace: "nowrap",
+              }}>City Pass · N°0421</span>
             </div>
-            {/* Navy ghost + white foreground share one positioned wrapper
-                so the offset stays glued to the white type. */}
-            <div style={{ position: "relative", display: "inline-block", marginTop: 22 }}>
-              <div style={{ position: "absolute", left: 4, top: 5, fontWeight: 900, fontSize: 38, lineHeight: 0.82, letterSpacing: "-0.05em", textTransform: "uppercase", color: CS.NAVY }}>{lines.map((l, i) => <div key={i}>{l}</div>)}</div>
-              <div style={{ position: "relative", fontWeight: 900, fontSize: 38, lineHeight: 0.82, letterSpacing: "-0.05em", textTransform: "uppercase", color: CS.W }}>{lines.map((l, i) => <div key={i}>{l}</div>)}</div>
-            </div>
-            <div style={{ display: "flex", gap: 2, height: 16, marginTop: 20 }}>{PBARS.map((w, j) => <span key={j} style={{ width: w, background: CS.W, opacity: 0.9 }} />)}</div>
-            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10 }}>
-              <Mono color="rgba(255,255,255,0.7)">В городе с 2026</Mono>
-              <Mono color={CS.W}>№ 0421</Mono>
+            {/* Identity block */}
+            <div style={{ flex: 1, padding: "16px 16px 15px", minWidth: 0 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+                <div style={{ fontFamily: FONT_MONO, fontSize: 8.5, color: CS.G55, letterSpacing: "0.14em", lineHeight: 1.5 }}>
+                  КАРТА<br />ЧИТАТЕЛЯ<br />ГОРОДА
+                </div>
+                <Monogram w={44} name={safeName} />
+              </div>
+              <div style={{
+                fontWeight: 900, fontSize: 30, lineHeight: 0.88,
+                letterSpacing: "-0.04em", textTransform: "uppercase",
+                color: CS.K, marginTop: 14,
+              }}>
+                {lines.map((l, i) => <div key={i}>{l}</div>)}
+              </div>
+              <div style={{ fontFamily: FONT_MONO, fontSize: 10.5, color: CS.B, fontWeight: 700, marginTop: 9 }}>
+                Новый читатель · в городе с 2026
+              </div>
+              <div style={{ display: "flex", gap: 2, height: 22, alignItems: "stretch", marginTop: 13 }}>
+                {PBARS.map((w, j) => <span key={j} style={{ width: w, background: CS.K }} />)}
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", borderTop: `1.5px solid ${CS.K}`, paddingTop: 6, marginTop: 6 }}>
+                <Mark color={CS.G55}>Москва</Mark>
+                <Mark color={CS.G55}>№ 0421</Mark>
+              </div>
             </div>
           </div>
-          {/* Description blurb — sizes bumped up so it actually carries
-              visual weight in the remaining viewport space. */}
+          {/* Description blurb */}
           <div style={{ animation: "cs-j-rise 0.4s ease 0.5s both" }}>
             <Mono color={CS.G55} style={{ fontSize: 11, letterSpacing: "0.2em" }}>Пропуск готов · {lines[0]}</Mono>
             <div style={{ fontWeight: 900, fontSize: 32, lineHeight: 0.94, letterSpacing: "-0.035em", textTransform: "uppercase", color: CS.K, marginTop: 12 }}>

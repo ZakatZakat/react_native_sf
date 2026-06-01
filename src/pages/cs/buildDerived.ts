@@ -29,6 +29,8 @@ export type Ev = {
   c: string         // category label
   catKey: string    // INTERESTS.key
   ch: string        // @channel
+  desc: string      // full curator description (used in the bottom-sheet)
+  price: string     // curator's price field, normalised to "—" if empty
 }
 
 export type DerivedData = {
@@ -70,6 +72,8 @@ export function toEv(e: FeedItem): Ev {
     c: interest?.label ?? primaryKey,
     catKey: interest?.key ?? primaryKey,
     ch: `@${channel}`,
+    desc: (e.description || "").trim() || "Описание появится ближе к дате. Следи за каналом события.",
+    price: (e.price || "").trim() || "—",
   }
 }
 

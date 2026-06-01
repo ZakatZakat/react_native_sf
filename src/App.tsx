@@ -15,6 +15,7 @@ const PIPE_ROUTES = [
   { label: "05 · Интересы",      to: "/cs/swipe" },
   { label: "06 · Суммаризация",  to: "/cs/summary" },
   { label: "07 · Лента",         to: "/cs/feed" },
+  { label: "08 · Профиль",       to: "/cs/profile" },
 ] as const
 
 const ALT_ROUTES = [

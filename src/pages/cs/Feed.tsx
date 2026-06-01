@@ -10,10 +10,12 @@
  *  `feed/shelves/superByCat/catCounts` bundle via useDerived().
  */
 
-import { useEffect, useRef, useState } from "react"
+import { useContext, useEffect, useRef, useState, useMemo } from "react"
 import { useNavigate, useSearch } from "@tanstack/react-router"
 import {
   CsPage, CS, FONT_MONO, FONT_SANS, DuotonePoster, Mark, Mono,
+  NavCtx, ProfileBadge, BillboardProfileBadge,
+  EventModalProvider, useOpenEvent,
 } from "./shared"
 import type { Ev, DerivedData } from "./buildDerived"
 import { useDerived, useJourneyState } from "./useJourney"
@@ -21,13 +23,18 @@ import { useDerived, useJourneyState } from "./useJourney"
 // ── Shared header ────────────────────────────────────────────────────────
 
 function FeedHeader({ name, right, onReset }: { name: string; right: React.ReactNode; onReset?: () => void }) {
+  const nav = useContext(NavCtx)
   return (
     <div style={{ padding: "0 18px 10px", borderBottom: `2px solid ${CS.K}`, display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexShrink: 0 }}>
       <div>
         <Mark color={CS.G55}>N° 001 · лента · {name.trim().split(/\s+/)[0]}</Mark>
         <div style={{ fontWeight: 900, fontSize: 26, lineHeight: 0.9, letterSpacing: "-0.04em", textTransform: "uppercase", color: CS.K, marginTop: 6 }}>Эта неделя</div>
       </div>
-      <span style={{ fontWeight: 900, fontSize: 22, color: CS.B, letterSpacing: "-0.04em", cursor: onReset ? "pointer" : "default" }} onClick={onReset} title={onReset ? "Заново" : ""}>{right}</span>
+      {/* Right side: count + profile badge (tap → /cs/profile via NavCtx). */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <span style={{ fontWeight: 900, fontSize: 22, color: CS.B, letterSpacing: "-0.04em", cursor: onReset ? "pointer" : "default" }} onClick={onReset} title={onReset ? "Заново" : ""}>{right}</span>
+        <ProfileBadge name={name} onClick={nav.openProfile} />
+      </div>
     </div>
   )
 }
@@ -94,8 +101,10 @@ function VCover({ name, feed, onReset }: { name: string; feed: Ev[]; onReset: ()
 
 function ShelfCard({ ev }: { ev: Ev }) {
   const [hover, setHover] = useState(false)
+  const openEvent = useOpenEvent()
   return (
     <div
+      onClick={() => openEvent(ev)}
       onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
       style={{
         flexShrink: 0, scrollSnapAlign: "start", width: 142, height: 204,
@@ -334,7 +343,11 @@ function VBillboard({ name, feed, onReset }: { name: string; feed: Ev[]; onReset
             <span style={{ fontFamily: FONT_MONO, fontSize: 9, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.6)" }}>N° 001 · афиша · {name.trim().split(/\s+/)[0]}</span>
             <div style={{ fontWeight: 900, fontSize: 26, lineHeight: 0.9, letterSpacing: "-0.04em", textTransform: "uppercase", color: CS.W, marginTop: 6 }}>Эта неделя</div>
           </div>
-          <span style={{ fontWeight: 900, fontSize: 22, color: CS.B, letterSpacing: "-0.04em", cursor: "pointer" }} onClick={onReset}>{feed.length}</span>
+          {/* Right side: count + white profile badge for the dark header. */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ fontWeight: 900, fontSize: 22, color: CS.B, letterSpacing: "-0.04em", cursor: "pointer" }} onClick={onReset}>{feed.length}</span>
+            <BillboardProfileBadge name={name} />
+          </div>
         </div>
         <div style={{ flex: 1, overflowY: "auto", padding: "12px 18px 0" }}>
           <div style={{ position: "relative", border: `2.5px solid ${CS.W}`, overflow: "hidden", aspectRatio: "1 / 1.12" }}>
@@ -458,12 +471,23 @@ export default function CsFeed() {
     navigate({ to: "/cs/landing" })
   }
 
+  // NavCtx — lets the ProfileBadge inside any feed header (light or dark)
+  // open the profile screen without prop-drilling a callback.
+  const navValue = useMemo(() => ({ openProfile: () => navigate({ to: "/cs/profile" }) }), [navigate])
+
   const { feed, shelves, superByCat, catCounts } = derived
-  if (variant === 1) return <VShelves name={safeName} feed={feed} shelves={shelves} onReset={onReset} />
-  if (variant === 2) return <VMagazine name={safeName} feed={feed} onReset={onReset} />
-  if (variant === 3) return <VCatalog name={safeName} feed={feed} catCounts={catCounts} onReset={onReset} />
-  if (variant === 4) return <VSpread name={safeName} feed={feed} onReset={onReset} />
-  if (variant === 5) return <VBillboard name={safeName} feed={feed} onReset={onReset} />
-  if (variant === 6) return <VCombo name={safeName} feed={feed} shelves={shelves} superByCat={superByCat} superVar={superVar} onReset={onReset} />
-  return <VCover name={safeName} feed={feed} onReset={onReset} />
+  let body: React.ReactNode
+  if (variant === 1) body = <VShelves name={safeName} feed={feed} shelves={shelves} onReset={onReset} />
+  else if (variant === 2) body = <VMagazine name={safeName} feed={feed} onReset={onReset} />
+  else if (variant === 3) body = <VCatalog name={safeName} feed={feed} catCounts={catCounts} onReset={onReset} />
+  else if (variant === 4) body = <VSpread name={safeName} feed={feed} onReset={onReset} />
+  else if (variant === 5) body = <VBillboard name={safeName} feed={feed} onReset={onReset} />
+  else if (variant === 6) body = <VCombo name={safeName} feed={feed} shelves={shelves} superByCat={superByCat} superVar={superVar} onReset={onReset} />
+  else body = <VCover name={safeName} feed={feed} onReset={onReset} />
+
+  return (
+    <NavCtx.Provider value={navValue}>
+      <EventModalProvider>{body}</EventModalProvider>
+    </NavCtx.Provider>
+  )
 }
