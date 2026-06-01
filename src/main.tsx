@@ -4,6 +4,8 @@ import ReactDOM from "react-dom/client"
 import { RouterProvider } from "@tanstack/react-router"
 import { Provider } from "./components/ui/provider"
 import { router } from "./router"
+import { analytics } from "./lib/analytics"
+import "./styles/cs-tokens.css"
 import "./index.css"
 
 const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8000"
@@ -38,6 +40,28 @@ if (typeof window !== "undefined") {
     reportClientError("window.unhandledrejection", msg, stack)
   })
 }
+
+// Analytics: init the SDK, pull Telegram identity when present, and emit
+// a page.view on every route resolve. Errors are already captured by the
+// SDK's own window hooks — the legacy reportClientError() above lives
+// in parallel for the curator-side debug log.
+analytics.init()
+if (typeof window !== "undefined") {
+  const tg = (window as unknown as { Telegram?: { WebApp?: { initDataUnsafe?: { user?: { id?: number; language_code?: string } }; colorScheme?: string } } }).Telegram?.WebApp
+  if (tg?.initDataUnsafe?.user?.id) {
+    analytics.identify({
+      user_id: String(tg.initDataUnsafe.user.id),
+      tg: {
+        id: tg.initDataUnsafe.user.id,
+        lang: tg.initDataUnsafe.user.language_code,
+        theme: tg.colorScheme,
+      },
+    })
+  }
+}
+router.subscribe("onResolved", ({ toLocation }) => {
+  analytics.page(toLocation.pathname)
+})
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

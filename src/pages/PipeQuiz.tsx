@@ -9,12 +9,13 @@
  * backed event posters substituting for the original "01..08" poster ids.
  */
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import { Box, Flex, Text } from "@chakra-ui/react"
 import { Curator, type FeedItem } from "../lib/curator"
 import { isImg, resolveMedia } from "./pipe/shared"
 import { INTERESTS, type Interest, setInterests } from "./pipe/preferences"
+import { analytics } from "../lib/analytics"
 
 const K = "#0D0D0D"
 const W = "#FFFFFF"
@@ -213,15 +214,19 @@ export default function PipeQuiz() {
   const [step, setStep] = useState(0)
   const [answers, setAnswers] = useState<(number | undefined)[]>([])
   const [pool, setPool] = useState<FeedItem[]>([])
+  const quizStartedAt = useRef<number>(Date.now())
+  const completeFiredRef = useRef(false)
 
   useEffect(() => {
     let cancelled = false
     ;(async () => {
       try {
-        const feed = await Curator.getFeed({ limit: 200 })
+        const feed = await analytics.measure("api.call", () => Curator.getFeed({ limit: 200 }), { path: "/me/feed", method: "GET" })
         if (cancelled) return
         setPool(feed.filter((e) => e.media_urls?.some(isImg)))
-      } catch { /* offline */ }
+      } catch {
+        analytics.track("error.api", { endpoint: "/me/feed", page: "quiz" }, { status: "error" })
+      }
     })()
     return () => { cancelled = true }
   }, [])
@@ -270,17 +275,47 @@ export default function PipeQuiz() {
     return pool.filter((e) => (e.tags ?? []).some((t) => keys.has(t))).length
   }, [inferred, pool])
 
+  // Fire quiz.step.view whenever the user lands on a new (unanswered) question.
+  useEffect(() => {
+    if (isDone) return
+    analytics.track("quiz.step.view", { step, question_short: QUIZ[step].qShort })
+  }, [step, isDone])
+
+  // Fire quiz.complete exactly once when the last step is finished.
+  useEffect(() => {
+    if (!isDone || completeFiredRef.current) return
+    completeFiredRef.current = true
+    analytics.track("quiz.complete", {
+      answers,
+      inferred: inferred.map((x) => ({ key: x.cat.key, n: x.n })),
+      est_feed: estFeed,
+      duration_ms: Date.now() - quizStartedAt.current,
+    })
+  }, [isDone, answers, inferred, estFeed])
+
   const pickOption = (oIdx: number) => {
+    const opt = QUIZ[step].opts[oIdx]
+    analytics.track("quiz.option.select", {
+      step,
+      option_idx: oIdx,
+      categories: opt.cats,
+    }, { data: opt.label.slice(0, 200) })
     const next = [...answers]
     next[step] = oIdx
     setAnswers(next)
     setTimeout(() => setStep((s) => s + 1), 280)
   }
 
-  const reset = () => { setStep(0); setAnswers([]) }
+  const reset = () => {
+    analytics.track("quiz.reset", { from_step: step })
+    completeFiredRef.current = false
+    quizStartedAt.current = Date.now()
+    setStep(0); setAnswers([])
+  }
 
   const finish = async () => {
     const keys = inferred.map((x) => x.cat.key)
+    analytics.track("quiz.finish.click", { inferred_keys: keys, est_feed: estFeed })
     setInterests(keys)
     try { await Curator.setInterests(keys) } catch { /* */ }
     navigate({ to: "/pipe-feed-swipe" })

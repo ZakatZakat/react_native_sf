@@ -11,12 +11,13 @@
  *  Curator-backed event source.
  */
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import { Box, Flex, Text } from "@chakra-ui/react"
 import { Curator, type FeedItem } from "../lib/curator"
 import { isImg, resolveMedia } from "./pipe/shared"
 import { INTERESTS, type Interest, setInterests } from "./pipe/preferences"
+import { analytics } from "../lib/analytics"
 
 const K = "#0D0D0D"
 const W = "#FFFFFF"
@@ -648,6 +649,10 @@ export default function PipeSwipeTrain() {
   const [likedSamples, setLikedSamples] = useState<Record<string, FeedItem>>({})
   const [liked, setLiked] = useState(0)
   const [verdict, setVerdict] = useState<"yes" | "no" | null>(null)
+  // Timestamps for telemetry — when the deck started and when the current
+  // card was first shown to the user (used for time_to_decide_ms).
+  const deckStartedAt = useRef<number>(Date.now())
+  const cardShownAt = useRef<number>(Date.now())
 
   // Fetch a varied deck — events with images, tagged with at least one interest,
   // picking the first occurrence of each distinct category to keep it diverse.
@@ -655,7 +660,7 @@ export default function PipeSwipeTrain() {
     let cancelled = false
     ;(async () => {
       try {
-        const feed = await Curator.getFeed({ limit: 120 })
+        const feed = await analytics.measure("api.call", () => Curator.getFeed({ limit: 120 }), { path: "/me/feed", method: "GET" })
         if (cancelled) return
         const seenCats = new Set<string>()
         const picked: FeedItem[] = []
@@ -680,8 +685,12 @@ export default function PipeSwipeTrain() {
         setDeck(out)
         // pool keeps everything with an image for shelves on the result page
         setPool([...picked, ...rest])
+        deckStartedAt.current = Date.now()
+        cardShownAt.current = Date.now()
+        analytics.track("feed.view", { count: out.length, route: "/pipe-swipe-train" })
       } catch {
         /* offline — empty deck, show "ничего не зацепило" state */
+        analytics.track("error.api", { endpoint: "/me/feed", page: "swipe_train" }, { status: "error" })
       }
     })()
     return () => { cancelled = true }
@@ -690,9 +699,38 @@ export default function PipeSwipeTrain() {
   const done = deck.length > 0 && i >= deck.length
   const top = !done ? deck[i] : null
 
+  // Reset the time-to-decide clock whenever a new top card is revealed.
+  // Also fires a card.view for the card the user is currently looking at.
+  useEffect(() => {
+    if (!top) return
+    cardShownAt.current = Date.now()
+    analytics.track("swipe_train.card.view", {
+      event_id: top.id,
+      position: i,
+      primary_tag: top.tags?.[0] ?? null,
+    })
+  }, [top?.id, i])
+
+  // When the deck completes, log a summary event with the inferred profile.
+  // Guarded against firing twice if React re-renders the done state.
+  const completeFiredRef = useRef(false)
+  useEffect(() => {
+    if (!done || completeFiredRef.current) return
+    completeFiredRef.current = true
+    const counts = Object.entries(tally).map(([k, n]) => ({ k, n }))
+    analytics.track("swipe_train.deck.complete", {
+      liked,
+      deck_size: deck.length,
+      inferred: counts.sort((a, b) => b.n - a.n).slice(0, 4),
+      duration_ms: Date.now() - deckStartedAt.current,
+    })
+  }, [done, liked, tally, deck.length])
+
   const decide = (kind: "yes" | "no") => {
     if (done || verdict || !top) return
     setVerdict(kind)
+    const time_to_decide_ms = Date.now() - cardShownAt.current
+    const primary = top.tags?.[0] ?? null
     if (kind === "yes") {
       const tags = top.tags ?? []
       if (tags.length > 0) {
@@ -702,6 +740,21 @@ export default function PipeSwipeTrain() {
         setLikedSamples((prev) => (prev[k] ? prev : { ...prev, [k]: top }))
       }
       setLiked((n) => n + 1)
+      analytics.track("swipe_train.card.like", {
+        event_id: top.id,
+        position: i,
+        primary_tag: primary,
+        channel: top.channel,
+        time_to_decide_ms,
+      }, { data: top.title?.slice(0, 200) })
+    } else {
+      analytics.track("swipe_train.card.skip", {
+        event_id: top.id,
+        position: i,
+        primary_tag: primary,
+        channel: top.channel,
+        time_to_decide_ms,
+      }, { data: top.title?.slice(0, 200) })
     }
     setTimeout(() => {
       setVerdict(null)
