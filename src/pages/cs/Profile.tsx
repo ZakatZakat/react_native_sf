@@ -17,6 +17,7 @@
 import { useNavigate } from "@tanstack/react-router"
 import {
   CsPage, CS, FONT_MONO, FONT_SANS, Mark, Mono, Monogram, PBARS, ScreenBG,
+  GoingProvider, GoingAgenda, EventModalProvider,
 } from "./shared"
 import { useDerived, useJourneyState, SEED_PROFILE } from "./useJourney"
 
@@ -31,7 +32,19 @@ function buildSpectrum(profile: Record<string, number>, catCounts: Record<string
     .slice(0, 5)
 }
 
+/** Outer wrapper provides the Going store (RSVP list) + the bottom-sheet
+ *  modal. Tapping a row in GoingAgenda opens that event's sheet. */
 export default function CsProfile() {
+  return (
+    <GoingProvider>
+      <EventModalProvider>
+        <ProfileInner />
+      </EventModalProvider>
+    </GoingProvider>
+  )
+}
+
+function ProfileInner() {
   const navigate = useNavigate()
   const { derived } = useDerived()
   const { name, profile } = useJourneyState()
@@ -112,6 +125,11 @@ export default function CsProfile() {
               </div>
             </div>
           </div>
+
+          {/* «Я иду» — calendar of events the user has RSVP'd to. Shared
+              with the EventSheet via the surrounding GoingProvider so
+              toggling "Иду" in the modal updates this list live. */}
+          <GoingAgenda />
 
           {/* Spectrum bar */}
           <Mark style={{ display: "block", marginTop: 22, marginBottom: 12 }}>Ты про</Mark>

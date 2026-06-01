@@ -332,6 +332,109 @@ export function EventModalProvider({ children }: { children: React.ReactNode }) 
   )
 }
 
+// ── Going (RSVP) store + helpers + UI ────────────────────────────────────
+//
+// @NEW-GOING: User taps "Иду" inside the EventSheet → event is appended
+// to a localStorage-backed list keyed by `ev.t` (title). The profile
+// screen renders the list as a chronological agenda. A reminder flag
+// per entry drives the date-chip colour and the agenda toggle.
+
+const MON_RU = ["", "ЯНВ", "ФЕВ", "МАР", "АПР", "МАЙ", "ИЮН", "ИЮЛ", "АВГ", "СЕН", "ОКТ", "НОЯ", "ДЕК"]
+
+/** "31.05" → { day: "31", mon: "МАЙ" }. Falls back gracefully on weird inputs
+ *  like "до 30.06" by stripping the leading "до " and returning whatever it can. */
+export function dateChip(d: string): { day: string; mon: string } {
+  const m = (d || "").match(/(\d{1,2})\.(\d{1,2})/)
+  if (!m) return { day: (d || "—").replace(/^до\s*/, "").slice(0, 5), mon: "" }
+  return { day: m[1], mon: MON_RU[parseInt(m[2], 10)] || "" }
+}
+
+/** Sortable integer key from a "DD.MM" date — month-major so the list
+ *  groups by month. Events without a parseable date sink to the bottom. */
+export function dateSort(d: string): number {
+  const m = (d || "").match(/(\d{1,2})\.(\d{1,2})/)
+  if (!m) return 9999
+  return parseInt(m[2], 10) * 100 + parseInt(m[1], 10)
+}
+
+const GO_KEY = "cs-going-v1"
+
+/** Slim subset of Ev kept in the store — enough to re-render the agenda
+ *  and the EventSheet without keeping the heavy `desc` text in storage. */
+export type GoingItem = {
+  t: string; v: string; d: string; tm: string; ch: string; cat: string;
+  p: string | null; remind: boolean
+}
+
+type GoingValue = {
+  list: GoingItem[]
+  isGoing: (ev: { t: string }) => boolean
+  toggle: (ev: Ev | GoingItem) => void
+  setRemind: (ev: { t: string }, on: boolean) => void
+}
+
+export const GoingCtx = createContext<GoingValue>({
+  list: [], isGoing: () => false, toggle: () => {}, setRemind: () => {},
+})
+export function useGoing() { return useContext(GoingCtx) }
+
+/** Provider — keeps the list in localStorage; default empty (the
+ *  reference's mock items don't apply to real Curator events). */
+export function GoingProvider({ children }: { children: React.ReactNode }) {
+  const [list, setList] = useState<GoingItem[]>(() => {
+    if (typeof window === "undefined") return []
+    try {
+      const raw = localStorage.getItem(GO_KEY)
+      if (raw) return JSON.parse(raw) as GoingItem[]
+    } catch { /* parse error — treat as empty */ }
+    return []
+  })
+  useEffect(() => {
+    try { localStorage.setItem(GO_KEY, JSON.stringify(list)) } catch { /* quota */ }
+  }, [list])
+
+  const isGoing = (ev: { t: string }) => list.some((e) => e.t === ev.t)
+
+  const toggle = (ev: Ev | GoingItem) => setList((cur) =>
+    cur.some((e) => e.t === ev.t)
+      ? cur.filter((e) => e.t !== ev.t)
+      : [...cur, {
+          t: ev.t, v: ev.v, d: ev.d, tm: ev.tm, ch: ev.ch,
+          cat: ("c" in ev ? ev.c : ev.cat), p: ev.p, remind: true,
+        }],
+  )
+  const setRemind = (ev: { t: string }, on: boolean) =>
+    setList((cur) => cur.map((e) => e.t === ev.t ? { ...e, remind: on } : e))
+
+  return (
+    <GoingCtx.Provider value={{ list, isGoing, toggle, setRemind }}>
+      {children}
+    </GoingCtx.Provider>
+  )
+}
+
+/** Brutalist mini toggle (used in agenda rows + modal footer). */
+export function MiniSwitch({ on, onClick }: { on: boolean; onClick?: (e: React.MouseEvent) => void }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={on}
+      style={{
+        width: 38, height: 22, flexShrink: 0, padding: 0, cursor: "pointer", position: "relative",
+        border: `2px solid ${CS.K}`, background: on ? CS.B : CS.W,
+        transition: "background 0.15s",
+      }}
+    >
+      <span style={{
+        position: "absolute", top: 1, left: on ? 17 : 1,
+        width: 16, height: 16,
+        background: on ? CS.W : CS.K,
+        transition: "left 0.15s",
+      }} />
+    </button>
+  )
+}
+
 function EventSheet({ ev, onClose }: { ev: Ev | null; onClose: () => void }) {
   const [shown, setShown] = useState(false)
   useEffect(() => {
@@ -340,8 +443,16 @@ function EventSheet({ ev, onClose }: { ev: Ev | null; onClose: () => void }) {
     return () => cancelAnimationFrame(r)
   }, [ev])
 
+  // @NEW-GOING: modal reads the RSVP store so the footer can flip between
+  // "Иду →" and "Я иду ✓" + reveal the reminder toggle when the event is
+  // already in the list.
+  const going = useGoing()
+
   if (!ev) return null
   const close = () => { setShown(false); setTimeout(onClose, 240) }
+  const isOn = going.isGoing(ev)
+  const entry = going.list.find((e) => e.t === ev.t)
+  const remind = entry ? entry.remind : true
 
   const metaRow = (k: string, v: string) => (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "8px 0", borderBottom: `1px solid ${CS.G18}` }}>
@@ -409,14 +520,117 @@ function EventSheet({ ev, onClose }: { ev: Ev | null; onClose: () => void }) {
             </div>
           </div>
         </div>
-        {/* footer CTAs */}
-        <div style={{ flexShrink: 0, display: "flex", gap: 9, padding: "12px 14px 16px", borderTop: `2px solid ${CS.K}`, background: CS.W }}>
-          <button style={{ flex: 1, fontFamily: FONT_SANS, fontWeight: 900, fontSize: 14, letterSpacing: "0.04em", textTransform: "uppercase", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "13px 14px", border: `3px solid ${CS.K}`, background: CS.K, color: CS.W, cursor: "pointer", boxShadow: `3px 3px 0 ${CS.B}` }}>
-            <span>В календарь</span><span style={{ fontSize: 17, lineHeight: 1 }}>→</span>
-          </button>
-          <button onClick={close} style={{ fontFamily: FONT_SANS, fontWeight: 900, fontSize: 12.5, letterSpacing: "0.06em", textTransform: "uppercase", padding: "13px 14px", border: `3px solid ${CS.K}`, background: CS.W, color: CS.K, cursor: "pointer", flexShrink: 0 }}>Канал</button>
+        {/* Footer — Going RSVP. When the user is already going, the
+            status strip above the CTAs shows the reminder toggle. */}
+        <div style={{ flexShrink: 0, borderTop: `2px solid ${CS.K}`, background: CS.W }}>
+          {isOn && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "11px 14px 0" }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontFamily: FONT_MONO, fontSize: 9.5, fontWeight: 700, letterSpacing: "0.12em", color: CS.B, textTransform: "uppercase" }}>✓ Ты идёшь</div>
+                <div style={{ fontWeight: 600, fontSize: 11, color: CS.G55, marginTop: 2 }}>{remind ? "Напомним за день до начала" : "Без напоминания"}</div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                <span style={{ fontFamily: FONT_MONO, fontSize: 8.5, color: CS.G55, letterSpacing: "0.1em", textTransform: "uppercase" }}>Напомнить</span>
+                <MiniSwitch on={remind} onClick={() => going.setRemind(ev, !remind)} />
+              </div>
+            </div>
+          )}
+          <div style={{ display: "flex", gap: 9, padding: "12px 14px 16px" }}>
+            <button
+              onClick={() => going.toggle(ev)}
+              style={{
+                flex: 1, fontFamily: FONT_SANS, fontWeight: 900, fontSize: 14,
+                letterSpacing: "0.04em", textTransform: "uppercase",
+                display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
+                padding: "13px 14px", border: `3px solid ${CS.K}`,
+                background: isOn ? CS.W : CS.K, color: isOn ? CS.K : CS.W,
+                cursor: "pointer",
+                boxShadow: isOn ? "none" : `3px 3px 0 ${CS.B}`,
+                transition: "background 0.14s",
+              }}
+            >
+              {isOn ? <><span>Я иду</span><span style={{ fontSize: 16, lineHeight: 1 }}>✓</span></> : <><span>Иду</span><span style={{ fontSize: 17, lineHeight: 1 }}>→</span></>}
+            </button>
+            <button onClick={close} style={{ fontFamily: FONT_SANS, fontWeight: 900, fontSize: 12.5, letterSpacing: "0.06em", textTransform: "uppercase", padding: "13px 14px", border: `3px solid ${CS.K}`, background: CS.W, color: CS.K, cursor: "pointer", flexShrink: 0 }}>Канал</button>
+          </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+// ── GoingAgenda — calendar of events the user is attending ──────────────
+
+export function GoingAgenda() {
+  const { list, setRemind } = useGoing()
+  const openEvent = useOpenEvent()
+  const items = [...list].sort((a, b) => dateSort(a.d) - dateSort(b.d))
+  const remindN = items.filter((e) => e.remind).length
+
+  return (
+    <div style={{ marginTop: 24 }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", borderBottom: `2px solid ${CS.K}`, paddingBottom: 7 }}>
+        <Mark>Я иду</Mark>
+        <Mono color={CS.G55}>{items.length} событий · {remindN} напоминаний</Mono>
+      </div>
+
+      {items.length === 0 ? (
+        <div style={{ border: `2px dashed ${CS.G35}`, padding: "18px 14px", marginTop: 12, textAlign: "center" }}>
+          <div style={{ fontWeight: 800, fontSize: 12.5, color: CS.G55 }}>Пока пусто</div>
+          <div style={{ fontWeight: 600, fontSize: 11, color: CS.G35, marginTop: 4 }}>Открой событие и нажми «Иду» — оно появится здесь.</div>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
+          {items.map((ev, i) => {
+            const dc = dateChip(ev.d)
+            // Synthesise an Ev-shaped object for the modal: store items
+            // don't carry `desc`/`price`/`catKey`, so we provide soft
+            // defaults — the sheet renders the curator-text fallback.
+            const evForSheet: Ev = {
+              id: ev.t,
+              t: ev.t, v: ev.v, d: ev.d, tm: ev.tm,
+              p: ev.p, c: ev.cat, catKey: "",
+              ch: ev.ch,
+              desc: "Открой канал для подробностей.",
+              price: "—",
+            }
+            return (
+              <div
+                key={ev.t}
+                onClick={() => openEvent(evForSheet)}
+                style={{
+                  display: "flex", alignItems: "stretch",
+                  border: `2px solid ${CS.K}`, background: CS.W, cursor: "pointer",
+                  animation: `cs-j-up 0.4s ease ${0.04 * i}s both`,
+                }}
+              >
+                {/* Date chip — coloured blue when reminder is on. */}
+                <div style={{
+                  width: 50, flexShrink: 0,
+                  borderRight: `2px solid ${CS.K}`,
+                  background: ev.remind ? CS.B : CS.W,
+                  color: ev.remind ? CS.W : CS.K,
+                  display: "flex", flexDirection: "column",
+                  alignItems: "center", justifyContent: "center", padding: "8px 0",
+                }}>
+                  <span style={{ fontWeight: 900, fontSize: 22, lineHeight: 0.9, letterSpacing: "-0.04em" }}>{dc.day}</span>
+                  <span style={{ fontFamily: FONT_MONO, fontSize: 8, letterSpacing: "0.12em", marginTop: 3 }}>{dc.mon}</span>
+                </div>
+                <div style={{ flex: 1, minWidth: 0, padding: "9px 10px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                  <div style={{ fontWeight: 900, fontSize: 12.5, lineHeight: 1.05, letterSpacing: "-0.02em", textTransform: "uppercase", color: CS.K, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ev.t}</div>
+                  <div style={{ fontWeight: 600, fontSize: 10, color: CS.G55, marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ev.v} · {ev.tm}</div>
+                </div>
+                <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5, padding: "0 10px", borderLeft: `1.5px solid ${CS.G18}` }}>
+                  <MiniSwitch on={ev.remind} onClick={(e) => { e.stopPropagation(); setRemind(ev, !ev.remind) }} />
+                  <span style={{ fontFamily: FONT_MONO, fontSize: 7, letterSpacing: "0.08em", color: ev.remind ? CS.B : CS.G35, textTransform: "uppercase" }}>
+                    {ev.remind ? "напомню" : "напомнить"}
+                  </span>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

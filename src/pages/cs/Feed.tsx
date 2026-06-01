@@ -16,6 +16,7 @@ import {
   CsPage, CS, FONT_MONO, FONT_SANS, DuotonePoster, Mark, Mono,
   NavCtx, ProfileBadge, BillboardProfileBadge,
   EventModalProvider, useOpenEvent,
+  GoingProvider,
 } from "./shared"
 import type { Ev, DerivedData } from "./buildDerived"
 import { useDerived, useJourneyState } from "./useJourney"
@@ -485,9 +486,14 @@ export default function CsFeed() {
   else if (variant === 6) body = <VCombo name={safeName} feed={feed} shelves={shelves} superByCat={superByCat} superVar={superVar} onReset={onReset} />
   else body = <VCover name={safeName} feed={feed} onReset={onReset} />
 
+  // @NEW-GOING: GoingProvider wraps the whole tree so the EventSheet's
+  // "Иду →" button writes into the same store that Profile/GoingAgenda
+  // reads from. localStorage carries the list across route changes.
   return (
     <NavCtx.Provider value={navValue}>
-      <EventModalProvider>{body}</EventModalProvider>
+      <GoingProvider>
+        <EventModalProvider>{body}</EventModalProvider>
+      </GoingProvider>
     </NavCtx.Provider>
   )
 }
