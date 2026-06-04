@@ -22,6 +22,7 @@ const INTEREST_BY_KEY: Record<string, Interest> =
 export type Ev = {
   id: string
   t: string         // title
+  sub: string       // editorial subtitle ("акустика" / "closing season") — optional
   v: string         // venue (location || channel)
   d: string         // short date "31.05" or "—"
   tm: string        // time "23:00" or "—"
@@ -31,6 +32,7 @@ export type Ev = {
   ch: string        // @channel
   desc: string      // full curator description (used in the bottom-sheet)
   price: string     // curator's price field, normalised to "—" if empty
+  note: string      // short editorial note ("до утра" / "редакция топит") — optional
 }
 
 export type DerivedData = {
@@ -66,6 +68,7 @@ export function toEv(e: FeedItem): Ev {
   return {
     id: e.id,
     t: e.title || "Событие",
+    sub: "",  // curator doesn't carry editorial subtitles yet — left empty by design
     v: e.location || `@${channel}`,
     d, tm,
     p: resolvePoster(e),
@@ -74,6 +77,7 @@ export function toEv(e: FeedItem): Ev {
     ch: `@${channel}`,
     desc: (e.description || "").trim() || "Описание появится ближе к дате. Следи за каналом события.",
     price: (e.price || "").trim() || "—",
+    note: "",  // ditto — editorial highlight, populated by curator later
   }
 }
 

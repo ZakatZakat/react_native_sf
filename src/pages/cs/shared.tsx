@@ -65,6 +65,11 @@ const KEYFRAMES = `
   @keyframes cs-j-curtain-fade { 0%, 50% { opacity: 1; } 100% { opacity: 0; } }
   @keyframes cs-j-curtain-mark { 0%, 15% { transform: translateY(0) scale(1); } 100% { transform: translateY(-24px) scale(0.86); } }
   @keyframes cs-j-stamp  { 0% { opacity: 0; transform: translateX(-50%) scale(0.5); } 100% { opacity: 1; } }
+  /* v3 scrapbook feed */
+  @keyframes sk-float    { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+  @keyframes sk-refresh  { from { opacity: 0; transform: translateY(16px) scale(0.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  .sk-scroll::-webkit-scrollbar { width: 0; height: 0; }
+  .sk-scroll { scrollbar-width: none; }
   .cs-shelf::-webkit-scrollbar { display: none; }
   .cs-shelf { scrollbar-width: none; }
 `
@@ -454,13 +459,6 @@ function EventSheet({ ev, onClose }: { ev: Ev | null; onClose: () => void }) {
   const entry = going.list.find((e) => e.t === ev.t)
   const remind = entry ? entry.remind : true
 
-  const metaRow = (k: string, v: string) => (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "8px 0", borderBottom: `1px solid ${CS.G18}` }}>
-      <span style={{ fontFamily: FONT_MONO, fontSize: 9, color: CS.G55, letterSpacing: "0.14em", textTransform: "uppercase" }}>{k}</span>
-      <span style={{ fontWeight: 800, fontSize: 12, color: CS.K, textAlign: "right", maxWidth: "62%" }}>{v}</span>
-    </div>
-  )
-
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 200, fontFamily: FONT_SANS }}>
       {/* Backdrop */}
@@ -473,7 +471,8 @@ function EventSheet({ ev, onClose }: { ev: Ev | null; onClose: () => void }) {
           transition: "opacity 0.24s ease",
         }}
       />
-      {/* Sheet */}
+      {/* Sheet — v3 redesign: bigger 4:5 poster, no meta-rows table, single
+          "Добавить" CTA tied to the Going store. */}
       <div style={{
         position: "absolute", left: 0, right: 0, bottom: 0, maxHeight: "92%",
         display: "flex", flexDirection: "column",
@@ -487,8 +486,8 @@ function EventSheet({ ev, onClose }: { ev: Ev | null; onClose: () => void }) {
           <div style={{ width: 44, height: 4, background: CS.K }} />
         </div>
         <div style={{ overflowY: "auto", overflowX: "hidden" }}>
-          {/* poster */}
-          <div style={{ position: "relative", margin: "8px 14px 0", border: `2.5px solid ${CS.K}`, overflow: "hidden", aspectRatio: "16 / 10", background: CS.K }}>
+          {/* poster — v3 portrait 4:5 frame */}
+          <div style={{ position: "relative", margin: "8px 14px 0", border: `2.5px solid ${CS.K}`, overflow: "hidden", aspectRatio: "4 / 5", background: CS.K }}>
             {ev.p && (
               <img
                 src={ev.p} alt=""
@@ -501,7 +500,7 @@ function EventSheet({ ev, onClose }: { ev: Ev | null; onClose: () => void }) {
               <span>{ev.d} · {ev.tm}</span><span>{ev.price}</span>
             </div>
           </div>
-          {/* body */}
+          {/* body — title + venue/channel + description (no meta-rows table) */}
           <div style={{ padding: "13px 14px 0" }}>
             <div style={{ fontWeight: 900, fontSize: 22, lineHeight: 0.96, letterSpacing: "-0.03em", textTransform: "uppercase", color: CS.K }}>{ev.t}</div>
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
@@ -510,23 +509,16 @@ function EventSheet({ ev, onClose }: { ev: Ev | null; onClose: () => void }) {
               <span style={{ fontFamily: FONT_MONO, fontSize: 10.5, color: CS.B, fontWeight: 700 }}>{ev.ch}</span>
             </div>
             <div style={{ height: 2, background: CS.K, margin: "12px 0 11px" }} />
-            <div style={{ fontWeight: 500, fontSize: 13, lineHeight: 1.5, color: CS.G70 }}>{ev.desc}</div>
-            <div style={{ marginTop: 13 }}>
-              {metaRow("Дата", ev.d)}
-              {metaRow("Время", ev.tm)}
-              {metaRow("Место", ev.v)}
-              {metaRow("Канал", ev.ch)}
-              {metaRow("Цена", ev.price)}
-            </div>
+            <div style={{ fontWeight: 500, fontSize: 13.5, lineHeight: 1.55, color: CS.G70, paddingBottom: 18 }}>{ev.desc}</div>
           </div>
         </div>
-        {/* Footer — Going RSVP. When the user is already going, the
-            status strip above the CTAs shows the reminder toggle. */}
+        {/* Footer — single-CTA "Добавить" toggles Going. Reminder strip
+            appears above the button once added (Going store stays intact). */}
         <div style={{ flexShrink: 0, borderTop: `2px solid ${CS.K}`, background: CS.W }}>
           {isOn && (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "11px 14px 0" }}>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontFamily: FONT_MONO, fontSize: 9.5, fontWeight: 700, letterSpacing: "0.12em", color: CS.B, textTransform: "uppercase" }}>✓ Ты идёшь</div>
+                <div style={{ fontFamily: FONT_MONO, fontSize: 9.5, fontWeight: 700, letterSpacing: "0.12em", color: CS.B, textTransform: "uppercase" }}>✓ В моих</div>
                 <div style={{ fontWeight: 600, fontSize: 11, color: CS.G55, marginTop: 2 }}>{remind ? "Напомним за день до начала" : "Без напоминания"}</div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
@@ -535,11 +527,11 @@ function EventSheet({ ev, onClose }: { ev: Ev | null; onClose: () => void }) {
               </div>
             </div>
           )}
-          <div style={{ display: "flex", gap: 9, padding: "12px 14px 16px" }}>
+          <div style={{ padding: "12px 14px 16px" }}>
             <button
               onClick={() => going.toggle(ev)}
               style={{
-                flex: 1, fontFamily: FONT_SANS, fontWeight: 900, fontSize: 14,
+                width: "100%", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 14,
                 letterSpacing: "0.04em", textTransform: "uppercase",
                 display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
                 padding: "13px 14px", border: `3px solid ${CS.K}`,
@@ -549,13 +541,195 @@ function EventSheet({ ev, onClose }: { ev: Ev | null; onClose: () => void }) {
                 transition: "background 0.14s",
               }}
             >
-              {isOn ? <><span>Я иду</span><span style={{ fontSize: 16, lineHeight: 1 }}>✓</span></> : <><span>Иду</span><span style={{ fontSize: 17, lineHeight: 1 }}>→</span></>}
+              {isOn ? <><span>В моих</span><span style={{ fontSize: 16, lineHeight: 1 }}>✓</span></> : <><span>Добавить</span><span style={{ fontSize: 17, lineHeight: 1 }}>→</span></>}
             </button>
-            <button onClick={close} style={{ fontFamily: FONT_SANS, fontWeight: 900, fontSize: 12.5, letterSpacing: "0.06em", textTransform: "uppercase", padding: "13px 14px", border: `3px solid ${CS.K}`, background: CS.W, color: CS.K, cursor: "pointer", flexShrink: 0 }}>Канал</button>
           </div>
         </div>
       </div>
     </div>
+  )
+}
+
+// ── v3 scrapbook feed: palette + EdgeCtx + atoms ────────────────────────
+//
+// Ink / paper / signal-blue brand palette (warm/yellow tones removed).
+// Edge presets are pulled from our existing card system: ink contour /
+// signal-blue offset / passe-partout mat. Cards in Clip+Polaroid read
+// the preset from EdgeCtx so a single toggle outside re-skins every
+// card on screen.
+
+export const SK = {
+  ink: CS.K, paper: CS.W, blue: CS.B,
+  ink55: CS.G55, ink35: CS.G35, ink12: "rgba(13,13,13,0.16)",
+} as const
+
+export type EdgePreset = { id: string; t: string; border: string; shadow: string; mat: number }
+
+export const EDGE_PRESETS: Record<string, EdgePreset> = {
+  thin: { id: "thin", t: "Контур",   border: `2px solid ${SK.ink}`,   shadow: `3px 3px 0 ${SK.ink}`, mat: 0 },
+  bold: { id: "bold", t: "Жирный",   border: `3px solid ${SK.ink}`,   shadow: `5px 5px 0 ${SK.ink}`, mat: 0 },
+  card: { id: "card", t: "Карточка", border: `2.5px solid ${SK.ink}`, shadow: `4px 4px 0 ${SK.ink}`, mat: 0 },
+  mat:  { id: "mat",  t: "Паспарту", border: `2px solid ${SK.ink}`,   shadow: `5px 5px 0 ${SK.ink}`, mat: 7 },
+}
+export const EdgeCtx = createContext<EdgePreset>(EDGE_PRESETS.thin)
+
+/** Scrapbook poster — rotated, contour-bordered, gently floating.
+ *  Reads the edge preset from EdgeCtx; tapping opens the event modal. */
+export function Clip({
+  ev, w, h, rot = 0, style,
+}: {
+  ev: Ev | null
+  w: number
+  h: number
+  rot?: number
+  style?: React.CSSProperties
+}) {
+  const e = useContext(EdgeCtx)
+  const open = useOpenEvent()
+  const card = e.id === "card" && ev
+  const dur = (4.6 + (Math.abs(rot) % 3) * 0.7).toFixed(2)
+  const delay = ((Math.abs(Math.round(rot * 7)) % 20) / 10).toFixed(2)
+  return (
+    <div style={{ ...style, animation: `sk-float ${dur}s ease-in-out ${delay}s infinite` }}>
+      <div
+        onClick={ev ? () => open(ev) : undefined}
+        style={{
+          width: w, height: h,
+          transform: `rotate(${rot}deg)`,
+          background: SK.paper,
+          border: e.border, boxShadow: e.shadow, padding: e.mat,
+          boxSizing: "border-box",
+          cursor: ev ? "pointer" : "default",
+        }}
+      >
+        <div style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden" }}>
+          {ev?.p && (
+            <img src={ev.p} alt="" draggable={false} style={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }} />
+          )}
+          {card && ev && (
+            <>
+              <div style={{ position: "absolute", top: 5, right: 5, background: SK.ink, color: SK.paper, padding: "3px 5px", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 7.5, letterSpacing: "0.16em", lineHeight: 1, textTransform: "uppercase" }}>{ev.c}</div>
+              <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, background: SK.paper, borderTop: `1.5px solid ${SK.ink}`, padding: "4px 6px", display: "flex", justifyContent: "space-between", alignItems: "center", fontFamily: FONT_MONO, fontSize: 7.5, letterSpacing: "0.03em", gap: 4 }}>
+                <span style={{ color: SK.ink55, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{ev.ch}</span>
+                <span style={{ color: SK.ink, fontWeight: 700, whiteSpace: "nowrap" }}>{ev.d}</span>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** Polaroid-shaped scrapbook poster with optional caption under it. */
+export function Polaroid({
+  ev, w = 130, rot = -3, caption, capColor = SK.ink, ar = 1.04, style,
+}: {
+  ev: Ev | null
+  w?: number
+  rot?: number
+  caption?: React.ReactNode
+  capColor?: string
+  ar?: number
+  style?: React.CSSProperties
+}) {
+  const e = useContext(EdgeCtx)
+  const open = useOpenEvent()
+  const card = e.id === "card" && ev
+  const ph = Math.round(w * ar)
+  const dur = (4.8 + (Math.abs(rot) % 3) * 0.6).toFixed(2)
+  const delay = ((Math.abs(Math.round(rot * 11)) % 22) / 10).toFixed(2)
+  return (
+    <div style={{ ...style, animation: `sk-float ${dur}s ease-in-out ${delay}s infinite` }}>
+      <div
+        onClick={ev ? () => open(ev) : undefined}
+        style={{
+          width: w, background: SK.paper,
+          padding: card ? 0 : "7px 7px 0",
+          transform: `rotate(${rot}deg)`,
+          border: e.border, boxShadow: e.shadow,
+          cursor: ev ? "pointer" : "default",
+        }}
+      >
+        <div style={{ position: "relative", width: "100%", height: ph, overflow: "hidden", background: "#0b1d52", borderBottom: card ? "none" : `1px solid ${SK.ink}` }}>
+          {ev?.p && (
+            <img src={ev.p} alt="" draggable={false} style={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }} />
+          )}
+          {card && ev && (
+            <>
+              <div style={{ position: "absolute", top: 5, right: 5, background: SK.ink, color: SK.paper, padding: "3px 5px", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 7.5, letterSpacing: "0.16em", lineHeight: 1, textTransform: "uppercase" }}>{ev.c}</div>
+              <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, background: SK.paper, borderTop: `1.5px solid ${SK.ink}`, padding: "5px 7px", fontFamily: FONT_MONO, fontSize: 7.5, letterSpacing: "0.03em" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 4 }}>
+                  <span style={{ color: SK.ink55, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{ev.ch}</span>
+                  <span style={{ color: SK.ink, fontWeight: 700, whiteSpace: "nowrap" }}>{ev.d} · {ev.tm}</span>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+        {!card && caption != null && (
+          <div style={{ minHeight: 26, padding: "6px 2px 7px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9.5, letterSpacing: "0.12em", textTransform: "uppercase", lineHeight: 1.1, color: capColor, textAlign: "center" }}>{caption}</div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/** Mono-cap hand-lettered annotation. */
+export function Hand({ children, color = SK.ink, size = 22, rot = 0, style }: { children: React.ReactNode; color?: string; size?: number; rot?: number; style?: React.CSSProperties }) {
+  return (
+    <span style={{
+      display: "inline-block", color, fontFamily: FONT_MONO,
+      fontWeight: 700, fontSize: Math.round(size * 0.6),
+      letterSpacing: "0.1em", textTransform: "uppercase", lineHeight: 1.15,
+      transform: rot ? `rotate(${rot}deg)` : undefined,
+      ...style,
+    }}>{children}</span>
+  )
+}
+
+export function Lbl({ children, color = SK.ink55, size = 9, style }: { children: React.ReactNode; color?: string; size?: number; style?: React.CSSProperties }) {
+  return (
+    <span style={{
+      fontFamily: FONT_MONO, fontWeight: 500, fontSize: size,
+      letterSpacing: "0.2em", textTransform: "uppercase", color, ...style,
+    }}>{children}</span>
+  )
+}
+
+export function SkMark({ children, color = SK.blue, style }: { children: React.ReactNode; color?: string; style?: React.CSSProperties }) {
+  return (
+    <span style={{
+      background: color, color: SK.paper, padding: "1px 5px", fontWeight: 900,
+      WebkitBoxDecorationBreak: "clone", boxDecorationBreak: "clone", ...style,
+    } as React.CSSProperties}>{children}</span>
+  )
+}
+
+export function Scribble({ color = SK.ink35, w = 70, style }: { color?: string; w?: number; style?: React.CSSProperties }) {
+  return (
+    <svg width={w} height="12" viewBox="0 0 70 12" fill="none" style={style}>
+      <path d="M2 7 C 14 2, 22 10, 34 5 S 56 2, 68 6" stroke={color} strokeWidth="2.6" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+export function Sparkle({ color = SK.blue, s = 22, style }: { color?: string; s?: number; style?: React.CSSProperties }) {
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" style={style}>
+      <path d="M12 1 C 12.6 7.5, 16.5 11.4, 23 12 C 16.5 12.6, 12.6 16.5, 12 23 C 11.4 16.5, 7.5 12.6, 1 12 C 7.5 11.4, 11.4 7.5, 12 1 Z" fill={color} />
+    </svg>
+  )
+}
+
+export function Avatar({ label, color = SK.blue, s = 22, style }: { label: string; color?: string; s?: number; style?: React.CSSProperties }) {
+  return (
+    <span style={{
+      width: s, height: s, background: color, color: SK.paper,
+      display: "inline-flex", alignItems: "center", justifyContent: "center",
+      fontFamily: FONT_SANS, fontWeight: 900, fontSize: s * 0.42,
+      border: `1.5px solid ${SK.ink}`, ...style,
+    }}>{label}</span>
   )
 }
 

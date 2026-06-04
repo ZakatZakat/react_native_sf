@@ -1,499 +1,396 @@
 /**
- * CitySignal · 07 · Лента.
+ * CitySignal · 07 · Лента (v3 scrapbook).
  *
- *  7 layout variants of the same real Curator feed. Pick via ?v=0..6
- *  (0=Cover, 1=Shelves, 2=Magazine, 3=Catalog, 4=Spread, 5=Billboard,
- *  6=Combo). Defaults to Combo (6) — the richest one, used in the spec
- *  storyboard.
+ *  Three brand-aligned collage views:
+ *    • Дневник  (DiaryView)   — free poster collage with angled cutouts
+ *    • Доска    (BoardView)   — two columns with profile + refresh on top
+ *    • Журнал   (JournalView) — calm reading column, alternates L/R
  *
- *  All variants share `FeedHeader` and pull from the same Curator-derived
- *  `feed/shelves/superByCat/catCounts` bundle via useDerived().
+ *  All views reuse Curator events through useDerived().feed and render
+ *  through the Clip/Polaroid scrapbook atoms in shared.tsx. Edge presets
+ *  (Контур/Жирный/Карточка/Паспарту) flow via EdgeCtx.
+ *
+ *  URL params:
+ *    ?view=diary|board|journal   (default: board)
+ *    ?edge=thin|bold|card|mat    (default: thin)
+ *    ?btn=a|b|c                  (refresh-glyph variant on Board; default b)
+ *
+ *  The previous 7-variant editorial feed (Cover/Shelves/Magazine/Catalog/
+ *  Spread/Billboard/Combo) is removed per v3 spec.
  */
 
-import { useContext, useEffect, useRef, useState, useMemo } from "react"
+import { useContext, useMemo, useState } from "react"
 import { useNavigate, useSearch } from "@tanstack/react-router"
 import {
-  CsPage, CS, FONT_MONO, FONT_SANS, DuotonePoster, Mark, Mono,
+  CS, FONT_MONO, FONT_SANS, ScreenBG,
   NavCtx, ProfileBadge, BillboardProfileBadge,
-  EventModalProvider, useOpenEvent,
-  GoingProvider,
+  EventModalProvider, GoingProvider,
+  // v3 scrapbook
+  SK, EdgeCtx, EDGE_PRESETS,
+  Clip, Polaroid, Hand, Lbl, Scribble, Sparkle, Avatar, SkMark,
 } from "./shared"
-import type { Ev, DerivedData } from "./buildDerived"
+import type { Ev } from "./buildDerived"
 import { useDerived, useJourneyState } from "./useJourney"
+import CsFeedLegacy from "./FeedLegacy"
 
-// ── Shared header ────────────────────────────────────────────────────────
+const FALLBACK: Ev = {
+  id: "—", t: "—", sub: "", v: "—", d: "—", tm: "—",
+  p: null, c: "—", catKey: "", ch: "@—",
+  desc: "", price: "—", note: "",
+}
 
-function FeedHeader({ name, right, onReset }: { name: string; right: React.ReactNode; onReset?: () => void }) {
+/** Pick N events from the feed; pad with positionally-unique placeholders
+ *  so views with hardcoded slots can still render layout while the feed
+ *  warms up (unique ids keep React's reconciliation happy). */
+function pad(feed: Ev[], n: number): Ev[] {
+  const out: Ev[] = feed.slice(0, n)
+  while (out.length < n) out.push({ ...FALLBACK, id: `__placeholder_${out.length}` })
+  return out
+}
+
+// ── VARIANT 1 · Дневник ─────────────────────────────────────────────────
+
+function DiaryView({ feed }: { feed: Ev[] }) {
+  const E = pad(feed, 8)
+  return (
+    <div style={{ position: "relative", width: "100%", minHeight: 1180, paddingBottom: 60 }}>
+      <div style={{ textAlign: "center", position: "relative", zIndex: 2 }}>
+        <Lbl size={9} style={{ letterSpacing: "0.3em" }}>пятница · 23 мая</Lbl>
+        <div style={{ fontWeight: 900, fontSize: 44, letterSpacing: "-0.045em", lineHeight: 0.9, marginTop: 5, color: SK.ink }}>Москва</div>
+        <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", marginTop: 7 }}>
+          <Lbl color={SK.ink} size={10} style={{ fontWeight: 700, letterSpacing: "0.24em" }}>неделя 22</Lbl>
+          <Scribble color={"#E0162B"} w={64} style={{ marginTop: 2 }} />
+        </div>
+        <Sparkle color={SK.blue} s={17} style={{ position: "absolute", top: 20, left: 60 }} />
+        <Sparkle color={"#E0162B"} s={12} style={{ position: "absolute", top: 60, right: 56 }} />
+      </div>
+      <div style={{ position: "absolute", top: 120, right: 10, textAlign: "right", zIndex: 3 }}>
+        <Hand color={"#E0162B"} size={20} style={{ marginRight: 2 }}>кто ведёт</Hand>
+        {feed.slice(0, 3).map((ev, k) => (
+          <div key={ev.id + k} style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, marginTop: 4 }}>
+            <Avatar label={ev.ch.replace(/^@/, "").slice(0, 1).toUpperCase()} color={[SK.blue, "#E0162B", SK.blue][k]} s={18} />
+            <span style={{ fontFamily: FONT_MONO, fontSize: 9, color: SK.ink }}>{ev.ch}</span>
+          </div>
+        ))}
+      </div>
+
+      <Polaroid ev={E[0]} w={128} rot={-4} ar={1.12} caption="до утра" capColor={SK.blue} style={{ position: "absolute", left: 10, top: 186 }} />
+      <Hand color={SK.ink} size={17} style={{ position: "absolute", left: 12, top: 376, zIndex: 5 }}>{E[0].c || "клуб"} · {E[0].v.slice(0, 20)}</Hand>
+
+      <Clip ev={E[3]} w={114} h={150} rot={4} style={{ position: "absolute", right: 12, top: 298 }} />
+      <Hand color={SK.blue} size={19} style={{ position: "absolute", right: 12, top: 456, textAlign: "right", zIndex: 5 }}>{E[3].price !== "—" ? E[3].price : "вход свободный"}</Hand>
+
+      <div style={{ position: "absolute", left: 14, top: 420, zIndex: 5 }}>
+        <Hand color={SK.ink} size={16} style={{ display: "block", marginBottom: 3 }}>
+          <SkMark color={SK.blue}>лид недели —</SkMark>
+        </Hand>
+        <Polaroid ev={E[1]} w={140} rot={3} ar={0.84} caption="редакция топит" capColor={"#E0162B"} />
+      </div>
+      <Sparkle color={SK.blue} s={15} style={{ position: "absolute", left: 150, top: 456 }} />
+
+      <Clip ev={E[4]} w={112} h={146} rot={-5} style={{ position: "absolute", right: 14, top: 552 }} />
+      <div style={{ position: "absolute", right: 12, top: 706, textAlign: "right", zIndex: 5 }}>
+        <Hand color={SK.blue} size={19}>open-air</Hand>
+        <div><Lbl size={9}>{E[4].d} · {E[4].tm}</Lbl></div>
+      </div>
+
+      <div style={{ position: "absolute", left: 112, top: 662, zIndex: 7, display: "inline-flex", alignItems: "center", gap: 6, background: SK.paper, border: `2px solid ${SK.ink}`, padding: "7px 12px", transform: "rotate(-2deg)", boxShadow: "2px 2px 0 rgba(22,20,15,0.25)" }}>
+        <span style={{ width: 7, height: 7, borderRadius: "50%", background: SK.blue }} />
+        <Lbl color={SK.ink} size={10} style={{ fontWeight: 700, letterSpacing: "0.18em" }}>иду · {Math.max(1, Math.floor(feed.length / 2))}</Lbl>
+      </div>
+
+      <Clip ev={E[5]} w={118} h={148} rot={4} style={{ position: "absolute", left: 14, top: 736 }} />
+      <Hand color={"#E0162B"} size={19} style={{ position: "absolute", left: 16, top: 896, zIndex: 5 }}>успей · {E[5].price !== "—" ? E[5].price : "ограничено"}</Hand>
+
+      <Polaroid ev={E[7]} w={116} rot={-3} ar={1.0} caption="премьера" capColor={SK.ink} style={{ position: "absolute", right: 12, top: 762 }} />
+
+      <div style={{ position: "absolute", left: 0, right: 0, top: 1000, textAlign: "center" }}>
+        <Scribble color={SK.ink35} w={110} />
+        <div><Lbl size={9} style={{ letterSpacing: "0.24em" }}>{feed.length} событий · msc—spb · wk22</Lbl></div>
+      </div>
+    </div>
+  )
+}
+
+// ── VARIANT 2 · Доска ───────────────────────────────────────────────────
+
+function BoardLabel({ ev, rot = 0, style }: { ev: Ev; rot?: number; style?: React.CSSProperties }) {
+  return (
+    <div style={{ background: SK.paper, border: `1.5px solid ${SK.ink}`, padding: "5px 8px", transform: `rotate(${rot}deg)`, boxShadow: `2px 2px 0 ${SK.ink}`, lineHeight: 1, ...style }}>
+      <div style={{ fontFamily: FONT_SANS, fontWeight: 900, fontSize: 12, letterSpacing: "-0.01em", color: SK.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ev.t}</div>
+      <div style={{ fontFamily: FONT_MONO, fontSize: 8.5, letterSpacing: "0.06em", color: SK.ink55, marginTop: 4 }}>{ev.d} · {ev.tm} · {ev.c}</div>
+    </div>
+  )
+}
+
+function BoardCard({ ev, i }: { ev: Ev; i: number }) {
+  const rot = [-3, 2.5, -2, 3][i % 4]
+  return (
+    <div style={{ position: "relative", marginBottom: 4, animation: `sk-refresh 0.5s cubic-bezier(0.22,1,0.36,1) ${(i * 0.06).toFixed(2)}s both` }}>
+      <Clip ev={ev} w={136} h={172} rot={rot} />
+      <BoardLabel ev={ev} rot={rot * 0.5} style={{ marginTop: 10, marginLeft: 6, width: 124 }} />
+    </div>
+  )
+}
+
+function RefreshGlyph({ variant = "b", spin = 0 }: { variant?: string; spin?: number }) {
+  const wrap = (children: React.ReactNode) => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <g style={{ transformOrigin: "12px 12px", transform: `rotate(${spin}deg)`, transition: "transform 0.7s cubic-bezier(0.34,1.12,0.64,1)" }}>{children}</g>
+    </svg>
+  )
+  if (variant === "b") {
+    // two chasing arrows (recycle)
+    return wrap(<>
+      <path d="M5 9 A7 7 0 0 1 18 7.5" stroke={SK.ink} strokeWidth="2" strokeLinecap="round" />
+      <polygon points="18,3.5 19.5,8.5 14,8" fill={SK.blue} />
+      <path d="M19 15 A7 7 0 0 1 6 16.5" stroke={SK.ink} strokeWidth="2" strokeLinecap="round" />
+      <polygon points="6,20.5 4.5,15.5 10,16" fill={SK.blue} />
+    </>)
+  }
+  if (variant === "c") {
+    // rotating square + dot
+    return wrap(<>
+      <rect x="5.5" y="5.5" width="13" height="13" stroke={SK.ink} strokeWidth="2" />
+      <circle cx="12" cy="12" r="2.6" fill={SK.blue} />
+    </>)
+  }
+  // a — single circular arrow
+  return wrap(<>
+    <path d="M12 5 A7 7 0 1 1 5 12" fill="none" stroke={SK.ink} strokeWidth="2" strokeLinecap="round" />
+    <polygon points="12.2,1.6 12.2,8.4 16.8,5" fill={SK.blue} />
+  </>)
+}
+
+function BoardView({ feed, btn = "b", name = "Гость" }: { feed: Ev[]; btn?: string; name?: string }) {
+  const nav = useContext(NavCtx)
+  const [nonce, setNonce] = useState(0)
+  const [sweep, setSweep] = useState(0)
+  // Shuffle deterministically by nonce so the order changes on every tap of refresh
+  const order = useMemo(() => {
+    const idx = feed.map((_, i) => i)
+    return idx.sort((a, b) => ((a * 7 + nonce * 13) % 11) - ((b * 7 + nonce * 13) % 11))
+  }, [nonce, feed])
+  const E = pad(order.map((i) => feed[i]), 8)
+  const colL = [E[0], E[2], E[4], E[6]]
+  const colR = [E[1], E[3], E[5], E[7]]
+  const refresh = () => { setNonce((n) => n + 1); setSweep((s) => s + 360) }
+
+  return (
+    <div style={{ width: "100%", paddingBottom: 54 }}>
+      {/* header — title block on the left, profile + refresh on the right */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, padding: "0 14px", marginBottom: 24 }}>
+        <div style={{ flex: 1, minWidth: 0, background: SK.paper, border: `2px solid ${SK.ink}`, padding: "10px 12px 11px", transform: "rotate(-1deg)", boxShadow: `3px 3px 0 ${SK.ink}` }}>
+          <Lbl size={9} style={{ letterSpacing: "0.3em" }}>доска недели · wk 22</Lbl>
+          <div style={{ fontWeight: 900, fontSize: 27, letterSpacing: "-0.04em", lineHeight: 0.9, marginTop: 3, color: SK.ink }}>Что в городе</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 5 }}>
+            <Lbl size={9}>москва — спб</Lbl>
+            <Scribble color={SK.blue} w={40} />
+          </div>
+        </div>
+        <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 10, marginTop: 2 }}>
+          <ProfileBadge name={name} onClick={nav.openProfile} />
+          <button
+            onClick={refresh}
+            aria-label="Обновить ленту"
+            style={{
+              width: 38, height: 38, background: SK.paper,
+              border: `2px solid ${SK.ink}`,
+              boxShadow: `2.5px 2.5px 0 ${SK.blue}`,
+              cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              padding: 0,
+            }}
+          >
+            <RefreshGlyph variant={btn} spin={sweep} />
+          </button>
+        </div>
+      </div>
+      {/* two columns — re-stagger on refresh */}
+      <div key={nonce} style={{ display: "flex", gap: 14, padding: "0 14px", alignItems: "flex-start" }}>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 36 }}>
+          {colL.map((e, i) => <BoardCard key={e.id + nonce} ev={e} i={i * 2} />)}
+        </div>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 36, paddingTop: 42 }}>
+          {colR.map((e, i) => <BoardCard key={e.id + nonce} ev={e} i={i * 2 + 1} />)}
+        </div>
+      </div>
+      <div style={{ textAlign: "center", marginTop: 30 }}>
+        <span style={{ display: "inline-block", background: SK.ink, color: SK.paper, padding: "6px 12px", transform: "rotate(-1deg)" }}>
+          <Lbl color={SK.paper} size={9} style={{ letterSpacing: "0.2em" }}>{feed.length} приколото · обновлено сейчас</Lbl>
+        </span>
+      </div>
+    </div>
+  )
+}
+
+// ── VARIANT 3 · Журнал ──────────────────────────────────────────────────
+
+const NOTE_COLORS = [SK.blue, "#E0162B", SK.blue, "#E0162B"]
+
+function JournalEntry({ ev, i }: { ev: Ev; i: number }) {
+  const flip = i % 2 === 1
+  const rot = [-3, 2.5, -2, 3][i % 4]
+  const nc = NOTE_COLORS[i % 4]
+  // Channel + venue copy on a per-side basis
+  return (
+    <div style={{
+      position: "relative", display: "flex", gap: 13,
+      alignItems: "flex-start",
+      flexDirection: flip ? "row-reverse" : "row",
+      padding: "0 18px", marginBottom: 8,
+    }}>
+      <div style={{ position: "relative", flexShrink: 0 }}>
+        <Clip ev={ev} w={100} h={130} rot={rot} />
+        <div style={{
+          position: "absolute", bottom: -10,
+          [flip ? "left" : "right"]: -4,
+          fontFamily: FONT_MONO, fontSize: 8, letterSpacing: "0.08em",
+          color: SK.ink55, transform: `rotate(${flip ? 4 : -4}deg)`,
+        }}>{ev.ch}</div>
+      </div>
+      <div style={{ flex: 1, minWidth: 0, paddingTop: 6, textAlign: flip ? "right" : "left" }}>
+        <div style={{ display: "inline-block" }}>
+          <SkMark color={SK.blue}>
+            <Lbl color={SK.paper} size={9} style={{ fontWeight: 700, letterSpacing: "0.16em" }}>{ev.c}</Lbl>
+          </SkMark>
+        </div>
+        <div style={{ fontWeight: 900, fontSize: 17, letterSpacing: "-0.02em", lineHeight: 1.0, marginTop: 7, color: SK.ink }}>{ev.t}</div>
+        {ev.sub && (
+          <div style={{ fontFamily: FONT_SANS, fontWeight: 600, fontSize: 10.5, color: SK.ink55, marginTop: 2 }}>{ev.sub}</div>
+        )}
+        <div style={{ fontFamily: FONT_MONO, fontSize: 9, letterSpacing: "0.05em", color: SK.ink, marginTop: 7, lineHeight: 1.5 }}>
+          {ev.v}<br />{ev.d} · {ev.tm} · {ev.price}
+        </div>
+        {ev.note && (
+          <Hand color={nc} size={18} rot={flip ? 2 : -2} style={{ marginTop: 5 }}>{ev.note}</Hand>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function JournalView({ feed, name = "Гость" }: { feed: Ev[]; name?: string }) {
   const nav = useContext(NavCtx)
   return (
-    <div style={{ padding: "0 18px 10px", borderBottom: `2px solid ${CS.K}`, display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexShrink: 0 }}>
-      <div>
-        <Mark color={CS.G55}>N° 001 · лента · {name.trim().split(/\s+/)[0]}</Mark>
-        <div style={{ fontWeight: 900, fontSize: 26, lineHeight: 0.9, letterSpacing: "-0.04em", textTransform: "uppercase", color: CS.K, marginTop: 6 }}>Эта неделя</div>
-      </div>
-      {/* Right side: count + profile badge (tap → /cs/profile via NavCtx). */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <span style={{ fontWeight: 900, fontSize: 22, color: CS.B, letterSpacing: "-0.04em", cursor: onReset ? "pointer" : "default" }} onClick={onReset} title={onReset ? "Заново" : ""}>{right}</span>
-        <ProfileBadge name={name} onClick={nav.openProfile} />
-      </div>
-    </div>
-  )
-}
-
-function FeedEmpty({ name }: { name: string }) {
-  return (
-    <CsPage>
-      <div style={{ padding: "44px 22px" }}>
-        <FeedHeader name={name} right="0" />
-        <div style={{ marginTop: 22, padding: 22, border: `2px solid ${CS.K}`, background: CS.W, color: CS.G55, fontWeight: 700, fontSize: 13, lineHeight: 1.4 }}>
-          Лента пуста — попробуй обновить или зайти позже.
-        </div>
-      </div>
-    </CsPage>
-  )
-}
-
-// ── Variant 0 · Cover ────────────────────────────────────────────────────
-
-function VCover({ name, feed, onReset }: { name: string; feed: Ev[]; onReset: () => void }) {
-  if (feed.length === 0) return <FeedEmpty name={name} />
-  const hero = feed[0]
-  const rest = feed.slice(1, 5)
-  return (
-    <CsPage>
-      <div style={{ position: "absolute", inset: 0, padding: "44px 0 22px", display: "flex", flexDirection: "column" }}>
-        <FeedHeader name={name} right={feed.length} onReset={onReset} />
-        <div style={{ flex: 1, overflowY: "auto", padding: "12px 18px 0" }}>
-          <div style={{ border: `2.5px solid ${CS.K}`, background: CS.K, boxShadow: `5px 5px 0 ${CS.B}` }}>
-            <div style={{ position: "relative", overflow: "hidden", aspectRatio: "1.42 / 1" }}>
-              <DuotonePoster src={hero.p} style={{ position: "absolute", inset: 0 }} />
-              <div style={{ position: "absolute", top: 8, left: 8, zIndex: 3, background: CS.W, color: CS.K, padding: "4px 8px", fontWeight: 900, fontSize: 9, letterSpacing: "0.18em", textTransform: "uppercase", border: `1.5px solid ${CS.K}`, lineHeight: 1 }}>N°01 · главный</div>
-              <div style={{ position: "absolute", top: 8, right: 8, zIndex: 3, background: CS.K, color: CS.W, padding: "5px 9px", fontFamily: FONT_MONO, fontSize: 10, letterSpacing: "0.06em" }}>{hero.d} · {hero.tm}</div>
+    <div style={{ width: "100%", paddingBottom: 50 }}>
+      <div style={{ padding: "0 18px" }}>
+        <Lbl size={9} style={{ letterSpacing: "0.3em" }}>пятница · 23 мая · wk 22</Lbl>
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginTop: 3 }}>
+          <div style={{ fontWeight: 900, fontSize: 38, letterSpacing: "-0.045em", lineHeight: 0.86, color: SK.ink }}>Лента</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+            <div style={{ display: "flex" }}>
+              {feed.slice(0, 3).map((ev, k) => (
+                <Avatar
+                  key={ev.id + k}
+                  label={ev.ch.replace(/^@/, "").slice(0, 1).toUpperCase()}
+                  color={[SK.blue, "#E0162B", SK.blue][k]}
+                  s={21}
+                  style={{ marginLeft: k ? -7 : 0 }}
+                />
+              ))}
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 11px", background: CS.W, borderTop: `2px solid ${CS.K}`, borderBottom: `2px solid ${CS.K}`, fontFamily: FONT_MONO, fontSize: 9, color: CS.G55, letterSpacing: "0.06em" }}>
-              <span>{hero.ch}</span><span style={{ color: CS.B, fontWeight: 700 }}>{hero.c}</span>
-            </div>
-            <div style={{ background: CS.K, color: CS.W, padding: "12px 13px 13px" }}>
-              <div style={{ fontWeight: 900, fontSize: 25, lineHeight: 0.94, letterSpacing: "-0.04em", textTransform: "uppercase" }}>{hero.t}</div>
-              <div style={{ fontFamily: FONT_MONO, fontSize: 10, color: "rgba(255,255,255,0.7)", marginTop: 7, letterSpacing: "0.04em" }}>{hero.v}</div>
-            </div>
-          </div>
-          <div style={{ marginTop: 12, paddingBottom: 6, borderBottom: `1.5px solid ${CS.K}`, display: "flex", justifyContent: "space-between" }}>
-            <Mark>Ещё в ленте / +{rest.length}</Mark><Mark color={CS.G55}>WK 22</Mark>
-          </div>
-          <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 9 }}>
-            {rest.map((e, i) => (
-              <div key={i} style={{ display: "flex", border: `2px solid ${CS.K}`, background: CS.W, minHeight: 66 }}>
-                <DuotonePoster src={e.p} style={{ width: 60, flexShrink: 0, alignSelf: "stretch", borderRight: `2px solid ${CS.K}` }} />
-                <div style={{ flex: 1, padding: "8px 10px", minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}><Mono color={CS.B}>{e.c}</Mono><Mono>{e.d} · {e.tm}</Mono></div>
-                  <div style={{ fontWeight: 900, fontSize: 13, lineHeight: 0.98, letterSpacing: "-0.025em", textTransform: "uppercase", color: CS.K, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.t}</div>
-                </div>
-              </div>
-            ))}
+            <ProfileBadge name={name} onClick={nav.openProfile} />
           </div>
         </div>
-      </div>
-    </CsPage>
-  )
-}
-
-// ── Variant 1 · Shelves ──────────────────────────────────────────────────
-
-function ShelfCard({ ev }: { ev: Ev }) {
-  const [hover, setHover] = useState(false)
-  const openEvent = useOpenEvent()
-  return (
-    <div
-      onClick={() => openEvent(ev)}
-      onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
-      style={{
-        flexShrink: 0, scrollSnapAlign: "start", width: 142, height: 204,
-        position: "relative", overflow: "hidden",
-        border: `2px solid ${CS.K}`, background: CS.W, cursor: "pointer",
-        boxShadow: hover ? `4px 4px 0 ${CS.B}` : "none",
-        transform: hover ? "translate(-2px,-2px)" : "translate(0,0)",
-        transition: "transform 0.14s, box-shadow 0.14s",
-      }}
-    >
-      <DuotonePoster src={ev.p} style={{ position: "absolute", inset: 0 }} />
-      <div style={{ position: "absolute", top: 6, right: 6, zIndex: 3, background: CS.K, color: CS.W, padding: "3px 6px", fontFamily: FONT_MONO, fontSize: 9, letterSpacing: "0.06em" }}>{ev.d}</div>
-      <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, background: CS.W, borderTop: `1.5px solid ${CS.K}`, padding: "8px 9px 9px" }}>
-        <div style={{ fontFamily: FONT_MONO, fontSize: 8.5, color: CS.G55, letterSpacing: "0.04em", marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ev.ch} · {ev.tm}</div>
-        <div style={{ fontWeight: 900, fontSize: 12, lineHeight: 1.05, letterSpacing: "-0.02em", textTransform: "uppercase", color: CS.K, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", minHeight: 24 }}>{ev.t}</div>
-        <div style={{ fontWeight: 600, fontSize: 9.5, color: CS.G55, marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ev.v}</div>
-      </div>
-    </div>
-  )
-}
-
-function Shelf({ cat, hits, evs, note, idx }: { cat: string; hits: number; evs: Ev[]; note: string; idx: number }) {
-  const ref = useRef<HTMLDivElement | null>(null)
-  const [page, setPage] = useState(0)
-  useEffect(() => {
-    const el = ref.current; if (!el) return
-    const onScroll = () => setPage(Math.min(evs.length - 1, Math.max(0, Math.round(el.scrollLeft / 152))))
-    el.addEventListener("scroll", onScroll, { passive: true })
-    return () => el.removeEventListener("scroll", onScroll)
-  }, [evs.length])
-  return (
-    <section style={{ marginTop: idx === 0 ? 0 : 18 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: 7, borderBottom: `2px solid ${CS.K}` }}>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 8, minWidth: 0 }}>
-          <span style={{ fontFamily: FONT_MONO, fontSize: 10, color: CS.G55 }}>{String(idx + 1).padStart(2, "0")}</span>
-          <span style={{ fontWeight: 900, fontSize: 19, lineHeight: 1, letterSpacing: "-0.03em", textTransform: "uppercase" }}>{cat}</span>
-          <span style={{ display: "inline-flex", gap: 3, alignItems: "center", paddingLeft: 4 }}>
-            {Array.from({ length: hits }).map((_, i) => <span key={i} style={{ width: 6, height: 6, background: CS.B, display: "inline-block" }} />)}
-          </span>
+        <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 5 }}>
+          <Hand color={SK.blue} size={19} rot={-1}>{feed.length} событий, отобранных вручную</Hand>
+          <Sparkle color={"#E0162B"} s={13} />
         </div>
-        <span style={{ fontFamily: FONT_MONO, fontSize: 9, color: CS.K, fontWeight: 700, letterSpacing: "0.06em" }}>{String(page + 1).padStart(2, "0")} / {String(evs.length).padStart(2, "0")} →</span>
+        <div style={{ height: 2, background: SK.ink, marginTop: 10 }} />
       </div>
-      {note ? <div style={{ fontWeight: 600, fontSize: 11, lineHeight: 1.35, color: CS.G55, margin: "7px 0 2px" }}>{note}</div> : null}
-      <div style={{ margin: "8px -18px 0" }}>
-        <div ref={ref} className="cs-shelf" style={{ display: "flex", gap: 10, overflowX: "auto", overflowY: "hidden", padding: "2px 18px 10px", scrollSnapType: "x mandatory" }}>
-          {evs.map((ev, i) => <ShelfCard key={i} ev={ev} />)}
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function VShelves({ name, feed, shelves, onReset }: { name: string; feed: Ev[]; shelves: DerivedData["shelves"]; onReset: () => void }) {
-  return (
-    <CsPage>
-      <div style={{ position: "absolute", inset: 0, padding: "44px 0 22px", display: "flex", flexDirection: "column" }}>
-        <FeedHeader name={name} right={feed.length} onReset={onReset} />
-        <div style={{ flex: 1, overflowY: "auto", padding: "12px 18px 0" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 12 }}>
-            <span style={{ fontWeight: 900, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: CS.K }}>Полки / Shelves</span>
-            <Mark color={CS.G55}>{shelves.length} категорий · свайп →</Mark>
-          </div>
-          {shelves.map((s, i) => <Shelf key={s.cat} idx={i} cat={s.cat} hits={s.hits} evs={s.evs} note={s.note} />)}
-        </div>
-      </div>
-    </CsPage>
-  )
-}
-
-// ── Variant 2 · Magazine ─────────────────────────────────────────────────
-
-function MagTile({ e, ar, big }: { e: Ev; ar?: string; big?: boolean }) {
-  const lines = big ? 2 : 1
-  return (
-    <div style={{ position: "relative", border: `2.5px solid ${CS.K}`, overflow: "hidden", aspectRatio: ar, boxShadow: `3px 3px 0 ${CS.B}` }}>
-      <DuotonePoster src={e.p} style={{ position: "absolute", inset: 0 }} />
-      <div style={{ position: "absolute", top: 6, left: 6, background: CS.W, color: CS.K, padding: "3px 6px", fontWeight: 900, fontSize: 8, letterSpacing: "0.14em", textTransform: "uppercase", border: `1.5px solid ${CS.K}`, lineHeight: 1 }}>{e.c}</div>
-      <div style={{ position: "absolute", top: 6, right: 6, background: CS.K, color: CS.W, padding: "3px 5px", fontFamily: FONT_MONO, fontSize: 8, letterSpacing: "0.04em" }}>{e.d}</div>
-      <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, background: CS.K, color: CS.W, padding: big ? "9px 10px 10px" : "7px 8px 8px", borderTop: `1.5px solid ${CS.K}` }}>
-        <div style={{ fontWeight: 900, fontSize: big ? 18 : 11, lineHeight: 0.98, letterSpacing: "-0.03em", textTransform: "uppercase", display: "-webkit-box", WebkitLineClamp: lines, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{e.t}</div>
-        <div style={{ fontFamily: FONT_MONO, fontSize: big ? 9 : 8, color: "rgba(255,255,255,0.7)", marginTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.tm} · {e.v}</div>
-      </div>
-    </div>
-  )
-}
-
-function VMagazine({ name, feed, onReset }: { name: string; feed: Ev[]; onReset: () => void }) {
-  if (feed.length === 0) return <FeedEmpty name={name} />
-  const lead = feed[0]
-  return (
-    <CsPage>
-      <div style={{ position: "absolute", inset: 0, padding: "44px 0 22px", display: "flex", flexDirection: "column" }}>
-        <FeedHeader name={name} right={feed.length} onReset={onReset} />
-        <div style={{ flex: 1, overflowY: "auto", padding: "12px 18px 0", display: "flex", flexDirection: "column", gap: 9 }}>
-          <div style={{ border: `2.5px solid ${CS.K}`, background: CS.K, boxShadow: `3px 3px 0 ${CS.B}` }}>
-            <div style={{ position: "relative", overflow: "hidden", aspectRatio: "1.5 / 1" }}>
-              <DuotonePoster src={lead.p} style={{ position: "absolute", inset: 0 }} />
-              <div style={{ position: "absolute", top: 6, left: 6, background: CS.W, color: CS.K, padding: "3px 7px", fontWeight: 900, fontSize: 8, letterSpacing: "0.14em", textTransform: "uppercase", border: `1.5px solid ${CS.K}`, lineHeight: 1 }}>{lead.c}</div>
-              <div style={{ position: "absolute", top: 6, right: 6, background: CS.K, color: CS.W, padding: "3px 6px", fontFamily: FONT_MONO, fontSize: 8.5, letterSpacing: "0.04em" }}>{lead.d} · {lead.tm}</div>
-            </div>
-            <div style={{ background: CS.K, color: CS.W, padding: "11px 12px 12px", borderTop: `2px solid ${CS.K}` }}>
-              <div style={{ fontWeight: 900, fontSize: 19, lineHeight: 0.96, letterSpacing: "-0.035em", textTransform: "uppercase" }}>{lead.t}</div>
-              <div style={{ fontFamily: FONT_MONO, fontSize: 9, color: "rgba(255,255,255,0.7)", marginTop: 6, letterSpacing: "0.04em" }}>{lead.v}</div>
-            </div>
-          </div>
-          {feed[1] && feed[2] && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
-              <MagTile e={feed[1]} ar="1 / 1.34" />
-              <MagTile e={feed[2]} ar="1 / 1.34" />
-            </div>
-          )}
-          {feed[3] && feed[4] && feed[5] && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 9 }}>
-              <MagTile e={feed[3]} ar="1 / 1.4" />
-              <MagTile e={feed[4]} ar="1 / 1.4" />
-              <MagTile e={feed[5]} ar="1 / 1.4" />
-            </div>
-          )}
-          {feed[6] && feed[7] && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
-              <MagTile e={feed[6]} ar="1 / 1.34" />
-              <MagTile e={feed[7]} ar="1 / 1.34" />
+      <div style={{ height: 20 }} />
+      {feed.map((ev, i) => (
+        <div key={ev.id + i}>
+          <JournalEntry ev={ev} i={i} />
+          {i < feed.length - 1 && (
+            <div style={{ textAlign: "center", margin: "13px 0 17px" }}>
+              <Scribble color={"rgba(13,13,13,0.16)"} w={140} />
             </div>
           )}
         </div>
-      </div>
-    </CsPage>
-  )
-}
-
-// ── Variant 3 · Catalog ──────────────────────────────────────────────────
-
-function CatalogRow({ e, i, hits, catCounts }: { e: Ev; i: number; hits: number; catCounts: Record<string, number> }) {
-  const cnt = catCounts[e.c] || 12
-  const pct = Math.round((hits / 9) * 100)
-  return (
-    <div style={{ display: "grid", gridTemplateColumns: "70px 1fr", gap: 11, padding: "11px 0", borderBottom: `1.5px solid ${CS.G18}`, alignItems: "stretch" }}>
-      <DuotonePoster src={e.p} style={{ width: 70, height: 70, border: `2px solid ${CS.K}`, flexShrink: 0 }} />
-      <div style={{ minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 7, minWidth: 0 }}>
-            <span style={{ fontFamily: FONT_MONO, fontSize: 10, color: CS.G55 }}>{String(i + 1).padStart(2, "0")}</span>
-            <span style={{ fontWeight: 900, fontSize: 15, lineHeight: 0.98, letterSpacing: "-0.03em", textTransform: "uppercase", color: CS.K, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.t}</span>
-          </div>
-          <Mono color={CS.B} style={{ flexShrink: 0 }}>{e.c}</Mono>
-        </div>
-        <div>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 6, fontFamily: FONT_MONO, fontSize: 9.5, color: CS.G55, letterSpacing: "0.04em" }}>
-            <span style={{ display: "inline-flex", gap: 2 }}>{Array.from({ length: hits }).map((_, j) => <span key={j} style={{ width: 5, height: 10, background: CS.B }} />)}</span>
-            <span>×{hits}</span><span style={{ color: CS.G35 }}>·</span>
-            <span>{e.d} {e.tm}</span><span style={{ color: CS.G35 }}>·</span>
-            <span style={{ color: CS.K, fontWeight: 700 }}>{pct}% / {cnt}</span>
-          </div>
-          <div style={{ marginTop: 5, height: 4, background: "rgba(13,13,13,0.06)", border: `1px solid ${CS.K}`, position: "relative" }}>
-            <div style={{ position: "absolute", top: -1, bottom: -1, left: -1, width: `calc(${pct}% + 1px)`, background: CS.K }} />
-          </div>
-        </div>
+      ))}
+      <div style={{ textAlign: "center", marginTop: 24 }}>
+        <Hand color={SK.ink35} size={18}>— это всё на этой неделе —</Hand>
       </div>
     </div>
   )
 }
 
-function VCatalog({ name, feed, catCounts, onReset }: { name: string; feed: Ev[]; catCounts: Record<string, number>; onReset: () => void }) {
-  return (
-    <CsPage>
-      <div style={{ position: "absolute", inset: 0, padding: "44px 0 22px", display: "flex", flexDirection: "column" }}>
-        <FeedHeader name={name} right={feed.length} onReset={onReset} />
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 18px", background: CS.K, color: CS.W, flexShrink: 0 }}>
-          <span style={{ fontWeight: 900, fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase" }}>Картотека / Index</span>
-          <Mono color="rgba(255,255,255,0.6)">картинка + цифры</Mono>
-        </div>
-        <div style={{ flex: 1, overflowY: "auto", padding: "2px 18px 0" }}>
-          {feed.map((e, i) => <CatalogRow key={i} e={e} i={i} hits={Math.max(1, catCounts[e.c] ?? 1)} catCounts={catCounts} />)}
-        </div>
-      </div>
-    </CsPage>
-  )
-}
+// ── Billboard-style "dark" header used by views that ride on black ───────
+// (kept available for future variants; not used in any of the 3 main views
+// — but BillboardProfileBadge is still exported via shared.tsx) //
+void BillboardProfileBadge
 
-// ── Variant 4 · Spread ───────────────────────────────────────────────────
+// ── Page entry — switches between the three views ───────────────────────
 
-function VSpread({ name, feed, onReset }: { name: string; feed: Ev[]; onReset: () => void }) {
-  if (feed.length === 0) return <FeedEmpty name={name} />
-  const lead = feed[0]
-  const rest = feed.slice(1, 6)
-  return (
-    <CsPage>
-      <div style={{ position: "absolute", inset: 0, padding: "44px 0 22px", display: "flex", flexDirection: "column" }}>
-        <FeedHeader name={name} right={feed.length} onReset={onReset} />
-        <div style={{ flex: 1, overflowY: "auto", padding: "12px 18px 0" }}>
-          <Mono color={CS.B} style={{ fontWeight: 700 }}>Главное / Лид недели</Mono>
-          <div style={{ display: "grid", gridTemplateColumns: "1.15fr 1fr", gap: 10, marginTop: 8, alignItems: "start" }}>
-            <DuotonePoster src={lead.p} style={{ width: "100%", aspectRatio: "1 / 1.3", border: `2.5px solid ${CS.K}`, boxShadow: `4px 4px 0 ${CS.B}` }} />
-            <div style={{ minWidth: 0 }}>
-              <div style={{ display: "inline-block", background: CS.K, color: CS.W, padding: "3px 7px", fontWeight: 900, fontSize: 8.5, letterSpacing: "0.16em", textTransform: "uppercase" }}>{lead.c}</div>
-              <div style={{ fontWeight: 900, fontSize: 23, lineHeight: 0.9, letterSpacing: "-0.04em", textTransform: "uppercase", color: CS.K, marginTop: 8 }}>{lead.t}</div>
-              <div style={{ fontWeight: 600, fontSize: 11, lineHeight: 1.4, color: CS.G70, marginTop: 8 }}>Подборка недели. Один лид + подкреплённый список.</div>
-            </div>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 9, paddingTop: 7, borderTop: `1.5px solid ${CS.K}` }}>
-            <Mono>{lead.ch} · {lead.v}</Mono><Mono color={CS.K} style={{ fontWeight: 700 }}>{lead.d} · {lead.tm}</Mono>
-          </div>
-          <div style={{ marginTop: 16, paddingBottom: 6, borderBottom: `2px solid ${CS.K}`, display: "flex", justifyContent: "space-between" }}>
-            <Mark>Также на неделе</Mark><Mark color={CS.G55}>+{rest.length}</Mark>
-          </div>
-          <div style={{ marginTop: 4 }}>
-            {rest.map((e, i) => (
-              <div key={i} style={{ display: "grid", gridTemplateColumns: "auto 48px 1fr auto", gap: 10, alignItems: "center", padding: "10px 0", borderBottom: `1px solid ${CS.G18}` }}>
-                <span style={{ fontFamily: FONT_MONO, fontSize: 11, color: CS.B, fontWeight: 700 }}>{String(i + 2).padStart(2, "0")}</span>
-                <DuotonePoster src={e.p} style={{ width: 48, height: 48, border: `2px solid ${CS.K}` }} />
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 900, fontSize: 14, lineHeight: 0.98, letterSpacing: "-0.03em", textTransform: "uppercase", color: CS.K, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.t}</div>
-                  <Mono style={{ display: "block", marginTop: 3 }}>{e.c} · {e.v}</Mono>
-                </div>
-                <span style={{ fontFamily: FONT_MONO, fontSize: 10, color: CS.K, fontWeight: 700, textAlign: "right" }}>{e.d}<br />{e.tm}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </CsPage>
-  )
-}
-
-// ── Variant 5 · Billboard ────────────────────────────────────────────────
-
-function VBillboard({ name, feed, onReset }: { name: string; feed: Ev[]; onReset: () => void }) {
-  if (feed.length === 0) return <FeedEmpty name={name} />
-  const hero = feed[0]
-  const sheet = feed.slice(1, 7)
-  return (
-    <div className="cs-jr" style={{ position: "fixed", inset: 0, background: CS.K, fontFamily: FONT_SANS, overflow: "hidden" }}>
-      <div style={{ position: "absolute", inset: 0, padding: "44px 0 22px", display: "flex", flexDirection: "column" }}>
-        <div style={{ padding: "0 18px 10px", borderBottom: `2px solid ${CS.W}`, display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexShrink: 0 }}>
-          <div>
-            <span style={{ fontFamily: FONT_MONO, fontSize: 9, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.6)" }}>N° 001 · афиша · {name.trim().split(/\s+/)[0]}</span>
-            <div style={{ fontWeight: 900, fontSize: 26, lineHeight: 0.9, letterSpacing: "-0.04em", textTransform: "uppercase", color: CS.W, marginTop: 6 }}>Эта неделя</div>
-          </div>
-          {/* Right side: count + white profile badge for the dark header. */}
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ fontWeight: 900, fontSize: 22, color: CS.B, letterSpacing: "-0.04em", cursor: "pointer" }} onClick={onReset}>{feed.length}</span>
-            <BillboardProfileBadge name={name} />
-          </div>
-        </div>
-        <div style={{ flex: 1, overflowY: "auto", padding: "12px 18px 0" }}>
-          <div style={{ position: "relative", border: `2.5px solid ${CS.W}`, overflow: "hidden", aspectRatio: "1 / 1.12" }}>
-            <DuotonePoster src={hero.p} style={{ position: "absolute", inset: 0 }} />
-            <div style={{ position: "absolute", top: 8, left: 8, background: CS.W, color: CS.K, padding: "4px 8px", fontWeight: 900, fontSize: 9, letterSpacing: "0.16em", textTransform: "uppercase", border: `1.5px solid ${CS.K}` }}>{hero.c}</div>
-            <div style={{ position: "absolute", top: 8, right: 8, background: CS.B, color: CS.W, padding: "5px 9px", fontFamily: FONT_MONO, fontSize: 10, letterSpacing: "0.06em" }}>{hero.d} · {hero.tm}</div>
-            <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "16px 12px 14px", background: "linear-gradient(to top, rgba(0,0,0,0.92) 40%, transparent)" }}>
-              <div style={{ fontWeight: 900, fontSize: 38, lineHeight: 0.82, letterSpacing: "-0.05em", textTransform: "uppercase", color: CS.W }}>{hero.t}</div>
-              <div style={{ fontFamily: FONT_MONO, fontSize: 10, color: "rgba(255,255,255,0.75)", marginTop: 9, letterSpacing: "0.04em" }}>{hero.ch} · {hero.v}</div>
-            </div>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", margin: "14px 0 9px" }}>
-            <span style={{ fontWeight: 900, fontSize: 9, letterSpacing: "0.22em", textTransform: "uppercase", color: CS.W }}>Контактный лист</span>
-            <Mono color="rgba(255,255,255,0.6)">+{sheet.length}</Mono>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
-            {sheet.map((e, i) => (
-              <div key={i} style={{ position: "relative", border: `1.5px solid ${CS.W}`, aspectRatio: "1 / 1.16", overflow: "hidden" }}>
-                <DuotonePoster src={e.p} style={{ position: "absolute", inset: 0 }} />
-                <span style={{ position: "absolute", top: 3, left: 3, background: CS.W, color: CS.K, padding: "1px 4px", fontFamily: FONT_MONO, fontSize: 7.5, fontWeight: 700, border: `1px solid ${CS.K}` }}>{String(i + 2).padStart(2, "0")}</span>
-                <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.82)", color: CS.W, padding: "4px 5px" }}>
-                  <div style={{ fontFamily: FONT_MONO, fontSize: 7.5, color: CS.B, letterSpacing: "0.04em", textTransform: "uppercase" }}>{e.c}</div>
-                  <div style={{ fontWeight: 900, fontSize: 9, lineHeight: 0.95, letterSpacing: "-0.02em", textTransform: "uppercase", marginTop: 2, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{e.t}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ── Variant 6 · Combo ────────────────────────────────────────────────────
-
-function ComboSection({ n, title }: { n: string; title: string }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, marginTop: 18 }}>
-      <span style={{ fontFamily: FONT_MONO, fontSize: 12, fontWeight: 700, color: CS.B }}>{n}</span>
-      <span style={{ fontWeight: 900, fontSize: 13, letterSpacing: "0.04em", textTransform: "uppercase", color: CS.K }}>{title}</span>
-      <span style={{ flex: 1, height: 2, background: CS.K }} />
-    </div>
-  )
-}
-
-function SuperSplit({ cat, copyVar = 0, superByCat }: { cat: string; copyVar?: number; superByCat: DerivedData["superByCat"] }) {
-  const d = superByCat[cat]
-  if (!d) return null
-  const c = d.copy[copyVar] || d.copy[0]
-  return (
-    <div style={{ position: "relative", marginTop: 16, marginBottom: 2, border: `2.5px solid ${CS.K}`, background: CS.W, overflow: "hidden", boxShadow: `6px 6px 0 ${CS.B}`, display: "flex", minHeight: 168 }}>
-      <div style={{ width: 120, flexShrink: 0, position: "relative", borderRight: `2.5px solid ${CS.K}` }}>
-        <DuotonePoster src={d.poster} style={{ position: "absolute", inset: 0 }} />
-        <div style={{ position: "absolute", left: 0, bottom: 0, background: CS.B, color: CS.W, padding: "4px 9px", fontFamily: FONT_MONO, fontSize: 10, fontWeight: 700, letterSpacing: "0.06em" }}>{d.badge}</div>
-      </div>
-      <div style={{ flex: 1, minWidth: 0, padding: "13px 14px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 9 }}>
-          <span style={{ fontWeight: 900, fontSize: 38, lineHeight: 0.8, letterSpacing: "-0.06em", color: CS.B }}>{d.rank}</span>
-          <span style={{ fontWeight: 900, fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: CS.K, lineHeight: 1.1 }}>{c.kicker}</span>
-        </div>
-        <div>
-          <div style={{ fontWeight: 900, fontSize: 21, lineHeight: 0.88, letterSpacing: "-0.04em", textTransform: "uppercase", color: CS.K, marginTop: 8 }}>{d.title}</div>
-          <div style={{ fontWeight: 600, fontSize: 11, lineHeight: 1.35, color: CS.G55, marginTop: 7 }}>{c.meta}</div>
-        </div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10, paddingTop: 9, borderTop: `2px solid ${CS.K}` }}>
-          <span style={{ fontFamily: FONT_MONO, fontSize: 10.5, fontWeight: 700, color: CS.K, letterSpacing: "0.02em" }}>{c.foot}</span>
-          <span style={{ fontWeight: 900, fontSize: 18, color: CS.B }}>→</span>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function VCombo({ name, feed, shelves, superByCat, superVar, onReset }: { name: string; feed: Ev[]; shelves: DerivedData["shelves"]; superByCat: DerivedData["superByCat"]; superVar: number; onReset: () => void }) {
-  if (feed.length === 0) return <FeedEmpty name={name} />
-  const lead = feed[0]
-  return (
-    <CsPage>
-      <div style={{ position: "absolute", inset: 0, padding: "44px 0 22px", display: "flex", flexDirection: "column" }}>
-        <FeedHeader name={name} right={feed.length} onReset={onReset} />
-        <div style={{ flex: 1, overflowY: "auto", padding: "4px 18px 0" }}>
-          <ComboSection n="01" title="Главное недели" />
-          <div style={{ display: "grid", gridTemplateColumns: "1.15fr 1fr", gap: 10, alignItems: "start" }}>
-            <DuotonePoster src={lead.p} style={{ width: "100%", aspectRatio: "1 / 1.3", border: `2.5px solid ${CS.K}`, boxShadow: `4px 4px 0 ${CS.B}` }} />
-            <div style={{ minWidth: 0 }}>
-              <div style={{ display: "inline-block", background: CS.K, color: CS.W, padding: "3px 7px", fontWeight: 900, fontSize: 8.5, letterSpacing: "0.16em", textTransform: "uppercase" }}>{lead.c}</div>
-              <div style={{ fontWeight: 900, fontSize: 22, lineHeight: 0.9, letterSpacing: "-0.04em", textTransform: "uppercase", color: CS.K, marginTop: 8 }}>{lead.t}</div>
-              <div style={{ fontWeight: 600, fontSize: 11, lineHeight: 1.4, color: CS.G70, marginTop: 8 }}>Лид недели. Подборка живёт неделю.</div>
-            </div>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 9, paddingTop: 7, borderTop: `1.5px solid ${CS.K}` }}>
-            <Mono>{lead.ch} · {lead.v}</Mono><Mono color={CS.K} style={{ fontWeight: 700 }}>{lead.d} · {lead.tm}</Mono>
-          </div>
-          <ComboSection n="02" title="По вкусу · по категориям" />
-          {shelves.slice(0, 3).map((s, i) => (
-            <div key={s.cat}>
-              <Shelf idx={i} cat={s.cat} hits={s.hits} evs={s.evs} note={s.note} />
-              <SuperSplit cat={s.cat} copyVar={superVar} superByCat={superByCat} />
-            </div>
-          ))}
-        </div>
-      </div>
-    </CsPage>
-  )
-}
-
-// ── Page entry — picks variant from ?v= ──────────────────────────────────
+type FeedView = "diary" | "board" | "journal"
+type FeedEdge = "thin" | "bold" | "card" | "mat"
+type FeedBtn = "a" | "b" | "c"
 
 export default function CsFeed() {
   const navigate = useNavigate()
   const { derived } = useDerived()
-  const { name, clear } = useJourneyState()
+  const { name } = useJourneyState()
   const search = useSearch({ strict: false }) as Record<string, string | undefined>
-  const variant = Math.max(0, Math.min(6, Number(search.v ?? 6)))
-  const superVar = Math.max(0, Math.min(2, Number(search.superVar ?? 1)))
+
+  // Legacy editorial feed (pre-v3 Cover/Shelves/Magazine/...) is preserved
+  // and reachable via ?legacy=1&v=0..6. Useful for design comparison.
+  // Note: tanstack-router may parse "1" as number, so check truthy + not "0".
+  if (search.legacy && String(search.legacy) !== "0") return <CsFeedLegacy />
+
+  // v3 defaults: Доска · Контур · Цикл (per "Клиентский путь прод v3.html").
+  const view: FeedView = (["diary", "board", "journal"].includes(search.view ?? "")
+    ? (search.view as FeedView)
+    : "board")
+  const edgeKey: FeedEdge = (["thin", "bold", "card", "mat"].includes(search.edge ?? "")
+    ? (search.edge as FeedEdge)
+    : "thin")
+  const btn: FeedBtn = (["a", "b", "c"].includes(search.btn ?? "")
+    ? (search.btn as FeedBtn)
+    : "b")
 
   const safeName = name.trim() || "Гость"
+  const feed = derived.feed
+  const edge = EDGE_PRESETS[edgeKey] ?? EDGE_PRESETS.thin
 
-  const onReset = () => {
-    clear()
-    navigate({ to: "/cs/landing" })
-  }
+  const navValue = useMemo(
+    () => ({ openProfile: () => navigate({ to: "/cs/profile" }) }),
+    [navigate],
+  )
 
-  // NavCtx — lets the ProfileBadge inside any feed header (light or dark)
-  // open the profile screen without prop-drilling a callback.
-  const navValue = useMemo(() => ({ openProfile: () => navigate({ to: "/cs/profile" }) }), [navigate])
+  let inner: React.ReactNode
+  if (view === "diary") inner = <DiaryView feed={feed} />
+  else if (view === "journal") inner = <JournalView feed={feed} name={safeName} />
+  else inner = <BoardView feed={feed} btn={btn} name={safeName} />
 
-  const { feed, shelves, superByCat, catCounts } = derived
-  let body: React.ReactNode
-  if (variant === 1) body = <VShelves name={safeName} feed={feed} shelves={shelves} onReset={onReset} />
-  else if (variant === 2) body = <VMagazine name={safeName} feed={feed} onReset={onReset} />
-  else if (variant === 3) body = <VCatalog name={safeName} feed={feed} catCounts={catCounts} onReset={onReset} />
-  else if (variant === 4) body = <VSpread name={safeName} feed={feed} onReset={onReset} />
-  else if (variant === 5) body = <VBillboard name={safeName} feed={feed} onReset={onReset} />
-  else if (variant === 6) body = <VCombo name={safeName} feed={feed} shelves={shelves} superByCat={superByCat} superVar={superVar} onReset={onReset} />
-  else body = <VCover name={safeName} feed={feed} onReset={onReset} />
-
-  // @NEW-GOING: GoingProvider wraps the whole tree so the EventSheet's
-  // "Иду →" button writes into the same store that Profile/GoingAgenda
-  // reads from. localStorage carries the list across route changes.
   return (
     <NavCtx.Provider value={navValue}>
       <GoingProvider>
-        <EventModalProvider>{body}</EventModalProvider>
+        <EventModalProvider>
+          <EdgeCtx.Provider value={edge}>
+            {/* relative + 100dvh gives the absolute children a real
+                positioning context (the App's Chakra Container is static
+                with 0 content-height so absolute-only didn't fill the
+                viewport). */}
+            <div style={{
+              position: "relative", width: "100%", height: "100dvh",
+              background: CS.W, fontFamily: FONT_SANS, color: SK.ink,
+              overflow: "hidden",
+            }}>
+              <ScreenBG theme="grid" opacity={0.5} />
+              <div className="sk-scroll" key={view} style={{ position: "absolute", inset: 0, overflowY: "auto", overflowX: "hidden" }}>
+                <div style={{ height: 46 }} />
+                {inner}
+              </div>
+            </div>
+          </EdgeCtx.Provider>
+        </EventModalProvider>
       </GoingProvider>
     </NavCtx.Provider>
   )
 }
+
+// Silence unused-import warning for FONT_MONO in case linter complains —
+// (Hand and other atoms use it directly).
+void FONT_MONO
