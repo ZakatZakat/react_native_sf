@@ -123,13 +123,18 @@ function going(ev: Ev, i: number): number {
   return (h % 380) + 64
 }
 
-/** Display label for the price chip — falls back to start time when curator
- *  gave no price; "вход свободный" etc. renders as the blue FREE pill. */
-function priceLabel(ev: Ev): string {
+/** Display label for the price chip. Real price wins; "вход свободный"
+ *  etc. → "free". When there's no usable price we fall back to the start
+ *  time, but only if curator actually gave one — otherwise null so the
+ *  chip is hidden (no empty white tag). */
+function priceLabel(ev: Ev): string | null {
   const p = (ev.price || "").trim()
-  if (!p || p === "—") return ev.tm
-  if (/свобод|беспл|free/i.test(p)) return "free"
-  return p.length <= 12 ? p : ev.tm
+  if (p && p !== "—") {
+    if (/свобод|беспл|free/i.test(p)) return "free"
+    if (p.length <= 12) return p
+  }
+  if (ev.tm && ev.tm !== "—") return ev.tm
+  return null
 }
 
 function CatChip({ c, dark = false, style }: { c: string; dark?: boolean; style?: React.CSSProperties }) {
@@ -138,11 +143,16 @@ function CatChip({ c, dark = false, style }: { c: string; dark?: boolean; style?
   )
 }
 
-function PriceTag({ ev, style }: { ev: Ev; style?: React.CSSProperties }) {
+/** Self-contained price chip — always a solid, readable background so it
+ *  works on white cards and over posters alike. Renders nothing when
+ *  there's no price or time to show. The `solid` flag forces a white
+ *  plate (used when sitting on top of a poster). */
+function PriceTag({ ev, solid = false, style }: { ev: Ev; solid?: boolean; style?: React.CSSProperties }) {
   const label = priceLabel(ev)
-  const free = /free/i.test(label)
+  if (!label) return null
+  const free = label === "free"
   return (
-    <span style={{ display: "inline-block", background: free ? SK.blue : "transparent", color: free ? SK.paper : SK.ink, border: `1.5px solid ${free ? SK.blue : SK.ink}`, padding: "2px 6px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, letterSpacing: "0.04em", lineHeight: 1.1, whiteSpace: "nowrap", ...style }}>{free ? "FREE" : label}</span>
+    <span style={{ display: "inline-block", background: free ? SK.blue : (solid ? SK.paper : "transparent"), color: free ? SK.paper : SK.ink, border: `1.5px solid ${free ? SK.blue : SK.ink}`, padding: "2px 6px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, letterSpacing: "0.04em", lineHeight: 1.1, whiteSpace: "nowrap", ...style }}>{free ? "FREE" : label}</span>
   )
 }
 
@@ -218,7 +228,7 @@ function MosaicCard({ ev, i, h }: { ev: Ev; i: number; h: number }) {
     <div style={{ position: "relative", marginBottom: 16, animation: `sk-refresh 0.5s cubic-bezier(0.22,1,0.36,1) ${(i * 0.06).toFixed(2)}s both` }}>
       <Clip ev={ev} w="100%" h={h} rot={rot} />
       <span style={{ position: "absolute", top: 8, left: 8 }}><CatChip c={ev.c} dark /></span>
-      <span style={{ position: "absolute", top: 8, right: 8, transform: "rotate(3deg)" }}><PriceTag ev={ev} style={{ background: SK.paper }} /></span>
+      <span style={{ position: "absolute", top: 8, right: 8, transform: "rotate(3deg)" }}><PriceTag ev={ev} solid /></span>
       <div style={{ marginTop: 9, marginLeft: 4 }}>
         <div style={{ fontWeight: 900, fontSize: 13, letterSpacing: "-0.02em", lineHeight: 0.98, color: SK.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ev.t}</div>
         <div style={{ fontFamily: FONT_MONO, fontSize: 8.5, letterSpacing: "0.04em", color: SK.ink55, marginTop: 4 }}>{ev.d} · {ev.tm} · идут {n}</div>
