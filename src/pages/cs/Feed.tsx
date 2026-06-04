@@ -262,6 +262,7 @@ function CsMap({ events, height = 236 }: { events: Ev[]; height?: number }) {
   const openRef = useRef(open)
   openRef.current = open
   const [cat, setCat] = useState("Все")
+  const [query, setQuery] = useState("")
   const [ready, setReady] = useState(false)
 
   const withGeo = useMemo(() => {
@@ -293,7 +294,14 @@ function CsMap({ events, height = 236 }: { events: Ev[]; height?: number }) {
     return () => { map.remove(); mapRef.current = null; layerRef.current = null }
   }, [])
 
-  // Render / re-render markers when data, filter, or map readiness changes.
+  // Text matcher — search across title / venue / channel / category.
+  const matches = (e: Ev) => {
+    const q = query.trim().toLowerCase()
+    if (!q) return true
+    return `${e.t} ${e.v} ${e.ch} ${e.c}`.toLowerCase().includes(q)
+  }
+
+  // Render / re-render markers when data, filters, query, or readiness change.
   useEffect(() => {
     const map = mapRef.current, lyr = layerRef.current
     if (!ready || !map || !lyr) return
@@ -301,6 +309,7 @@ function CsMap({ events, height = 236 }: { events: Ev[]; height?: number }) {
     const pts: [number, number][] = []
     for (const { e, geo } of withGeo) {
       if (cat !== "Все" && e.c !== cat) continue
+      if (!matches(e)) continue
       pts.push(geo)
       const icon = L.divIcon({
         className: "",
@@ -311,17 +320,29 @@ function CsMap({ events, height = 236 }: { events: Ev[]; height?: number }) {
     }
     if (pts.length > 1) map.fitBounds(pts, { padding: [44, 44], maxZoom: 14, animate: true })
     else if (pts.length === 1) map.setView(pts[0], 14, { animate: true })
-  }, [withGeo, cat, ready])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [withGeo, cat, query, ready])
 
-  const visibleCount = withGeo.filter((p) => cat === "Все" || p.e.c === cat).length
+  const visibleCount = withGeo.filter((p) => (cat === "Все" || p.e.c === cat) && matches(p.e)).length
 
   return (
     <div style={{ padding: "0 14px" }}>
-      {/* search bar (decorative) + locate */}
+      {/* search bar — filters pins by title / venue / channel / category */}
       <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
         <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, border: `2px solid ${SK.ink}`, background: SK.paper, padding: "9px 12px", boxShadow: `3px 3px 0 ${SK.ink}` }}>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4.4" stroke={SK.ink} strokeWidth="2" /><line x1="9.4" y1="9.4" x2="13" y2="13" stroke={SK.ink} strokeWidth="2" strokeLinecap="round" /></svg>
-          <span style={{ fontFamily: FONT_MONO, fontSize: 11, letterSpacing: "0.04em", color: SK.ink55, whiteSpace: "nowrap" }}>искать место…</span>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}><circle cx="6" cy="6" r="4.4" stroke={SK.ink} strokeWidth="2" /><line x1="9.4" y1="9.4" x2="13" y2="13" stroke={SK.ink} strokeWidth="2" strokeLinecap="round" /></svg>
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="искать место…"
+            style={{
+              flex: 1, minWidth: 0, border: "none", outline: "none", background: "transparent",
+              fontFamily: FONT_MONO, fontSize: 11, letterSpacing: "0.04em", color: SK.ink,
+            }}
+          />
+          {query && (
+            <button onClick={() => setQuery("")} aria-label="Очистить" style={{ flexShrink: 0, border: "none", background: "none", cursor: "pointer", padding: 0, fontFamily: FONT_SANS, fontWeight: 900, fontSize: 14, lineHeight: 1, color: SK.ink55 }}>✕</button>
+          )}
         </div>
         <button aria-label="Где я" onClick={() => mapRef.current?.setView([55.745, 37.62], 12)} style={{ flexShrink: 0, width: 42, border: `2px solid ${SK.ink}`, background: SK.blue, boxShadow: `3px 3px 0 ${SK.ink}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M14 2 L2 7 L7 9 L9 14 Z" fill="#fff" stroke="#fff" strokeWidth="1" strokeLinejoin="round" /></svg>
