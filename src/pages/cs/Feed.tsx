@@ -24,7 +24,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router"
 import {
   CS, FONT_MONO, FONT_SANS, ScreenBG,
   NavCtx, ProfileBadge, BillboardProfileBadge,
-  EventModalProvider, GoingProvider,
+  EventModalProvider, GoingProvider, useOpenEvent,
   // v3 scrapbook
   SK, EdgeCtx, EDGE_PRESETS,
   Clip, Polaroid, Hand, Lbl, Scribble, Sparkle, Avatar, SkMark,
@@ -114,21 +114,66 @@ function DiaryView({ feed }: { feed: Ev[] }) {
 
 // ── VARIANT 2 · Доска ───────────────────────────────────────────────────
 
-function BoardLabel({ ev, rot = 0, style }: { ev: Ev; rot?: number; style?: React.CSSProperties }) {
-  return (
-    <div style={{ background: SK.paper, border: `1.5px solid ${SK.ink}`, padding: "5px 8px", transform: `rotate(${rot}deg)`, boxShadow: `2px 2px 0 ${SK.ink}`, lineHeight: 1, ...style }}>
-      <div style={{ fontFamily: FONT_SANS, fontWeight: 900, fontSize: 12, letterSpacing: "-0.01em", color: SK.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ev.t}</div>
-      <div style={{ fontFamily: FONT_MONO, fontSize: 8.5, letterSpacing: "0.06em", color: SK.ink55, marginTop: 4 }}>{ev.d} · {ev.tm} · {ev.c}</div>
-    </div>
-  )
+/** Short tag for the price chip — falls back to the time when the price
+ *  is absent or too long to fit the rotated tag cleanly. */
+function priceTag(ev: Ev): string {
+  const p = (ev.price || "").trim()
+  if (!p || p === "—") return ev.tm
+  if (/свобод|беспл|free/i.test(p)) return "free"
+  return p.length <= 10 ? p : ev.tm
 }
 
+/** Deterministic social-proof "идут N" count derived from the event id —
+ *  stable across renders, in the 40..280 range. */
+function goingCount(ev: Ev): number {
+  let h = 0
+  for (const ch of ev.id) h = (h * 31 + ch.charCodeAt(0)) >>> 0
+  return 40 + (h % 240)
+}
+
+/** Board card — poster with a category badge (top-left) + price chip
+ *  (top-right, overhanging) and a clean title + "идут N" caption below.
+ *  Matches the polished v3 board design. */
 function BoardCard({ ev, i }: { ev: Ev; i: number }) {
   const rot = [-3, 2.5, -2, 3][i % 4]
+  const dur = (4.6 + (Math.abs(rot) % 3) * 0.7).toFixed(2)
+  const delay = ((Math.abs(Math.round(rot * 7)) % 20) / 10).toFixed(2)
+  const open = useOpenEvent()
   return (
-    <div style={{ position: "relative", marginBottom: 4, animation: `sk-refresh 0.5s cubic-bezier(0.22,1,0.36,1) ${(i * 0.06).toFixed(2)}s both` }}>
-      <Clip ev={ev} w={136} h={172} rot={rot} />
-      <BoardLabel ev={ev} rot={rot * 0.5} style={{ marginTop: 10, marginLeft: 6, width: 124 }} />
+    <div style={{ marginBottom: 6, animation: `sk-refresh 0.5s cubic-bezier(0.22,1,0.36,1) ${(i * 0.06).toFixed(2)}s both` }}>
+      {/* poster (floats gently); badge + price tag overhang, so the
+          rotated wrapper keeps overflow visible. */}
+      <div style={{ animation: `sk-float ${dur}s ease-in-out ${delay}s infinite` }}>
+        <div
+          onClick={() => open(ev)}
+          style={{
+            position: "relative", width: "100%", aspectRatio: "4 / 5",
+            transform: `rotate(${rot}deg)`,
+            background: SK.paper,
+            border: `2px solid ${SK.ink}`, boxShadow: `3px 3px 0 ${SK.ink}`,
+            cursor: "pointer",
+          }}
+        >
+          <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
+            {ev.p && (
+              <img src={ev.p} alt="" draggable={false} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            )}
+          </div>
+          {/* category badge — top-left */}
+          {ev.c !== "—" && (
+            <div style={{ position: "absolute", top: 8, left: 8, background: SK.ink, color: SK.paper, padding: "4px 8px", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", lineHeight: 1 }}>{ev.c}</div>
+          )}
+          {/* price tag — top-right, rotated, overhanging */}
+          <div style={{ position: "absolute", top: 6, right: -5, background: SK.paper, border: `1.5px solid ${SK.ink}`, padding: "4px 8px", transform: "rotate(4deg)", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, color: SK.ink, lineHeight: 1, boxShadow: `2px 2px 0 ${SK.ink}`, whiteSpace: "nowrap" }}>{priceTag(ev)}</div>
+        </div>
+      </div>
+      {/* title + caption — clean, no box */}
+      <div style={{ marginTop: 14, paddingLeft: 2 }}>
+        <div style={{ fontWeight: 900, fontSize: 16, letterSpacing: "-0.02em", lineHeight: 1.0, color: SK.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ev.t}</div>
+        <div style={{ fontFamily: FONT_MONO, fontSize: 9.5, letterSpacing: "0.04em", color: SK.ink55, marginTop: 6 }}>
+          {ev.d} · {ev.tm} · <span style={{ color: SK.blue, fontWeight: 700 }}>идут {goingCount(ev)}</span>
+        </div>
+      </div>
     </div>
   )
 }
@@ -171,9 +216,11 @@ function BoardView({ feed, btn = "b", name = "Гость" }: { feed: Ev[]; btn?:
     const idx = feed.map((_, i) => i)
     return idx.sort((a, b) => ((a * 7 + nonce * 13) % 11) - ((b * 7 + nonce * 13) % 11))
   }, [nonce, feed])
-  const E = pad(order.map((i) => feed[i]), 8)
-  const colL = [E[0], E[2], E[4], E[6]]
-  const colR = [E[1], E[3], E[5], E[7]]
+  // Use only real events (drop warm-up placeholders) so the board never
+  // shows empty cards; split into two staggered columns.
+  const E = order.map((i) => feed[i]).filter((e) => e && !e.id.startsWith("__placeholder")).slice(0, 8)
+  const colL = E.filter((_, i) => i % 2 === 0)
+  const colR = E.filter((_, i) => i % 2 === 1)
   const refresh = () => { setNonce((n) => n + 1); setSweep((s) => s + 360) }
 
   return (
@@ -206,12 +253,12 @@ function BoardView({ feed, btn = "b", name = "Гость" }: { feed: Ev[]; btn?:
           </button>
         </div>
       </div>
-      {/* two columns — re-stagger on refresh */}
-      <div key={nonce} style={{ display: "flex", gap: 14, padding: "0 14px", alignItems: "flex-start" }}>
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 36 }}>
+      {/* two columns — right column nudged down for a staggered montage */}
+      <div key={nonce} style={{ display: "flex", gap: 16, padding: "0 16px", alignItems: "flex-start" }}>
+        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 30 }}>
           {colL.map((e, i) => <BoardCard key={e.id + nonce} ev={e} i={i * 2} />)}
         </div>
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 36, paddingTop: 42 }}>
+        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 30, paddingTop: 40 }}>
           {colR.map((e, i) => <BoardCard key={e.id + nonce} ev={e} i={i * 2 + 1} />)}
         </div>
       </div>
