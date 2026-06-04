@@ -19,8 +19,10 @@
  *  Spread/Billboard/Combo) is removed per v3 spec.
  */
 
-import { useContext, useMemo, useState } from "react"
+import { useContext, useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate, useSearch } from "@tanstack/react-router"
+import L from "leaflet"
+import "leaflet/dist/leaflet.css"
 import {
   CS, FONT_MONO, FONT_SANS, ScreenBG,
   NavCtx, ProfileBadge, BillboardProfileBadge,
@@ -112,67 +114,227 @@ function DiaryView({ feed }: { feed: Ev[] }) {
   )
 }
 
-// ── VARIANT 2 · Доска ───────────────────────────────────────────────────
+// ── VARIANT 2 · Доска (mapcombo: Карта + Афиша + Мозаика) ───────────────
 
-/** Short tag for the price chip — falls back to the time when the price
- *  is absent or too long to fit the rotated tag cleanly. */
-function priceTag(ev: Ev): string {
+/** Deterministic social-proof "идут N" count from the event id. */
+function going(ev: Ev, i: number): number {
+  let h = i * 53
+  for (const ch of ev.id) h = (h * 31 + ch.charCodeAt(0)) >>> 0
+  return (h % 380) + 64
+}
+
+/** Display label for the price chip — falls back to start time when curator
+ *  gave no price; "вход свободный" etc. renders as the blue FREE pill. */
+function priceLabel(ev: Ev): string {
   const p = (ev.price || "").trim()
   if (!p || p === "—") return ev.tm
   if (/свобод|беспл|free/i.test(p)) return "free"
-  return p.length <= 10 ? p : ev.tm
+  return p.length <= 12 ? p : ev.tm
 }
 
-/** Deterministic social-proof "идут N" count derived from the event id —
- *  stable across renders, in the 40..280 range. */
-function goingCount(ev: Ev): number {
-  let h = 0
-  for (const ch of ev.id) h = (h * 31 + ch.charCodeAt(0)) >>> 0
-  return 40 + (h % 240)
+function CatChip({ c, dark = false, style }: { c: string; dark?: boolean; style?: React.CSSProperties }) {
+  return (
+    <span style={{ display: "inline-block", background: dark ? SK.ink : "transparent", color: dark ? SK.paper : SK.ink, border: `1.5px solid ${SK.ink}`, padding: "2px 6px", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 8, letterSpacing: "0.14em", textTransform: "uppercase", lineHeight: 1, ...style }}>{c}</span>
+  )
 }
 
-/** Board card — poster with a category badge (top-left) + price chip
- *  (top-right, overhanging) and a clean title + "идут N" caption below.
- *  Matches the polished v3 board design. */
-function BoardCard({ ev, i }: { ev: Ev; i: number }) {
-  const rot = [-3, 2.5, -2, 3][i % 4]
-  const dur = (4.6 + (Math.abs(rot) % 3) * 0.7).toFixed(2)
-  const delay = ((Math.abs(Math.round(rot * 7)) % 20) / 10).toFixed(2)
+function PriceTag({ ev, style }: { ev: Ev; style?: React.CSSProperties }) {
+  const label = priceLabel(ev)
+  const free = /free/i.test(label)
+  return (
+    <span style={{ display: "inline-block", background: free ? SK.blue : "transparent", color: free ? SK.paper : SK.ink, border: `1.5px solid ${free ? SK.blue : SK.ink}`, padding: "2px 6px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, letterSpacing: "0.04em", lineHeight: 1.1, whiteSpace: "nowrap", ...style }}>{free ? "FREE" : label}</span>
+  )
+}
+
+function GoingBar({ n, style }: { n: number; style?: React.CSSProperties }) {
+  const pct = Math.min(100, Math.round((n / 440) * 100))
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6, ...style }}>
+      <div style={{ flex: 1, height: 4, background: SK.ink12, position: "relative" }}>
+        <div style={{ position: "absolute", inset: 0, width: `${pct}%`, background: SK.blue }} />
+      </div>
+      <span style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 8.5, letterSpacing: "0.04em", color: SK.ink55, whiteSpace: "nowrap" }}>идут {n}</span>
+    </div>
+  )
+}
+
+function SectionLabel({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "24px 0 14px", ...style }}>
+      <Lbl size={9} style={{ letterSpacing: "0.24em" }}>{children}</Lbl>
+      <div style={{ flex: 1, height: 2, background: SK.ink }} />
+    </div>
+  )
+}
+
+/** Hero "выбор недели" card — poster + title + meta + price. */
+function BoardLead({ ev }: { ev: Ev }) {
   const open = useOpenEvent()
   return (
-    <div style={{ marginBottom: 6, animation: `sk-refresh 0.5s cubic-bezier(0.22,1,0.36,1) ${(i * 0.06).toFixed(2)}s both` }}>
-      {/* poster (floats gently); badge + price tag overhang, so the
-          rotated wrapper keeps overflow visible. */}
-      <div style={{ animation: `sk-float ${dur}s ease-in-out ${delay}s infinite` }}>
-        <div
-          onClick={() => open(ev)}
-          style={{
-            position: "relative", width: "100%", aspectRatio: "4 / 5",
-            transform: `rotate(${rot}deg)`,
-            background: SK.paper,
-            border: `2px solid ${SK.ink}`, boxShadow: `3px 3px 0 ${SK.ink}`,
-            cursor: "pointer",
-          }}
-        >
-          <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
-            {ev.p && (
-              <img src={ev.p} alt="" draggable={false} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-            )}
-          </div>
-          {/* category badge — top-left */}
-          {ev.c !== "—" && (
-            <div style={{ position: "absolute", top: 8, left: 8, background: SK.ink, color: SK.paper, padding: "4px 8px", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", lineHeight: 1 }}>{ev.c}</div>
-          )}
-          {/* price tag — top-right, rotated, overhanging */}
-          <div style={{ position: "absolute", top: 6, right: -5, background: SK.paper, border: `1.5px solid ${SK.ink}`, padding: "4px 8px", transform: "rotate(4deg)", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, color: SK.ink, lineHeight: 1, boxShadow: `2px 2px 0 ${SK.ink}`, whiteSpace: "nowrap" }}>{priceTag(ev)}</div>
+    <div onClick={() => open(ev)} style={{ display: "flex", gap: 12, background: SK.paper, border: `2px solid ${SK.ink}`, boxShadow: `4px 4px 0 ${SK.ink}`, padding: 8, cursor: "pointer", animation: "sk-refresh 0.5s cubic-bezier(0.22,1,0.36,1) both" }}>
+      <div style={{ width: 116, flexShrink: 0, height: 150, overflow: "hidden", border: `1.5px solid ${SK.ink}` }}>
+        {ev.p && <img src={ev.p} alt="" draggable={false} style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+      </div>
+      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <CatChip c={ev.c} dark />
+          <Lbl size={8} style={{ letterSpacing: "0.2em" }}>выбор редакции</Lbl>
+        </div>
+        <div style={{ fontWeight: 900, fontSize: 21, letterSpacing: "-0.03em", lineHeight: 0.94, marginTop: 7, color: SK.ink, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{ev.t}</div>
+        {ev.sub && <div style={{ fontFamily: FONT_SANS, fontWeight: 600, fontSize: 11, color: SK.ink55, marginTop: 2 }}>{ev.sub}</div>}
+        <div style={{ fontFamily: FONT_MONO, fontSize: 9.5, letterSpacing: "0.04em", color: SK.ink, marginTop: "auto", lineHeight: 1.5, overflow: "hidden" }}>{ev.v}<br />{ev.d} · {ev.tm}{ev.dur ? ` · ${ev.dur}` : ""}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 8 }}>
+          <PriceTag ev={ev} />
+          <span style={{ fontFamily: FONT_MONO, fontSize: 9, color: SK.ink55, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{ev.ch}</span>
         </div>
       </div>
-      {/* title + caption — clean, no box */}
-      <div style={{ marginTop: 14, paddingLeft: 2 }}>
-        <div style={{ fontWeight: 900, fontSize: 16, letterSpacing: "-0.02em", lineHeight: 1.0, color: SK.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ev.t}</div>
-        <div style={{ fontFamily: FONT_MONO, fontSize: 9.5, letterSpacing: "0.04em", color: SK.ink55, marginTop: 6 }}>
-          {ev.d} · {ev.tm} · <span style={{ color: SK.blue, fontWeight: 700 }}>идут {goingCount(ev)}</span>
+    </div>
+  )
+}
+
+/** Square grid card — poster + chips + title. */
+function GridCard({ ev, i }: { ev: Ev; i: number }) {
+  const open = useOpenEvent()
+  return (
+    <div onClick={() => open(ev)} style={{ cursor: "pointer", animation: `sk-refresh 0.5s cubic-bezier(0.22,1,0.36,1) ${(i * 0.05).toFixed(2)}s both` }}>
+      <Clip ev={ev} w="100%" h={132} rot={0} />
+      <div style={{ marginTop: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+          <CatChip c={ev.c} />
+          <PriceTag ev={ev} />
         </div>
+        <div style={{ fontWeight: 900, fontSize: 13, letterSpacing: "-0.02em", lineHeight: 0.98, marginTop: 6, color: SK.ink, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{ev.t}</div>
+        <div style={{ fontFamily: FONT_MONO, fontSize: 8.5, letterSpacing: "0.04em", color: SK.ink55, marginTop: 4 }}>{ev.d} · {ev.tm}</div>
+      </div>
+    </div>
+  )
+}
+
+/** Masonry mosaic card — rotated poster with overlay chips + caption. */
+function MosaicCard({ ev, i, h }: { ev: Ev; i: number; h: number }) {
+  const rot = [-2.5, 2, -1.5, 2.5][i % 4]
+  const n = going(ev, i)
+  return (
+    <div style={{ position: "relative", marginBottom: 16, animation: `sk-refresh 0.5s cubic-bezier(0.22,1,0.36,1) ${(i * 0.06).toFixed(2)}s both` }}>
+      <Clip ev={ev} w="100%" h={h} rot={rot} />
+      <span style={{ position: "absolute", top: 8, left: 8 }}><CatChip c={ev.c} dark /></span>
+      <span style={{ position: "absolute", top: 8, right: 8, transform: "rotate(3deg)" }}><PriceTag ev={ev} style={{ background: SK.paper }} /></span>
+      <div style={{ marginTop: 9, marginLeft: 4 }}>
+        <div style={{ fontWeight: 900, fontSize: 13, letterSpacing: "-0.02em", lineHeight: 0.98, color: SK.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ev.t}</div>
+        <div style={{ fontFamily: FONT_MONO, fontSize: 8.5, letterSpacing: "0.04em", color: SK.ink55, marginTop: 4 }}>{ev.d} · {ev.tm} · идут {n}</div>
+      </div>
+    </div>
+  )
+}
+
+function MosaicGrid({ events, heights = [188, 138, 138, 188, 168, 150, 150, 168] }: { events: Ev[]; heights?: number[] }) {
+  const colL = events.filter((_, i) => i % 2 === 0)
+  const colR = events.filter((_, i) => i % 2 === 1)
+  return (
+    <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+      <div style={{ flex: 1, minWidth: 0 }}>{colL.map((e, i) => <MosaicCard key={e.id} ev={e} i={i * 2} h={heights[(i * 2) % heights.length]} />)}</div>
+      <div style={{ flex: 1, minWidth: 0, paddingTop: 28 }}>{colR.map((e, i) => <MosaicCard key={e.id} ev={e} i={i * 2 + 1} h={heights[(i * 2 + 1) % heights.length]} />)}</div>
+    </div>
+  )
+}
+
+// ── Real Moscow map (Leaflet + CARTO tiles) ─────────────────────────────
+
+/** Real Moscow venue coordinates (lat, lng). Curator events don't carry
+ *  geo, so each event is pinned at one of these (cycled by index) — pins
+ *  scatter across real Moscow venues for the montage. */
+const MOSCOW_GEO: [number, number][] = [
+  [55.7283, 37.6755], // Шарикоподшипниковская
+  [55.7360, 37.6190], // Дом музыки
+  [55.7297, 37.6017], // Парк Горького
+  [55.7409, 37.6110], // ГЭС-2
+  [55.8401, 37.4870], // Сев. Речной вокзал
+  [55.7700, 37.5980], // Театр.doc
+  [55.7416, 37.6090], // Стрелка
+  [55.7090, 37.6560], // ЗИЛ
+]
+
+function CsMap({ events, height = 236 }: { events: Ev[]; height?: number }) {
+  const boxRef = useRef<HTMLDivElement | null>(null)
+  const mapRef = useRef<L.Map | null>(null)
+  const layerRef = useRef<L.LayerGroup | null>(null)
+  const open = useOpenEvent()
+  const openRef = useRef(open)
+  openRef.current = open
+  const [cat, setCat] = useState("Все")
+  const [ready, setReady] = useState(false)
+
+  const withGeo = useMemo(() => {
+    const list = events.filter((e) => e.p && !e.id.startsWith("__placeholder")).slice(0, 8)
+    return list.map((e, i) => ({ e, geo: MOSCOW_GEO[i % MOSCOW_GEO.length] }))
+  }, [events])
+
+  const cats = useMemo(() => {
+    const seen: string[] = []
+    for (const { e } of withGeo) if (e.c !== "—" && !seen.includes(e.c)) seen.push(e.c)
+    return ["Все", ...seen]
+  }, [withGeo])
+
+  // Init the map once.
+  useEffect(() => {
+    if (!boxRef.current || mapRef.current) return
+    const map = L.map(boxRef.current, { center: [55.745, 37.62], zoom: 12, zoomControl: false, scrollWheelZoom: false, attributionControl: false })
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", { maxZoom: 19, subdomains: "abcd" }).addTo(map)
+    L.control.attribution({ position: "bottomright", prefix: false }).addAttribution("© OpenStreetMap · CARTO").addTo(map)
+    mapRef.current = map
+    layerRef.current = L.layerGroup().addTo(map)
+    setReady(true)
+    setTimeout(() => map.invalidateSize(), 150)
+    setTimeout(() => map.invalidateSize(), 600)
+    return () => { map.remove(); mapRef.current = null; layerRef.current = null }
+  }, [])
+
+  // Render / re-render markers when data, filter, or map readiness changes.
+  useEffect(() => {
+    const map = mapRef.current, lyr = layerRef.current
+    if (!ready || !map || !lyr) return
+    lyr.clearLayers()
+    const pts: [number, number][] = []
+    for (const { e, geo } of withGeo) {
+      if (cat !== "Все" && e.c !== cat) continue
+      pts.push(geo)
+      const icon = L.divIcon({
+        className: "",
+        html: `<div class="cs-pin"><div class="cs-pin-card"><img src="${e.p}" alt=""/></div><div class="cs-pin-tip"></div></div>`,
+        iconSize: [50, 60], iconAnchor: [25, 60],
+      })
+      L.marker(geo, { icon }).addTo(lyr).on("click", () => openRef.current(e))
+    }
+    if (pts.length > 1) map.fitBounds(pts, { padding: [44, 44], maxZoom: 14, animate: true })
+    else if (pts.length === 1) map.setView(pts[0], 14, { animate: true })
+  }, [withGeo, cat, ready])
+
+  const visibleCount = withGeo.filter((p) => cat === "Все" || p.e.c === cat).length
+
+  return (
+    <div style={{ padding: "0 14px" }}>
+      {/* search bar (decorative) + locate */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+        <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, border: `2px solid ${SK.ink}`, background: SK.paper, padding: "9px 12px", boxShadow: `3px 3px 0 ${SK.ink}` }}>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4.4" stroke={SK.ink} strokeWidth="2" /><line x1="9.4" y1="9.4" x2="13" y2="13" stroke={SK.ink} strokeWidth="2" strokeLinecap="round" /></svg>
+          <span style={{ fontFamily: FONT_MONO, fontSize: 11, letterSpacing: "0.04em", color: SK.ink55, whiteSpace: "nowrap" }}>искать место…</span>
+        </div>
+        <button aria-label="Где я" onClick={() => mapRef.current?.setView([55.745, 37.62], 12)} style={{ flexShrink: 0, width: 42, border: `2px solid ${SK.ink}`, background: SK.blue, boxShadow: `3px 3px 0 ${SK.ink}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M14 2 L2 7 L7 9 L9 14 Z" fill="#fff" stroke="#fff" strokeWidth="1" strokeLinejoin="round" /></svg>
+        </button>
+      </div>
+      {/* category filter chips */}
+      <div className="sk-scroll" style={{ display: "flex", gap: 8, overflowX: "auto", marginBottom: 12, paddingBottom: 4 }}>
+        {cats.map((c) => {
+          const on = cat === c
+          return <button key={c} onClick={() => setCat(c)} style={{ flexShrink: 0, padding: "6px 12px", border: `2px solid ${SK.ink}`, background: on ? SK.ink : SK.paper, color: on ? SK.paper : SK.ink, fontFamily: FONT_SANS, fontWeight: 800, fontSize: 10.5, letterSpacing: "0.05em", textTransform: "uppercase", whiteSpace: "nowrap", cursor: "pointer" }}>{c}</button>
+        })}
+      </div>
+      {/* map canvas */}
+      <div style={{ position: "relative", width: "100%", height, border: `2.5px solid ${SK.ink}`, boxShadow: `4px 4px 0 ${SK.ink}`, overflow: "hidden", background: "#EAEDF0" }}>
+        <div ref={boxRef} style={{ position: "absolute", inset: 0 }} />
+        {!ready && <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 5 }}><Lbl size={10} style={{ letterSpacing: "0.2em" }}>загружаю карту…</Lbl></div>}
+        <div style={{ position: "absolute", left: 10, top: 10, zIndex: 500, background: SK.ink, color: SK.paper, padding: "4px 9px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9.5, letterSpacing: "0.08em", pointerEvents: "none" }}>{visibleCount} рядом · Москва</div>
       </div>
     </div>
   )
@@ -211,28 +373,24 @@ function BoardView({ feed, btn = "b", name = "Гость" }: { feed: Ev[]; btn?:
   const nav = useContext(NavCtx)
   const [nonce, setNonce] = useState(0)
   const [sweep, setSweep] = useState(0)
-  // Shuffle deterministically by nonce so the order changes on every tap of refresh
+  // Shuffle deterministically by nonce so the order changes on every refresh.
   const order = useMemo(() => {
     const idx = feed.map((_, i) => i)
     return idx.sort((a, b) => ((a * 7 + nonce * 13) % 11) - ((b * 7 + nonce * 13) % 11))
   }, [nonce, feed])
-  // Use only real events (drop warm-up placeholders) so the board never
-  // shows empty cards; split into two staggered columns.
   const E = order.map((i) => feed[i]).filter((e) => e && !e.id.startsWith("__placeholder")).slice(0, 8)
-  const colL = E.filter((_, i) => i % 2 === 0)
-  const colR = E.filter((_, i) => i % 2 === 1)
   const refresh = () => { setNonce((n) => n + 1); setSweep((s) => s + 360) }
+  const total = E.reduce((s, e, i) => s + going(e, i), 0)
 
   return (
     <div style={{ width: "100%", paddingBottom: 54 }}>
       {/* header — title block on the left, profile + refresh on the right */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, padding: "0 14px", marginBottom: 24 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, padding: "0 14px", marginBottom: 22 }}>
         <div style={{ flex: 1, minWidth: 0, background: SK.paper, border: `2px solid ${SK.ink}`, padding: "10px 12px 11px", transform: "rotate(-1deg)", boxShadow: `3px 3px 0 ${SK.ink}` }}>
           <Lbl size={9} style={{ letterSpacing: "0.3em" }}>доска недели · wk 22</Lbl>
-          <div style={{ fontWeight: 900, fontSize: 27, letterSpacing: "-0.04em", lineHeight: 0.9, marginTop: 3, color: SK.ink }}>Что в городе</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 5 }}>
-            <Lbl size={9}>москва — спб</Lbl>
-            <Scribble color={SK.blue} w={40} />
+          <div style={{ fontWeight: 900, fontSize: 26, letterSpacing: "-0.04em", lineHeight: 0.9, marginTop: 3, color: SK.ink }}>Что в городе</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6 }}>
+            <Lbl size={9}>{E.length} событий · москва—спб</Lbl>
           </div>
         </div>
         <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 10, marginTop: 2 }}>
@@ -253,18 +411,30 @@ function BoardView({ feed, btn = "b", name = "Гость" }: { feed: Ev[]; btn?:
           </button>
         </div>
       </div>
-      {/* two columns — right column nudged down for a staggered montage */}
-      <div key={nonce} style={{ display: "flex", gap: 16, padding: "0 16px", alignItems: "flex-start" }}>
-        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 30 }}>
-          {colL.map((e, i) => <BoardCard key={e.id + nonce} ev={e} i={i * 2} />)}
-        </div>
-        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 30, paddingTop: 40 }}>
-          {colR.map((e, i) => <BoardCard key={e.id + nonce} ev={e} i={i * 2 + 1} />)}
+
+      {/* mapcombo body — map → выбор недели (hero + 2 grid) → россыпью (mosaic) */}
+      <div key={nonce}>
+        <CsMap events={E} height={236} />
+        <div style={{ padding: "0 14px" }}>
+          <SectionLabel>выбор недели</SectionLabel>
+          {E[0] && <BoardLead ev={E[0]} />}
+          {(E[1] || E[2]) && (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "22px 14px", marginTop: 20 }}>
+              {[E[1], E[2]].filter(Boolean).map((e, i) => <GridCard key={e.id} ev={e} i={i} />)}
+            </div>
+          )}
+          {E.length > 3 && (
+            <>
+              <SectionLabel>россыпью</SectionLabel>
+              <MosaicGrid events={E.slice(3)} heights={[168, 150, 150, 168, 160]} />
+            </>
+          )}
         </div>
       </div>
+
       <div style={{ textAlign: "center", marginTop: 30 }}>
-        <span style={{ display: "inline-block", background: SK.ink, color: SK.paper, padding: "6px 12px", transform: "rotate(-1deg)" }}>
-          <Lbl color={SK.paper} size={9} style={{ letterSpacing: "0.2em" }}>{feed.length} приколото · обновлено сейчас</Lbl>
+        <span style={{ display: "inline-block", background: SK.ink, color: SK.paper, padding: "6px 12px" }}>
+          <Lbl color={SK.paper} size={9} style={{ letterSpacing: "0.18em" }}>{total.toLocaleString("ru")} идут · обновлено сейчас</Lbl>
         </span>
       </div>
     </div>

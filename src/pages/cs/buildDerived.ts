@@ -33,6 +33,7 @@ export type Ev = {
   desc: string      // full curator description (used in the bottom-sheet)
   price: string     // curator's price field, normalised to "—" if empty
   note: string      // short editorial note ("до утра" / "редакция топит") — optional
+  dur: string       // duration ("до 08:00" / "96 мин") — optional
 }
 
 export type DerivedData = {
@@ -78,6 +79,7 @@ export function toEv(e: FeedItem): Ev {
     desc: (e.description || "").trim() || "Описание появится ближе к дате. Следи за каналом события.",
     price: (e.price || "").trim() || "—",
     note: "",  // ditto — editorial highlight, populated by curator later
+    dur: "",   // duration — curator doesn't carry it yet
   }
 }
 
