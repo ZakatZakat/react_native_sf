@@ -27,15 +27,14 @@ export type StepKey = "landing" | "loading" | "name" | "pass" | "swipe" | "summa
 
 export type StepKey2 = StepKey | "profile"
 
+/** Canonical v3 short path. Five steps; Pass / Swipe / Summary are kept
+ *  reachable via the dropdown's «Альтернативные Варианты» group. */
 export const STEPS: { key: StepKey2; n: string; title: string; path: string }[] = [
-  { key: "landing",  n: "01", title: "Лендинг",        path: "/cs/landing" },
-  { key: "loading",  n: "02", title: "Загрузка",       path: "/cs/loading" },
-  { key: "name",     n: "03", title: "Имя",            path: "/cs/name" },
-  { key: "pass",     n: "04", title: "Пропуск",        path: "/cs/pass" },
-  { key: "swipe",    n: "05", title: "Интересы",       path: "/cs/swipe" },
-  { key: "summary",  n: "06", title: "Суммаризация",   path: "/cs/summary" },
-  { key: "feed",     n: "07", title: "Лента",          path: "/cs/feed" },
-  { key: "profile",  n: "08", title: "Профиль",        path: "/cs/profile" },
+  { key: "landing",  n: "01", title: "Лендинг",  path: "/cs/landing" },
+  { key: "loading",  n: "02", title: "Загрузка", path: "/cs/loading" },
+  { key: "name",     n: "03", title: "Имя",      path: "/cs/name" },
+  { key: "feed",     n: "04", title: "Лента",    path: "/cs/feed" },
+  { key: "profile",  n: "05", title: "Профиль",  path: "/cs/profile" },
 ]
 
 export function nextStep(from: StepKey): StepKey | null {

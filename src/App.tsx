@@ -8,17 +8,20 @@ declare global {
 }
 
 const PIPE_ROUTES = [
-  { label: "01 · Лендинг",       to: "/cs/landing" },
-  { label: "02 · Загрузка",      to: "/cs/loading" },
-  { label: "03 · Имя",           to: "/cs/name" },
-  { label: "04 · Пропуск",       to: "/cs/pass" },
-  { label: "05 · Интересы",      to: "/cs/swipe" },
-  { label: "06 · Суммаризация",  to: "/cs/summary" },
-  { label: "07 · Лента",         to: "/cs/feed" },
-  { label: "08 · Профиль",       to: "/cs/profile" },
+  // v3 short path: Landing → Loading → Name → Feed → Profile
+  { label: "01 · Лендинг",  to: "/cs/landing" },
+  { label: "02 · Загрузка", to: "/cs/loading" },
+  { label: "03 · Имя",      to: "/cs/name" },
+  { label: "04 · Лента",    to: "/cs/feed" },
+  { label: "05 · Профиль",  to: "/cs/profile" },
 ] as const
 
 const ALT_ROUTES = [
+  // Снятые с основного пути v3-экраны (City Pass / свайп интересов /
+  // суммаризация) — оставлены доступными для дизайн-ревью.
+  { label: "CS · Пропуск (старый шаг 04)",       to: "/cs/pass" },
+  { label: "CS · Интересы (старый шаг 05)",      to: "/cs/swipe" },
+  { label: "CS · Суммаризация (старый шаг 06)",  to: "/cs/summary" },
   // Прежний клиентский путь (Triptych → Swipe → Result → Quiz)
   { label: "Pipe Landing V1 (Triptych)", to: "/pipe-landing-v1" },
   { label: "Pipe Swipe Train", to: "/pipe-swipe-train" },

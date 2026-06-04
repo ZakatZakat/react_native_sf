@@ -27,7 +27,9 @@ export default function CsName() {
   const onDone = () => {
     if (!ok) return
     analytics.track("cs.name.submit", { name_len: name.trim().length })
-    navigate({ to: "/cs/pass" })
+    // v3 short path: name → feed directly (Pass/Swipe/Summary moved to
+    // alternative variants).
+    navigate({ to: "/cs/feed" })
   }
 
   return (
