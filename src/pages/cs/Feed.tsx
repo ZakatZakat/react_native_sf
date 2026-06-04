@@ -330,8 +330,9 @@ function CsMap({ events, height = 236 }: { events: Ev[]; height?: number }) {
           return <button key={c} onClick={() => setCat(c)} style={{ flexShrink: 0, padding: "6px 12px", border: `2px solid ${SK.ink}`, background: on ? SK.ink : SK.paper, color: on ? SK.paper : SK.ink, fontFamily: FONT_SANS, fontWeight: 800, fontSize: 10.5, letterSpacing: "0.05em", textTransform: "uppercase", whiteSpace: "nowrap", cursor: "pointer" }}>{c}</button>
         })}
       </div>
-      {/* map canvas */}
-      <div style={{ position: "relative", width: "100%", height, border: `2.5px solid ${SK.ink}`, boxShadow: `4px 4px 0 ${SK.ink}`, overflow: "hidden", background: "#EAEDF0" }}>
+      {/* map canvas — isolate so Leaflet's internal high z-index panes
+          stay contained and never escape over the event sheet. */}
+      <div style={{ position: "relative", isolation: "isolate", width: "100%", height, border: `2.5px solid ${SK.ink}`, boxShadow: `4px 4px 0 ${SK.ink}`, overflow: "hidden", background: "#EAEDF0" }}>
         <div ref={boxRef} style={{ position: "absolute", inset: 0 }} />
         {!ready && <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 5 }}><Lbl size={10} style={{ letterSpacing: "0.2em" }}>загружаю карту…</Lbl></div>}
         <div style={{ position: "absolute", left: 10, top: 10, zIndex: 500, background: SK.ink, color: SK.paper, padding: "4px 9px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9.5, letterSpacing: "0.08em", pointerEvents: "none" }}>{visibleCount} рядом · Москва</div>

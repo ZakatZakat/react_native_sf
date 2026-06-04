@@ -467,7 +467,9 @@ function EventSheet({ ev, onClose }: { ev: Ev | null; onClose: () => void }) {
   const remind = entry ? entry.remind : true
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 200, fontFamily: FONT_SANS }}>
+    // zIndex 10000 sits above Leaflet (panes/controls climb to ~1000), so
+    // map pins no longer leak over the sheet.
+    <div style={{ position: "fixed", inset: 0, zIndex: 10000, fontFamily: FONT_SANS }}>
       {/* Backdrop */}
       <div
         onClick={close}
