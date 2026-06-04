@@ -1,5 +1,5 @@
 // src/router.tsx
-import { createRootRoute, createRouter, createRoute } from "@tanstack/react-router"
+import { createRootRoute, createRouter, createRoute, redirect } from "@tanstack/react-router"
 import App from "./App"
 import Landing from "./pages/Landing"
 import Landing2 from "./pages/Landing2"
@@ -46,7 +46,15 @@ const rootRoute = createRootRoute({
   errorComponent: RouteError,
   notFoundComponent: NotFound,
 })
-const landingRoute = createRoute({ getParentRoute: () => rootRoute, path: "/", component: Landing })
+// Root entry — the bot's WebApp button + Main Mini App open "/", so send
+// it straight to the CitySignal journey landing (the triptych). The old
+// dev Landing is preserved at /landing-1 for reference.
+const landingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/",
+  beforeLoad: () => { throw redirect({ to: "/cs/landing" }) },
+})
+const landingOldRoute = createRoute({ getParentRoute: () => rootRoute, path: "/landing-1", component: Landing })
 const landing2Route = createRoute({ getParentRoute: () => rootRoute, path: "/landing-2", component: Landing2 })
 const landing3Route = createRoute({ getParentRoute: () => rootRoute, path: "/landing-3", component: Landing3 })
 const landing4Route = createRoute({ getParentRoute: () => rootRoute, path: "/landing-4", component: Landing4 })
@@ -87,6 +95,7 @@ const notFoundRoute = createRoute({ getParentRoute: () => rootRoute, path: "$", 
 
 const routeTree = rootRoute.addChildren([
   landingRoute,
+  landingOldRoute,
   landing2Route,
   landing3Route,
   landing4Route,
