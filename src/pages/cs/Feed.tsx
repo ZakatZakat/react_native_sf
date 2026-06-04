@@ -295,7 +295,6 @@ function CsMap({ events, height = 236 }: { events: Ev[]; height?: number }) {
     const map = L.map(boxRef.current, { center: [55.745, 37.62], zoom: 12, zoomControl: false, scrollWheelZoom: false, attributionControl: false })
     L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", { maxZoom: 19, subdomains: "abcd" }).addTo(map)
     L.control.zoom({ position: "bottomright" }).addTo(map)
-    L.control.attribution({ position: "bottomright", prefix: false }).addAttribution("© OpenStreetMap · CARTO").addTo(map)
     mapRef.current = map
     layerRef.current = L.layerGroup().addTo(map)
     setReady(true)
