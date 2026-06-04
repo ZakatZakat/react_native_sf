@@ -58,6 +58,11 @@ const ALT_ROUTES = [
 
 const ALL_ROUTES = [...PIPE_ROUTES, ...ALT_ROUTES] as const
 
+// Dev navigation chrome (AI-Picks heading + route selector). Hidden for
+// now so the mini-app shows only the client-path journey. Flip to true to
+// bring the route picker back for local design review.
+const SHOW_DEV_NAV = false
+
 export default function App() {
   const tg = typeof window !== "undefined" ? window.Telegram?.WebApp : undefined
   const navigate = useNavigate()
@@ -83,42 +88,44 @@ export default function App() {
 
   return (
     <Box minH="100dvh" bg={bg} color={fg}>
-      <Container maxW="container.md" py="4">
-        <Flex align="center" gap="4">
-          <Heading size="md">AI-Picks</Heading>
-          <Box
-            as="select"
-            value={currentPath}
-            onChange={(e) => navigate({ to: e.target.value })}
-            bg={selectBg}
-            borderWidth="1px"
-            borderColor={selectBorder}
-            borderRadius="md"
-            px="2"
-            py="1"
-            fontSize="sm"
-            maxW="220px"
-          >
-            {PIPE_ROUTES.length > 0 && (
-              <optgroup label="Клиентский Путь">
-                {PIPE_ROUTES.map((r) => (
+      {SHOW_DEV_NAV && (
+        <Container maxW="container.md" py="4">
+          <Flex align="center" gap="4">
+            <Heading size="md">AI-Picks</Heading>
+            <Box
+              as="select"
+              value={currentPath}
+              onChange={(e) => navigate({ to: e.target.value })}
+              bg={selectBg}
+              borderWidth="1px"
+              borderColor={selectBorder}
+              borderRadius="md"
+              px="2"
+              py="1"
+              fontSize="sm"
+              maxW="220px"
+            >
+              {PIPE_ROUTES.length > 0 && (
+                <optgroup label="Клиентский Путь">
+                  {PIPE_ROUTES.map((r) => (
+                    <option key={r.to} value={r.to}>
+                      {r.label}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              <optgroup label="Альтернативные Варианты">
+                {ALT_ROUTES.map((r) => (
                   <option key={r.to} value={r.to}>
                     {r.label}
                   </option>
                 ))}
               </optgroup>
-            )}
-            <optgroup label="Альтернативные Варианты">
-              {ALT_ROUTES.map((r) => (
-                <option key={r.to} value={r.to}>
-                  {r.label}
-                </option>
-              ))}
-            </optgroup>
-          </Box>
-          <Spacer />
-        </Flex>
-      </Container>
+            </Box>
+            <Spacer />
+          </Flex>
+        </Container>
+      )}
       <Container maxW="container.md" pb="8" px="0">
         <Outlet />
       </Container>
