@@ -35,6 +35,7 @@ import CsSwipe from "./pages/cs/Swipe"
 import CsSummary from "./pages/cs/Summary"
 import CsFeed from "./pages/cs/Feed"
 import CsProfile from "./pages/cs/Profile"
+import CsAdmin from "./pages/cs/Admin"
 import Feed2 from "./pages/Feed2"
 import About from "./pages/About"
 import Profile from "./pages/Profile"
@@ -89,6 +90,7 @@ const csSwipeRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/s
 const csSummaryRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/summary", component: CsSummary })
 const csFeedRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/feed", component: CsFeed })
 const csProfileRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/profile", component: CsProfile })
+const csAdminRoute = createRoute({ getParentRoute: () => rootRoute, path: "/admin", component: CsAdmin })
 const aboutRoute = createRoute({ getParentRoute: () => rootRoute, path: "/about", component: About })
 const profileRoute = createRoute({ getParentRoute: () => rootRoute, path: "/profile", component: Profile })
 const notFoundRoute = createRoute({ getParentRoute: () => rootRoute, path: "$", component: NotFound })
@@ -130,6 +132,7 @@ const routeTree = rootRoute.addChildren([
   csSummaryRoute,
   csFeedRoute,
   csProfileRoute,
+  csAdminRoute,
   aboutRoute,
   profileRoute,
   notFoundRoute,

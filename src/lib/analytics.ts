@@ -188,6 +188,27 @@ export function flush(): Promise<void> {
   return flushBatch()
 }
 
+export type AdminStats = {
+  service: string
+  events: { d1: number; d7: number; total: number }
+  users: { d1: number; d7: number; total: number; devices: number }
+  sessions_24h: number
+  errors_24h: number
+  top_types: { type: string; n: number }[]
+  per_day: { day: string; n: number }[]
+  funnel: { step: string; n: number }[]
+}
+
+/** Read project-scoped rollups from the receiver (GET /api/v1/stats).
+ *  Derives the stats URL from the ingest endpoint. */
+export async function fetchStats(): Promise<AdminStats> {
+  if (!ENDPOINT || !TOKEN) throw new Error("analytics not configured")
+  const statsUrl = ENDPOINT.replace(/\/events$/, "/stats")
+  const res = await fetch(statsUrl, { headers: { Authorization: `Bearer ${TOKEN}` } })
+  if (!res.ok) throw new Error(`stats ${res.status}`)
+  return res.json() as Promise<AdminStats>
+}
+
 // ────────────────────────────────────────────────────────────────
 // Internals
 // ────────────────────────────────────────────────────────────────
@@ -445,4 +466,4 @@ function detectPlatform(): string {
   return tg?.initData ? "tg-webapp" : "web"
 }
 
-export const analytics = { init, identify, page, track, measure, flush }
+export const analytics = { init, identify, page, track, measure, flush, fetchStats }
