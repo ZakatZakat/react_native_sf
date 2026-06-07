@@ -122,6 +122,25 @@ class ModerationRepository:
         )
         return list((await self.s.execute(stmt)).all())
 
+    async def list_events(
+        self,
+        status: EventStatus | None = None,
+        limit: int = 30,
+        offset: int = 0,
+    ) -> Sequence[tuple]:
+        """Browse curated events with their source post + channel, optionally
+        filtered by status (None = all). Newest first."""
+        from app.models import PostRaw, Channel
+        stmt = (
+            select(EventCurated, PostRaw, Channel)
+            .join(PostRaw, PostRaw.id == EventCurated.post_id)
+            .join(Channel, Channel.id == PostRaw.channel_id)
+        )
+        if status is not None:
+            stmt = stmt.where(EventCurated.status == status)
+        stmt = stmt.order_by(EventCurated.created_at.desc()).limit(limit).offset(offset)
+        return list((await self.s.execute(stmt)).all())
+
     async def approve(self, event_id: int, reviewed_by: int) -> EventCurated:
         ev = await self.s.get(EventCurated, event_id)
         if not ev:

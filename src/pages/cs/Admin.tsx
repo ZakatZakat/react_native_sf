@@ -12,6 +12,35 @@
 import { useEffect, useState } from "react"
 import { analytics, type AdminStats } from "../../lib/analytics"
 import { CURATOR_BASE } from "../../lib/curator"
+import { isImg, resolveMedia } from "../pipe/shared"
+
+const AS_USER = import.meta.env.VITE_DEV_USER_ID || "12345"
+
+type AdminPost = {
+  event_id: number
+  status: string
+  channel: string
+  text: string | null
+  media_urls: string[]
+  event_time: string | null
+  location: string | null
+  price: string | null
+  created_at: string
+}
+
+const STATUS_TABS: { id: string; label: string }[] = [
+  { id: "all", label: "Все" },
+  { id: "approved", label: "Approved" },
+  { id: "manual_review", label: "На модерации" },
+  { id: "rejected", label: "Rejected" },
+]
+
+const STATUS_COLOR: Record<string, string> = {
+  approved: "#1a8f3c",
+  manual_review: "#b8860b",
+  rejected: "#c0392b",
+  pending: "#8a8a8a",
+}
 
 // Neutral, minimal palette — no brutalist borders/shadows.
 const INK = "#111111"
@@ -59,6 +88,112 @@ function Bar({ label, n, max }: { label: string; n: number; max: number }) {
       </div>
       <span style={{ width: 40, flexShrink: 0, textAlign: "right", fontFamily: MONO, fontSize: 12, color: MUTE }}>{n}</span>
     </div>
+  )
+}
+
+function PostsPanel() {
+  const [status, setStatus] = useState("all")
+  const [items, setItems] = useState<AdminPost[]>([])
+  const [offset, setOffset] = useState(0)
+  const [loading, setLoading] = useState(false)
+  const [done, setDone] = useState(false)
+  const [busy, setBusy] = useState<number | null>(null)
+  const PAGE = 20
+
+  const fetchPage = async (st: string, off: number, replace: boolean) => {
+    setLoading(true)
+    try {
+      const r = await fetch(`${CURATOR_BASE}/admin/events?status=${st}&limit=${PAGE}&offset=${off}&as_user=${AS_USER}`)
+      if (!r.ok) throw new Error(`${r.status}`)
+      const rows = (await r.json()) as AdminPost[]
+      setItems((prev) => replace ? rows : [...prev, ...rows])
+      setDone(rows.length < PAGE)
+      setOffset(off + rows.length)
+    } catch {
+      setDone(true)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { setItems([]); setOffset(0); setDone(false); void fetchPage(status, 0, true) /* eslint-disable-next-line */ }, [status])
+
+  const act = async (id: number, action: "approve" | "reject") => {
+    setBusy(id)
+    try {
+      const url = `${CURATOR_BASE}/admin/moderation/${id}/${action}?as_user=${AS_USER}`
+      const opts: RequestInit = action === "reject"
+        ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason: null }) }
+        : { method: "POST" }
+      const r = await fetch(url, opts)
+      if (r.ok) {
+        const newStatus = action === "approve" ? "approved" : "rejected"
+        // If a status filter is active and the new status no longer matches, drop the row; else update it.
+        setItems((prev) => prev
+          .map((p) => p.event_id === id ? { ...p, status: newStatus } : p)
+          .filter((p) => status === "all" || p.status === status))
+      }
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  return (
+    <>
+      <SectionTitle right={`${items.length} загружено`}>Посты</SectionTitle>
+      {/* status tabs */}
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
+        {STATUS_TABS.map((t) => {
+          const on = status === t.id
+          return (
+            <button
+              key={t.id}
+              onClick={() => setStatus(t.id)}
+              style={{ border: `1px solid ${on ? INK : LINE}`, background: on ? INK : "#fff", color: on ? "#fff" : INK, borderRadius: 7, padding: "6px 12px", cursor: "pointer", fontFamily: SANS, fontSize: 12.5 }}
+            >{t.label}</button>
+          )
+        })}
+      </div>
+
+      {items.map((p) => {
+        const m = p.media_urls.find(isImg) ?? p.media_urls[0]
+        const poster = resolveMedia(m ?? null)
+        const img = poster && isImg(poster) ? poster : null
+        const date = p.event_time ? new Date(p.event_time).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" }) : ""
+        const isManual = p.status === "manual_review" || p.status === "pending"
+        return (
+          <div key={p.event_id} style={{ display: "flex", gap: 12, padding: "14px 0", borderTop: `1px solid ${LINE}` }}>
+            <div style={{ width: 64, height: 64, flexShrink: 0, background: "#f3f3f3", borderRadius: 6, overflow: "hidden" }}>
+              {img && <img src={img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, letterSpacing: "0.04em", color: STATUS_COLOR[p.status] ?? MUTE, textTransform: "uppercase" }}>{p.status}</span>
+                <span style={{ fontFamily: MONO, fontSize: 10.5, color: FAINT }}>{p.channel}{date ? ` · ${date}` : ""}</span>
+              </div>
+              <div style={{ fontFamily: SANS, fontSize: 13, color: INK, marginTop: 5, lineHeight: 1.4, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                {(p.text || "—").trim()}
+              </div>
+              {isManual && (
+                <div style={{ display: "flex", gap: 8, marginTop: 9 }}>
+                  <button disabled={busy === p.event_id} onClick={() => act(p.event_id, "approve")} style={{ border: "1px solid #1a8f3c", background: busy === p.event_id ? "#eee" : "#fff", color: "#1a8f3c", borderRadius: 6, padding: "5px 12px", cursor: "pointer", fontFamily: SANS, fontSize: 12 }}>✓ Approve</button>
+                  <button disabled={busy === p.event_id} onClick={() => act(p.event_id, "reject")} style={{ border: "1px solid #c0392b", background: busy === p.event_id ? "#eee" : "#fff", color: "#c0392b", borderRadius: 6, padding: "5px 12px", cursor: "pointer", fontFamily: SANS, fontSize: 12 }}>✕ Reject</button>
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      })}
+
+      {!loading && items.length === 0 && (
+        <div style={{ fontFamily: MONO, fontSize: 12, color: MUTE, padding: "12px 0" }}>Пусто.</div>
+      )}
+      {!done && (
+        <button onClick={() => fetchPage(status, offset, false)} disabled={loading} style={{ width: "100%", marginTop: 14, border: `1px solid ${LINE}`, background: "#fff", borderRadius: 8, padding: "10px", cursor: "pointer", fontFamily: SANS, fontSize: 13, color: INK }}>
+          {loading ? "Загружаю…" : "Показать ещё"}
+        </button>
+      )}
+    </>
   )
 }
 
@@ -128,7 +263,7 @@ export default function CsAdmin() {
             <SectionTitle right="сессий · 7д">Воронка</SectionTitle>
             {stats.funnel.map((f) => <Bar key={f.step} label={f.step} n={f.n} max={funnelMax} />)}
 
-            {/* per-day */}
+            {/* per-day + top types — temporarily hidden per request
             <SectionTitle right="14 дней">События по дням</SectionTitle>
             <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 70 }}>
               {stats.per_day.map((d) => {
@@ -141,11 +276,14 @@ export default function CsAdmin() {
               <span>{stats.per_day[stats.per_day.length - 1]?.day?.slice(5) ?? ""}</span>
             </div>
 
-            {/* top types */}
             <SectionTitle right="7 дней">Топ событий</SectionTitle>
             {stats.top_types.slice(0, 10).map((t) => <Bar key={t.type} label={t.type} n={t.n} max={maxType} />)}
+            */}
           </>
         )}
+
+        {/* posts moderation browser */}
+        <PostsPanel />
 
         {/* content */}
         {content && (

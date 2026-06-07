@@ -49,6 +49,41 @@ async def list_pending(
         return out
 
 
+# ── Browse curated events by status (admin posts panel) ────────────
+@router.get("/events")
+async def list_events(
+    status: str = Query("all"),
+    limit: int = Query(30, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    _admin: int = Depends(require_admin),
+    sf: async_sessionmaker[AsyncSession] = Depends(get_session_factory),
+) -> list[dict]:
+    status_filter: EventStatus | None = None
+    if status and status != "all":
+        try:
+            status_filter = EventStatus(status)
+        except ValueError:
+            raise HTTPException(400, f"unknown status '{status}'")
+    async with session_scope(sf) as s:
+        rows = await ModerationRepository(s).list_events(status=status_filter, limit=limit, offset=offset)
+        out: list[dict] = []
+        for ev, post, channel in rows:
+            out.append({
+                "event_id": ev.id,
+                "status": ev.status.value,
+                "channel": channel.handle,
+                "message_id": post.message_id,
+                "text": post.text,
+                "media_urls": post.media_urls or [],
+                "event_time": ev.event_time.isoformat() if ev.event_time else None,
+                "location": ev.location_text,
+                "price": ev.price_text,
+                "filter_score": ev.filter_score,
+                "created_at": ev.created_at.isoformat(),
+            })
+        return out
+
+
 class RejectBody(BaseModel):
     reason: Optional[str] = None
 
