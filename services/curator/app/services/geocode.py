@@ -62,6 +62,8 @@ CHANNEL_VENUE: dict[str, str] = {
     "@teatrtruda_10": "Театр Труда, Москва",
     "@ges2_moscow": "Дом культуры ГЭС-2, Болотная набережная 15, Москва",
     "@strelka": "Институт Стрелка, Берсеневская набережная 14, Москва",
+    "@rndmciub": "Наставнический переулок 13, Москва",
+    "@random_culture": "Арбатская, Москва",
 }
 
 # Nominatim asks for ≤1 request/second.
