@@ -66,6 +66,18 @@ async def list_events(
             raise HTTPException(400, f"unknown status '{status}'")
     async with session_scope(sf) as s:
         rows = await ModerationRepository(s).list_events(status=status_filter, limit=limit, offset=offset)
+        # Tag labels for these events, in one query.
+        from app.models import Tag, EventTag
+        ids = [ev.id for ev, _, _ in rows]
+        tags_by_event: dict[int, list[str]] = {}
+        if ids:
+            tag_rows = (await s.execute(
+                select(EventTag.event_id, Tag.label)
+                .join(Tag, Tag.id == EventTag.tag_id)
+                .where(EventTag.event_id.in_(ids))
+            )).all()
+            for eid, label in tag_rows:
+                tags_by_event.setdefault(eid, []).append(label)
         out: list[dict] = []
         for ev, post, channel in rows:
             out.append({
@@ -75,6 +87,7 @@ async def list_events(
                 "message_id": post.message_id,
                 "text": post.text,
                 "media_urls": post.media_urls or [],
+                "tags": tags_by_event.get(ev.id, []),
                 "event_time": ev.event_time.isoformat() if ev.event_time else None,
                 "location": ev.location_text,
                 "price": ev.price_text,
@@ -136,8 +149,21 @@ async def stats(
             select(EventCurated.status, func.count()).group_by(EventCurated.status)
         )).all())
         by_status = {k.value: v for k, v in by_status.items()}
+        # Category breakdown — approved events per tag label, desc.
+        from app.models import Tag, EventTag
+        by_cat_rows = (await s.execute(
+            select(Tag.label, func.count())
+            .select_from(EventTag)
+            .join(Tag, Tag.id == EventTag.tag_id)
+            .join(EventCurated, EventCurated.id == EventTag.event_id)
+            .where(EventCurated.status == EventStatus.approved)
+            .group_by(Tag.label)
+            .order_by(func.count().desc())
+        )).all()
+        by_cat = [{"label": label, "n": n} for label, n in by_cat_rows]
     return {
         "channels": {"total": total_channels, "enabled": enabled},
         "posts_raw": total_posts,
         "events_by_status": by_status,
+        "events_by_category": by_cat,
     }

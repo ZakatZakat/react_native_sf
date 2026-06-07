@@ -20,8 +20,10 @@ type AdminPost = {
   event_id: number
   status: string
   channel: string
+  message_id: number
   text: string | null
   media_urls: string[]
+  tags: string[]
   event_time: string | null
   location: string | null
   price: string | null
@@ -57,6 +59,12 @@ type CuratorStats = {
   channels: { total: number; enabled: number }
   posts_raw: number
   events_by_status: Record<string, number>
+  events_by_category?: { label: string; n: number }[]
+}
+
+/** t.me deep link to the source post. */
+function tgLink(channel: string, messageId: number): string {
+  return `https://t.me/${channel.replace(/^@/, "")}/${messageId}`
 }
 
 function Stat({ label, value, sub }: { label: string; value: React.ReactNode; sub?: string }) {
@@ -91,6 +99,53 @@ function Bar({ label, n, max }: { label: string; n: number; max: number }) {
   )
 }
 
+function PostDetail({ post, onClose, onAct, busy }: { post: AdminPost; onClose: () => void; onAct: (id: number, a: "approve" | "reject") => void; busy: number | null }) {
+  const m = post.media_urls.find(isImg) ?? post.media_urls[0]
+  const poster = resolveMedia(m ?? null)
+  const img = poster && isImg(poster) ? poster : null
+  const isManual = post.status === "manual_review" || post.status === "pending"
+  const dt = post.event_time ? new Date(post.event_time).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : null
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 1000, fontFamily: SANS }}>
+      <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.45)" }} />
+      <div style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)", width: "min(560px, 92vw)", maxHeight: "88vh", background: "#fff", borderRadius: 12, overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: `1px solid ${LINE}` }}>
+          <span style={{ fontFamily: MONO, fontSize: 11, fontWeight: 700, color: STATUS_COLOR[post.status] ?? MUTE, textTransform: "uppercase" }}>{post.status}</span>
+          <button onClick={onClose} aria-label="Закрыть" style={{ border: "none", background: "none", cursor: "pointer", fontSize: 18, color: MUTE, padding: 0 }}>✕</button>
+        </div>
+        <div style={{ overflowY: "auto", padding: 16 }}>
+          {img && <img src={img} alt="" style={{ width: "100%", maxHeight: "46vh", objectFit: "contain", display: "block", borderRadius: 8, background: "#f3f3f3" }} />}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 12, fontFamily: MONO, fontSize: 11, color: MUTE }}>
+            <span>{post.channel}</span>
+            {dt && <><span>·</span><span>{dt}</span></>}
+            {post.location && <><span>·</span><span>{post.location}</span></>}
+            {post.price && <><span>·</span><span>{post.price}</span></>}
+          </div>
+          {post.tags.length > 0 && (
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
+              {post.tags.map((t) => (
+                <span key={t} style={{ border: `1px solid ${LINE}`, borderRadius: 6, padding: "3px 8px", fontFamily: SANS, fontSize: 11, color: INK }}>{t}</span>
+              ))}
+            </div>
+          )}
+          <div style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", fontFamily: SANS, fontSize: 14, lineHeight: 1.55, color: INK, marginTop: 14 }}>
+            {(post.text || "—").trim()}
+          </div>
+          <a href={tgLink(post.channel, post.message_id)} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 16, fontFamily: SANS, fontSize: 13, color: ACCENT, textDecoration: "none" }}>
+            ↗ Открыть в Telegram
+          </a>
+        </div>
+        {isManual && (
+          <div style={{ display: "flex", gap: 10, padding: "12px 16px", borderTop: `1px solid ${LINE}` }}>
+            <button disabled={busy === post.event_id} onClick={() => { onAct(post.event_id, "approve"); onClose() }} style={{ flex: 1, border: "1px solid #1a8f3c", background: "#fff", color: "#1a8f3c", borderRadius: 8, padding: "10px", cursor: "pointer", fontFamily: SANS, fontSize: 13 }}>✓ Approve</button>
+            <button disabled={busy === post.event_id} onClick={() => { onAct(post.event_id, "reject"); onClose() }} style={{ flex: 1, border: "1px solid #c0392b", background: "#fff", color: "#c0392b", borderRadius: 8, padding: "10px", cursor: "pointer", fontFamily: SANS, fontSize: 13 }}>✕ Reject</button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function PostsPanel() {
   const [status, setStatus] = useState("all")
   const [items, setItems] = useState<AdminPost[]>([])
@@ -98,6 +153,7 @@ function PostsPanel() {
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
   const [busy, setBusy] = useState<number | null>(null)
+  const [active, setActive] = useState<AdminPost | null>(null)
   const PAGE = 20
 
   const fetchPage = async (st: string, off: number, replace: boolean) => {
@@ -162,7 +218,7 @@ function PostsPanel() {
         const date = p.event_time ? new Date(p.event_time).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" }) : ""
         const isManual = p.status === "manual_review" || p.status === "pending"
         return (
-          <div key={p.event_id} style={{ display: "flex", gap: 12, padding: "14px 0", borderTop: `1px solid ${LINE}` }}>
+          <div key={p.event_id} onClick={() => setActive(p)} style={{ display: "flex", gap: 12, padding: "14px 0", borderTop: `1px solid ${LINE}`, cursor: "pointer" }}>
             <div style={{ width: 64, height: 64, flexShrink: 0, background: "#f3f3f3", borderRadius: 6, overflow: "hidden" }}>
               {img && <img src={img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
             </div>
@@ -171,11 +227,18 @@ function PostsPanel() {
                 <span style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, letterSpacing: "0.04em", color: STATUS_COLOR[p.status] ?? MUTE, textTransform: "uppercase" }}>{p.status}</span>
                 <span style={{ fontFamily: MONO, fontSize: 10.5, color: FAINT }}>{p.channel}{date ? ` · ${date}` : ""}</span>
               </div>
-              <div style={{ fontFamily: SANS, fontSize: 13, color: INK, marginTop: 5, lineHeight: 1.4, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+              <div style={{ fontFamily: SANS, fontSize: 13, color: INK, marginTop: 5, lineHeight: 1.4, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                 {(p.text || "—").trim()}
               </div>
+              {p.tags.length > 0 && (
+                <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginTop: 7 }}>
+                  {p.tags.slice(0, 4).map((t) => (
+                    <span key={t} style={{ border: `1px solid ${LINE}`, borderRadius: 5, padding: "2px 7px", fontFamily: SANS, fontSize: 10.5, color: MUTE }}>{t}</span>
+                  ))}
+                </div>
+              )}
               {isManual && (
-                <div style={{ display: "flex", gap: 8, marginTop: 9 }}>
+                <div style={{ display: "flex", gap: 8, marginTop: 9 }} onClick={(e) => e.stopPropagation()}>
                   <button disabled={busy === p.event_id} onClick={() => act(p.event_id, "approve")} style={{ border: "1px solid #1a8f3c", background: busy === p.event_id ? "#eee" : "#fff", color: "#1a8f3c", borderRadius: 6, padding: "5px 12px", cursor: "pointer", fontFamily: SANS, fontSize: 12 }}>✓ Approve</button>
                   <button disabled={busy === p.event_id} onClick={() => act(p.event_id, "reject")} style={{ border: "1px solid #c0392b", background: busy === p.event_id ? "#eee" : "#fff", color: "#c0392b", borderRadius: 6, padding: "5px 12px", cursor: "pointer", fontFamily: SANS, fontSize: 12 }}>✕ Reject</button>
                 </div>
@@ -184,6 +247,8 @@ function PostsPanel() {
           </div>
         )
       })}
+
+      {active && <PostDetail post={active} onClose={() => setActive(null)} onAct={act} busy={busy} />}
 
       {!loading && items.length === 0 && (
         <div style={{ fontFamily: MONO, fontSize: 12, color: MUTE, padding: "12px 0" }}>Пусто.</div>
@@ -302,6 +367,17 @@ export default function CsAdmin() {
                   </div>
                 ))}
               </div>
+            )}
+
+            {content.events_by_category && content.events_by_category.length > 0 && (
+              <>
+                <SectionTitle right="approved">По категориям</SectionTitle>
+                {(() => {
+                  const cats = content.events_by_category!
+                  const max = Math.max(1, ...cats.map((c) => c.n))
+                  return cats.map((c) => <Bar key={c.label} label={c.label} n={c.n} max={max} />)
+                })()}
+              </>
             )}
           </>
         )}
