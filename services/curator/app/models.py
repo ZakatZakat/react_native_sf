@@ -306,3 +306,18 @@ class PushLog(Base):
         nullable=False,
     )
     error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+
+# ── Geocode cache ────────────────────────────────────────────────────
+# Resolved coordinates per query string (venue text / channel venue), so
+# we never hit the geocoder twice for the same place. A row with lat=NULL
+# means "geocoder returned nothing" — cached as a negative result.
+class GeocodeCache(Base):
+    __tablename__ = "geocode_cache"
+    __table_args__ = ({"schema": SCHEMA},)
+
+    query: Mapped[str] = mapped_column(String(512), primary_key=True)
+    lat: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    lng: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    display_name: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), default=datetime.utcnow, nullable=False)

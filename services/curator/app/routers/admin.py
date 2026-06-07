@@ -100,6 +100,48 @@ async def list_events(
         return out
 
 
+# ── Geocoding backfill ─────────────────────────────────────────────
+@router.post("/geocode")
+async def geocode_backfill(
+    limit: int = Query(40, ge=1, le=200),
+    only_upcoming: bool = Query(True),
+    _admin: int = Depends(require_admin),
+    sf: async_sessionmaker[AsyncSession] = Depends(get_session_factory),
+) -> dict:
+    """Resolve coordinates for approved events that don't have them yet.
+    Processes up to `limit` events per call (Nominatim is ~1 req/sec, but
+    cache hits are instant). Call repeatedly until processed == 0."""
+    from datetime import datetime
+    from sqlalchemy import or_
+    from app.services.geocode import geocode_event
+
+    now = datetime.utcnow()
+    async with session_scope(sf) as s:
+        stmt = (
+            select(EventCurated, Channel.handle)
+            .join(PostRaw, PostRaw.id == EventCurated.post_id)
+            .join(Channel, Channel.id == PostRaw.channel_id)
+            .where(
+                EventCurated.status == EventStatus.approved,
+                or_(
+                    EventCurated.location_meta.is_(None),
+                    EventCurated.location_meta["lat"].is_(None),
+                ),
+            )
+        )
+        if only_upcoming:
+            stmt = stmt.where(or_(EventCurated.event_time.is_(None), EventCurated.event_time >= now))
+        stmt = stmt.order_by(EventCurated.event_time.asc().nullslast()).limit(limit)
+        rows = list((await s.execute(stmt)).all())
+
+        placed = 0
+        for ev, handle in rows:
+            ok = await geocode_event(s, ev, handle)
+            if ok:
+                placed += 1
+        return {"processed": len(rows), "placed": placed, "remaining_hint": len(rows) == limit}
+
+
 class RejectBody(BaseModel):
     reason: Optional[str] = None
 

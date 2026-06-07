@@ -37,6 +37,7 @@ export type FeedItem = {
   tags: string[]
   filter_score: number
   created_at: string
+  geo?: [number, number] | null
 }
 
 export type CuratorTag = {

@@ -134,6 +134,12 @@ class PersonalizedFeedRepository:
                 "tags": tags_by_event.get(ev.id, []),
                 "filter_score": ev.filter_score,
                 "created_at": ev.created_at.isoformat(),
+                # Resolved coordinates (if geocoded) — [lat, lng] for the map.
+                "geo": (
+                    [ev.location_meta["lat"], ev.location_meta["lng"]]
+                    if isinstance(ev.location_meta, dict) and ev.location_meta.get("lat") is not None
+                    else None
+                ),
             })
 
         # Resolve channel handles in a single query

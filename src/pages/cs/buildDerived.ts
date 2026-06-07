@@ -34,6 +34,7 @@ export type Ev = {
   price: string     // curator's price field, normalised to "—" if empty
   note: string      // short editorial note ("до утра" / "редакция топит") — optional
   dur: string       // duration ("до 08:00" / "96 мин") — optional
+  geo: [number, number] | null  // resolved [lat, lng] for the map, if geocoded
 }
 
 export type DerivedData = {
@@ -80,6 +81,7 @@ export function toEv(e: FeedItem): Ev {
     price: (e.price || "").trim() || "—",
     note: "",  // ditto — editorial highlight, populated by curator later
     dur: "",   // duration — curator doesn't carry it yet
+    geo: (Array.isArray(e.geo) && e.geo.length === 2) ? [e.geo[0], e.geo[1]] : null,
   }
 }
 

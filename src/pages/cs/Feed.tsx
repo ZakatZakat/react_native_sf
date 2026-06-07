@@ -277,7 +277,9 @@ function CsMap({ events, height = 236 }: { events: Ev[]; height?: number }) {
 
   const withGeo = useMemo(() => {
     const list = events.filter((e) => e.p && !e.id.startsWith("__placeholder")).slice(0, 8)
-    return list.map((e, i) => ({ e, geo: MOSCOW_GEO[i % MOSCOW_GEO.length] }))
+    // Prefer real geocoded coords; fall back to the Moscow venue pool
+    // (cycled) for events that haven't been geocoded yet.
+    return list.map((e, i) => ({ e, geo: e.geo ?? MOSCOW_GEO[i % MOSCOW_GEO.length] }))
   }, [events])
 
   const cats = useMemo(() => {
