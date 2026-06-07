@@ -6,6 +6,7 @@
  */
 
 import { createContext, useContext, useEffect, useRef, useState } from "react"
+import { haptics } from "../../lib/haptics"
 
 // ── Tokens ────────────────────────────────────────────────────────────────
 
@@ -538,7 +539,7 @@ function EventSheet({ ev, onClose }: { ev: Ev | null; onClose: () => void }) {
           )}
           <div style={{ padding: "12px 14px 16px" }}>
             <button
-              onClick={() => going.toggle(ev)}
+              onClick={() => { if (!isOn) haptics.success(); going.toggle(ev) }}
               style={{
                 width: "100%", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 14,
                 letterSpacing: "0.04em", textTransform: "uppercase",

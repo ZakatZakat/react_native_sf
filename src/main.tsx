@@ -5,6 +5,7 @@ import { RouterProvider } from "@tanstack/react-router"
 import { Provider } from "./components/ui/provider"
 import { router } from "./router"
 import { analytics } from "./lib/analytics"
+import { installGlobalTap } from "./lib/haptics"
 import "./styles/cs-tokens.css"
 import "./index.css"
 
@@ -46,6 +47,8 @@ if (typeof window !== "undefined") {
 // SDK's own window hooks — the legacy reportClientError() above lives
 // in parallel for the curator-side debug log.
 analytics.init()
+// Light haptic tap on every button/link across the app (no-op outside TG).
+installGlobalTap()
 if (typeof window !== "undefined") {
   const tg = (window as unknown as { Telegram?: { WebApp?: { initDataUnsafe?: { user?: { id?: number; language_code?: string } }; colorScheme?: string } } }).Telegram?.WebApp
   if (tg?.initDataUnsafe?.user?.id) {
