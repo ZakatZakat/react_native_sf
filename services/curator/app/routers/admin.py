@@ -164,9 +164,32 @@ async def stats(
             .order_by(func.count().desc())
         )).all()
         by_cat = [{"label": label, "n": n} for label, n in by_cat_rows]
+
+        # Temporal split — approved events by event_time vs now.
+        from datetime import datetime
+        from sqlalchemy import or_
+        now = datetime.utcnow()
+        appr = EventCurated.status == EventStatus.approved
+        upcoming = (await s.execute(
+            select(func.count()).select_from(EventCurated).where(appr, EventCurated.event_time >= now)
+        )).scalar_one()
+        past = (await s.execute(
+            select(func.count()).select_from(EventCurated).where(appr, EventCurated.event_time < now)
+        )).scalar_one()
+        undated = (await s.execute(
+            select(func.count()).select_from(EventCurated).where(appr, EventCurated.event_time.is_(None))
+        )).scalar_one()
+        # Still actionable in review — manual/pending events that haven't passed.
+        review_upcoming = (await s.execute(
+            select(func.count()).select_from(EventCurated).where(
+                EventCurated.status.in_([EventStatus.manual_review, EventStatus.pending]),
+                or_(EventCurated.event_time.is_(None), EventCurated.event_time >= now),
+            )
+        )).scalar_one()
     return {
         "channels": {"total": total_channels, "enabled": enabled},
         "posts_raw": total_posts,
         "events_by_status": by_status,
         "events_by_category": by_cat,
+        "events_time": {"upcoming": upcoming, "past": past, "undated": undated, "review_upcoming": review_upcoming},
     }

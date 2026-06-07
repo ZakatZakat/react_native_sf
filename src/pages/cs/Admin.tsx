@@ -60,6 +60,7 @@ type CuratorStats = {
   posts_raw: number
   events_by_status: Record<string, number>
   events_by_category?: { label: string; n: number }[]
+  events_time?: { upcoming: number; past: number; undated: number; review_upcoming: number }
 }
 
 /** t.me deep link to the source post. */
@@ -354,6 +355,20 @@ export default function CsAdmin() {
             <SectionTitle right="7 дней">Топ событий</SectionTitle>
             {stats.top_types.slice(0, 10).map((t) => <Bar key={t.type} label={t.type} n={t.n} max={maxType} />)}
             */}
+          </>
+        )}
+
+        {/* events temporal stats — up top so "сколько было / будет" is
+            visible before the long posts list */}
+        {content?.events_time && (
+          <>
+            <SectionTitle>События</SectionTitle>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "22px 28px" }}>
+              <Stat label="Будет (опубликовано)" value={content.events_time.upcoming} sub={content.events_time.undated ? `+ ${content.events_time.undated} без даты` : undefined} />
+              <Stat label="Было (прошло)" value={content.events_time.past} />
+              <Stat label="Ждут модерации" value={content.events_time.review_upcoming} sub="предстоящие" />
+              <Stat label="Approved всего" value={content.events_by_status.approved ?? 0} />
+            </div>
           </>
         )}
 
