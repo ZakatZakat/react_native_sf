@@ -1,23 +1,28 @@
 /**
- * CitySignal · Админ-панель (/admin).
+ * CitySignal · Админ-панель (/admin) — минималистичный дашборд.
  *
- *  Brutalist dashboard combining two data sources:
- *   - analytics-platform (GET /api/v1/stats) — engagement: users, sessions,
- *     events, funnel, per-day series, top event types.
- *   - curator (GET /admin/stats) — content: channels, raw posts, events by
- *     moderation status.
+ *  Plain, low-chrome stats view. Two sources:
+ *   - analytics-platform (GET /api/v1/stats) — users, sessions, events,
+ *     funnel, per-day series, top event types.
+ *   - curator (GET /admin/stats) — channels, raw posts, events by status.
  *
- *  Reached by direct URL only (not in the journey). No auth beyond the
- *  analytics JWT baked into the build + curator dev-mode — fine for an
- *  internal panel; tighten later if it goes public.
+ *  Direct URL only; not part of the journey.
  */
 
 import { useEffect, useState } from "react"
-import { CsPage, CS, FONT_MONO, FONT_SANS, Mark, Mono } from "./shared"
 import { analytics, type AdminStats } from "../../lib/analytics"
 import { CURATOR_BASE } from "../../lib/curator"
 
-const K = CS.K, W = CS.W, B = CS.B, G55 = CS.G55, G35 = CS.G35
+// Neutral, minimal palette — no brutalist borders/shadows.
+const INK = "#111111"
+const MUTE = "#8a8a8a"
+const FAINT = "#b8b8b8"
+const LINE = "#ececec"
+const BAR = "#111111"
+const BAR_BG = "#f1f1f1"
+const ACCENT = "#0055FF"
+const MONO = "'JetBrains Mono', ui-monospace, monospace"
+const SANS = "'Inter', system-ui, -apple-system, sans-serif"
 
 type CuratorStats = {
   channels: { total: number; enabled: number }
@@ -25,39 +30,34 @@ type CuratorStats = {
   events_by_status: Record<string, number>
 }
 
-// ── atoms ────────────────────────────────────────────────────────────────
-
-function StatCard({ label, value, sub, accent = false }: { label: string; value: React.ReactNode; sub?: string; accent?: boolean }) {
+function Stat({ label, value, sub }: { label: string; value: React.ReactNode; sub?: string }) {
   return (
-    <div style={{ border: `2.5px solid ${K}`, background: accent ? B : W, color: accent ? W : K, padding: "12px 13px 13px", boxShadow: `3px 3px 0 ${K}` }}>
-      <div style={{ fontFamily: FONT_MONO, fontSize: 9, letterSpacing: "0.16em", textTransform: "uppercase", color: accent ? "rgba(255,255,255,0.75)" : G55 }}>{label}</div>
-      <div style={{ fontWeight: 900, fontSize: 30, letterSpacing: "-0.04em", lineHeight: 1, marginTop: 6 }}>{value}</div>
-      {sub && <div style={{ fontFamily: FONT_MONO, fontSize: 9, color: accent ? "rgba(255,255,255,0.7)" : G55, marginTop: 5 }}>{sub}</div>}
+    <div style={{ padding: "2px 0" }}>
+      <div style={{ fontFamily: MONO, fontSize: 11, letterSpacing: "0.04em", color: MUTE }}>{label}</div>
+      <div style={{ fontFamily: SANS, fontWeight: 600, fontSize: 34, letterSpacing: "-0.03em", lineHeight: 1.1, color: INK, marginTop: 4 }}>{value}</div>
+      {sub && <div style={{ fontFamily: MONO, fontSize: 11, color: FAINT, marginTop: 4 }}>{sub}</div>}
     </div>
   )
 }
 
-function Section({ title, right, children }: { title: string; right?: React.ReactNode; children: React.ReactNode }) {
+function SectionTitle({ children, right }: { children: React.ReactNode; right?: React.ReactNode }) {
   return (
-    <div style={{ marginTop: 22 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `2px solid ${K}`, paddingBottom: 7, marginBottom: 12 }}>
-        <Mark>{title}</Mark>
-        {right != null && <Mono color={G55}>{right}</Mono>}
-      </div>
-      {children}
+    <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginTop: 34, marginBottom: 14 }}>
+      <div style={{ fontFamily: SANS, fontSize: 13, fontWeight: 600, color: INK }}>{children}</div>
+      {right != null && <div style={{ fontFamily: MONO, fontSize: 11, color: FAINT }}>{right}</div>}
     </div>
   )
 }
 
-function BarRow({ label, n, max, accent = false }: { label: string; n: number; max: number; accent?: boolean }) {
+function Bar({ label, n, max }: { label: string; n: number; max: number }) {
   const pct = max > 0 ? Math.round((n / max) * 100) : 0
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-      <span style={{ width: 92, flexShrink: 0, fontWeight: 800, fontSize: 11, textTransform: "uppercase", letterSpacing: "-0.01em", color: K, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
-      <div style={{ flex: 1, height: 14, background: "rgba(13,13,13,0.06)", border: `1.5px solid ${K}`, position: "relative" }}>
-        <div style={{ position: "absolute", inset: 0, width: `${pct}%`, background: accent ? B : K }} />
+    <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 11 }}>
+      <span style={{ width: 110, flexShrink: 0, fontFamily: SANS, fontSize: 12.5, color: INK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
+      <div style={{ flex: 1, height: 6, background: BAR_BG, borderRadius: 3, position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", inset: 0, width: `${pct}%`, background: BAR, borderRadius: 3 }} />
       </div>
-      <span style={{ width: 36, flexShrink: 0, textAlign: "right", fontFamily: FONT_MONO, fontSize: 11, fontWeight: 700, color: K }}>{n}</span>
+      <span style={{ width: 40, flexShrink: 0, textAlign: "right", fontFamily: MONO, fontSize: 12, color: MUTE }}>{n}</span>
     </div>
   )
 }
@@ -86,99 +86,88 @@ export default function CsAdmin() {
   const funnelMax = stats ? Math.max(1, ...stats.funnel.map((f) => f.n)) : 1
 
   return (
-    <CsPage>
-      <div style={{ position: "absolute", inset: 0, overflowY: "auto", overflowX: "hidden", padding: "44px 16px 40px", fontFamily: FONT_SANS, color: K }}>
+    <div style={{ minHeight: "100dvh", background: "#fff", fontFamily: SANS, color: INK }}>
+      <div style={{ maxWidth: 560, margin: "0 auto", padding: "40px 20px 56px" }}>
         {/* header */}
-        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", borderBottom: `2px solid ${K}`, paddingBottom: 10 }}>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
           <div>
-            <Mark color={G55}>CitySignal · Admin</Mark>
-            <div style={{ fontWeight: 900, fontSize: 32, letterSpacing: "-0.045em", lineHeight: 0.9, marginTop: 5 }}>Статистика</div>
+            <div style={{ fontFamily: MONO, fontSize: 11, letterSpacing: "0.1em", color: MUTE, textTransform: "uppercase" }}>CitySignal · Admin</div>
+            <h1 style={{ fontFamily: SANS, fontWeight: 600, fontSize: 26, letterSpacing: "-0.03em", margin: "6px 0 0" }}>Статистика</h1>
           </div>
-          <button onClick={load} style={{ flexShrink: 0, border: `2px solid ${K}`, background: W, padding: "8px 12px", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", boxShadow: `2.5px 2.5px 0 ${B}` }}>
-            {loading ? "…" : "↻ Обновить"}
+          <button
+            onClick={load}
+            style={{ flexShrink: 0, border: `1px solid ${LINE}`, background: "#fff", borderRadius: 8, padding: "7px 13px", cursor: "pointer", fontFamily: SANS, fontSize: 12.5, color: INK }}
+          >
+            {loading ? "…" : "Обновить"}
           </button>
         </div>
 
         {err && (
-          <div style={{ marginTop: 16, border: `2px solid ${CS.K}`, background: "#FDECEC", padding: "10px 12px", fontFamily: FONT_MONO, fontSize: 11, color: "#B00" }}>
-            Аналитика недоступна: {err}
+          <div style={{ marginTop: 18, fontFamily: MONO, fontSize: 12, color: "#c0392b" }}>
+            Аналитика недоступна ({err})
           </div>
         )}
-
-        {loading && !stats && (
-          <div style={{ marginTop: 24, fontFamily: FONT_MONO, fontSize: 12, color: G55 }}>Загружаю…</div>
+        {loading && !stats && !content && (
+          <div style={{ marginTop: 24, fontFamily: MONO, fontSize: 12, color: MUTE }}>Загружаю…</div>
         )}
 
         {stats && (
           <>
-            {/* top stat grid */}
-            <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <StatCard label="Пользователей (TG)" value={stats.users.total} sub={`за 24ч: ${stats.users.d1} · 7д: ${stats.users.d7}`} accent />
-              <StatCard label="Устройств всего" value={stats.users.devices} sub="вкл. веб-визиты" />
-              <StatCard label="Сессий за 24ч" value={stats.sessions_24h} />
-              <StatCard label="Событий за 24ч" value={stats.events.d1} sub={`7д: ${stats.events.d7} · всего: ${stats.events.total}`} />
+            {/* stat grid — plain 2-col, hairline divided */}
+            <div style={{ marginTop: 22, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "22px 28px", borderTop: `1px solid ${LINE}`, paddingTop: 22 }}>
+              <Stat label="Пользователи (TG)" value={stats.users.total} sub={`24ч ${stats.users.d1} · 7д ${stats.users.d7}`} />
+              <Stat label="Устройства" value={stats.users.devices} sub="вкл. веб" />
+              <Stat label="Сессии · 24ч" value={stats.sessions_24h} />
+              <Stat label="События · 24ч" value={stats.events.d1} sub={`7д ${stats.events.d7} · всего ${stats.events.total}`} />
             </div>
             {stats.errors_24h > 0 && (
-              <div style={{ marginTop: 10 }}>
-                <StatCard label="Ошибок за 24ч" value={stats.errors_24h} />
-              </div>
+              <div style={{ marginTop: 18, fontFamily: MONO, fontSize: 12, color: "#c0392b" }}>Ошибок за 24ч: {stats.errors_24h}</div>
             )}
 
             {/* funnel */}
-            <Section title="Воронка · 7 дней" right="сессий на шаге">
-              {stats.funnel.map((f) => <BarRow key={f.step} label={f.step} n={f.n} max={funnelMax} accent />)}
-            </Section>
+            <SectionTitle right="сессий · 7д">Воронка</SectionTitle>
+            {stats.funnel.map((f) => <Bar key={f.step} label={f.step} n={f.n} max={funnelMax} />)}
 
             {/* per-day */}
-            <Section title="События по дням" right="14 дней">
-              <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 90, borderBottom: `2px solid ${K}`, paddingBottom: 2 }}>
-                {stats.per_day.map((d) => {
-                  const h = Math.round((d.n / maxDay) * 84) + 2
-                  return (
-                    <div key={d.day} style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", alignItems: "center" }} title={`${d.day}: ${d.n}`}>
-                      <div style={{ width: "100%", height: h, background: B, border: `1px solid ${K}` }} />
-                    </div>
-                  )
-                })}
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 5 }}>
-                <Mono color={G35}>{stats.per_day[0]?.day?.slice(5) ?? ""}</Mono>
-                <Mono color={G35}>{stats.per_day[stats.per_day.length - 1]?.day?.slice(5) ?? ""}</Mono>
-              </div>
-            </Section>
+            <SectionTitle right="14 дней">События по дням</SectionTitle>
+            <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 70 }}>
+              {stats.per_day.map((d) => {
+                const h = Math.round((d.n / maxDay) * 64) + 2
+                return <div key={d.day} title={`${d.day}: ${d.n}`} style={{ flex: 1, height: h, background: ACCENT, borderRadius: 2, opacity: 0.85 }} />
+              })}
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontFamily: MONO, fontSize: 10.5, color: FAINT }}>
+              <span>{stats.per_day[0]?.day?.slice(5) ?? ""}</span>
+              <span>{stats.per_day[stats.per_day.length - 1]?.day?.slice(5) ?? ""}</span>
+            </div>
 
             {/* top types */}
-            <Section title="Топ событий" right="7 дней">
-              {stats.top_types.slice(0, 10).map((t) => <BarRow key={t.type} label={t.type} n={t.n} max={maxType} />)}
-            </Section>
+            <SectionTitle right="7 дней">Топ событий</SectionTitle>
+            {stats.top_types.slice(0, 10).map((t) => <Bar key={t.type} label={t.type} n={t.n} max={maxType} />)}
           </>
         )}
 
-        {/* content stats from curator */}
+        {/* content */}
         {content && (
-          <Section title="Контент · Curator">
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <StatCard label="Каналов" value={content.channels.total} sub={`активных: ${content.channels.enabled}`} />
-              <StatCard label="Сырых постов" value={content.posts_raw} />
+          <>
+            <SectionTitle>Контент</SectionTitle>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "22px 28px" }}>
+              <Stat label="Каналы" value={content.channels.total} sub={`активных ${content.channels.enabled}`} />
+              <Stat label="Сырые посты" value={content.posts_raw} />
             </div>
             {Object.keys(content.events_by_status).length > 0 && (
-              <div style={{ marginTop: 12 }}>
-                <Mono color={G55} style={{ display: "block", marginBottom: 8 }}>События по статусу</Mono>
+              <div style={{ marginTop: 20 }}>
                 {Object.entries(content.events_by_status).map(([st, n]) => (
-                  <div key={st} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: `1px dotted ${G35}` }}>
-                    <span style={{ fontWeight: 800, fontSize: 12, textTransform: "uppercase" }}>{st}</span>
-                    <span style={{ fontFamily: FONT_MONO, fontSize: 12, fontWeight: 700, color: B }}>{n}</span>
+                  <div key={st} style={{ display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: `1px solid ${LINE}` }}>
+                    <span style={{ fontFamily: SANS, fontSize: 12.5, color: INK }}>{st}</span>
+                    <span style={{ fontFamily: MONO, fontSize: 12.5, color: MUTE }}>{n}</span>
                   </div>
                 ))}
               </div>
             )}
-          </Section>
+          </>
         )}
-
-        <div style={{ textAlign: "center", marginTop: 28 }}>
-          <Mono color={G35}>CitySignal · аналитика обновляется в реальном времени</Mono>
-        </div>
       </div>
-    </CsPage>
+    </div>
   )
 }
