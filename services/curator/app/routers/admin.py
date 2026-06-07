@@ -53,6 +53,7 @@ async def list_pending(
 @router.get("/events")
 async def list_events(
     status: str = Query("all"),
+    when: str = Query("all"),
     limit: int = Query(30, ge=1, le=100),
     offset: int = Query(0, ge=0),
     _admin: int = Depends(require_admin),
@@ -64,8 +65,10 @@ async def list_events(
             status_filter = EventStatus(status)
         except ValueError:
             raise HTTPException(400, f"unknown status '{status}'")
+    if when not in ("all", "upcoming", "past"):
+        raise HTTPException(400, f"unknown when '{when}'")
     async with session_scope(sf) as s:
-        rows = await ModerationRepository(s).list_events(status=status_filter, limit=limit, offset=offset)
+        rows = await ModerationRepository(s).list_events(status=status_filter, when=when, limit=limit, offset=offset)
         # Tag labels for these events, in one query.
         from app.models import Tag, EventTag
         ids = [ev.id for ev, _, _ in rows]

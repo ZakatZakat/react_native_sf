@@ -148,6 +148,7 @@ function PostDetail({ post, onClose, onAct, busy }: { post: AdminPost; onClose: 
 
 function PostsPanel() {
   const [status, setStatus] = useState("all")
+  const [when, setWhen] = useState("upcoming")
   const [items, setItems] = useState<AdminPost[]>([])
   const [offset, setOffset] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -156,10 +157,10 @@ function PostsPanel() {
   const [active, setActive] = useState<AdminPost | null>(null)
   const PAGE = 20
 
-  const fetchPage = async (st: string, off: number, replace: boolean) => {
+  const fetchPage = async (st: string, wh: string, off: number, replace: boolean) => {
     setLoading(true)
     try {
-      const r = await fetch(`${CURATOR_BASE}/admin/events?status=${st}&limit=${PAGE}&offset=${off}&as_user=${AS_USER}`)
+      const r = await fetch(`${CURATOR_BASE}/admin/events?status=${st}&when=${wh}&limit=${PAGE}&offset=${off}&as_user=${AS_USER}`)
       if (!r.ok) throw new Error(`${r.status}`)
       const rows = (await r.json()) as AdminPost[]
       setItems((prev) => replace ? rows : [...prev, ...rows])
@@ -172,7 +173,7 @@ function PostsPanel() {
     }
   }
 
-  useEffect(() => { setItems([]); setOffset(0); setDone(false); void fetchPage(status, 0, true) /* eslint-disable-next-line */ }, [status])
+  useEffect(() => { setItems([]); setOffset(0); setDone(false); void fetchPage(status, when, 0, true) /* eslint-disable-next-line */ }, [status, when])
 
   const act = async (id: number, action: "approve" | "reject") => {
     setBusy(id)
@@ -182,13 +183,9 @@ function PostsPanel() {
         ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason: null }) }
         : { method: "POST" }
       const r = await fetch(url, opts)
-      if (r.ok) {
-        const newStatus = action === "approve" ? "approved" : "rejected"
-        // If a status filter is active and the new status no longer matches, drop the row; else update it.
-        setItems((prev) => prev
-          .map((p) => p.event_id === id ? { ...p, status: newStatus } : p)
-          .filter((p) => status === "all" || p.status === status))
-      }
+      // Remove the acted item from the list — moderator moves straight on
+      // to the next one (works on every tab incl. "Все").
+      if (r.ok) setItems((prev) => prev.filter((p) => p.event_id !== id))
     } finally {
       setBusy(null)
     }
@@ -197,6 +194,19 @@ function PostsPanel() {
   return (
     <>
       <SectionTitle right={`${items.length} загружено`}>Посты</SectionTitle>
+      {/* time tabs — past / upcoming */}
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+        {[{ id: "upcoming", label: "Будущие" }, { id: "past", label: "Прошедшие" }, { id: "all", label: "Все даты" }].map((t) => {
+          const on = when === t.id
+          return (
+            <button
+              key={t.id}
+              onClick={() => setWhen(t.id)}
+              style={{ border: `1px solid ${on ? ACCENT : LINE}`, background: on ? ACCENT : "#fff", color: on ? "#fff" : INK, borderRadius: 7, padding: "6px 12px", cursor: "pointer", fontFamily: SANS, fontSize: 12.5 }}
+            >{t.label}</button>
+          )
+        })}
+      </div>
       {/* status tabs */}
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
         {STATUS_TABS.map((t) => {
@@ -254,7 +264,7 @@ function PostsPanel() {
         <div style={{ fontFamily: MONO, fontSize: 12, color: MUTE, padding: "12px 0" }}>Пусто.</div>
       )}
       {!done && (
-        <button onClick={() => fetchPage(status, offset, false)} disabled={loading} style={{ width: "100%", marginTop: 14, border: `1px solid ${LINE}`, background: "#fff", borderRadius: 8, padding: "10px", cursor: "pointer", fontFamily: SANS, fontSize: 13, color: INK }}>
+        <button onClick={() => fetchPage(status, when, offset, false)} disabled={loading} style={{ width: "100%", marginTop: 14, border: `1px solid ${LINE}`, background: "#fff", borderRadius: 8, padding: "10px", cursor: "pointer", fontFamily: SANS, fontSize: 13, color: INK }}>
           {loading ? "Загружаю…" : "Показать ещё"}
         </button>
       )}

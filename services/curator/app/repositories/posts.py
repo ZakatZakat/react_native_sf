@@ -125,12 +125,23 @@ class ModerationRepository:
     async def list_events(
         self,
         status: EventStatus | None = None,
+        when: str = "all",
         limit: int = 30,
         offset: int = 0,
     ) -> Sequence[tuple]:
-        """Browse curated events with their source post + channel, optionally
-        filtered by status (None = all). Newest first."""
+        """Browse curated events with their source post + channel.
+
+        - status: filter by status (None = all).
+        - when: "upcoming" (event_time >= now or unknown), "past"
+          (event_time < now), or "all".
+        Ordering puts items needing moderation (manual_review / pending)
+        on top, then sorts by event_time — ascending for upcoming, newest
+        first for past/all.
+        """
+        from datetime import datetime
+        from sqlalchemy import case, or_
         from app.models import PostRaw, Channel
+        now = datetime.utcnow()
         stmt = (
             select(EventCurated, PostRaw, Channel)
             .join(PostRaw, PostRaw.id == EventCurated.post_id)
@@ -138,7 +149,21 @@ class ModerationRepository:
         )
         if status is not None:
             stmt = stmt.where(EventCurated.status == status)
-        stmt = stmt.order_by(EventCurated.created_at.desc()).limit(limit).offset(offset)
+        if when == "upcoming":
+            stmt = stmt.where(or_(EventCurated.event_time.is_(None), EventCurated.event_time >= now))
+        elif when == "past":
+            stmt = stmt.where(EventCurated.event_time < now)
+
+        mod_first = case(
+            (EventCurated.status.in_([EventStatus.manual_review, EventStatus.pending]), 0),
+            else_=1,
+        )
+        if when == "upcoming":
+            # soonest first, but null event_time (unknown date) sinks below dated ones
+            time_order = EventCurated.event_time.asc().nullslast()
+        else:
+            time_order = EventCurated.event_time.desc().nullslast()
+        stmt = stmt.order_by(mod_first, time_order, EventCurated.created_at.desc()).limit(limit).offset(offset)
         return list((await self.s.execute(stmt)).all())
 
     async def approve(self, event_id: int, reviewed_by: int) -> EventCurated:
