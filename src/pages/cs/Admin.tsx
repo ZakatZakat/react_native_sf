@@ -61,6 +61,7 @@ type CuratorStats = {
   events_by_status: Record<string, number>
   events_by_category?: { label: string; n: number }[]
   events_time?: { upcoming: number; past: number; undated: number; review_upcoming: number }
+  geo?: { approved_total: number; with_location: number; geocoded: number }
 }
 
 /** t.me deep link to the source post. */
@@ -371,6 +372,26 @@ export default function CsAdmin() {
             </div>
           </>
         )}
+
+        {/* geo / map confidence */}
+        {content?.geo && (() => {
+          const g = content.geo!
+          const locPct = g.approved_total > 0 ? Math.round((g.with_location / g.approved_total) * 100) : 0
+          return (
+            <>
+              <SectionTitle right="на карте">Геолокация</SectionTitle>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "22px 28px" }}>
+                <Stat label="С указанием места" value={`${g.with_location}`} sub={`${locPct}% из ${g.approved_total} approved`} />
+                <Stat label="С координатами" value={g.geocoded} sub="точная отрисовка" />
+              </div>
+              <div style={{ marginTop: 12, fontFamily: MONO, fontSize: 11, lineHeight: 1.5, color: MUTE }}>
+                «С указанием места» — у события есть текстовая подсказка площадки.
+                «С координатами» — есть lat/lng для точного пина. Сейчас геокодинг
+                не подключён, поэтому на карте пины расставлены приблизительно.
+              </div>
+            </>
+          )
+        })()}
 
         {/* posts moderation browser */}
         <PostsPanel />

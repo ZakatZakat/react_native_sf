@@ -186,10 +186,26 @@ async def stats(
                 or_(EventCurated.event_time.is_(None), EventCurated.event_time >= now),
             )
         )).scalar_one()
+        # Location coverage — approved events that carry a non-empty
+        # location hint. NOTE: this is a text hint only; the pipeline does
+        # not geocode to lat/lng yet, so "confident map placement" is a
+        # separate (not-yet-built) step. `geocoded` stays 0 until then.
+        appr_total = (await s.execute(select(func.count()).select_from(EventCurated).where(appr))).scalar_one()
+        with_location = (await s.execute(
+            select(func.count()).select_from(EventCurated).where(
+                appr, EventCurated.location_text.isnot(None), func.length(func.trim(EventCurated.location_text)) > 0
+            )
+        )).scalar_one()
+        geocoded = (await s.execute(
+            select(func.count()).select_from(EventCurated).where(
+                appr, EventCurated.location_meta.isnot(None), EventCurated.location_meta["lat"].isnot(None)
+            )
+        )).scalar_one()
     return {
         "channels": {"total": total_channels, "enabled": enabled},
         "posts_raw": total_posts,
         "events_by_status": by_status,
         "events_by_category": by_cat,
         "events_time": {"upcoming": upcoming, "past": past, "undated": undated, "review_upcoming": review_upcoming},
+        "geo": {"approved_total": appr_total, "with_location": with_location, "geocoded": geocoded},
     }
