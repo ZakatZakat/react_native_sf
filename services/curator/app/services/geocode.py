@@ -32,6 +32,16 @@ logger = logging.getLogger(__name__)
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 USER_AGENT = "CitySignal/1.0 (admin@digital-assistant.tech)"
 
+# Greater Moscow bounding box. We always query "<venue>, Москва", but
+# Nominatim sometimes ignores the city (e.g. "м. Смоленская" → Смоленск).
+# Anything outside this box is treated as a miss, so no junk pins land.
+MSK_LAT = (55.30, 56.10)
+MSK_LNG = (36.90, 38.00)
+
+
+def _in_moscow(lat: float, lng: float) -> bool:
+    return MSK_LAT[0] <= lat <= MSK_LAT[1] and MSK_LNG[0] <= lng <= MSK_LNG[1]
+
 # Generic single words that aren't a real venue — fall through to the
 # channel venue instead of geocoding "клуб" (which lands anywhere).
 _WEAK_LOCATIONS = {
@@ -91,14 +101,25 @@ async def geocode_query(session: AsyncSession, query: str) -> Optional[tuple[flo
             async with httpx.AsyncClient(timeout=15) as client:
                 r = await client.get(
                     NOMINATIM_URL,
-                    params={"q": query, "format": "json", "limit": 1, "accept-language": "ru"},
+                    params={
+                        "q": query, "format": "json", "limit": 1, "accept-language": "ru",
+                        "countrycodes": "ru",
+                        # bias + restrict to the Moscow box (lng_left,lat_top,lng_right,lat_bottom)
+                        "viewbox": f"{MSK_LNG[0]},{MSK_LAT[1]},{MSK_LNG[1]},{MSK_LAT[0]}",
+                        "bounded": 1,
+                    },
                     headers={"User-Agent": USER_AGENT},
                 )
                 data = r.json() if r.status_code == 200 else []
         if data:
-            lat = float(data[0]["lat"])
-            lng = float(data[0]["lon"])
-            name = data[0].get("display_name")
+            cand_lat = float(data[0]["lat"])
+            cand_lng = float(data[0]["lon"])
+            if _in_moscow(cand_lat, cand_lng):
+                lat, lng = cand_lat, cand_lng
+                name = data[0].get("display_name")
+            else:
+                # geocoder drifted out of Moscow — treat as a miss
+                name = None
     except Exception:
         logger.exception("geocode failed for %r", query)
         return None  # don't cache transient failures
