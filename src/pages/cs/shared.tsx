@@ -68,6 +68,9 @@ const KEYFRAMES = `
   /* v3 scrapbook feed */
   @keyframes sk-float    { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
   @keyframes sk-refresh  { from { opacity: 0; transform: translateY(16px) scale(0.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  @keyframes sk-week-up  { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes cs-week-wipe { from { transform: translateY(0); } to { transform: translateY(-101%); } }
+  @keyframes cs-mapintro-in { from { opacity: 0; } to { opacity: 1; } }
   .sk-scroll::-webkit-scrollbar { width: 0; height: 0; }
   .sk-scroll { scrollbar-width: none; }
   /* leaflet map pins (mapcombo board layout) */

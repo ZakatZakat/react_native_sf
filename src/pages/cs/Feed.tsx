@@ -34,6 +34,7 @@ import {
 import type { Ev } from "./buildDerived"
 import { useDerived, useJourneyState } from "./useJourney"
 import CsFeedLegacy from "./FeedLegacy"
+import MapIntro from "./MapIntro"
 
 const FALLBACK: Ev = {
   id: "—", t: "—", sub: "", v: "—", d: "—", tm: "—",
@@ -606,12 +607,27 @@ export default function CsFeed() {
 
   const safeName = name.trim() || "Гость"
   const feed = derived.feed
+  // All events (flattened from the category pool) — the map intro wants
+  // every geocoded event, not just the 8 in the main feed.
+  const allEvents = useMemo(() => Object.values(derived.pool).flat(), [derived])
   const edge = EDGE_PRESETS[edgeKey] ?? EDGE_PRESETS.thin
 
   const navValue = useMemo(
     () => ({ openProfile: () => navigate({ to: "/cs/profile" }) }),
     [navigate],
   )
+
+  // v4 map-first intro — a 3D map overlay on first board entry per session.
+  // Disable with ?nointro=1; reopen via the "↻ карта" button.
+  const [showIntro, setShowIntro] = useState(() => {
+    if (typeof window === "undefined") return false
+    if (search.nointro && String(search.nointro) !== "0") return false
+    return !sessionStorage.getItem("cs.mapintro.seen")
+  })
+  const dismissIntro = () => {
+    try { sessionStorage.setItem("cs.mapintro.seen", "1") } catch { /* noop */ }
+    setShowIntro(false)
+  }
 
   let inner: React.ReactNode
   if (view === "diary") inner = <DiaryView feed={feed} />
@@ -637,6 +653,13 @@ export default function CsFeed() {
                 <div style={{ height: 46 }} />
                 {inner}
               </div>
+              {view === "board" && showIntro && <MapIntro events={allEvents} onEnter={dismissIntro} />}
+              {view === "board" && !showIntro && (
+                <button
+                  onClick={() => setShowIntro(true)}
+                  style={{ position: "absolute", top: 10, right: 12, zIndex: 20, padding: "6px 11px", border: `2px solid ${CS.K}`, background: CS.W, color: CS.K, cursor: "pointer", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 10, letterSpacing: "0.06em", textTransform: "uppercase" }}
+                >↻ карта</button>
+              )}
             </div>
           </EdgeCtx.Provider>
         </EventModalProvider>

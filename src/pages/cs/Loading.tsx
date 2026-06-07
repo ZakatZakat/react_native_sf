@@ -23,9 +23,9 @@ export default function CsLoading() {
       const k = Math.min(1, (now - start) / DUR)
       setPct(Math.round(ease(k) * 100))
       if (k < 1) raf = requestAnimationFrame(tick)
-      // ?wipe=1 triggers LoadCurtain on the destination — Name renders
-      // it as an overlay that slides up while the typewriter waits.
-      else setTimeout(() => navigate({ to: "/cs/name", search: { wipe: "1" } }), 520)
+      // v4 prod flow: skip the Name step — Loading rolls straight into the
+      // "Неделя" intro screen, which auto-advances into the feed.
+      else setTimeout(() => navigate({ to: "/cs/week" }), 520)
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
