@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     telegram_bot_token: str | None = Field(default=None, alias="TELEGRAM_BOT_TOKEN")
     telegram_login_mode: str = Field("bot", alias="TELEGRAM_LOGIN_MODE")
     telegram_session_string: str | None = Field(default=None, alias="TELEGRAM_SESSION_STRING")
+    # Shared bearer token guarding the data endpoints. When the poller runs
+    # on a separate (internet-exposed) box, set this on both the poller and
+    # curator (TELEGRAM_SERVICE_TOKEN). If unset, endpoints stay open (local
+    # docker-network use, where the service isn't publicly reachable).
+    ingest_token: str | None = Field(default=None, alias="INGEST_TOKEN")
     media_root: Path | str = Field(
         default_factory=lambda: Path(__file__).resolve().parents[1] / "media",
         alias="MEDIA_ROOT",

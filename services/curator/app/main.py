@@ -57,7 +57,10 @@ async def on_startup() -> None:
         n_tags = await TagsRepository(s).upsert_many(INITIAL_TAGS)
     logger.info("seeded tags: %d", n_tags)
 
-    app.state.tg_client = TelegramServiceClient(settings.telegram_service_url)
+    app.state.tg_client = TelegramServiceClient(
+        settings.telegram_service_url,
+        token=settings.telegram_service_token or None,
+    )
     app.state.processor = PipelineProcessor(
         session_factory=session_factory,
         tg_client=app.state.tg_client,

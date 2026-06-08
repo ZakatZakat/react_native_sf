@@ -19,15 +19,19 @@ class RawMessage:
 
 
 class TelegramServiceClient:
-    def __init__(self, base_url: str, timeout: float = 600.0) -> None:
+    def __init__(self, base_url: str, timeout: float = 600.0, token: str | None = None) -> None:
         self._base = base_url.rstrip("/")
         self._timeout = timeout
+        # Bearer token for when the poller runs on a separate, internet-exposed
+        # box (TELEGRAM_SERVICE_TOKEN). None → no header (local docker network).
+        self._headers = {"Authorization": f"Bearer {token}"} if token else {}
 
     async def fetch(self, handle: str, limit: int = 20, collect_media: bool = True) -> list[RawMessage]:
         """Pull last `limit` messages from a single channel via /ingest."""
         async with httpx.AsyncClient(timeout=self._timeout) as client:
             resp = await client.post(
                 f"{self._base}/ingest",
+                headers=self._headers,
                 json={
                     "channel_ids": [handle],
                     "per_channel_limit": limit,

@@ -23,8 +23,10 @@ class Settings(BaseSettings):
     postgres_dsn: str = Field(..., alias="POSTGRES_DSN")
     curator_schema: str = Field("curator", alias="CURATOR_SCHEMA")
 
-    # Telegram микросервис (raw fetcher)
+    # Telegram микросервис (raw fetcher). When the poller runs off-box, point
+    # the URL at it and set the shared bearer token below.
     telegram_service_url: str = Field("http://telegram:8000", alias="TELEGRAM_SERVICE_URL")
+    telegram_service_token: str = Field("", alias="TELEGRAM_SERVICE_TOKEN")
 
     # Telegram WebApp init_data validation (same secret as backend)
     telegram_bot_token: str = Field("", alias="TELEGRAM_BOT_TOKEN")

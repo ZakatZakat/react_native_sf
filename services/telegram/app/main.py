@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -20,6 +20,16 @@ media_root.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(title="Telegram Channel Service")
 service = TelegramService(settings=settings)
+
+
+def require_token(authorization: str | None = Header(default=None)) -> None:
+    """Bearer-token guard. No-op when INGEST_TOKEN is unset (local network);
+    enforced when the poller is exposed publicly on its own box."""
+    expected = settings.ingest_token
+    if not expected:
+        return
+    if authorization != f"Bearer {expected}":
+        raise HTTPException(status_code=401, detail="unauthorized")
 
 
 @app.get("/health")
@@ -44,7 +54,7 @@ class ChannelsInfoRequest(BaseModel):
 
 
 @app.post("/channels-info")
-async def channels_info(body: ChannelsInfoRequest) -> list[dict[str, str | None]]:
+async def channels_info(body: ChannelsInfoRequest, _: None = Depends(require_token)) -> list[dict[str, str | None]]:
     """Return avatar path and subs for each channel."""
     return await service.fetch_channels_info(body.channels)
 
@@ -59,7 +69,7 @@ class IngestRequest(BaseModel):
 
 
 @app.post("/ingest")
-async def ingest(body: IngestRequest) -> dict:
+async def ingest(body: IngestRequest, _: None = Depends(require_token)) -> dict:
     """Fetch recent messages from channels; return event payloads (no DB write). Optionally filter by event_keywords."""
     return await service.ingest(
         channel_ids=body.channel_ids,
@@ -88,7 +98,7 @@ class EventPostsRequest(BaseModel):
 
 
 @app.post("/event-posts")
-async def event_posts(body: EventPostsRequest) -> dict:
+async def event_posts(body: EventPostsRequest, _: None = Depends(require_token)) -> dict:
     """Search/collect event-like posts: fetch from channels, filter by event keywords, return only those."""
     keywords = body.event_keywords if body.event_keywords is not None else DEFAULT_EVENT_KEYWORDS
     return await service.ingest(
@@ -110,7 +120,7 @@ class FetchChannelRequest(BaseModel):
 
 
 @app.post("/fetch-channel")
-async def fetch_channel(body: FetchChannelRequest) -> dict:
+async def fetch_channel(body: FetchChannelRequest, _: None = Depends(require_token)) -> dict:
     """Fetch messages from one channel; return channels list and/or posts."""
     return await service.fetch_from_channel(
         source_channel=body.source_channel,

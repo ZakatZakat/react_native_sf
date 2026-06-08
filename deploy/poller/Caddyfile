@@ -1,0 +1,6 @@
+# Auto-HTTPS reverse proxy for the poller.
+# {$POLLER_DOMAIN} is taken from the environment (set in .env).
+{$POLLER_DOMAIN} {
+	# Telegram fetcher API (guarded by INGEST_TOKEN inside the app).
+	reverse_proxy telegram:8000
+}

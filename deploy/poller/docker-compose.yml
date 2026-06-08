@@ -1,0 +1,74 @@
+# CitySignal — Telegram poller (off-box deployment)
+#
+#   Runs ONLY the Telegram-touching services on a machine YOU control (a
+#   free-tier VM / home box / Raspberry Pi), so the shared application server
+#   never holds the Telegram api_hash / session_string.
+#
+#   Services:
+#     - telegram : the userbot fetcher (holds api_id/hash/session_string),
+#                  exposed via Caddy over HTTPS, guarded by INGEST_TOKEN.
+#     - bot      : the mini-app bot (optional; holds only a bot token).
+#     - caddy    : automatic HTTPS reverse proxy (Let's Encrypt) for the
+#                  poller domain.
+#
+#   Curator on the shared server then talks to https://<POLLER_DOMAIN> with
+#   the same INGEST_TOKEN (set as TELEGRAM_SERVICE_TOKEN there).
+#
+#   Quick start: see deploy/poller/README.md
+
+services:
+  telegram:
+    build:
+      context: ../../services/telegram
+    restart: unless-stopped
+    environment:
+      TELEGRAM_API_ID: ${TELEGRAM_API_ID}
+      TELEGRAM_API_HASH: ${TELEGRAM_API_HASH}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_SESSION_STRING: ${TELEGRAM_SESSION_STRING}
+      TELEGRAM_LOGIN_MODE: ${TELEGRAM_LOGIN_MODE}
+      INGEST_TOKEN: ${INGEST_TOKEN}
+      # Media files live on THIS box; serve them from the poller domain so
+      # image URLs the app renders resolve correctly.
+      TELEGRAM_MEDIA_PUBLIC_URL: https://${POLLER_DOMAIN}
+      MEDIA_ROOT: /app/media
+    volumes:
+      - tgapp_media:/app/media
+    expose:
+      - "8000"
+
+  # Optional: mini-app bot. Remove this block if you keep the bot elsewhere.
+  bot:
+    build:
+      context: ../../services/bot
+    restart: unless-stopped
+    environment:
+      TELEGRAM_API_ID: ${TELEGRAM_API_ID}
+      TELEGRAM_API_HASH: ${TELEGRAM_API_HASH}
+      TELEGRAM_BOT_TOKEN: ${BOT_TELEGRAM_BOT_TOKEN}
+      SESSION_NAME: /var/lib/cs-bot/session
+      # Where the bot points the mini-app menu button (your shared app server)
+      WEBAPP_URL: ${WEBAPP_URL}
+    volumes:
+      - cs_bot_session:/var/lib/cs-bot
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      POLLER_DOMAIN: ${POLLER_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - telegram
+
+volumes:
+  tgapp_media:
+  cs_bot_session:
+  caddy_data:
+  caddy_config:
