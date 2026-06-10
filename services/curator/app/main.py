@@ -60,6 +60,7 @@ async def on_startup() -> None:
     app.state.tg_client = TelegramServiceClient(
         settings.telegram_service_url,
         token=settings.telegram_service_token or None,
+        media_dir=settings.media_root or None,
     )
     app.state.processor = PipelineProcessor(
         session_factory=session_factory,

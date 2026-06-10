@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     # the URL at it and set the shared bearer token below.
     telegram_service_url: str = Field("http://telegram:8000", alias="TELEGRAM_SERVICE_URL")
     telegram_service_token: str = Field("", alias="TELEGRAM_SERVICE_TOKEN")
+    # Local dir where curator mirrors post media right after fetching (served
+    # by the media nginx). Empty → don't pull (the telegram service serves it).
+    media_root: str = Field("", alias="MEDIA_ROOT")
 
     # Telegram WebApp init_data validation (same secret as backend)
     telegram_bot_token: str = Field("", alias="TELEGRAM_BOT_TOKEN")
