@@ -32,8 +32,13 @@ services:
       # image URLs the app renders resolve correctly.
       TELEGRAM_MEDIA_PUBLIC_URL: https://${POLLER_DOMAIN}
       MEDIA_ROOT: /app/media
-    volumes:
-      - tgapp_media:/app/media
+    # Media is a RAM-only scratch buffer — the poller persists NOTHING but
+    # secrets. curator mirrors each file to the shared server right after
+    # ingest (MEDIA_ROOT there), so this never has to survive. Capped + a
+    # cron clears stale entries: */10 * * * * docker exec poller-telegram-1
+    # find /app/media -type f -mmin +20 -delete
+    tmpfs:
+      - /app/media:size=200m
     expose:
       - "8000"
 
