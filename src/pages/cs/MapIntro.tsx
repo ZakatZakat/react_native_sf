@@ -164,15 +164,13 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
           zoneMarkersRef.current[z.id] = el
           new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat(ll).addTo(map!)
         })
-        // Focus on central Moscow: include the city centre in the bounds so
-        // the view is anchored on the centre (not pulled out to the suburbs),
-        // and cap the zoom so a couple of districts don't over-zoom.
-        const CENTER: [number, number] = [37.6175, 55.7520]
-        b.extend(CENTER)
-        const pad = { top: 175, bottom: 160, left: 50, right: 50 }
-        const fit = (animate: boolean) => map!.fitBounds(b, { padding: pad, maxZoom: 11.6, pitch: 52, bearing: -14, ...(animate ? { duration: 700 } : { animate: false }) })
-        fitAllRef.current = () => fit(true)
-        if (!b.isEmpty()) fit(false)
+        // Fixed view anchored on central Moscow — NOT fitBounds, which would
+        // centre on the midpoint of whatever districts happen to exist and
+        // drift east when only Центр+Восток are populated. Padding offsets the
+        // centre below the heading card so the central districts sit in view.
+        const VIEW = { center: [37.6190, 55.7600] as [number, number], zoom: 11.2, pitch: 52, bearing: -14, padding: { top: 230, bottom: 170, left: 0, right: 0 } }
+        fitAllRef.current = () => map!.easeTo({ ...VIEW, duration: 700 })
+        map.jumpTo(VIEW)
         setReady(true)
 
         // gentle camera pendulum until the user touches the map
