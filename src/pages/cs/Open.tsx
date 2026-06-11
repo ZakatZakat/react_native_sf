@@ -22,15 +22,33 @@ export default function CsOpen() {
   // montage renders as a static end-state (no motion).
   useCsKeyframes()
   const [exiting, setExiting] = useState(false)
+  // Wait for the web fonts before playing the montage — the cold-open is the
+  // first paint, so otherwise the wordmark renders in a system fallback and
+  // visibly swaps to Inter mid-animation. Capped at 800ms so a slow/failed
+  // font fetch never blocks the open.
+  const [fontsReady, setFontsReady] = useState(false)
 
   const go = () => navigate({ to: "/cs/landing" })
 
   useEffect(() => {
+    let done = false
+    const ready = () => { if (!done) { done = true; setFontsReady(true) } }
+    const fonts = (document as Document & { fonts?: { ready: Promise<unknown> } }).fonts
+    if (fonts?.ready) fonts.ready.then(ready)
+    const t = setTimeout(ready, 800)
+    return () => clearTimeout(t)
+  }, [])
+
+  useEffect(() => {
+    if (!fontsReady) return
     const t1 = setTimeout(() => setExiting(true), 2950)
     const t2 = setTimeout(go, 4180)
     return () => { clearTimeout(t1); clearTimeout(t2) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [fontsReady])
+
+  // hold a blank page (matching the montage bg) until fonts are ready
+  if (!fontsReady) return <div style={{ position: "fixed", inset: 0, zIndex: 400, background: CS.W }} />
 
   const grid = "rgba(13,13,13,0.09)"
   const gridImg = `linear-gradient(${grid} 1px, transparent 1px), linear-gradient(90deg, ${grid} 1px, transparent 1px)`
