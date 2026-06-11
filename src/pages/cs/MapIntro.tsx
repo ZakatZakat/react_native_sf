@@ -20,12 +20,17 @@ const STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
 const MSK: [number, number] = [37.62, 55.745]
 
 type Zone = { id: string; t: string; sub: string; ll: [number, number]; r: number }
+// District bubbles are pulled toward central Moscow (≈45% of their real
+// distance from the centre) so they all sit in frame — real venues out east
+// like Винзавод are otherwise 7+ km off and fall off the screen. Directions
+// are preserved (Север up, Восток right, …) and so is the nearest-zone event
+// assignment, since the relative layout is unchanged.
 const ZONES: Zone[] = [
-  { id: "center", t: "Центр",  sub: "Бульварное",       ll: [55.7660, 37.6210], r: 1600 },
-  { id: "north",  t: "Север",  sub: "ВДНХ · Речной",    ll: [55.8650, 37.5900], r: 2600 },
-  { id: "east",   t: "Восток", sub: "Винзавод · ARMA",  ll: [55.7760, 37.7420], r: 2200 },
-  { id: "south",  t: "Юг",     sub: "ЗИЛ · Даниловский", ll: [55.6440, 37.6540], r: 2400 },
-  { id: "west",   t: "Запад",  sub: "Сити · Кутузово",  ll: [55.7380, 37.4820], r: 2500 },
+  { id: "center", t: "Центр",  sub: "Бульварное",        ll: [55.7587, 37.6190], r: 1500 },
+  { id: "north",  t: "Север",  sub: "ВДНХ · Речной",     ll: [55.8029, 37.6051], r: 1900 },
+  { id: "east",   t: "Восток", sub: "Винзавод · ARMA",   ll: [55.7628, 37.6735], r: 1700 },
+  { id: "south",  t: "Юг",     sub: "ЗИЛ · Даниловский", ll: [55.7034, 37.6339], r: 1800 },
+  { id: "west",   t: "Запад",  sub: "Сити · Кутузово",   ll: [55.7457, 37.5565], r: 1800 },
 ]
 const ZONE_BY_ID: Record<string, Zone> = Object.fromEntries(ZONES.map((z) => [z.id, z]))
 
