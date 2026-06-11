@@ -13,10 +13,14 @@
 
 import { useEffect, useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
-import { CS, FONT_SANS, FONT_MONO } from "./shared"
+import { CS, FONT_SANS, FONT_MONO, useCsKeyframes } from "./shared"
 
 export default function CsOpen() {
   const navigate = useNavigate()
+  // Inject the keyframe stylesheet — the cold-open is the app's FIRST page,
+  // so without this the co5-* animations reference missing keyframes and the
+  // montage renders as a static end-state (no motion).
+  useCsKeyframes()
   const [exiting, setExiting] = useState(false)
 
   const go = () => navigate({ to: "/cs/landing" })
