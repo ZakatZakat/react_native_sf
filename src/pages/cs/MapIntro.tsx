@@ -164,9 +164,11 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
           zoneMarkersRef.current[z.id] = el
           new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat(ll).addTo(map!)
         })
-        const pad = { top: 150, bottom: 120, left: 55, right: 55 }
-        fitAllRef.current = () => map!.fitBounds(b, { padding: pad, maxZoom: 12.4, pitch: 52, bearing: -14, duration: 700 })
-        if (!b.isEmpty()) map.fitBounds(b, { padding: pad, maxZoom: 12.4, pitch: 52, bearing: -14, animate: false })
+        // Cap zoom so the whole city stays visible — with few districts a
+        // tight fitBounds over-zooms; show Moscow, not a couple of streets.
+        const pad = { top: 170, bottom: 150, left: 55, right: 55 }
+        fitAllRef.current = () => map!.fitBounds(b, { padding: pad, maxZoom: 10.5, pitch: 52, bearing: -14, duration: 700 })
+        if (!b.isEmpty()) map.fitBounds(b, { padding: pad, maxZoom: 10.5, pitch: 52, bearing: -14, animate: false })
         setReady(true)
 
         // gentle camera pendulum until the user touches the map

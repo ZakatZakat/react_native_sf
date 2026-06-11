@@ -125,6 +125,8 @@ const KEYFRAMES = `
   @keyframes cs-scatter-in { 0% { opacity: 0; transform: scale(0.6); } 100% { opacity: 1; transform: scale(1); } }
   @keyframes cs-burst-in { 0% { opacity: 0; transform: scale(0.3); } 100% { opacity: 1; transform: scale(1); } }
   @keyframes cs-sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  /* map-intro zoom/pitch controls: lift above the «Вся лента» CTA so they don't collide */
+  .maplibregl-ctrl-bottom-right { margin-bottom: 104px !important; margin-right: 8px !important; }
   .cs-shelf::-webkit-scrollbar { display: none; }
   .cs-shelf { scrollbar-width: none; }
 `
