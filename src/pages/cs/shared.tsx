@@ -71,6 +71,19 @@ const KEYFRAMES = `
   @keyframes sk-week-up  { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes cs-week-wipe { from { transform: translateY(0); } to { transform: translateY(-101%); } }
   @keyframes cs-mapintro-in { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes co5-blk    { 0% { transform: translate(var(--bx,0), var(--by,0)); } 72% { transform: translate(calc(var(--bx,0) * -0.02), calc(var(--by,0) * -0.02)); } 100% { transform: translate(0,0); } }
+  @keyframes co5-tagIn  { 0% { opacity: 0; transform: translateY(10px) scale(0.9); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+  @keyframes co5-cropIn { 0% { opacity: 0; transform: scale(0.2); } 100% { opacity: 1; transform: scale(1); } }
+  @keyframes co5-labelIn{ 0% { opacity: 0; transform: translateY(-7px); } 100% { opacity: 1; transform: translateY(0); } }
+  @keyframes co5-ruleX  { 0% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
+  @keyframes co5-revUp  { 0% { transform: translateY(112%); } 100% { transform: translateY(0); } }
+  @keyframes co5-colUp   { 0% { transform: translateY(0); } 100% { transform: translateY(-104%); } }
+  @keyframes co5-colDn   { 0% { transform: translateY(0); } 100% { transform: translateY(104%); } }
+  @keyframes co5-gdrift  { 0% { background-position: 0 0; } 100% { background-position: 22px 22px; } }
+  @keyframes co5-fade    { 0% { opacity: 1; } 100% { opacity: 0; } }
+  @keyframes co5-cityOut { 0% { transform: translate(0,0); opacity: 1; } 100% { transform: translate(-138%,-46%) rotate(-3deg); opacity: 0; } }
+  @keyframes co5-sigOut  { 0% { transform: translate(0,0); opacity: 1; } 100% { transform: translate(138%,46%) rotate(3deg); opacity: 0; } }
+  @keyframes co5-tagOut  { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(48px); opacity: 0; } }
   .sk-scroll::-webkit-scrollbar { width: 0; height: 0; }
   .sk-scroll { scrollbar-width: none; }
   /* leaflet map pins (mapcombo board layout) */

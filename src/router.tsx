@@ -27,6 +27,7 @@ import PipeAdminModeration from "./pages/PipeAdminModeration"
 import PipeRadarCategory from "./pages/PipeRadarCategory"
 import PipeExampleOnlyBlue from "./pages/PipeExampleOnlyBlue"
 import PipeFeedOnlyBlue from "./pages/PipeFeedOnlyBlue"
+import CsOpen from "./pages/cs/Open"
 import CsLanding from "./pages/cs/Landing"
 import CsLoading from "./pages/cs/Loading"
 import CsName from "./pages/cs/Name"
@@ -54,7 +55,7 @@ const rootRoute = createRootRoute({
 const landingRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
-  beforeLoad: () => { throw redirect({ to: "/cs/landing" }) },
+  beforeLoad: () => { throw redirect({ to: "/cs/open" }) },
 })
 const landingOldRoute = createRoute({ getParentRoute: () => rootRoute, path: "/landing-1", component: Landing })
 const landing2Route = createRoute({ getParentRoute: () => rootRoute, path: "/landing-2", component: Landing2 })
@@ -83,6 +84,7 @@ const pipeAdminModerationRoute = createRoute({ getParentRoute: () => rootRoute, 
 const pipeRadarCategoryRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-radar/$key", component: PipeRadarCategory })
 const pipeExampleOnlyBlueRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-example-only-blue", component: PipeExampleOnlyBlue })
 const pipeFeedOnlyBlueRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-feed-only-blue", component: PipeFeedOnlyBlue })
+const csOpenRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/open", component: CsOpen })
 const csLandingRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/landing", component: CsLanding })
 const csLoadingRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/loading", component: CsLoading })
 const csNameRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/name", component: CsName })
@@ -126,6 +128,7 @@ const routeTree = rootRoute.addChildren([
   pipeRadarCategoryRoute,
   pipeExampleOnlyBlueRoute,
   pipeFeedOnlyBlueRoute,
+  csOpenRoute,
   csLandingRoute,
   csLoadingRoute,
   csNameRoute,
