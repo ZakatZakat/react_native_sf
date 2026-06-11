@@ -239,8 +239,8 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const zoneCount = ZONES.filter((z) => byZone[z.id].length).length
 
   return (
-    <div style={{ position: "absolute", inset: 0, zIndex: 50, background: SK.ink, animation: "cs-mapintro-in 0.4s ease both", fontFamily: FONT_SANS }}>
-      {!failed && <div ref={boxRef} style={{ position: "absolute", inset: 0, isolation: "isolate" }} />}
+    <div style={{ position: "absolute", inset: 0, zIndex: 50, background: "#EAEDF0", animation: "cs-mapintro-in 0.4s ease both", fontFamily: FONT_SANS }}>
+      {!failed && <div ref={boxRef} style={{ position: "absolute", inset: 0, isolation: "isolate", background: "#EAEDF0" }} />}
       {failed && <div style={{ position: "absolute", inset: 0, background: "linear-gradient(160deg,#16213a,#0d0d0d)" }} />}
 
       {/* subtle scrims for legibility */}

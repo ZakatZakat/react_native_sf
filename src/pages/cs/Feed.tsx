@@ -649,7 +649,9 @@ export default function CsFeed() {
               overflow: "hidden",
             }}>
               <ScreenBG theme="grid" opacity={0.5} />
-              <div className="sk-scroll" key={view} style={{ position: "absolute", inset: 0, overflowY: "auto", overflowX: "hidden" }}>
+              {/* Hide the board while the map intro is up so it doesn't flash
+                  through before the map paints on entry. */}
+              <div className="sk-scroll" key={view} style={{ position: "absolute", inset: 0, overflowY: "auto", overflowX: "hidden", visibility: view === "board" && showIntro ? "hidden" : "visible" }}>
                 <div style={{ height: 46 }} />
                 {inner}
               </div>
