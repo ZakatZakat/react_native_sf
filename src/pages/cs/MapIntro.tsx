@@ -19,18 +19,18 @@ import { CS, FONT_SANS, FONT_MONO, SK, useCsKeyframes, useOpenEvent } from "./sh
 const STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
 const MSK: [number, number] = [37.62, 55.745]
 
-type Zone = { id: string; t: string; sub: string; ll: [number, number]; r: number }
-// District bubbles are pulled toward central Moscow (≈45% of their real
-// distance from the centre) so they all sit in frame — real venues out east
-// like Винзавод are otherwise 7+ km off and fall off the screen. Directions
-// are preserved (Север up, Восток right, …) and so is the nearest-zone event
-// assignment, since the relative layout is unchanged.
+// `ll` = real district centre (events are assigned to their true nearest
+// district by this). `dll` = display position — pulled ≈45% toward central
+// Moscow so far districts like Восток (Винзавод, 7+ km east) still sit in
+// frame; the bubble + its exploded pins draw here, but assignment stays
+// geographically correct.
+type Zone = { id: string; t: string; sub: string; ll: [number, number]; dll: [number, number]; r: number }
 const ZONES: Zone[] = [
-  { id: "center", t: "Центр",  sub: "Бульварное",        ll: [55.7587, 37.6190], r: 1500 },
-  { id: "north",  t: "Север",  sub: "ВДНХ · Речной",     ll: [55.8029, 37.6051], r: 1900 },
-  { id: "east",   t: "Восток", sub: "Винзавод · ARMA",   ll: [55.7628, 37.6735], r: 1700 },
-  { id: "south",  t: "Юг",     sub: "ЗИЛ · Даниловский", ll: [55.7034, 37.6339], r: 1800 },
-  { id: "west",   t: "Запад",  sub: "Сити · Кутузово",   ll: [55.7457, 37.5565], r: 1800 },
+  { id: "center", t: "Центр",  sub: "Бульварное",        ll: [55.7660, 37.6210], dll: [55.7587, 37.6190], r: 1500 },
+  { id: "north",  t: "Север",  sub: "ВДНХ · Речной",     ll: [55.8650, 37.5900], dll: [55.8029, 37.6051], r: 1900 },
+  { id: "east",   t: "Восток", sub: "Винзавод · ARMA",   ll: [55.7760, 37.7420], dll: [55.7628, 37.6735], r: 1700 },
+  { id: "south",  t: "Юг",     sub: "ЗИЛ · Даниловский", ll: [55.6440, 37.6540], dll: [55.7034, 37.6339], r: 1800 },
+  { id: "west",   t: "Запад",  sub: "Сити · Кутузово",   ll: [55.7380, 37.4820], dll: [55.7457, 37.5565], r: 1800 },
 ]
 const ZONE_BY_ID: Record<string, Zone> = Object.fromEntries(ZONES.map((z) => [z.id, z]))
 
@@ -50,7 +50,7 @@ function gridPositions(z: Zone, n: number): [number, number][] {
   if (n === 0) return []
   const cols = Math.ceil(Math.sqrt(n))
   const rows = Math.ceil(n / cols)
-  const cosLat = Math.cos((z.ll[0] * Math.PI) / 180)
+  const cosLat = Math.cos((z.dll[0] * Math.PI) / 180)
   const step = (z.r * 1.85) / Math.max(cols, rows)
   const out: [number, number][] = []
   for (let i = 0; i < n; i++) {
@@ -59,7 +59,7 @@ function gridPositions(z: Zone, n: number): [number, number][] {
     const c = i - r * cols
     const cx = (c - (inRow - 1) / 2) * step
     const cy = (r - (rows - 1) / 2) * step
-    out.push([z.ll[0] - cy / 111320, z.ll[1] + cx / (111320 * cosLat)])
+    out.push([z.dll[0] - cy / 111320, z.dll[1] + cx / (111320 * cosLat)])
   }
   return out
 }
@@ -163,7 +163,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         const b = new maplibregl.LngLatBounds()
         ZONES.forEach((z) => {
           if (!byZoneRef.current[z.id].length) return
-          const ll: [number, number] = [z.ll[1], z.ll[0]]
+          const ll: [number, number] = [z.dll[1], z.dll[0]]
           b.extend(ll)
           const el = zoneBubbleEl(z, byZoneRef.current[z.id], (id) => onZoneRef.current(id))
           zoneMarkersRef.current[z.id] = el
