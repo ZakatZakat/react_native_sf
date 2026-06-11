@@ -124,6 +124,7 @@ const KEYFRAMES = `
   .cs-pin-halo { position: absolute; left: 50%; bottom: -2px; width: 16px; height: 16px; margin-left: -8px; border-radius: 50%; background: #0055FF; opacity: 0; pointer-events: none; z-index: -1; }
   @keyframes cs-scatter-in { 0% { opacity: 0; transform: scale(0.6); } 100% { opacity: 1; transform: scale(1); } }
   @keyframes cs-burst-in { 0% { opacity: 0; transform: scale(0.3); } 100% { opacity: 1; transform: scale(1); } }
+  @keyframes cs-sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
   .cs-shelf::-webkit-scrollbar { display: none; }
   .cs-shelf { scrollbar-width: none; }
 `

@@ -234,51 +234,83 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   }, [evIdx, selZone])
 
   const deckEvents = selZone ? byZone[selZone] : []
+  const zoneCount = ZONES.filter((z) => byZone[z.id].length).length
 
   return (
     <div style={{ position: "absolute", inset: 0, zIndex: 50, background: SK.ink, animation: "cs-mapintro-in 0.4s ease both", fontFamily: FONT_SANS }}>
       {!failed && <div ref={boxRef} style={{ position: "absolute", inset: 0, isolation: "isolate" }} />}
       {failed && <div style={{ position: "absolute", inset: 0, background: "linear-gradient(160deg,#16213a,#0d0d0d)" }} />}
 
-      {/* header */}
-      <div style={{ position: "absolute", top: 0, left: 0, right: 0, padding: "calc(env(safe-area-inset-top,0px) + 18px) 18px 14px", background: "linear-gradient(180deg, rgba(13,13,13,0.85), rgba(13,13,13,0))", color: "#fff", pointerEvents: "none" }}>
-        <div style={{ fontFamily: FONT_MONO, fontSize: 9.5, fontWeight: 700, letterSpacing: "0.24em", textTransform: "uppercase", color: "rgba(255,255,255,0.7)" }}>CitySignal · карта</div>
-        <div style={{ fontWeight: 900, fontSize: 30, letterSpacing: "-0.03em", marginTop: 4 }}>Что рядом</div>
-        <div style={{ fontFamily: FONT_MONO, fontSize: 11, color: "rgba(255,255,255,0.75)", marginTop: 4 }}>
-          {selZone ? `${ZONE_BY_ID[selZone].t} · ${deckEvents.length} событий` : `${totalPlaced} событий · ${ZONES.filter((z) => byZone[z.id].length).length} районов`}
+      {/* subtle scrims for legibility */}
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 150, background: "linear-gradient(rgba(13,13,13,0.18), rgba(13,13,13,0))", zIndex: 6, pointerEvents: "none" }} />
+      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 180, background: "linear-gradient(rgba(13,13,13,0), rgba(13,13,13,0.22))", zIndex: 6, pointerEvents: "none" }} />
+
+      {/* heading card — brutalist (design MapHeading · classic) */}
+      <div style={{ position: "absolute", top: "calc(env(safe-area-inset-top,0px) + 16px)", left: 14, right: 14, zIndex: 10 }}>
+        <div style={{ background: CS.W, border: `2.5px solid ${CS.K}`, boxShadow: `4px 4px 0 ${CS.K}`, padding: "12px 14px" }}>
+          <div style={{ fontFamily: FONT_MONO, fontSize: 9, fontWeight: 700, letterSpacing: "0.24em", textTransform: "uppercase", color: "rgba(13,13,13,0.55)" }}>сначала — карта · WK 22</div>
+          <div style={{ fontFamily: FONT_SANS, fontWeight: 900, fontSize: 34, letterSpacing: "-0.045em", lineHeight: 0.9, color: CS.K, marginTop: 6 }}>Что рядом</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap", marginTop: 11 }}>
+            <span style={{ background: CS.B, color: "#fff", padding: "3px 9px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 10, letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{totalPlaced} событий · {zoneCount} районов</span>
+            <span style={{ background: CS.W, color: CS.K, border: `1.5px solid ${CS.K}`, padding: "2px 7px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, letterSpacing: "0.06em", whiteSpace: "nowrap" }}>движок · MapLibre · 3D</span>
+          </div>
         </div>
       </div>
 
-      {/* district deck (carousel) when a zone is open */}
-      {selZone && deckEvents.length > 0 && (
-        <div style={{ position: "absolute", left: 0, right: 0, bottom: "calc(env(safe-area-inset-bottom,0px) + 92px)", padding: "0 14px" }}>
-          <div style={{ display: "flex", alignItems: "stretch", gap: 8 }}>
-            <button onClick={() => setEvIdx((i) => (i - 1 + deckEvents.length) % deckEvents.length)} style={{ width: 28, flexShrink: 0, border: `2px solid ${SK.ink}`, background: SK.white, cursor: "pointer", fontSize: 15, fontWeight: 900, color: SK.ink, lineHeight: 1 }}>←</button>
-            <button onClick={() => openRef.current(deckEvents[evIdx])} style={{ flex: 1, minWidth: 0, display: "flex", gap: 0, textAlign: "left", padding: 0, border: `2.5px solid ${SK.ink}`, boxShadow: `3px 3px 0 ${SK.ink}`, background: SK.white, cursor: "pointer", overflow: "hidden" }}>
-              <div style={{ width: 60, flexShrink: 0, borderRight: `2px solid ${SK.ink}`, overflow: "hidden", background: "#eee" }}>
-                {deckEvents[evIdx]?.p && <img key={deckEvents[evIdx].id} src={deckEvents[evIdx].p!} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", animation: "cs-burst-in 0.3s ease both" }} />}
-              </div>
-              <div style={{ flex: 1, minWidth: 0, padding: "7px 9px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
-                <span style={{ fontWeight: 900, fontSize: 7.5, letterSpacing: "0.14em", textTransform: "uppercase", color: SK.blue }}>{deckEvents[evIdx]?.c}</span>
-                <div style={{ fontWeight: 900, fontSize: 15, letterSpacing: "-0.02em", lineHeight: 1, color: SK.ink, marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{deckEvents[evIdx]?.t}</div>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 5, fontFamily: FONT_MONO, fontSize: 9.5, color: "rgba(13,13,13,0.55)" }}>
-                  <span style={{ overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{deckEvents[evIdx]?.v}</span>
-                  <span style={{ color: SK.ink, fontWeight: 700, whiteSpace: "nowrap" }}>{deckEvents[evIdx]?.tm}</span>
-                </div>
-              </div>
-            </button>
-            <button onClick={() => setEvIdx((i) => (i + 1) % deckEvents.length)} style={{ width: 28, flexShrink: 0, border: `2px solid ${SK.ink}`, background: SK.white, cursor: "pointer", fontSize: 15, fontWeight: 900, color: SK.ink, lineHeight: 1 }}>→</button>
+      {/* bottom — hint + «Вся лента» CTA (hidden when a zone is open) */}
+      {!selZone && (
+        <div style={{ position: "absolute", left: 14, right: 14, bottom: "calc(env(safe-area-inset-bottom,0px) + 10px)", zIndex: 10 }}>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 7, background: CS.W, border: `2px solid ${CS.K}`, boxShadow: `2px 2px 0 ${CS.K}`, padding: "6px 11px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 10, letterSpacing: "0.04em", color: CS.K, transform: "rotate(-0.8deg)" }}>
+              <span style={{ width: 8, height: 8, background: CS.B, borderRadius: "50%" }} />тапни район на карте
+            </span>
           </div>
-          <div style={{ textAlign: "center", marginTop: 6, fontFamily: FONT_MONO, fontSize: 10, color: "rgba(255,255,255,0.7)" }}>{evIdx + 1} / {deckEvents.length} · тап по карточке — открыть</div>
+          <button onClick={onEnter} style={{ width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "16px 18px", border: `3px solid ${CS.K}`, background: CS.K, color: "#fff", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 16, letterSpacing: "0.04em", textTransform: "uppercase", boxShadow: `4px 4px 0 ${CS.B}` }}>
+            <span>Вся лента</span><span style={{ fontSize: 19, lineHeight: 1 }}>→</span>
+          </button>
         </div>
       )}
 
-      {/* enter CTA */}
-      <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "20px 18px calc(env(safe-area-inset-bottom,0px) + 20px)", background: "linear-gradient(0deg, rgba(13,13,13,0.92), rgba(13,13,13,0))" }}>
-        <button onClick={onEnter} style={{ width: "100%", padding: "15px 18px", border: "none", background: SK.blue, color: "#fff", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 15, letterSpacing: "0.04em", textTransform: "uppercase", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 10, boxShadow: "0 8px 24px rgba(0,85,255,0.4)" }}>
-          Войти в ленту <span style={{ fontSize: 18, lineHeight: 1 }}>→</span>
-        </button>
-      </div>
+      {/* district bottom-sheet — selected zone deck */}
+      {selZone && deckEvents.length > 0 && (
+        <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 12, background: CS.W, borderTop: `3px solid ${CS.K}`, boxShadow: "0 -6px 0 rgba(13,13,13,0.08)", animation: "cs-sheet-up 0.34s cubic-bezier(0.22,1,0.36,1) both", paddingBottom: "env(safe-area-inset-bottom,0px)" }}>
+          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", padding: "9px 14px 6px" }}>
+            <div>
+              <div style={{ fontFamily: FONT_MONO, fontSize: 8, fontWeight: 700, letterSpacing: "0.24em", textTransform: "uppercase", color: "rgba(13,13,13,0.55)" }}>район · {ZONE_BY_ID[selZone].sub}</div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 1 }}>
+                <span style={{ fontWeight: 900, fontSize: 20, letterSpacing: "-0.04em", lineHeight: 0.9, color: CS.K, textTransform: "uppercase" }}>{ZONE_BY_ID[selZone].t}</span>
+                <span style={{ background: CS.B, color: "#fff", padding: "2px 6px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, letterSpacing: "0.04em" }}>{deckEvents.length} событий</span>
+              </div>
+            </div>
+            <button onClick={() => setSelZone(null)} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: CS.W, border: `2px solid ${CS.K}`, padding: "4px 8px", cursor: "pointer", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, letterSpacing: "0.05em", textTransform: "uppercase", color: CS.K }}>← все районы</button>
+          </div>
+          {/* event carousel */}
+          <div style={{ padding: "0 14px 10px" }}>
+            <div style={{ display: "flex", alignItems: "stretch", gap: 8 }}>
+              <button onClick={() => setEvIdx((i) => (i - 1 + deckEvents.length) % deckEvents.length)} style={{ width: 28, flexShrink: 0, border: `2px solid ${CS.K}`, background: CS.W, cursor: "pointer", fontSize: 15, fontWeight: 900, color: CS.K, lineHeight: 1 }}>←</button>
+              <button onClick={() => openRef.current(deckEvents[evIdx])} style={{ flex: 1, minWidth: 0, display: "flex", gap: 0, textAlign: "left", padding: 0, border: `2.5px solid ${CS.K}`, boxShadow: `3px 3px 0 ${CS.K}`, background: CS.W, cursor: "pointer", overflow: "hidden" }}>
+                <div style={{ width: 60, flexShrink: 0, borderRight: `2px solid ${CS.K}`, overflow: "hidden", background: "#eee" }}>
+                  {deckEvents[evIdx]?.p && <img key={deckEvents[evIdx].id} src={deckEvents[evIdx].p!} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", animation: "cs-burst-in 0.3s ease both" }} />}
+                </div>
+                <div style={{ flex: 1, minWidth: 0, padding: "7px 9px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                  <span style={{ fontWeight: 900, fontSize: 7.5, letterSpacing: "0.14em", textTransform: "uppercase", color: CS.B }}>{deckEvents[evIdx]?.c}</span>
+                  <div style={{ fontWeight: 900, fontSize: 15, letterSpacing: "-0.02em", lineHeight: 1, color: CS.K, marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{deckEvents[evIdx]?.t}</div>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 5, fontFamily: FONT_MONO, fontSize: 9.5, color: "rgba(13,13,13,0.55)" }}>
+                    <span style={{ overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{deckEvents[evIdx]?.v}</span>
+                    <span style={{ color: CS.K, fontWeight: 700, whiteSpace: "nowrap" }}>{deckEvents[evIdx]?.tm}</span>
+                  </div>
+                </div>
+              </button>
+              <button onClick={() => setEvIdx((i) => (i + 1) % deckEvents.length)} style={{ width: 28, flexShrink: 0, border: `2px solid ${CS.K}`, background: CS.W, cursor: "pointer", fontSize: 15, fontWeight: 900, color: CS.K, lineHeight: 1 }}>→</button>
+            </div>
+          </div>
+          <div style={{ padding: "0 14px 12px" }}>
+            <button onClick={onEnter} style={{ width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "10px 18px", border: `2.5px solid ${CS.K}`, background: CS.K, color: "#fff", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 13, letterSpacing: "0.04em", textTransform: "uppercase", boxShadow: `3px 3px 0 ${CS.B}` }}>
+              <span>Открыть район в ленте</span><span style={{ fontSize: 15, lineHeight: 1 }}>→</span>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
