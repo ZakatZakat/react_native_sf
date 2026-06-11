@@ -168,7 +168,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         // centre on the midpoint of whatever districts happen to exist and
         // drift east when only Центр+Восток are populated. Padding offsets the
         // centre below the heading card so the central districts sit in view.
-        const VIEW = { center: [37.6190, 55.7600] as [number, number], zoom: 11.2, pitch: 52, bearing: -14, padding: { top: 230, bottom: 170, left: 0, right: 0 } }
+        const VIEW = { center: [37.6190, 55.7600] as [number, number], zoom: 10.4, pitch: 52, bearing: -14, padding: { top: 230, bottom: 170, left: 0, right: 0 } }
         fitAllRef.current = () => map!.easeTo({ ...VIEW, duration: 700 })
         map.jumpTo(VIEW)
         setReady(true)
