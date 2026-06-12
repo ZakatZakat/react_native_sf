@@ -86,7 +86,7 @@ export default function ColdOpenBar({ onDone }: { onDone: () => void }) {
       {/* white grid cover (= landing triptych) — slides up to reveal the card */}
       <div style={{ position: "absolute", inset: 0, display: "flex" }}>
         {[0, 1, 2].map((i) => (
-          <div key={i} style={{ flex: 1, height: "100%", background: CS.W, backgroundImage: gridImg, backgroundSize: "22px 22px", backgroundPosition: `${-i * (316 / 3)}px 0px`, animation: exiting ? `${i % 2 === 0 ? "co5-colUp" : "co5-colDn"} 0.66s cubic-bezier(0.76,0,0.24,1) ${i * 0.05}s both` : "none" }} />
+          <div key={i} style={{ flex: 1, height: "100%", background: CS.W, backgroundImage: gridImg, backgroundSize: "22px 22px", backgroundPosition: `${-i * (100 / 3)}vw 0px`, animation: exiting ? `${i % 2 === 0 ? "co5-colUp" : "co5-colDn"} 0.66s cubic-bezier(0.76,0,0.24,1) ${i * 0.05}s both` : "none" }} />
         ))}
       </div>
       {/* crop marks */}
