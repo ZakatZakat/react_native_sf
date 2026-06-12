@@ -45,23 +45,22 @@ function nearestZoneId(lat: number, lng: number): string {
   return best
 }
 
-/** Chessboard grid of [lat,lng] inside a zone — guaranteed no overlap. */
-function gridPositions(z: Zone, n: number): [number, number][] {
-  if (n === 0) return []
-  const cols = Math.ceil(Math.sqrt(n))
-  const rows = Math.ceil(n / cols)
-  const cosLat = Math.cos((z.dll[0] * Math.PI) / 180)
-  const step = (z.r * 1.85) / Math.max(cols, rows)
-  const out: [number, number][] = []
-  for (let i = 0; i < n; i++) {
-    const r = Math.floor(i / cols)
-    const inRow = Math.min(cols, n - r * cols)
-    const c = i - r * cols
-    const cx = (c - (inRow - 1) / 2) * step
-    const cy = (r - (rows - 1) / 2) * step
-    out.push([z.dll[0] - cy / 111320, z.dll[1] + cx / (111320 * cosLat)])
-  }
-  return out
+/** Place each event at its REAL geocoded coordinate. Events that share a
+ *  venue (same coords) fan out in a small phyllotaxis spiral so they don't
+ *  perfectly overlap — but everyone stays on their actual spot. */
+function realPositions(evs: Ev[]): [number, number][] {
+  const seen = new Map<string, number>()
+  return evs.map((e) => {
+    const [lat0, lng0] = e.geo as [number, number]
+    const key = `${lat0.toFixed(4)},${lng0.toFixed(4)}`
+    const k = seen.get(key) ?? 0
+    seen.set(key, k + 1)
+    if (k === 0) return [lat0, lng0]
+    const ang = k * 2.399963229            // golden angle
+    const dist = 34 * Math.sqrt(k)         // metres from the venue point
+    const cosLat = Math.cos((lat0 * Math.PI) / 180)
+    return [lat0 + (dist * Math.sin(ang)) / 111320, lng0 + (dist * Math.cos(ang)) / (111320 * cosLat)]
+  })
 }
 
 /** District bubble marker: fan of ≤3 posters + count + name + dot + ring. */
@@ -214,9 +213,8 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       if (bub) bub.style.display = selZone === z.id ? "none" : ""
     })
     if (selZone) {
-      const z = ZONE_BY_ID[selZone]
       const evs = byZone[selZone]
-      const pts = gridPositions(z, evs.length)
+      const pts = realPositions(evs)
       const b = new maplibregl.LngLatBounds()
       evs.forEach((e, i) => {
         const ll = pts[i]
