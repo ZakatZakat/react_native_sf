@@ -36,13 +36,25 @@ const ZONE_BY_ID: Record<string, Zone> = Object.fromEntries(ZONES.map((z) => [z.
 
 const inMoscow = (lat: number, lng: number) => lat >= 55.3 && lat <= 56.1 && lng >= 36.9 && lng <= 38.0
 
-function nearestZoneId(lat: number, lng: number): string {
-  let best = ZONES[0].id, bestD = Infinity
-  for (const z of ZONES) {
-    const d = (z.ll[0] - lat) ** 2 + (z.ll[1] - lng) ** 2
-    if (d < bestD) { bestD = d; best = z.id }
-  }
-  return best
+// Central Moscow + a central radius. Inside the radius → Центр; beyond it the
+// event goes to the directional sector (Север/Восток/Юг/Запад) by its bearing
+// from the centre. Bearing-based assignment spreads events across the city
+// instead of dumping everything past the centre into «Центр» (the old
+// nearest-zone-centre rule pulled the whole central band into one zone).
+const CITY: [number, number] = [55.7520, 37.6175]
+const R_CENTER_KM = 3.0
+
+function zoneOf(lat: number, lng: number): string {
+  const cosLat = Math.cos((CITY[0] * Math.PI) / 180)
+  const dNorth = (lat - CITY[0]) * 111.32
+  const dEast = (lng - CITY[1]) * 111.32 * cosLat
+  if (Math.hypot(dNorth, dEast) < R_CENTER_KM) return "center"
+  let ang = (Math.atan2(dEast, dNorth) * 180) / Math.PI // 0=N, 90=E, 180=S, -90=W
+  if (ang < 0) ang += 360
+  if (ang >= 315 || ang < 45) return "north"
+  if (ang < 135) return "east"
+  if (ang < 225) return "south"
+  return "west"
 }
 
 /** Place each event at its REAL geocoded coordinate. Events that share a
@@ -112,12 +124,12 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const [evIdx, setEvIdx] = useState(0)
   const selZoneRef = useRef<string | null>(null); selZoneRef.current = selZone
 
-  // group real geocoded events by nearest district
+  // group real geocoded events by centre-disk + directional sector
   const byZone = useMemo(() => {
     const m: Record<string, Ev[]> = {}
     ZONES.forEach((z) => (m[z.id] = []))
     events.forEach((e) => {
-      if (e.geo && inMoscow(e.geo[0], e.geo[1])) m[nearestZoneId(e.geo[0], e.geo[1])].push(e)
+      if (e.geo && inMoscow(e.geo[0], e.geo[1])) m[zoneOf(e.geo[0], e.geo[1])].push(e)
     })
     return m
   }, [events])
