@@ -47,7 +47,7 @@ export default function CsLoading() {
     <div className="cs-jr" style={{ position: "fixed", inset: 0, background: CS.B, overflow: "hidden", fontFamily: FONT_SANS, display: "flex", flexDirection: "column" }}>
       <div style={{ position: "absolute", inset: "-20% -20%", pointerEvents: "none", opacity: 0.16, backgroundImage: "linear-gradient(#FFFFFF 1px, transparent 1px), linear-gradient(90deg, #FFFFFF 1px, transparent 1px)", backgroundSize: "22px 22px", animation: "cs-j-drift 6s linear infinite" }} />
       <div style={{ position: "absolute", left: 0, right: 0, height: 2, zIndex: 3, pointerEvents: "none", background: "rgba(255,255,255,0.75)", boxShadow: "0 0 14px 1px rgba(255,255,255,0.7)", animation: "cs-j-scan 2.6s cubic-bezier(0.45,0,0.55,1) infinite" }} />
-      <div style={{ position: "relative", zIndex: 2, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "44px 22px 0", fontFamily: FONT_MONO, fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.7)" }}>
+      <div style={{ position: "relative", zIndex: 2, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "44px 22px 0", fontFamily: FONT_MONO, fontSize: 10, letterSpacing: "0.32em", textTransform: "uppercase", color: "rgba(255,255,255,0.7)" }}>
         <span style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ width: 7, height: 7, background: CS.W, animation: "cs-j-blink 1s steps(1) infinite" }} />N° 001</span>
         <span>MSC · SPB</span>
       </div>
@@ -59,7 +59,7 @@ export default function CsLoading() {
       </div>
       <div style={{ position: "relative", zIndex: 2, padding: "0 22px 40px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
-          <span style={{ fontFamily: FONT_MONO, fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", color: CS.W, fontWeight: 700 }}>{status}<span style={{ animation: "cs-j-blink 0.9s steps(1) infinite" }}>{pct < 100 ? "…" : " ✓"}</span></span>
+          <span style={{ fontFamily: FONT_MONO, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: CS.W, fontWeight: 700 }}>{status}<span style={{ animation: "cs-j-blink 0.9s steps(1) infinite" }}>{pct < 100 ? "…" : " ✓"}</span></span>
           <span style={{ fontFamily: FONT_MONO, fontSize: 13, letterSpacing: "0.04em", color: CS.W, fontWeight: 700 }}>{String(pct).padStart(3, "0")}%</span>
         </div>
         <div style={{ height: 6, width: "100%", background: "rgba(255,255,255,0.22)", overflow: "hidden" }}>

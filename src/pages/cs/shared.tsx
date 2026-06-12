@@ -159,7 +159,7 @@ export function Mark({ children, color, style }: { children: React.ReactNode; co
 export function Mono({ children, color, style }: { children: React.ReactNode; color?: string; style?: React.CSSProperties }) {
   return (
     <span style={{
-      fontFamily: FONT_MONO, fontSize: 9, letterSpacing: "0.16em",
+      fontFamily: FONT_MONO, fontSize: 9, letterSpacing: "0.18em", // --cs-track-label
       textTransform: "uppercase", color: color || CS.G55, ...style,
     }}>{children}</span>
   )

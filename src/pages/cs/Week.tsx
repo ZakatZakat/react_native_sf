@@ -70,21 +70,21 @@ export default function CsWeek() {
       {/* editorial panel */}
       <div style={{ flex: 1, background: SK.ink, color: "#fff", padding: "calc(env(safe-area-inset-top,0px) + 30px) 20px 24px", display: "flex", flexDirection: "column" }}>
         <div style={{ ...anim(0.1) }}>
-          <span style={{ fontFamily: FONT_MONO, fontSize: 9.5, fontWeight: 700, letterSpacing: "0.26em", textTransform: "uppercase", color: "rgba(255,255,255,0.6)" }}>Неделя</span>
+          <span style={{ fontFamily: FONT_MONO, fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.6)" }}>Неделя</span>
         </div>
         <div style={{ fontWeight: 900, fontSize: 92, lineHeight: 0.8, letterSpacing: "-0.05em", ...anim(0.16) }}>{wk.n}</div>
-        <div style={{ fontFamily: FONT_MONO, fontSize: 10.5, letterSpacing: "0.08em", color: "rgba(255,255,255,0.8)", marginTop: 8, ...anim(0.22) }}>{wk.dates}</div>
+        <div style={{ fontFamily: FONT_MONO, fontSize: 10, letterSpacing: "0.32em", color: "rgba(255,255,255,0.8)", marginTop: 8, ...anim(0.22) }}>{wk.dates}</div>
         <p style={{ fontSize: 13, lineHeight: 1.45, color: "rgba(255,255,255,0.85)", marginTop: 14, ...anim(0.28) }}>{lead}</p>
         <div style={{ flex: 1 }} />
         <div style={{ display: "flex", gap: 18, ...anim(0.34) }}>
           {[[eventsCount, "событий"], [zonesCount, "категорий"]].map(([n, l]) => (
             <div key={l as string}>
               <div style={{ fontWeight: 900, fontSize: 24, letterSpacing: "-0.03em", lineHeight: 1 }}>{n}</div>
-              <div style={{ fontFamily: FONT_MONO, fontSize: 8.5, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.55)", marginTop: 3 }}>{l}</div>
+              <div style={{ fontFamily: FONT_MONO, fontSize: 9, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.55)", marginTop: 3 }}>{l}</div>
             </div>
           ))}
         </div>
-        <div style={{ fontFamily: FONT_MONO, fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)", marginTop: 16, ...anim(0.4) }}>
+        <div style={{ fontFamily: FONT_MONO, fontSize: 9, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)", marginTop: 16, ...anim(0.4) }}>
           нажмите, чтобы продолжить →
         </div>
       </div>
