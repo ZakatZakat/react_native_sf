@@ -168,12 +168,6 @@ export default function CsLanding() {
     navigate({ to: "/cs/loading" })
   }
 
-  // Edition week-of-year for the header strip.
-  const now = new Date()
-  const wk = String(
-    Math.ceil(((now.getTime() - new Date(now.getFullYear(), 0, 1).getTime()) / 86400000 + 1) / 7),
-  ).padStart(2, "0")
-
   return (
     <Box
       bg={W}
@@ -186,22 +180,9 @@ export default function CsLanding() {
         fontFamily: FONT_SANS,
       }}
     >
-      {/* Outer flex column: edition strip → stage (flex 1) → CTA. */}
+      {/* v6: full-screen triptych + floating bar card — no edition strip. */}
       <Flex direction="column" h="100%" w="100%">
-        {/* Edition strip — flush against the stage, no margin. */}
-        <Flex
-          justify="space-between"
-          align="center"
-          px="4"
-          py="2"
-          borderBottom={`2px solid ${K}`}
-          flexShrink={0}
-        >
-          <Mark>N° 001 · CITYSIGNAL</Mark>
-          <Mark color={G55}>MSC · SPB · WK {wk}</Mark>
-        </Flex>
-
-        {/* Triptych stage — fills remaining vertical space. */}
+        {/* Triptych stage — fills the screen. */}
         <Box position="relative" flex="1" minH="0" overflow="hidden">
           {/* The 3 scrolling columns */}
           <Box
@@ -288,26 +269,6 @@ export default function CsLanding() {
             </Flex>
           </Box>
 
-          {/* Bottom-of-stage labels — inside the fade. */}
-          <Flex
-            position="absolute"
-            left="0" right="0" bottom="8px"
-            px="4.5"
-            zIndex={3}
-            justify="space-between"
-            color={W}
-            style={{
-              fontFamily: FONT_MONO,
-              textShadow: "0 0 4px rgba(0,0,0,0.5)",
-            }}
-            fontSize="9px"
-            letterSpacing="0.16em"
-            textTransform="uppercase"
-          >
-            <Text as="span">↓ за неделю</Text>
-            <Text as="span">↑ live now</Text>
-            <Text as="span">↓ MSC + SPB</Text>
-          </Flex>
         </Box>
       </Flex>
 
