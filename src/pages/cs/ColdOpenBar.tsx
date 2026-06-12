@@ -22,16 +22,40 @@ type Pos = { left: number; top: number; width: number; height: number; fs: numbe
 
 export default function ColdOpenBar({ onDone }: { onDone: () => void }) {
   const [exiting, setExiting] = useState(false)
+  // Gate the montage on web-fonts ready — without this the FIRST paint renders
+  // the City/Signal lockup in a system fallback and visibly swaps to Inter
+  // mid-flight. The original v6 was masked by its in-browser Babel boot delay;
+  // a compiled build paints instantly, so we gate explicitly (capped 800ms).
+  const [fontsReady, setFontsReady] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const cityRef = useRef<HTMLDivElement>(null)
   const sigRef = useRef<HTMLDivElement>(null)
   const onDoneRef = useRef(onDone); onDoneRef.current = onDone
 
-  // centre (hero) positions in overlay-local coords
-  const cityHero: Pos = { left: 50, top: 256, width: 172, height: 78, fs: 44, pl: 15 }
-  const sigHero: Pos = { left: 76, top: 342, width: 200, height: 78, fs: 44, pr: 15 }
+  // The original v6 hero coords (50/256, 76/342) centre the lockup inside a
+  // FIXED 316px phone frame. We render full-bleed (Telegram mini-app), so we
+  // shift the whole cluster (bbox centre ≈ 163,338) to the real viewport
+  // centre — otherwise it sits left-of-centre. Computed once, synchronously.
+  const [off] = useState(() => {
+    if (typeof window === "undefined") return { dx: 0, dy: 0 }
+    return { dx: Math.round(window.innerWidth / 2 - 163), dy: Math.round(window.innerHeight / 2 - 338) }
+  })
+
+  // centre (hero) positions in overlay-local coords (offset to viewport centre)
+  const cityHero: Pos = { left: 50 + off.dx, top: 256 + off.dy, width: 172, height: 78, fs: 44, pl: 15 }
+  const sigHero: Pos = { left: 76 + off.dx, top: 342 + off.dy, width: 200, height: 78, fs: 44, pr: 15 }
 
   useEffect(() => {
+    let done = false
+    const ready = () => { if (!done) { done = true; setFontsReady(true) } }
+    const fonts = (document as Document & { fonts?: { ready: Promise<unknown> } }).fonts
+    if (fonts?.ready) fonts.ready.then(ready)
+    const t = setTimeout(ready, 800)
+    return () => clearTimeout(t)
+  }, [])
+
+  useEffect(() => {
+    if (!fontsReady) return
     const t1 = setTimeout(() => {
       // measure the card banner's real position and fly there
       let cityDock: Pos = { left: 56, top: 164, width: 116, height: 30, fs: 17, pl: 11 }
@@ -73,7 +97,11 @@ export default function ColdOpenBar({ onDone }: { onDone: () => void }) {
     const t2 = setTimeout(() => onDoneRef.current(), 3760)
     return () => { clearTimeout(t1); clearTimeout(t2) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [fontsReady])
+
+  // Hold a blank white stage (= grid cover bg) until fonts are ready, so the
+  // lockup never paints in a fallback face.
+  if (!fontsReady) return <div style={{ position: "absolute", inset: 0, zIndex: 400, background: CS.W }} />
 
   const grid = "rgba(13,13,13,0.09)"
   const gridImg = `linear-gradient(${grid} 1px, transparent 1px), linear-gradient(90deg, ${grid} 1px, transparent 1px)`
@@ -95,7 +123,7 @@ export default function ColdOpenBar({ onDone }: { onDone: () => void }) {
       <div style={{ ...cmBase, bottom: 14, left: 14, borderBottom: `2px solid ${CS.K}`, borderLeft: `2px solid ${CS.K}`, animation: cmAnim }} />
       <div style={{ ...cmBase, bottom: 14, right: 14, borderBottom: `2px solid ${CS.K}`, borderRight: `2px solid ${CS.K}`, animation: cmAnim }} />
       {/* slogan (centre) — leaves; the card has its own title */}
-      <div style={{ position: "absolute", left: 50, top: 448, width: 226, zIndex: 5, animation: exiting ? "co5-tagOut 0.4s cubic-bezier(0.5,0,0.75,0) both" : "none" }}>
+      <div style={{ position: "absolute", left: 50 + off.dx, top: 448 + off.dy, width: 226, zIndex: 5, animation: exiting ? "co5-tagOut 0.4s cubic-bezier(0.5,0,0.75,0) both" : "none" }}>
         <div style={{ height: 3, background: CS.K, transformOrigin: "left", marginBottom: 11, animation: "co5-ruleX 0.42s cubic-bezier(0.83,0,0.17,1) 1.5s both" }} />
         {([["то, что", CS.K], ["движется", CS.B], ["в городе", CS.K]] as const).map(([t, c], i) => (
           <div key={i} style={{ overflow: "hidden" }}>
