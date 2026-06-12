@@ -55,7 +55,7 @@ const rootRoute = createRootRoute({
 const landingRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
-  beforeLoad: () => { throw redirect({ to: "/cs/open" }) },
+  beforeLoad: () => { throw redirect({ to: "/cs/landing" }) },
 })
 const landingOldRoute = createRoute({ getParentRoute: () => rootRoute, path: "/landing-1", component: Landing })
 const landing2Route = createRoute({ getParentRoute: () => rootRoute, path: "/landing-2", component: Landing2 })

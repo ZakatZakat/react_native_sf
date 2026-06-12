@@ -10,17 +10,25 @@
  */
 
 import { useNavigate } from "@tanstack/react-router"
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { Box, Flex, Text } from "@chakra-ui/react"
 import { useCsKeyframes, CS, FONT_MONO, FONT_SANS } from "./shared"
 import { useDerived } from "./useJourney"
 import { analytics } from "../../lib/analytics"
+import ColdOpenBar from "./ColdOpenBar"
 
 const K = CS.K
 const W = CS.W
 const B = CS.B
 const G55 = CS.G55
 const G70 = CS.G70
+
+const ABOUT_DESC = "Подборка событий Москвы и Петербурга, которых нет в больших афишах: подвалы, галереи, клубы, кинопоказы, лекции. Раз в неделю — одна лента под твой вкус."
+const ABOUT_STEPS = [
+  { n: "01", t: "Слежу", b: "35+ каналов" },
+  { n: "02", t: "Отбираю", b: "ред. + алг." },
+  { n: "03", t: "Шлю", b: "1 раз / нед." },
+]
 
 // ── Atoms ────────────────────────────────────────────────────────────────
 
@@ -129,6 +137,18 @@ export default function CsLanding() {
   const navigate = useNavigate()
   const { derived } = useDerived()
 
+  // v6 cold-open «Полоса» — plays once per session, the City/Signal lockup
+  // settles into the bar card's banner. While it runs the card's own banner is
+  // hidden (the lockup draws it), so there's no double banner.
+  const [coldOpen, setColdOpen] = useState(() => {
+    if (typeof window === "undefined") return false
+    return !sessionStorage.getItem("cs.coldopen.seen")
+  })
+  const dismissColdOpen = () => {
+    try { sessionStorage.setItem("cs.coldopen.seen", "1") } catch { /* noop */ }
+    setColdOpen(false)
+  }
+
   // Build 3 column strips of EXACTLY equal length — different rotations of
   // the same base so each column scrolls different content but the looping
   // strip height stays in sync.
@@ -207,153 +227,64 @@ export default function CsLanding() {
             style={{ background: `linear-gradient(to top, ${W}, transparent)` }}
           />
 
-          {/* ABOUT card — upper third so the triptych below has room to breathe. */}
+          {/* ABOUT card — v6 «bar» variant: banner header CITY|SIGNAL + steps +
+              «Запустить». The .cs-about-host wrapper + City/Signal spans are
+              the homing target for the cold-open lockup. */}
           <Box
+            className="cs-about-host"
             position="absolute"
-            left={{ base: "10px", sm: "16px" }}
-            right={{ base: "10px", sm: "16px" }}
-            top={{ base: "18%", sm: "20%" }}
+            left={{ base: "12px", sm: "16px" }}
+            right={{ base: "12px", sm: "16px" }}
+            top={{ base: "11%", sm: "12%" }}
             bg={W}
             border={`2.5px solid ${K}`}
             zIndex={5}
-            p="4"
-            style={{
-              boxShadow: `5px 5px 0 ${B}`,
-              fontFamily: FONT_SANS,
-            }}
+            style={{ boxShadow: `5px 5px 0 ${B}`, fontFamily: FONT_SANS, padding: "16px" }}
           >
-            {/* Corner stamp */}
-            <Box
-              position="absolute" top="-3px" right="-3px"
-              bg={B} color={W}
-              px="2" py="1"
-              fontWeight="900"
-              fontSize="9px"
-              letterSpacing="0.22em"
-              lineHeight="1"
-            >
-              ABOUT
+            {/* banner CITY|SIGNAL — hidden while the cold-open lockup is in flight */}
+            <Box display="flex" style={{ height: 30, visibility: coldOpen ? "hidden" : "visible" }}>
+              <Box style={{ width: 118, background: K, display: "flex", alignItems: "center", paddingLeft: 11 }}>
+                <span style={{ fontWeight: 900, fontSize: 17, letterSpacing: "-0.05em", textTransform: "uppercase", color: W }}>City</span>
+              </Box>
+              <Box style={{ flex: 1, background: B, display: "flex", alignItems: "center", justifyContent: "flex-end", paddingRight: 11 }}>
+                <span style={{ fontWeight: 900, fontSize: 17, letterSpacing: "-0.05em", textTransform: "uppercase", color: W }}>Signal</span>
+              </Box>
             </Box>
 
-            <Mark color={G55}>Что это</Mark>
-            <Text
-              fontWeight="900"
-              fontSize={{ base: "26px", sm: "30px" }}
-              lineHeight="0.92"
-              letterSpacing="-0.04em"
-              textTransform="uppercase"
-              color={K}
-              mt="1.5"
-            >
-              CitySignal —
-            </Text>
-            <Text
-              fontWeight="900"
-              fontSize={{ base: "26px", sm: "30px" }}
-              lineHeight="0.92"
-              letterSpacing="-0.04em"
-              textTransform="uppercase"
-              color={B}
-              ml="2"
-            >
-              то, что
-            </Text>
-            <Text
-              fontWeight="900"
-              fontSize={{ base: "26px", sm: "30px" }}
-              lineHeight="0.92"
-              letterSpacing="-0.04em"
-              textTransform="uppercase"
-              color={K}
-            >
-              движется в городе
+            <Flex justify="space-between" align="center" mt="3">
+              <Mark color={G55}>Что это</Mark><Mark color={G55}>N°001</Mark>
+            </Flex>
+
+            <Text fontWeight="900" fontSize="27px" lineHeight="0.92" letterSpacing="-0.045em" textTransform="uppercase" color={K} mt="2.5">
+              То, что <Text as="span" color={B}>движется</Text> в городе
             </Text>
 
-            <Text
-              fontWeight="600"
-              fontSize="12.5px"
-              lineHeight="1.45"
-              color={G70}
-              mt="2.5"
-            >
-              Подборка ивентов Москвы и Петербурга, которых нет в больших афишах:
-              подвалы, галереи, клубы, кинопоказы, лекции. Раз в неделю — одна
-              лента под твой вкус.
-            </Text>
+            <Text fontWeight="600" fontSize="12px" lineHeight="1.5" color={G70} mt="2.5">{ABOUT_DESC}</Text>
 
-            {/* Mini how-it-works */}
-            <Box
-              mt="3" pt="2.5"
-              borderTop={`1.5px solid ${K}`}
-              display="grid"
-              gridTemplateColumns="1fr 1fr 1fr"
-              gap="2"
-            >
-              {[
-                { n: "01", t: "Слежу", b: "35+ каналов" },
-                { n: "02", t: "Отбираю", b: "ред. + алг." },
-                { n: "03", t: "Шлю", b: "1 раз / нед." },
-              ].map((s) => (
-                <Box key={s.n}>
-                  <Text
-                    fontSize="9px"
-                    color={B}
-                    fontWeight="700"
-                    letterSpacing="0.06em"
-                    style={{ fontFamily: FONT_MONO }}
-                  >
-                    {s.n}
-                  </Text>
-                  <Text
-                    fontWeight="900"
-                    fontSize="12px"
-                    lineHeight="1"
-                    letterSpacing="-0.02em"
-                    textTransform="uppercase"
-                    color={K}
-                    mt="0.5"
-                  >
-                    {s.t}
-                  </Text>
-                  <Text
-                    fontSize="9px"
-                    color={G55}
-                    mt="0.5"
-                    letterSpacing="0.04em"
-                    style={{ fontFamily: FONT_MONO }}
-                  >
-                    {s.b}
-                  </Text>
+            {/* steps 01 / 02 / 03 */}
+            <Box display="flex" mt="3" style={{ borderTop: `2px solid ${K}`, borderBottom: `2px solid ${K}` }}>
+              {ABOUT_STEPS.map((s, i) => (
+                <Box key={s.n} flex="1" style={{ padding: "9px 0 10px", borderLeft: i ? `1px solid ${K}` : "none", paddingLeft: i ? "10px" : 0 }}>
+                  <Text fontSize="10px" color={B} fontWeight="700" letterSpacing="0.06em" style={{ fontFamily: FONT_MONO }}>{s.n}</Text>
+                  <Text fontWeight="900" fontSize="13.5px" letterSpacing="-0.02em" textTransform="uppercase" color={K} mt="1.5">{s.t}</Text>
+                  <Text fontSize="8.5px" color={G55} mt="1" style={{ fontFamily: FONT_MONO }}>{s.b}</Text>
                 </Box>
               ))}
             </Box>
 
-            {/* Stats bottom row */}
+            {/* «Запустить» — launches the journey (replaces the old bottom CTA + «Сейчас в эфире») */}
             <Flex
-              mt="3" pt="2"
-              borderTop={`2px solid ${K}`}
-              justify="space-between"
-              align="baseline"
+              as="button"
+              onClick={goNext}
+              w="100%" mt="3"
+              bg={K} color={W}
+              align="center" justify="space-between"
+              cursor="pointer"
+              style={{ border: "none", padding: "11px 11px 11px 14px", gap: 10, fontFamily: FONT_SANS }}
+              _active={{ transform: "translateY(1px)" }}
             >
-              <Mark>Сейчас в эфире</Mark>
-              <Flex align="baseline" gap="2">
-                <Text
-                  fontWeight="900"
-                  fontSize="22px"
-                  color={B}
-                  lineHeight="1"
-                  letterSpacing="-0.04em"
-                >
-                  142
-                </Text>
-                <Text
-                  fontSize="10px"
-                  color={G55}
-                  style={{ fontFamily: FONT_MONO }}
-                >
-                  ивентов / нед.
-                </Text>
-              </Flex>
+              <Text as="span" fontWeight="900" fontSize="17px" letterSpacing="-0.025em" textTransform="uppercase">Запустить</Text>
+              <Flex as="span" align="center" justify="center" style={{ fontSize: 20, fontWeight: 900, width: 34, height: 34, background: B, color: W, flexShrink: 0 }}>→</Flex>
             </Flex>
           </Box>
 
@@ -378,45 +309,11 @@ export default function CsLanding() {
             <Text as="span">↓ MSC + SPB</Text>
           </Flex>
         </Box>
-
-        {/* Bottom CTA — in-flow under the stage. */}
-        <Flex
-          as="button"
-          onClick={goNext}
-          bg={K}
-          color={W}
-          align="center"
-          justify="space-between"
-          cursor="pointer"
-          flexShrink={0}
-          style={{
-            paddingTop: "14px",
-            paddingBottom: "max(18px, env(safe-area-inset-bottom))",
-            paddingLeft: "18px",
-            paddingRight: "18px",
-            fontFamily: FONT_SANS,
-          }}
-          _hover={{ bg: B }}
-          _active={{ transform: "translateY(1px)" }}
-          transition="background 0.14s"
-        >
-          <Box textAlign="left">
-            <Mark color="rgba(255,255,255,0.5)">Шаг 1 / 7</Mark>
-            <Text
-              fontWeight="900"
-              fontSize="18px"
-              lineHeight="1"
-              mt="1"
-              letterSpacing="-0.025em"
-              textTransform="uppercase"
-              color={W}
-            >
-              Войти в эту картинку
-            </Text>
-          </Box>
-          <Text fontSize="26px" lineHeight="1" fontWeight="900">→</Text>
-        </Flex>
       </Flex>
+
+      {/* v6 cold-open «Полоса» — overlay; the City/Signal lockup settles into
+          the card banner above, then this is removed (once per session). */}
+      {coldOpen && <ColdOpenBar onDone={dismissColdOpen} />}
     </Box>
   )
 }
