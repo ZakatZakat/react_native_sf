@@ -248,7 +248,6 @@ export default function CsLanding() {
                 <Box key={s.n} flex="1" style={{ padding: "9px 0 10px", borderLeft: i ? `1px solid ${K}` : "none", paddingLeft: i ? "10px" : 0 }}>
                   <Text fontSize="10px" color={B} fontWeight="700" letterSpacing="0.06em" style={{ fontFamily: FONT_MONO }}>{s.n}</Text>
                   <Text fontWeight="900" fontSize="13.5px" letterSpacing="-0.02em" textTransform="uppercase" color={K} mt="1.5">{s.t}</Text>
-                  <Text fontSize="8.5px" color={G55} mt="1" style={{ fontFamily: FONT_MONO }}>{s.b}</Text>
                 </Box>
               ))}
             </Box>
