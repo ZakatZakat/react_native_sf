@@ -15,8 +15,8 @@ import maplibregl from "maplibre-gl"
 import "maplibre-gl/dist/maplibre-gl.css"
 import type { Ev } from "./buildDerived"
 import { CS, FONT_SANS, FONT_MONO, SK, useCsKeyframes, useOpenEvent } from "./shared"
+import { CS_STYLE_LIGHT, applyCinematicSky } from "./csMapStyle"
 
-const STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
 const MSK: [number, number] = [37.62, 55.745]
 
 // `ll` = real district centre (events are assigned to their true nearest
@@ -146,30 +146,17 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
     let map: maplibregl.Map | null = null
     try {
       map = new maplibregl.Map({
-        container: boxRef.current, style: STYLE_URL, center: MSK, zoom: 10.5,
-        pitch: 52, bearing: -14, antialias: true, attributionControl: false,
+        container: boxRef.current, style: CS_STYLE_LIGHT, center: MSK, zoom: 10.5,
+        pitch: 52, bearing: -14, antialias: true, attributionControl: { compact: true },
       })
       map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "bottom-right")
       map.on("error", () => setFailed(true))
       mapRef.current = map
       map.on("load", () => {
         if (!map) return
-        // 3D buildings extrusion
-        try {
-          const style = map.getStyle()
-          const vsrc = Object.keys(style.sources).find((k) => (style.sources as any)[k].type === "vector")
-          if (vsrc && !map.getLayer("cs-3d-buildings")) {
-            map.addLayer({
-              id: "cs-3d-buildings", type: "fill-extrusion", source: vsrc, "source-layer": "building", minzoom: 12,
-              paint: {
-                "fill-extrusion-color": "#cdd0c8",
-                "fill-extrusion-height": ["coalesce", ["get", "render_height"], ["get", "height"], 6],
-                "fill-extrusion-base": ["coalesce", ["get", "render_min_height"], ["get", "min_height"], 0],
-                "fill-extrusion-opacity": 0.92,
-              },
-            } as any)
-          }
-        } catch { /* style without building layer */ }
+        // v7 csbrand: фирменный стиль уже содержит 3D-дома (cs-building-3d) —
+        // добавляем только кинематографичное небо + туман у горизонта.
+        applyCinematicSky(map, false)
 
         const b = new maplibregl.LngLatBounds()
         ZONES.forEach((z) => {
@@ -256,8 +243,8 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const zoneCount = ZONES.filter((z) => byZone[z.id].length).length
 
   return (
-    <div style={{ position: "absolute", inset: 0, zIndex: 50, background: "#EAEDF0", animation: "cs-mapintro-in 0.4s ease both", fontFamily: FONT_SANS }}>
-      {!failed && <div ref={boxRef} style={{ position: "absolute", inset: 0, isolation: "isolate", background: "#EAEDF0" }} />}
+    <div style={{ position: "absolute", inset: 0, zIndex: 50, background: "#E4E4E1", animation: "cs-mapintro-in 0.4s ease both", fontFamily: FONT_SANS }}>
+      {!failed && <div ref={boxRef} style={{ position: "absolute", inset: 0, isolation: "isolate", background: "#E4E4E1" }} />}
       {failed && <div style={{ position: "absolute", inset: 0, background: "linear-gradient(160deg,#16213a,#0d0d0d)" }} />}
 
       {/* subtle scrims for legibility */}
@@ -271,7 +258,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
           <div style={{ fontFamily: FONT_SANS, fontWeight: 900, fontSize: 34, letterSpacing: "-0.045em", lineHeight: 0.9, color: CS.K, marginTop: 6 }}>Что рядом</div>
           <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap", marginTop: 11 }}>
             <span style={{ background: CS.B, color: "#fff", padding: "3px 9px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 10, letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{totalPlaced} событий · {zoneCount} районов</span>
-            <span style={{ background: CS.W, color: CS.K, border: `1.5px solid ${CS.K}`, padding: "2px 7px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, letterSpacing: "0.06em", whiteSpace: "nowrap" }}>движок · MapLibre · 3D</span>
+            <span style={{ background: CS.W, color: CS.K, border: `1.5px solid ${CS.K}`, padding: "2px 7px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, letterSpacing: "0.06em", whiteSpace: "nowrap" }}>движок · CitySignal · 3D</span>
           </div>
         </div>
       </div>
