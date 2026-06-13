@@ -190,25 +190,24 @@ function polyCentroid(geom: GeoJSON.Geometry): [number, number] | null {
   return [x / ring.length, y / ring.length]
 }
 
-/** For each card, the nearest building's feature ref (null where none / no id). */
-function findCardBuildings(map: maplibregl.Map, markers: maplibregl.Marker[]): (BldgRef | null)[] {
+/** The building feature nearest a lng/lat (null if none rendered / no id).
+ *  Only finds RENDERED buildings, so the point must be on-screen. */
+function buildingUnder(map: maplibregl.Map, lngLat: maplibregl.LngLatLike): BldgRef | null {
   const queryLayers = ["cs-building-3d", "cs-building"].filter((l) => map.getLayer(l))
-  return markers.map((mk) => {
-    if (!queryLayers.length) return null
-    const p = map.project(mk.getLngLat())
-    const hits = map.queryRenderedFeatures([[p.x - 40, p.y - 40], [p.x + 40, p.y + 40]], { layers: queryLayers })
-    let best: maplibregl.MapGeoJSONFeature | null = null, bestD = Infinity
-    hits.forEach((f) => {
-      if (f.id == null) return
-      const c = polyCentroid(f.geometry); if (!c) return
-      const cp = map.project(c)
-      const d = (cp.x - p.x) ** 2 + (cp.y - p.y) ** 2
-      if (d < bestD) { bestD = d; best = f }
-    })
-    if (!best) return null
-    const bf = best as maplibregl.MapGeoJSONFeature
-    return { source: bf.source, sourceLayer: bf.sourceLayer as string, id: bf.id as string | number }
+  if (!queryLayers.length) return null
+  const p = map.project(lngLat)
+  const hits = map.queryRenderedFeatures([[p.x - 40, p.y - 40], [p.x + 40, p.y + 40]], { layers: queryLayers })
+  let best: maplibregl.MapGeoJSONFeature | null = null, bestD = Infinity
+  hits.forEach((f) => {
+    if (f.id == null) return
+    const c = polyCentroid(f.geometry); if (!c) return
+    const cp = map.project(c)
+    const d = (cp.x - p.x) ** 2 + (cp.y - p.y) ** 2
+    if (d < bestD) { bestD = d; best = f }
   })
+  if (!best) return null
+  const bf = best as maplibregl.MapGeoJSONFeature
+  return { source: bf.source, sourceLayer: bf.sourceLayer as string, id: bf.id as string | number }
 }
 
 /** Light up exactly one building (or none), clearing the previously lit one. */
@@ -228,7 +227,6 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const fitAllRef = useRef<() => void>(() => {})
   const pendulumStopRef = useRef<() => void>(() => {})
   const hlTokenRef = useRef(0)
-  const cardBuildingsRef = useRef<(BldgRef | null)[]>([]) // nearest building per card
   const hlBuildingRef = useRef<BldgRef | null>(null) // currently lit building
   const zoneMarkersRef = useRef<Record<string, HTMLElement>>({})
   const scatterRef = useRef<maplibregl.Marker[]>([])
@@ -239,6 +237,34 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const [evIdx, setEvIdx] = useState(0)
   const evIdxRef = useRef(0); evIdxRef.current = evIdx
   const selZoneRef = useRef<string | null>(null); selZoneRef.current = selZone
+  const selClusterRef = useRef<number | null>(null); selClusterRef.current = selCluster
+
+  // Highlight the ACTIVE event's building on demand. queryRenderedFeatures only
+  // sees on-screen buildings, so if the active event sits off-screen we gently
+  // pan to it first — that's why some buildings used to never light up.
+  const applyActiveHighlight = () => {
+    const map = mapRef.current
+    if (!map || selClusterRef.current == null) return
+    if (map.getZoom() < 13.5) return // buildings not rendered yet — the moveend pass handles it
+    const mk = scatterRef.current[evIdxRef.current]
+    if (!mk) { hlBuildingRef.current = setActiveBuilding(map, hlBuildingRef.current, null); return }
+    const ll = mk.getLngLat()
+    const cv = map.getCanvas()
+    const p = map.project(ll)
+    const onScreen = p.x > 50 && p.x < cv.clientWidth - 50 && p.y > 150 && p.y < cv.clientHeight - 240
+    const target = evIdxRef.current
+    // retry on `idle`: at moveend the building tiles for a fresh view may not be
+    // loaded yet, so queryRenderedFeatures finds nothing — wait for them once.
+    const doHl = (retry: boolean) => {
+      if (selClusterRef.current == null || evIdxRef.current !== target) return
+      const b = buildingUnder(map, ll)
+      if (b) hlBuildingRef.current = setActiveBuilding(map, hlBuildingRef.current, b)
+      else if (retry) map.once("idle", () => doHl(false))
+    }
+    if (onScreen) doHl(true)
+    else { map.easeTo({ center: ll, duration: 450 }); map.once("moveend", () => doHl(true)) }
+  }
+  const applyActiveRef = useRef(applyActiveHighlight); applyActiveRef.current = applyActiveHighlight
 
   // group real geocoded events by centre-disk + directional sector
   const byZone = useMemo(() => {
@@ -332,7 +358,6 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
     scatterRef.current = []
     const hlToken = ++hlTokenRef.current
     hlBuildingRef.current = setActiveBuilding(map, hlBuildingRef.current, null)
-    cardBuildingsRef.current = []
     // toggle zone bubble states
     ZONES.forEach((z) => {
       const el = zoneMarkersRef.current[z.id]
@@ -382,17 +407,8 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
           scatterRef.current.push(m)
         })
         map.easeTo({ center: [cl.ll[1], cl.ll[0]], zoom: 14.8, pitch: 52, bearing: -14, duration: 600 })
-        // Light the active event's building as soon as the buildings render.
-        // moveend fires when the camera lands (~600ms); idle is the fallback if
-        // tiles weren't ready yet. Recolour only — cards don't move.
-        const cardMarkers = scatterRef.current.slice()
-        cardBuildingsRef.current = []
-        const applyHl = () => {
-          if (hlTokenRef.current !== hlToken) return
-          cardBuildingsRef.current = findCardBuildings(map, cardMarkers)
-          hlBuildingRef.current = setActiveBuilding(map, hlBuildingRef.current, cardBuildingsRef.current[evIdxRef.current] ?? null)
-        }
-        map.once("moveend", () => { applyHl(); if (!cardBuildingsRef.current.some(Boolean)) map.once("idle", applyHl) })
+        // Once zoomed in (buildings rendered), light the active event's building.
+        map.once("moveend", () => { if (hlTokenRef.current === hlToken) applyActiveRef.current() })
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -405,8 +421,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       const pola = m.getElement().querySelector(".cs-pola")
       if (pola) pola.classList.toggle("cs-scatter-active", i === evIdx)
     })
-    const map = mapRef.current
-    if (map && selCluster != null) hlBuildingRef.current = setActiveBuilding(map, hlBuildingRef.current, cardBuildingsRef.current[evIdx] ?? null)
+    if (selCluster != null) applyActiveRef.current()
   }, [evIdx, selZone, selCluster])
 
   const activeCluster = selZone != null && selCluster != null ? (clustersByZone[selZone]?.[selCluster] ?? null) : null
