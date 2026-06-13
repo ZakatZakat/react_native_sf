@@ -140,7 +140,7 @@ const KEYFRAMES = `
   .cs-pola-img { width: 100%; height: 36px; overflow: hidden; outline: 1px solid rgba(13,13,13,0.18); }
   .cs-pola-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .cs-pola-name { height: 13px; line-height: 13px; text-align: center; font-family: var(--cs-font-sans); font-weight: 900; font-size: 5.8px; letter-spacing: 0.04em; text-transform: uppercase; color: #0D0D0D; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .cs-pola.cs-scatter-active .cs-pola-card { animation: none; transform: rotate(0deg) translateY(-5px) scale(1.3); box-shadow: 3px 6px 0 #0055FF; }
+  .cs-pola.cs-scatter-active .cs-pola-card { animation: none; transform: rotate(0deg) translateY(-5px) scale(1.3); box-shadow: 3px 6px 0 #0D0D0D; }
   @keyframes cs-sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
   /* map-intro zoom/pitch controls: lift above the «Вся лента» CTA so they don't collide */
   .maplibregl-ctrl-bottom-right { margin-bottom: 104px !important; margin-right: 8px !important; }

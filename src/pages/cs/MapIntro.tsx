@@ -125,13 +125,13 @@ function clusterByProximity(evs: Ev[], radiusM = 650): Cluster[] {
  *  Spread scales with member count so the polaroids never overlap at L2 zoom. */
 function sunflower(lat: number, lng: number, m: number): [number, number][] {
   const cosLat = Math.cos((lat * Math.PI) / 180)
+  const off = (a: number, d: number): [number, number] =>
+    [lat + (d * Math.sin(a)) / 111320, lng + (d * Math.cos(a)) / (111320 * cosLat)]
+  // A lone event is still nudged off its venue (~110m) so the blue building
+  // it sits in stays visible beside the card instead of hiding behind it.
+  if (m === 1) return [off(0.9, 110)]
   const spread = 150 + 70 * m // metres
-  return Array.from({ length: m }, (_, j) => {
-    const a = j * 2.399963229 // golden angle
-    const frac = m === 1 ? 0 : Math.sqrt((j + 0.5) / m)
-    const d = frac * spread
-    return [lat + (d * Math.sin(a)) / 111320, lng + (d * Math.cos(a)) / (111320 * cosLat)] as [number, number]
-  })
+  return Array.from({ length: m }, (_, j) => off(j * 2.399963229, Math.sqrt((j + 0.5) / m) * spread))
 }
 
 /** Cluster fan marker (v7 makeClusterEl): 3 posters + count + «N событий». */
@@ -179,7 +179,7 @@ function ensureEventBuildingLayer(map: maplibregl.Map) {
       "fill-extrusion-color": CS.B,
       "fill-extrusion-height": ["interpolate", ["linear"], ["zoom"], 13, 0, 15.5, ["coalesce", ["to-number", ["get", "render_height"]], ["to-number", ["get", "height"]], 14]],
       "fill-extrusion-base": ["coalesce", ["to-number", ["get", "render_min_height"]], 0],
-      "fill-extrusion-opacity": 0.9,
+      "fill-extrusion-opacity": 1,
     },
   } as maplibregl.AddLayerObject)
 }
@@ -200,7 +200,7 @@ function highlightEventBuildings(map: maplibregl.Map, events: Ev[]) {
   events.forEach((e) => {
     if (!e.geo) return
     const p = map.project([e.geo[1], e.geo[0]])
-    const hits = map.queryRenderedFeatures([[p.x - 12, p.y - 12], [p.x + 12, p.y + 12]], { layers: queryLayers })
+    const hits = map.queryRenderedFeatures([[p.x - 8, p.y - 8], [p.x + 8, p.y + 8]], { layers: queryLayers })
     if (!hits.length) return
     const f = hits[0]
     const key = f.id != null ? `id:${f.id}` : JSON.stringify((f.geometry as GeoJSON.Polygon).coordinates?.[0]?.[0] ?? Math.random())
