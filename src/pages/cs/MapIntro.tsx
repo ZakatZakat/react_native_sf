@@ -94,17 +94,73 @@ function zoneBubbleEl(zone: Zone, evs: Ev[], onClick: (id: string) => void): HTM
   return el
 }
 
-/** Single event pin for the exploded scatter. */
-function scatterPinEl(e: Ev): HTMLElement {
+// ── v7 sys-fan (hybrid) ────────────────────────────────────────────────────
+// v7 groups a zone into fans + polaroid drill-down, but places them
+// SYNTHETICALLY (golden-angle around the zone centre). We keep the v7 LOOK but
+// anchor everything to REAL geo coordinates: clusters by true proximity, fans
+// at member centroids, polaroids on each event's actual spot.
+
+type Cluster = { ll: [number, number]; members: Ev[]; pts: [number, number][] }
+
+const RU_PLURAL = (n: number) =>
+  `${n} ${n % 10 === 1 && n % 100 !== 11 ? "событие" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? "события" : "событий"}`
+
+const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] as string))
+
+function metersBetween(a: [number, number], b: [number, number]): number {
+  const dLat = (b[0] - a[0]) * 111320
+  const dLng = (b[1] - a[1]) * 111320 * Math.cos((a[0] * Math.PI) / 180)
+  return Math.hypot(dLat, dLng)
+}
+
+/** Greedy geographic clustering by REAL proximity (radius in metres). Each
+ *  cluster sits at its members' centroid; singles keep real coords (same-venue
+ *  duplicates fan out via realPositions). */
+function clusterByProximity(evs: Ev[], radiusM = 650): Cluster[] {
+  const withGeo = evs.filter((e) => e.geo)
+  const used = new Array(withGeo.length).fill(false)
+  const out: Cluster[] = []
+  for (let a = 0; a < withGeo.length; a++) {
+    if (used[a]) continue
+    used[a] = true
+    const members = [withGeo[a]]
+    const seed = withGeo[a].geo as [number, number]
+    for (let b = a + 1; b < withGeo.length; b++) {
+      if (used[b]) continue
+      if (metersBetween(seed, withGeo[b].geo as [number, number]) < radiusM) { used[b] = true; members.push(withGeo[b]) }
+    }
+    const lat = members.reduce((s, e) => s + (e.geo as [number, number])[0], 0) / members.length
+    const lng = members.reduce((s, e) => s + (e.geo as [number, number])[1], 0) / members.length
+    out.push({ ll: [lat, lng], members, pts: realPositions(members) })
+  }
+  return out
+}
+
+/** Cluster fan marker (v7 makeClusterEl): 3 posters + count + «N событий». */
+function clusterFanEl(cl: Cluster, gi: number): HTMLElement {
+  const rots = [-12, 0, 12]
+  const thumbs = cl.members.slice(0, 3).map((e, i) =>
+    `<span class="cs-clu-card" style="--zr:${rots[i] || 0}deg;--zz:${i}">${e.p ? `<img src="${e.p}" alt=""/>` : ""}</span>`,
+  ).join("")
   const wrap = document.createElement("div")
   wrap.className = "cs-scatter-wrap"
-  const pin = document.createElement("div")
-  pin.className = "cs-pin cs-scatter-pin"
-  pin.innerHTML =
-    `<span class="cs-pin-halo"></span>` +
-    `<div class="cs-pin-card">${e.p ? `<img src="${e.p}" alt=""/>` : `<div style="width:100%;height:100%;background:#ccc"></div>`}</div>` +
-    `<div class="cs-pin-tip"></div>`
-  wrap.appendChild(pin)
+  wrap.style.cssText = "display:flex;flex-direction:column;align-items:center;"
+  wrap.innerHTML =
+    `<div class="cs-clu" style="--si:${gi}"><div class="cs-clu-fan">${thumbs}` +
+    `<span class="cs-clu-count">${cl.members.length}</span></div>` +
+    `<div class="cs-clu-name">${RU_PLURAL(cl.members.length)}</div><div class="cs-clu-tip"></div></div>`
+  return wrap
+}
+
+/** Single-event polaroid marker (v7 makePolaEl) for cluster drill-down. */
+function polaEl(e: Ev, i: number): HTMLElement {
+  const rots = [-6, 4, -3, 6, -5, 3, 5, -4]
+  const wrap = document.createElement("div")
+  wrap.className = "cs-scatter-wrap"
+  wrap.innerHTML =
+    `<div class="cs-pola" style="--si:${i};--pr:${rots[i % rots.length]}deg"><div class="cs-pola-card">` +
+    `<div class="cs-pola-img">${e.p ? `<img src="${e.p}" alt=""/>` : ""}</div>` +
+    `<div class="cs-pola-name">${esc(e.t || "")}</div></div></div>`
   return wrap
 }
 
@@ -121,6 +177,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const [ready, setReady] = useState(false)
   const [failed, setFailed] = useState(false)
   const [selZone, setSelZone] = useState<string | null>(null)
+  const [selCluster, setSelCluster] = useState<number | null>(null)
   const [evIdx, setEvIdx] = useState(0)
   const selZoneRef = useRef<string | null>(null); selZoneRef.current = selZone
 
@@ -135,10 +192,19 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   }, [events])
   const byZoneRef = useRef(byZone); byZoneRef.current = byZone
   const totalPlaced = useMemo(() => Object.values(byZone).reduce((a, b) => a + b.length, 0), [byZone])
+  // sys-fan clusters per zone (real-proximity grouping)
+  const clustersByZone = useMemo(() => {
+    const m: Record<string, Cluster[]> = {}
+    ZONES.forEach((z) => { m[z.id] = clusterByProximity(byZone[z.id]) })
+    return m
+  }, [byZone])
+  const clustersRef = useRef(clustersByZone); clustersRef.current = clustersByZone
   const onZone = (id: string) => setSelZone((p) => (p === id ? null : id))
   const onZoneRef = useRef(onZone); onZoneRef.current = onZone
 
-  useEffect(() => { setEvIdx(0) }, [selZone])
+  // reset drill-down + carousel when the zone or cluster changes
+  useEffect(() => { setSelCluster(null) }, [selZone])
+  useEffect(() => { setEvIdx(0) }, [selZone, selCluster])
 
   // create map + zone markers once
   useEffect(() => {
@@ -211,35 +277,48 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       const bub = el.querySelector<HTMLElement>(".cs-zone-bubble")
       if (bub) bub.style.display = selZone === z.id ? "none" : ""
     })
-    if (selZone) {
-      const evs = byZone[selZone]
-      const pts = realPositions(evs)
-      const b = new maplibregl.LngLatBounds()
-      evs.forEach((e, i) => {
-        const ll = pts[i]
-        const el = scatterPinEl(e)
+    if (!selZone) { fitAllRef.current(); return }
+
+    const clusters = clustersRef.current[selZone] || []
+    const b = new maplibregl.LngLatBounds()
+    if (selCluster == null) {
+      // Level 1 — cluster fans at real member centroids; tap drills in.
+      clusters.forEach((cl, gi) => {
+        const el = clusterFanEl(cl, gi)
+        el.style.cursor = "pointer"
+        el.addEventListener("click", (ev) => { ev.stopPropagation(); setSelCluster(gi) })
+        const m = new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([cl.ll[1], cl.ll[0]]).addTo(map)
+        scatterRef.current.push(m)
+        b.extend([cl.ll[1], cl.ll[0]])
+      })
+      if (!b.isEmpty()) map.fitBounds(b, { padding: { top: 140, bottom: 215, left: 55, right: 55 }, maxZoom: 13.4, pitch: 52, bearing: -14, duration: 800 })
+    } else {
+      // Level 2 — polaroids on each event's REAL spot.
+      const cl = clusters[selCluster]
+      if (cl) cl.members.forEach((e, i) => {
+        const ll = cl.pts[i]
+        const el = polaEl(e, i)
         el.style.cursor = "pointer"
         el.addEventListener("click", (ev) => { ev.stopPropagation(); setEvIdx(i); openRef.current(e) })
-        const m = new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([ll[1], ll[0]]).addTo(map)
+        const m = new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat([ll[1], ll[0]]).addTo(map)
         scatterRef.current.push(m)
         b.extend([ll[1], ll[0]])
       })
-      if (!b.isEmpty()) map.fitBounds(b, { padding: { top: 140, bottom: 230, left: 50, right: 50 }, maxZoom: 14.5, pitch: 52, bearing: -14, duration: 750 })
-    } else {
-      fitAllRef.current()
+      if (!b.isEmpty()) map.fitBounds(b, { padding: { top: 150, bottom: 230, left: 60, right: 60 }, maxZoom: 15.6, pitch: 52, bearing: -14, duration: 850 })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selZone, ready])
+  }, [selZone, selCluster, ready])
 
-  // highlight the active scatter pin (sync with the deck carousel)
+  // highlight the active polaroid (sync with the deck carousel — level 2 only)
   useEffect(() => {
     scatterRef.current.forEach((m, i) => {
-      const pin = m.getElement().querySelector(".cs-pin")
-      if (pin) pin.classList.toggle("cs-scatter-active", i === evIdx)
+      const pola = m.getElement().querySelector(".cs-pola")
+      if (pola) pola.classList.toggle("cs-scatter-active", i === evIdx)
     })
-  }, [evIdx, selZone])
+  }, [evIdx, selZone, selCluster])
 
-  const deckEvents = selZone ? byZone[selZone] : []
+  const activeCluster = selZone != null && selCluster != null ? (clustersByZone[selZone]?.[selCluster] ?? null) : null
+  const deckEvents = activeCluster ? activeCluster.members : (selZone ? byZone[selZone] : [])
   const zoneCount = ZONES.filter((z) => byZone[z.id].length).length
 
   return (
@@ -282,15 +361,22 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 12, background: CS.W, borderTop: `3px solid ${CS.K}`, boxShadow: "0 -6px 0 rgba(13,13,13,0.08)", animation: "cs-sheet-up 0.34s cubic-bezier(0.22,1,0.36,1) both", paddingBottom: "env(safe-area-inset-bottom,0px)" }}>
           <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", padding: "9px 14px 6px" }}>
             <div>
-              <div style={{ fontFamily: FONT_MONO, fontSize: 8, fontWeight: 700, letterSpacing: "0.24em", textTransform: "uppercase", color: "rgba(13,13,13,0.55)" }}>район · {ZONE_BY_ID[selZone].sub}</div>
+              <div style={{ fontFamily: FONT_MONO, fontSize: 8, fontWeight: 700, letterSpacing: "0.24em", textTransform: "uppercase", color: "rgba(13,13,13,0.55)" }}>{activeCluster ? `кластер · ${ZONE_BY_ID[selZone].t}` : `район · ${ZONE_BY_ID[selZone].sub}`}</div>
               <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 1 }}>
-                <span style={{ fontWeight: 900, fontSize: 20, letterSpacing: "-0.04em", lineHeight: 0.9, color: CS.K, textTransform: "uppercase" }}>{ZONE_BY_ID[selZone].t}</span>
+                <span style={{ fontWeight: 900, fontSize: 20, letterSpacing: "-0.04em", lineHeight: 0.9, color: CS.K, textTransform: "uppercase" }}>{activeCluster ? "Места рядом" : ZONE_BY_ID[selZone].t}</span>
                 <span style={{ background: CS.B, color: "#fff", padding: "2px 6px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, letterSpacing: "0.04em" }}>{deckEvents.length} событий</span>
               </div>
             </div>
-            <button onClick={() => setSelZone(null)} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: CS.W, border: `2px solid ${CS.K}`, padding: "4px 8px", cursor: "pointer", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, letterSpacing: "0.05em", textTransform: "uppercase", color: CS.K }}>← все районы</button>
+            <button onClick={() => (activeCluster ? setSelCluster(null) : setSelZone(null))} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: CS.W, border: `2px solid ${CS.K}`, padding: "4px 8px", cursor: "pointer", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, letterSpacing: "0.05em", textTransform: "uppercase", color: CS.K }}>{activeCluster ? "← кластеры" : "← все районы"}</button>
           </div>
-          {/* event carousel */}
+          {/* level 1 (clusters): hint to drill in · level 2 (cluster): event carousel */}
+          {!activeCluster ? (
+            <div style={{ padding: "0 14px 11px" }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 7, background: CS.W, border: `2px solid ${CS.K}`, boxShadow: `2px 2px 0 ${CS.K}`, padding: "7px 11px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 10, letterSpacing: "0.04em", color: CS.K }}>
+                <span style={{ width: 8, height: 8, background: CS.B, borderRadius: "50%" }} />тапни кластер, чтобы раскрыть
+              </div>
+            </div>
+          ) : (
           <div style={{ padding: "0 14px 10px" }}>
             <div style={{ display: "flex", alignItems: "stretch", gap: 8 }}>
               <button onClick={() => setEvIdx((i) => (i - 1 + deckEvents.length) % deckEvents.length)} style={{ width: 28, flexShrink: 0, border: `2px solid ${CS.K}`, background: CS.W, cursor: "pointer", fontSize: 15, fontWeight: 900, color: CS.K, lineHeight: 1 }}>←</button>
@@ -310,6 +396,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
               <button onClick={() => setEvIdx((i) => (i + 1) % deckEvents.length)} style={{ width: 28, flexShrink: 0, border: `2px solid ${CS.K}`, background: CS.W, cursor: "pointer", fontSize: 15, fontWeight: 900, color: CS.K, lineHeight: 1 }}>→</button>
             </div>
           </div>
+          )}
           <div style={{ padding: "0 14px 12px" }}>
             <button onClick={onEnter} style={{ width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "10px 18px", border: `2.5px solid ${CS.K}`, background: CS.K, color: "#fff", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 13, letterSpacing: "0.04em", textTransform: "uppercase", boxShadow: `3px 3px 0 ${CS.B}` }}>
               <span>Открыть район в ленте</span><span style={{ fontSize: 15, lineHeight: 1 }}>→</span>

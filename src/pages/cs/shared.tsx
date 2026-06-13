@@ -124,6 +124,23 @@ const KEYFRAMES = `
   .cs-pin-halo { position: absolute; left: 50%; bottom: -2px; width: 16px; height: 16px; margin-left: -8px; border-radius: 50%; background: #0055FF; opacity: 0; pointer-events: none; z-index: -1; }
   @keyframes cs-scatter-in { 0% { opacity: 0; transform: scale(0.6); } 100% { opacity: 1; transform: scale(1); } }
   @keyframes cs-burst-in { 0% { opacity: 0; transform: scale(0.3); } 100% { opacity: 1; transform: scale(1); } }
+  /* ── v7 sys-fan (hybrid): cluster fans + polaroid drill-down ── */
+  @keyframes cs-soft-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+  @keyframes cs-pola-float { 0%,100% { transform: rotate(var(--pr,-4deg)) translateY(0); } 50% { transform: rotate(calc(var(--pr,-4deg) * -0.7)) translateY(-6px); } }
+  .cs-clu { position: relative; display: flex; flex-direction: column; align-items: center; cursor: pointer; animation: cs-scatter-in 0.4s cubic-bezier(0.22,1,0.36,1) both; animation-delay: calc(var(--si,0) * 0.07s); }
+  .cs-clu-fan { position: relative; width: 56px; height: 46px; animation: cs-soft-bob calc(3.4s + var(--si,0) * 0.5s) ease-in-out infinite; }
+  .cs-clu-card { position: absolute; left: 50%; top: 50%; box-sizing: border-box; width: 30px; height: 38px; margin: -19px 0 0 -15px; border: 2px solid #0D0D0D; background: #fff; overflow: hidden; box-shadow: 1.5px 1.5px 0 rgba(13,13,13,0.5); transform: translateX(calc((var(--zz) - 1) * 8px)) rotate(var(--zr)); z-index: calc(4 - var(--zz)); transition: transform 0.24s cubic-bezier(0.22,1,0.36,1); }
+  .cs-clu-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .cs-clu:hover .cs-clu-card, .cs-clu-active .cs-clu-card { transform: translateX(calc((var(--zz) - 1) * 15px)) rotate(calc(var(--zr) * 1.4)); }
+  .cs-clu-count { position: absolute; right: -4px; top: -7px; z-index: 6; min-width: 17px; height: 17px; padding: 0 4px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; background: #0055FF; color: #fff; border: 2px solid #fff; border-radius: 999px; font-family: var(--cs-font-mono); font-weight: 700; font-size: 9px; line-height: 1; }
+  .cs-clu-name { margin-top: 3px; max-width: 100px; background: #fff; border: 1.5px solid #0D0D0D; box-shadow: 1.5px 1.5px 0 rgba(13,13,13,0.8); padding: 2px 6px 2.5px; font-family: var(--cs-font-sans); font-weight: 900; font-size: 7.5px; line-height: 1.2; letter-spacing: 0.03em; text-transform: uppercase; color: #0D0D0D; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cs-clu-tip { width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 6px solid #0D0D0D; margin-top: -1px; }
+  .cs-pola { position: relative; width: 46px; height: 58px; cursor: pointer; animation: cs-scatter-in 0.45s cubic-bezier(0.22,1,0.36,1) both; animation-delay: calc(var(--si,0) * 0.06s); }
+  .cs-pola-card { position: absolute; inset: 0; box-sizing: border-box; background: #fff; border: 2px solid #0D0D0D; box-shadow: 2.5px 3px 0 rgba(13,13,13,0.75); padding: 3px 3px 0; animation: cs-pola-float calc(3.6s + var(--si,0) * 0.35s) ease-in-out infinite; transition: transform 0.25s cubic-bezier(0.22,1,0.36,1), box-shadow 0.22s ease; }
+  .cs-pola-img { width: 100%; height: 36px; overflow: hidden; outline: 1px solid rgba(13,13,13,0.18); }
+  .cs-pola-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .cs-pola-name { height: 13px; line-height: 13px; text-align: center; font-family: var(--cs-font-sans); font-weight: 900; font-size: 5.8px; letter-spacing: 0.04em; text-transform: uppercase; color: #0D0D0D; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cs-pola.cs-scatter-active .cs-pola-card { animation: none; transform: rotate(0deg) translateY(-5px) scale(1.3); box-shadow: 3px 6px 0 #0055FF; }
   @keyframes cs-sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
   /* map-intro zoom/pitch controls: lift above the «Вся лента» CTA so they don't collide */
   .maplibregl-ctrl-bottom-right { margin-bottom: 104px !important; margin-right: 8px !important; }
