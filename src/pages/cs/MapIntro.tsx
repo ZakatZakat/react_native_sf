@@ -199,24 +199,49 @@ function clearEventBuildings(map: maplibregl.Map) {
   if (src) src.setData({ type: "FeatureCollection", features: [] })
 }
 
-/** Query the building under each event's real coordinate and paint it blue. */
-function highlightEventBuildings(map: maplibregl.Map, events: Ev[]) {
+/** Rough lng/lat centroid of a (Multi)Polygon's outer ring. */
+function polyCentroid(geom: GeoJSON.Geometry): [number, number] | null {
+  let ring: GeoJSON.Position[] | undefined
+  if (geom.type === "Polygon") ring = geom.coordinates[0]
+  else if (geom.type === "MultiPolygon") ring = geom.coordinates[0]?.[0]
+  if (!ring || !ring.length) return null
+  let x = 0, y = 0
+  ring.forEach((c) => { x += c[0]; y += c[1] })
+  return [x / ring.length, y / ring.length]
+}
+
+/** Snap each polaroid marker onto the nearest building and paint that building
+ *  signal-blue. Geocodes are approximate (often on a courtyard/road), so we
+ *  pull the card onto a real building footprint — guaranteeing every card sits
+ *  on its own blue building, with no orphan highlights. */
+function snapCardsToBuildings(map: maplibregl.Map, markers: maplibregl.Marker[]) {
   const src = map.getSource(EVT_BLDG_SRC) as maplibregl.GeoJSONSource | undefined
   if (!src) return
   const queryLayers = ["cs-building-3d", "cs-building"].filter((l) => map.getLayer(l))
   if (!queryLayers.length) { src.setData({ type: "FeatureCollection", features: [] }); return }
   const feats: GeoJSON.Feature[] = []
   const seen = new Set<string>()
-  events.forEach((e) => {
-    if (!e.geo) return
-    const p = map.project([e.geo[1], e.geo[0]])
-    const hits = map.queryRenderedFeatures([[p.x - 8, p.y - 8], [p.x + 8, p.y + 8]], { layers: queryLayers })
+  markers.forEach((mk) => {
+    const ll = mk.getLngLat()
+    const p = map.project(ll)
+    // ±40px (~120m at L2 zoom) — find the building closest to the card
+    const hits = map.queryRenderedFeatures([[p.x - 40, p.y - 40], [p.x + 40, p.y + 40]], { layers: queryLayers })
     if (!hits.length) return
-    const f = hits[0]
-    const key = f.id != null ? `id:${f.id}` : JSON.stringify((f.geometry as GeoJSON.Polygon).coordinates?.[0]?.[0] ?? Math.random())
+    let best: maplibregl.MapGeoJSONFeature | null = null, bestD = Infinity, bestC: [number, number] | null = null
+    hits.forEach((f) => {
+      const c = polyCentroid(f.geometry)
+      if (!c) return
+      const cp = map.project(c as [number, number])
+      const d = (cp.x - p.x) ** 2 + (cp.y - p.y) ** 2
+      if (d < bestD) { bestD = d; best = f; bestC = c }
+    })
+    if (!best || !bestC) return
+    mk.setLngLat(bestC) // pull the card onto the building
+    const bf = best as maplibregl.MapGeoJSONFeature
+    const key = bf.id != null ? `id:${bf.id}` : JSON.stringify(bestC)
     if (seen.has(key)) return
     seen.add(key)
-    feats.push({ type: "Feature", geometry: f.geometry, properties: f.properties || {} })
+    feats.push({ type: "Feature", geometry: bf.geometry, properties: bf.properties || {} })
   })
   src.setData({ type: "FeatureCollection", features: feats })
 }
@@ -377,15 +402,17 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
           const el = polaEl(e, i)
           el.style.cursor = "pointer"
           el.addEventListener("click", (ev) => { ev.stopPropagation(); setEvIdx(i); openRef.current(e) })
-          const m = new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat([ll[1], ll[0]]).addTo(map)
+          // anchor "bottom" + lift: the card floats ABOVE its (snapped) building
+          // like a tag, so the signal-blue building stays visible beneath it.
+          const m = new maplibregl.Marker({ element: el, anchor: "bottom", offset: [0, -10] }).setLngLat([ll[1], ll[0]]).addTo(map)
           scatterRef.current.push(m)
         })
         map.easeTo({ center: [cl.ll[1], cl.ll[0]], zoom: 14.8, pitch: 52, bearing: -14, duration: 850 })
         // once the buildings finish loading at the drill-down zoom, paint the
         // ones hosting these events blue (guarded so a late `idle` from an
         // abandoned cluster doesn't repaint).
-        const members = cl.members
-        map.once("idle", () => { if (hlTokenRef.current === hlToken) highlightEventBuildings(map, members) })
+        const cardMarkers = scatterRef.current.slice()
+        map.once("idle", () => { if (hlTokenRef.current === hlToken) snapCardsToBuildings(map, cardMarkers) })
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
