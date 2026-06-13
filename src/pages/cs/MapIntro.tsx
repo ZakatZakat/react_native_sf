@@ -172,6 +172,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const boxRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const fitAllRef = useRef<() => void>(() => {})
+  const pendulumStopRef = useRef<() => void>(() => {})
   const zoneMarkersRef = useRef<Record<string, HTMLElement>>({})
   const scatterRef = useRef<maplibregl.Marker[]>([])
   const [ready, setReady] = useState(false)
@@ -248,8 +249,12 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         let raf = 0, stopped = false
         const stop = () => { stopped = true; cancelAnimationFrame(raf); ["mousedown", "touchstart", "wheel", "dragstart"].forEach((ev) => map!.off(ev as any, stop)) }
         ;["mousedown", "touchstart", "wheel", "dragstart"].forEach((ev) => map!.on(ev as any, stop))
+        pendulumStopRef.current = stop
         const tick = (now: number) => {
-          if (stopped || !mapRef.current) return
+          // Stop the wobble once a zone is picked — otherwise the per-frame
+          // setBearing interrupts the zone fitBounds easeTo (tapping a DOM
+          // marker doesn't fire the map's mousedown, so `stop` never triggers).
+          if (stopped || !mapRef.current || selZoneRef.current) return
           map!.setBearing(baseBearing + 13 * Math.sin(((now - startT) * 2 * Math.PI) / 30000))
           raf = requestAnimationFrame(tick)
         }
@@ -278,9 +283,12 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       if (bub) bub.style.display = selZone === z.id ? "none" : ""
     })
     if (!selZone) { fitAllRef.current(); return }
+    // Stop the idle wobble before any programmatic camera move — its per-frame
+    // setBearing would otherwise cancel the easeTo (a DOM-marker tap never fires
+    // the map's mousedown, so the auto-stop on interaction doesn't trigger).
+    pendulumStopRef.current()
 
     const clusters = clustersRef.current[selZone] || []
-    const b = new maplibregl.LngLatBounds()
     if (selCluster == null) {
       // Level 1 — cluster fans at real member centroids; tap drills in.
       clusters.forEach((cl, gi) => {
@@ -289,22 +297,29 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         el.addEventListener("click", (ev) => { ev.stopPropagation(); setSelCluster(gi) })
         const m = new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([cl.ll[1], cl.ll[0]]).addTo(map)
         scatterRef.current.push(m)
-        b.extend([cl.ll[1], cl.ll[0]])
       })
-      if (!b.isEmpty()) map.fitBounds(b, { padding: { top: 140, bottom: 215, left: 55, right: 55 }, maxZoom: 13.4, pitch: 52, bearing: -14, duration: 800 })
+      // easeTo a fixed zoom on the event-weighted centroid — robust to a single
+      // far-flung event (which would blow up a fitBounds and leave the view at
+      // city scale), and immune to the pitched-camera fitBounds under-zoom.
+      if (clusters.length) {
+        let sx = 0, sy = 0, n = 0
+        clusters.forEach((c) => { sx += c.ll[1] * c.members.length; sy += c.ll[0] * c.members.length; n += c.members.length })
+        map.easeTo({ center: [sx / n, sy / n], zoom: 12.6, pitch: 52, bearing: -14, duration: 800 })
+      }
     } else {
       // Level 2 — polaroids on each event's REAL spot.
       const cl = clusters[selCluster]
-      if (cl) cl.members.forEach((e, i) => {
-        const ll = cl.pts[i]
-        const el = polaEl(e, i)
-        el.style.cursor = "pointer"
-        el.addEventListener("click", (ev) => { ev.stopPropagation(); setEvIdx(i); openRef.current(e) })
-        const m = new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat([ll[1], ll[0]]).addTo(map)
-        scatterRef.current.push(m)
-        b.extend([ll[1], ll[0]])
-      })
-      if (!b.isEmpty()) map.fitBounds(b, { padding: { top: 150, bottom: 230, left: 60, right: 60 }, maxZoom: 15.6, pitch: 52, bearing: -14, duration: 850 })
+      if (cl) {
+        cl.members.forEach((e, i) => {
+          const ll = cl.pts[i]
+          const el = polaEl(e, i)
+          el.style.cursor = "pointer"
+          el.addEventListener("click", (ev) => { ev.stopPropagation(); setEvIdx(i); openRef.current(e) })
+          const m = new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat([ll[1], ll[0]]).addTo(map)
+          scatterRef.current.push(m)
+        })
+        map.easeTo({ center: [cl.ll[1], cl.ll[0]], zoom: 14.8, pitch: 52, bearing: -14, duration: 850 })
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selZone, selCluster, ready])
