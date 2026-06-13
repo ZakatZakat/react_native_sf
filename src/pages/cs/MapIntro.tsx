@@ -199,6 +199,12 @@ function clearEventBuildings(map: maplibregl.Map) {
   if (src) src.setData({ type: "FeatureCollection", features: [] })
 }
 
+/** Paint exactly ONE building (the active card's), or none. */
+function paintBuilding(map: maplibregl.Map, feature: GeoJSON.Feature | null | undefined) {
+  const src = map.getSource(EVT_BLDG_SRC) as maplibregl.GeoJSONSource | undefined
+  if (src) src.setData({ type: "FeatureCollection", features: feature ? [feature] : [] })
+}
+
 /** Rough lng/lat centroid of a (Multi)Polygon's outer ring. */
 function polyCentroid(geom: GeoJSON.Geometry): [number, number] | null {
   let ring: GeoJSON.Position[] | undefined
@@ -210,23 +216,19 @@ function polyCentroid(geom: GeoJSON.Geometry): [number, number] | null {
   return [x / ring.length, y / ring.length]
 }
 
-/** Snap each polaroid marker onto the nearest building and paint that building
- *  signal-blue. Geocodes are approximate (often on a courtyard/road), so we
- *  pull the card onto a real building footprint — guaranteeing every card sits
- *  on its own blue building, with no orphan highlights. */
-function snapCardsToBuildings(map: maplibregl.Map, markers: maplibregl.Marker[]) {
-  const src = map.getSource(EVT_BLDG_SRC) as maplibregl.GeoJSONSource | undefined
-  if (!src) return
+/** Snap each polaroid marker onto its nearest building (geocodes are
+ *  approximate — often on a courtyard/road — so we pull the card onto a real
+ *  footprint) and RETURN the per-card building feature (null where none found).
+ *  Painting is done separately, only for the active card, so the map never
+ *  shows more blue buildings than the one event you're looking at. */
+function snapCardsToBuildings(map: maplibregl.Map, markers: maplibregl.Marker[]): (GeoJSON.Feature | null)[] {
   const queryLayers = ["cs-building-3d", "cs-building"].filter((l) => map.getLayer(l))
-  if (!queryLayers.length) { src.setData({ type: "FeatureCollection", features: [] }); return }
-  const feats: GeoJSON.Feature[] = []
-  const seen = new Set<string>()
-  markers.forEach((mk) => {
-    const ll = mk.getLngLat()
-    const p = map.project(ll)
+  return markers.map((mk) => {
+    if (!queryLayers.length) return null
+    const p = map.project(mk.getLngLat())
     // ±40px (~120m at L2 zoom) — find the building closest to the card
     const hits = map.queryRenderedFeatures([[p.x - 40, p.y - 40], [p.x + 40, p.y + 40]], { layers: queryLayers })
-    if (!hits.length) return
+    if (!hits.length) return null
     let best: maplibregl.MapGeoJSONFeature | null = null, bestD = Infinity, bestC: [number, number] | null = null
     hits.forEach((f) => {
       const c = polyCentroid(f.geometry)
@@ -235,15 +237,11 @@ function snapCardsToBuildings(map: maplibregl.Map, markers: maplibregl.Marker[])
       const d = (cp.x - p.x) ** 2 + (cp.y - p.y) ** 2
       if (d < bestD) { bestD = d; best = f; bestC = c }
     })
-    if (!best || !bestC) return
+    if (!best || !bestC) return null
     mk.setLngLat(bestC) // pull the card onto the building
     const bf = best as maplibregl.MapGeoJSONFeature
-    const key = bf.id != null ? `id:${bf.id}` : JSON.stringify(bestC)
-    if (seen.has(key)) return
-    seen.add(key)
-    feats.push({ type: "Feature", geometry: bf.geometry, properties: bf.properties || {} })
+    return { type: "Feature", geometry: bf.geometry, properties: bf.properties || {} }
   })
-  src.setData({ type: "FeatureCollection", features: feats })
 }
 
 export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: () => void }) {
@@ -256,6 +254,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const fitAllRef = useRef<() => void>(() => {})
   const pendulumStopRef = useRef<() => void>(() => {})
   const hlTokenRef = useRef(0)
+  const cardBuildingsRef = useRef<(GeoJSON.Feature | null)[]>([]) // building under each card
   const zoneMarkersRef = useRef<Record<string, HTMLElement>>({})
   const scatterRef = useRef<maplibregl.Marker[]>([])
   const [ready, setReady] = useState(false)
@@ -263,6 +262,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const [selZone, setSelZone] = useState<string | null>(null)
   const [selCluster, setSelCluster] = useState<number | null>(null)
   const [evIdx, setEvIdx] = useState(0)
+  const evIdxRef = useRef(0); evIdxRef.current = evIdx
   const selZoneRef = useRef<string | null>(null); selZoneRef.current = selZone
 
   // group real geocoded events by centre-disk + directional sector
@@ -412,18 +412,26 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         // ones hosting these events blue (guarded so a late `idle` from an
         // abandoned cluster doesn't repaint).
         const cardMarkers = scatterRef.current.slice()
-        map.once("idle", () => { if (hlTokenRef.current === hlToken) snapCardsToBuildings(map, cardMarkers) })
+        cardBuildingsRef.current = []
+        map.once("idle", () => {
+          if (hlTokenRef.current !== hlToken) return
+          cardBuildingsRef.current = snapCardsToBuildings(map, cardMarkers)
+          paintBuilding(map, cardBuildingsRef.current[evIdxRef.current])
+        })
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selZone, selCluster, ready])
 
-  // highlight the active polaroid (sync with the deck carousel — level 2 only)
+  // highlight the active polaroid + paint ONLY the active event's building, so
+  // the map never shows more blue buildings than the card you're looking at.
   useEffect(() => {
     scatterRef.current.forEach((m, i) => {
       const pola = m.getElement().querySelector(".cs-pola")
       if (pola) pola.classList.toggle("cs-scatter-active", i === evIdx)
     })
+    const map = mapRef.current
+    if (map && selCluster != null) paintBuilding(map, cardBuildingsRef.current[evIdx])
   }, [evIdx, selZone, selCluster])
 
   const activeCluster = selZone != null && selCluster != null ? (clustersByZone[selZone]?.[selCluster] ?? null) : null
