@@ -67,8 +67,11 @@ export function makeCSStyle(dark: boolean): StyleSpecification {
             14, ["match", ["get", "class"], ["motorway", "trunk"], 10, ["primary", "secondary"], 6, 3],
             18, ["match", ["get", "class"], ["motorway", "trunk"], 28, ["primary", "secondary"], 18, 11]] } },
       { id: "cs-rail", type: "line", source: "composite", "source-layer": "transportation", minzoom: 11,
-        filter: ["match", ["get", "class"], ["rail", "transit"], true, false],
-        paint: { "line-color": P.accent, "line-opacity": 0.6, "line-width": ["interpolate", ["linear"], ["zoom"], 11, 0.6, 16, 1.9], "line-dasharray": [2, 2.2] } },
+        // surface rail only — drop "transit" (metro) so the city centre isn't
+        // criss-crossed with blue lines; muted so it never competes with the
+        // signal-blue event-building highlight.
+        filter: ["match", ["get", "class"], ["rail"], true, false],
+        paint: { "line-color": P.casing, "line-opacity": 0.7, "line-width": ["interpolate", ["linear"], ["zoom"], 11, 0.6, 16, 1.6], "line-dasharray": [2, 2.2] } },
       { id: "cs-admin-1", type: "line", source: "composite", "source-layer": "boundary",
         filter: ["all", [">=", ["get", "admin_level"], 3], ["==", ["get", "maritime"], 0]],
         paint: { "line-color": P.admin1, "line-width": 0.7, "line-dasharray": [3, 2] } },

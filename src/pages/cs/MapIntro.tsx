@@ -113,25 +113,35 @@ function clusterByProximity(evs: Ev[], radiusM = 650): Cluster[] {
     }
     const lat = members.reduce((s, e) => s + (e.geo as [number, number])[0], 0) / members.length
     const lng = members.reduce((s, e) => s + (e.geo as [number, number])[1], 0) / members.length
-    out.push({ ll: [lat, lng], members, pts: sunflower(lat, lng, members.length) })
+    out.push({ ll: [lat, lng], members, pts: realPositions(members) })
   }
   return out
 }
 
-/** Drill-down positions for a cluster's events: a golden-angle sunflower around
- *  the cluster's real centroid. Same-venue events share exact coords, so we
- *  spread them for legibility (the cluster centroid is the true location; the
- *  fan is a readability device, ~150–360m — same approach as v7's sysSingles).
- *  Spread scales with member count so the polaroids never overlap at L2 zoom. */
-function sunflower(lat: number, lng: number, m: number): [number, number][] {
-  const cosLat = Math.cos((lat * Math.PI) / 180)
-  const off = (a: number, d: number): [number, number] =>
-    [lat + (d * Math.sin(a)) / 111320, lng + (d * Math.cos(a)) / (111320 * cosLat)]
-  // A lone event is still nudged off its venue (~110m) so the blue building
-  // it sits in stays visible beside the card instead of hiding behind it.
-  if (m === 1) return [off(0.9, 110)]
-  const spread = 150 + 70 * m // metres
-  return Array.from({ length: m }, (_, j) => off(j * 2.399963229, Math.sqrt((j + 0.5) / m) * spread))
+/** Drill-down positions for a cluster's events: each event sits on its OWN real
+ *  coordinate (so the card hovers over its real building). Only events that
+ *  share the exact same venue are spread — placed on a small ring around it so
+ *  the polaroids don't overlap at the L2 zoom while staying on the spot. */
+function realPositions(evs: Ev[]): [number, number][] {
+  const groups = new Map<string, number[]>()
+  evs.forEach((e, i) => {
+    const [la, ln] = e.geo as [number, number]
+    const key = `${la.toFixed(4)},${ln.toFixed(4)}`
+    const arr = groups.get(key); if (arr) arr.push(i); else groups.set(key, [i])
+  })
+  const out: [number, number][] = new Array(evs.length)
+  groups.forEach((idxs) => {
+    const n = idxs.length
+    idxs.forEach((idx, j) => {
+      const [la, ln] = evs[idx].geo as [number, number]
+      if (n === 1) { out[idx] = [la, ln]; return }
+      const cosLat = Math.cos((la * Math.PI) / 180)
+      const r = Math.max(95, 28 * n) // ring radius, metres — keeps cards from overlapping
+      const a = (j / n) * 2 * Math.PI + 0.5
+      out[idx] = [la + (r * Math.sin(a)) / 111320, ln + (r * Math.cos(a)) / (111320 * cosLat)]
+    })
+  })
+  return out
 }
 
 /** Cluster fan marker (v7 makeClusterEl): 3 posters + count + «N событий». */
