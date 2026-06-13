@@ -44,12 +44,15 @@ export function makeCSStyle(dark: boolean): StyleSpecification {
       { id: "cs-waterway", type: "line", source: "composite", "source-layer": "waterway",
         paint: { "line-color": P.water, "line-width": ["interpolate", ["linear"], ["zoom"], 10, 0.5, 16, 2.4] } },
       { id: "cs-building", type: "fill", source: "composite", "source-layer": "building", minzoom: 13,
-        paint: { "fill-color": P.building, "fill-outline-color": P.bout, "fill-opacity": ["interpolate", ["linear"], ["zoom"], 13, 0, 14, 0.92] } },
+        // colour flips to signal-blue when the feature-state `hl` is set (the
+        // event's building) — recolours the real building in place, so there's
+        // no overlay extrusion to z-fight with.
+        paint: { "fill-color": ["case", ["boolean", ["feature-state", "hl"], false], P.accent, P.building], "fill-outline-color": P.bout, "fill-opacity": ["interpolate", ["linear"], ["zoom"], 13, 0, 14, 0.92] } },
       { id: "cs-building-3d", type: "fill-extrusion", source: "composite", "source-layer": "building", minzoom: 14,
-        paint: { "fill-extrusion-color": P.b3d,
+        paint: { "fill-extrusion-color": ["case", ["boolean", ["feature-state", "hl"], false], P.accent, P.b3d],
           "fill-extrusion-height": ["interpolate", ["linear"], ["zoom"], 14, 0, 15.5, ["coalesce", ["to-number", ["get", "render_height"]], 8]],
           "fill-extrusion-base": ["coalesce", ["to-number", ["get", "render_min_height"]], 0],
-          "fill-extrusion-opacity": 0.92 } },
+          "fill-extrusion-opacity": 0.95 } },
       { id: "cs-road-casing", type: "line", source: "composite", "source-layer": "transportation",
         filter: ["match", ["get", "class"], ["motorway", "trunk", "primary", "secondary", "tertiary", "minor"], true, false],
         layout: { "line-cap": "round", "line-join": "round" },

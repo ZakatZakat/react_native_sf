@@ -172,38 +172,12 @@ function polaEl(e: Ev, i: number): HTMLElement {
   return wrap
 }
 
-// ── Highlight the buildings that host events (signal-blue) ──────────────────
-// A separate geojson source fed by querying the brand-style building layers at
-// each event's REAL coordinate. Two events in one building → that building is
-// painted once. Buildings only render at z≥13, so this lights up at the
-// polaroid (drill-down) zoom.
-const EVT_BLDG_SRC = "cs-evt-bldg"
-const EVT_BLDG_LAYER = "cs-evt-bldg-3d"
-
-function ensureEventBuildingLayer(map: maplibregl.Map) {
-  if (map.getSource(EVT_BLDG_SRC)) return
-  map.addSource(EVT_BLDG_SRC, { type: "geojson", data: { type: "FeatureCollection", features: [] } })
-  map.addLayer({
-    id: EVT_BLDG_LAYER, type: "fill-extrusion", source: EVT_BLDG_SRC, minzoom: 13,
-    paint: {
-      "fill-extrusion-color": CS.B,
-      "fill-extrusion-height": ["interpolate", ["linear"], ["zoom"], 13, 0, 15.5, ["coalesce", ["to-number", ["get", "render_height"]], ["to-number", ["get", "height"]], 14]],
-      "fill-extrusion-base": ["coalesce", ["to-number", ["get", "render_min_height"]], 0],
-      "fill-extrusion-opacity": 1,
-    },
-  } as maplibregl.AddLayerObject)
-}
-
-function clearEventBuildings(map: maplibregl.Map) {
-  const src = map.getSource(EVT_BLDG_SRC) as maplibregl.GeoJSONSource | undefined
-  if (src) src.setData({ type: "FeatureCollection", features: [] })
-}
-
-/** Paint exactly ONE building (the active card's), or none. */
-function paintBuilding(map: maplibregl.Map, feature: GeoJSON.Feature | null | undefined) {
-  const src = map.getSource(EVT_BLDG_SRC) as maplibregl.GeoJSONSource | undefined
-  if (src) src.setData({ type: "FeatureCollection", features: feature ? [feature] : [] })
-}
+// ── Highlight the event's building (signal-blue) via feature-state ──────────
+// Recolours the REAL building in place — the brand style's cs-building / 3d
+// layers flip to blue when feature-state `hl` is set — so there's NO overlay
+// extrusion to z-fight with. Cards aren't moved (no "redistribute" jump); only
+// the ACTIVE card's nearest building lights up.
+type BldgRef = { source: string; sourceLayer: string; id: string | number }
 
 /** Rough lng/lat centroid of a (Multi)Polygon's outer ring. */
 function polyCentroid(geom: GeoJSON.Geometry): [number, number] | null {
@@ -216,32 +190,32 @@ function polyCentroid(geom: GeoJSON.Geometry): [number, number] | null {
   return [x / ring.length, y / ring.length]
 }
 
-/** Snap each polaroid marker onto its nearest building (geocodes are
- *  approximate — often on a courtyard/road — so we pull the card onto a real
- *  footprint) and RETURN the per-card building feature (null where none found).
- *  Painting is done separately, only for the active card, so the map never
- *  shows more blue buildings than the one event you're looking at. */
-function snapCardsToBuildings(map: maplibregl.Map, markers: maplibregl.Marker[]): (GeoJSON.Feature | null)[] {
+/** For each card, the nearest building's feature ref (null where none / no id). */
+function findCardBuildings(map: maplibregl.Map, markers: maplibregl.Marker[]): (BldgRef | null)[] {
   const queryLayers = ["cs-building-3d", "cs-building"].filter((l) => map.getLayer(l))
   return markers.map((mk) => {
     if (!queryLayers.length) return null
     const p = map.project(mk.getLngLat())
-    // ±40px (~120m at L2 zoom) — find the building closest to the card
     const hits = map.queryRenderedFeatures([[p.x - 40, p.y - 40], [p.x + 40, p.y + 40]], { layers: queryLayers })
-    if (!hits.length) return null
-    let best: maplibregl.MapGeoJSONFeature | null = null, bestD = Infinity, bestC: [number, number] | null = null
+    let best: maplibregl.MapGeoJSONFeature | null = null, bestD = Infinity
     hits.forEach((f) => {
-      const c = polyCentroid(f.geometry)
-      if (!c) return
-      const cp = map.project(c as [number, number])
+      if (f.id == null) return
+      const c = polyCentroid(f.geometry); if (!c) return
+      const cp = map.project(c)
       const d = (cp.x - p.x) ** 2 + (cp.y - p.y) ** 2
-      if (d < bestD) { bestD = d; best = f; bestC = c }
+      if (d < bestD) { bestD = d; best = f }
     })
-    if (!best || !bestC) return null
-    mk.setLngLat(bestC) // pull the card onto the building
+    if (!best) return null
     const bf = best as maplibregl.MapGeoJSONFeature
-    return { type: "Feature", geometry: bf.geometry, properties: bf.properties || {} }
+    return { source: bf.source, sourceLayer: bf.sourceLayer as string, id: bf.id as string | number }
   })
+}
+
+/** Light up exactly one building (or none), clearing the previously lit one. */
+function setActiveBuilding(map: maplibregl.Map, prev: BldgRef | null, next: BldgRef | null): BldgRef | null {
+  if (prev) { try { map.setFeatureState(prev, { hl: false }) } catch { /* tile evicted */ } }
+  if (next) { try { map.setFeatureState(next, { hl: true }) } catch { /* tile not loaded */ } }
+  return next
 }
 
 export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: () => void }) {
@@ -254,7 +228,8 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const fitAllRef = useRef<() => void>(() => {})
   const pendulumStopRef = useRef<() => void>(() => {})
   const hlTokenRef = useRef(0)
-  const cardBuildingsRef = useRef<(GeoJSON.Feature | null)[]>([]) // building under each card
+  const cardBuildingsRef = useRef<(BldgRef | null)[]>([]) // nearest building per card
+  const hlBuildingRef = useRef<BldgRef | null>(null) // currently lit building
   const zoneMarkersRef = useRef<Record<string, HTMLElement>>({})
   const scatterRef = useRef<maplibregl.Marker[]>([])
   const [ready, setReady] = useState(false)
@@ -307,8 +282,6 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         // v7 csbrand: фирменный стиль уже содержит 3D-дома (cs-building-3d) —
         // добавляем только кинематографичное небо + туман у горизонта.
         applyCinematicSky(map, false)
-        // слой-подсветка домов, где идут события (заполняется при drill-down)
-        ensureEventBuildingLayer(map)
 
         const b = new maplibregl.LngLatBounds()
         ZONES.forEach((z) => {
@@ -358,7 +331,8 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
     scatterRef.current.forEach((m) => m.remove())
     scatterRef.current = []
     const hlToken = ++hlTokenRef.current
-    clearEventBuildings(map)
+    hlBuildingRef.current = setActiveBuilding(map, hlBuildingRef.current, null)
+    cardBuildingsRef.current = []
     // toggle zone bubble states
     ZONES.forEach((z) => {
       const el = zoneMarkersRef.current[z.id]
@@ -402,22 +376,23 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
           const el = polaEl(e, i)
           el.style.cursor = "pointer"
           el.addEventListener("click", (ev) => { ev.stopPropagation(); setEvIdx(i); openRef.current(e) })
-          // anchor "bottom" + lift: the card floats ABOVE its (snapped) building
-          // like a tag, so the signal-blue building stays visible beneath it.
+          // anchor "bottom" + lift: the card floats ABOVE its building like a tag.
+          // Cards stay on their real coords (no snap-move → no "redistribute" jump).
           const m = new maplibregl.Marker({ element: el, anchor: "bottom", offset: [0, -10] }).setLngLat([ll[1], ll[0]]).addTo(map)
           scatterRef.current.push(m)
         })
-        map.easeTo({ center: [cl.ll[1], cl.ll[0]], zoom: 14.8, pitch: 52, bearing: -14, duration: 850 })
-        // once the buildings finish loading at the drill-down zoom, paint the
-        // ones hosting these events blue (guarded so a late `idle` from an
-        // abandoned cluster doesn't repaint).
+        map.easeTo({ center: [cl.ll[1], cl.ll[0]], zoom: 14.8, pitch: 52, bearing: -14, duration: 600 })
+        // Light the active event's building as soon as the buildings render.
+        // moveend fires when the camera lands (~600ms); idle is the fallback if
+        // tiles weren't ready yet. Recolour only — cards don't move.
         const cardMarkers = scatterRef.current.slice()
         cardBuildingsRef.current = []
-        map.once("idle", () => {
+        const applyHl = () => {
           if (hlTokenRef.current !== hlToken) return
-          cardBuildingsRef.current = snapCardsToBuildings(map, cardMarkers)
-          paintBuilding(map, cardBuildingsRef.current[evIdxRef.current])
-        })
+          cardBuildingsRef.current = findCardBuildings(map, cardMarkers)
+          hlBuildingRef.current = setActiveBuilding(map, hlBuildingRef.current, cardBuildingsRef.current[evIdxRef.current] ?? null)
+        }
+        map.once("moveend", () => { applyHl(); if (!cardBuildingsRef.current.some(Boolean)) map.once("idle", applyHl) })
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -431,7 +406,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       if (pola) pola.classList.toggle("cs-scatter-active", i === evIdx)
     })
     const map = mapRef.current
-    if (map && selCluster != null) paintBuilding(map, cardBuildingsRef.current[evIdx])
+    if (map && selCluster != null) hlBuildingRef.current = setActiveBuilding(map, hlBuildingRef.current, cardBuildingsRef.current[evIdx] ?? null)
   }, [evIdx, selZone, selCluster])
 
   const activeCluster = selZone != null && selCluster != null ? (clustersByZone[selZone]?.[selCluster] ?? null) : null
