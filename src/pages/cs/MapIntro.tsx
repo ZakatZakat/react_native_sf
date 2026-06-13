@@ -57,24 +57,6 @@ function zoneOf(lat: number, lng: number): string {
   return "west"
 }
 
-/** Place each event at its REAL geocoded coordinate. Events that share a
- *  venue (same coords) fan out in a small phyllotaxis spiral so they don't
- *  perfectly overlap — but everyone stays on their actual spot. */
-function realPositions(evs: Ev[]): [number, number][] {
-  const seen = new Map<string, number>()
-  return evs.map((e) => {
-    const [lat0, lng0] = e.geo as [number, number]
-    const key = `${lat0.toFixed(4)},${lng0.toFixed(4)}`
-    const k = seen.get(key) ?? 0
-    seen.set(key, k + 1)
-    if (k === 0) return [lat0, lng0]
-    const ang = k * 2.399963229            // golden angle
-    const dist = 34 * Math.sqrt(k)         // metres from the venue point
-    const cosLat = Math.cos((lat0 * Math.PI) / 180)
-    return [lat0 + (dist * Math.sin(ang)) / 111320, lng0 + (dist * Math.cos(ang)) / (111320 * cosLat)]
-  })
-}
-
 /** District bubble marker: fan of ≤3 posters + count + name + dot + ring. */
 function zoneBubbleEl(zone: Zone, evs: Ev[], onClick: (id: string) => void): HTMLElement {
   const fan = evs.slice(0, 3)
@@ -131,9 +113,25 @@ function clusterByProximity(evs: Ev[], radiusM = 650): Cluster[] {
     }
     const lat = members.reduce((s, e) => s + (e.geo as [number, number])[0], 0) / members.length
     const lng = members.reduce((s, e) => s + (e.geo as [number, number])[1], 0) / members.length
-    out.push({ ll: [lat, lng], members, pts: realPositions(members) })
+    out.push({ ll: [lat, lng], members, pts: sunflower(lat, lng, members.length) })
   }
   return out
+}
+
+/** Drill-down positions for a cluster's events: a golden-angle sunflower around
+ *  the cluster's real centroid. Same-venue events share exact coords, so we
+ *  spread them for legibility (the cluster centroid is the true location; the
+ *  fan is a readability device, ~150–360m — same approach as v7's sysSingles).
+ *  Spread scales with member count so the polaroids never overlap at L2 zoom. */
+function sunflower(lat: number, lng: number, m: number): [number, number][] {
+  const cosLat = Math.cos((lat * Math.PI) / 180)
+  const spread = 150 + 70 * m // metres
+  return Array.from({ length: m }, (_, j) => {
+    const a = j * 2.399963229 // golden angle
+    const frac = m === 1 ? 0 : Math.sqrt((j + 0.5) / m)
+    const d = frac * spread
+    return [lat + (d * Math.sin(a)) / 111320, lng + (d * Math.cos(a)) / (111320 * cosLat)] as [number, number]
+  })
 }
 
 /** Cluster fan marker (v7 makeClusterEl): 3 posters + count + «N событий». */
