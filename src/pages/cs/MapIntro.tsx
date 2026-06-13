@@ -162,6 +162,55 @@ function polaEl(e: Ev, i: number): HTMLElement {
   return wrap
 }
 
+// ── Highlight the buildings that host events (signal-blue) ──────────────────
+// A separate geojson source fed by querying the brand-style building layers at
+// each event's REAL coordinate. Two events in one building → that building is
+// painted once. Buildings only render at z≥13, so this lights up at the
+// polaroid (drill-down) zoom.
+const EVT_BLDG_SRC = "cs-evt-bldg"
+const EVT_BLDG_LAYER = "cs-evt-bldg-3d"
+
+function ensureEventBuildingLayer(map: maplibregl.Map) {
+  if (map.getSource(EVT_BLDG_SRC)) return
+  map.addSource(EVT_BLDG_SRC, { type: "geojson", data: { type: "FeatureCollection", features: [] } })
+  map.addLayer({
+    id: EVT_BLDG_LAYER, type: "fill-extrusion", source: EVT_BLDG_SRC, minzoom: 13,
+    paint: {
+      "fill-extrusion-color": CS.B,
+      "fill-extrusion-height": ["interpolate", ["linear"], ["zoom"], 13, 0, 15.5, ["coalesce", ["to-number", ["get", "render_height"]], ["to-number", ["get", "height"]], 14]],
+      "fill-extrusion-base": ["coalesce", ["to-number", ["get", "render_min_height"]], 0],
+      "fill-extrusion-opacity": 0.9,
+    },
+  } as maplibregl.AddLayerObject)
+}
+
+function clearEventBuildings(map: maplibregl.Map) {
+  const src = map.getSource(EVT_BLDG_SRC) as maplibregl.GeoJSONSource | undefined
+  if (src) src.setData({ type: "FeatureCollection", features: [] })
+}
+
+/** Query the building under each event's real coordinate and paint it blue. */
+function highlightEventBuildings(map: maplibregl.Map, events: Ev[]) {
+  const src = map.getSource(EVT_BLDG_SRC) as maplibregl.GeoJSONSource | undefined
+  if (!src) return
+  const queryLayers = ["cs-building-3d", "cs-building"].filter((l) => map.getLayer(l))
+  if (!queryLayers.length) { src.setData({ type: "FeatureCollection", features: [] }); return }
+  const feats: GeoJSON.Feature[] = []
+  const seen = new Set<string>()
+  events.forEach((e) => {
+    if (!e.geo) return
+    const p = map.project([e.geo[1], e.geo[0]])
+    const hits = map.queryRenderedFeatures([[p.x - 12, p.y - 12], [p.x + 12, p.y + 12]], { layers: queryLayers })
+    if (!hits.length) return
+    const f = hits[0]
+    const key = f.id != null ? `id:${f.id}` : JSON.stringify((f.geometry as GeoJSON.Polygon).coordinates?.[0]?.[0] ?? Math.random())
+    if (seen.has(key)) return
+    seen.add(key)
+    feats.push({ type: "Feature", geometry: f.geometry, properties: f.properties || {} })
+  })
+  src.setData({ type: "FeatureCollection", features: feats })
+}
+
 export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: () => void }) {
   useCsKeyframes()
   const openEvent = useOpenEvent()
@@ -171,6 +220,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const mapRef = useRef<maplibregl.Map | null>(null)
   const fitAllRef = useRef<() => void>(() => {})
   const pendulumStopRef = useRef<() => void>(() => {})
+  const hlTokenRef = useRef(0)
   const zoneMarkersRef = useRef<Record<string, HTMLElement>>({})
   const scatterRef = useRef<maplibregl.Marker[]>([])
   const [ready, setReady] = useState(false)
@@ -222,6 +272,8 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         // v7 csbrand: фирменный стиль уже содержит 3D-дома (cs-building-3d) —
         // добавляем только кинематографичное небо + туман у горизонта.
         applyCinematicSky(map, false)
+        // слой-подсветка домов, где идут события (заполняется при drill-down)
+        ensureEventBuildingLayer(map)
 
         const b = new maplibregl.LngLatBounds()
         ZONES.forEach((z) => {
@@ -267,9 +319,11 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   useEffect(() => {
     const map = mapRef.current
     if (!map || !ready) return
-    // clear previous scatter
+    // clear previous scatter + building highlight
     scatterRef.current.forEach((m) => m.remove())
     scatterRef.current = []
+    const hlToken = ++hlTokenRef.current
+    clearEventBuildings(map)
     // toggle zone bubble states
     ZONES.forEach((z) => {
       const el = zoneMarkersRef.current[z.id]
@@ -317,6 +371,11 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
           scatterRef.current.push(m)
         })
         map.easeTo({ center: [cl.ll[1], cl.ll[0]], zoom: 14.8, pitch: 52, bearing: -14, duration: 850 })
+        // once the buildings finish loading at the drill-down zoom, paint the
+        // ones hosting these events blue (guarded so a late `idle` from an
+        // abandoned cluster doesn't repaint).
+        const members = cl.members
+        map.once("idle", () => { if (hlTokenRef.current === hlToken) highlightEventBuildings(map, members) })
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
