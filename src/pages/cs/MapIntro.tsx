@@ -287,9 +287,37 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const onZone = (id: string) => setSelZone((p) => (p === id ? null : id))
   const onZoneRef = useRef(onZone); onZoneRef.current = onZone
 
+  const zoneMlRef = useRef<maplibregl.Marker[]>([])
+  /** (Re)place the district bubble markers. Runs on map load AND when the feed
+   *  data arrives — so zones still appear if the curator responded only after
+   *  the map finished loading (they used to be placed once → lost that race). */
+  const placeZones = () => {
+    const map = mapRef.current
+    if (!map) return
+    zoneMlRef.current.forEach((m) => m.remove())
+    zoneMlRef.current = []
+    zoneMarkersRef.current = {}
+    ZONES.forEach((z) => {
+      if (!byZoneRef.current[z.id].length) return
+      const el = zoneBubbleEl(z, byZoneRef.current[z.id], (id) => onZoneRef.current(id))
+      zoneMarkersRef.current[z.id] = el
+      const mk = new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([z.dll[1], z.dll[0]]).addTo(map)
+      zoneMlRef.current.push(mk)
+    })
+  }
+  const placeZonesRef = useRef(placeZones); placeZonesRef.current = placeZones
+
   // reset drill-down + carousel when the zone or cluster changes
   useEffect(() => { setSelCluster(null) }, [selZone])
   useEffect(() => { setEvIdx(0) }, [selZone, selCluster])
+
+  // (re)place district bubbles when the feed data lands — covers the case where
+  // the curator answered after the map loaded. Skip while a zone is open so an
+  // in-flight refresh doesn't disturb the current drill-down.
+  useEffect(() => {
+    if (ready && selZone == null) placeZonesRef.current()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [byZone, ready])
 
   // create map + zone markers once
   useEffect(() => {
@@ -309,15 +337,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         // добавляем только кинематографичное небо + туман у горизонта.
         applyCinematicSky(map, false)
 
-        const b = new maplibregl.LngLatBounds()
-        ZONES.forEach((z) => {
-          if (!byZoneRef.current[z.id].length) return
-          const ll: [number, number] = [z.dll[1], z.dll[0]]
-          b.extend(ll)
-          const el = zoneBubbleEl(z, byZoneRef.current[z.id], (id) => onZoneRef.current(id))
-          zoneMarkersRef.current[z.id] = el
-          new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat(ll).addTo(map!)
-        })
+        placeZonesRef.current() // district bubbles (re-placed later if data was slow)
         // Fixed view anchored on central Moscow — NOT fitBounds, which would
         // centre on the midpoint of whatever districts happen to exist and
         // drift east when only Центр+Восток are populated. Padding offsets the
