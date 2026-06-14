@@ -172,12 +172,34 @@ function polaEl(e: Ev, i: number): HTMLElement {
   return wrap
 }
 
-// ── Highlight the event's building (signal-blue) via feature-state ──────────
-// Recolours the REAL building in place — the brand style's cs-building / 3d
-// layers flip to blue when feature-state `hl` is set — so there's NO overlay
-// extrusion to z-fight with. Cards aren't moved (no "redistribute" jump); only
-// the ACTIVE card's nearest building lights up.
+// ── Highlight the event's building (signal-blue) ────────────────────────────
+// Two parts so the building is BOTH artifact-free AND impossible to miss:
+//   1. feature-state recolours the real building blue → any wall that overlaps
+//      the tower below is blue-on-blue, so there's no z-fighting.
+//   2. a taller blue overlay "tower" (geojson) rises ~28m above the real roof,
+//      so even a tiny/low venue building is a clear landmark above its
+//      neighbours at the 3D tilt (recolour alone was invisible for small ones).
+// Only the ACTIVE card's nearest building lights up.
+const EVT_BLDG_SRC = "cs-evt-bldg"
+const EVT_BLDG_LAYER = "cs-evt-bldg-tower"
 type BldgRef = { source: string; sourceLayer: string; id: string | number }
+type Hl = { ref: BldgRef; feat: GeoJSON.Feature }
+
+function ensureEventBuildingTower(map: maplibregl.Map) {
+  if (map.getSource(EVT_BLDG_SRC)) return
+  map.addSource(EVT_BLDG_SRC, { type: "geojson", data: { type: "FeatureCollection", features: [] } })
+  map.addLayer({
+    id: EVT_BLDG_LAYER, type: "fill-extrusion", source: EVT_BLDG_SRC, minzoom: 13,
+    paint: {
+      "fill-extrusion-color": CS.B,
+      // fixed 45m so every highlighted venue — even a tiny footprint — reads as
+      // a clear blue column above its neighbours.
+      "fill-extrusion-height": 45,
+      "fill-extrusion-base": 0,
+      "fill-extrusion-opacity": 0.96,
+    },
+  } as maplibregl.AddLayerObject)
+}
 
 /** Rough lng/lat centroid of a (Multi)Polygon's outer ring. */
 function polyCentroid(geom: GeoJSON.Geometry): [number, number] | null {
@@ -190,9 +212,9 @@ function polyCentroid(geom: GeoJSON.Geometry): [number, number] | null {
   return [x / ring.length, y / ring.length]
 }
 
-/** The building feature nearest a lng/lat (null if none rendered / no id).
- *  Only finds RENDERED buildings, so the point must be on-screen. */
-function buildingUnder(map: maplibregl.Map, lngLat: maplibregl.LngLatLike): BldgRef | null {
+/** The building nearest a lng/lat (null if none rendered / no id). Only finds
+ *  RENDERED buildings, so the point must be on-screen. */
+function buildingUnder(map: maplibregl.Map, lngLat: maplibregl.LngLatLike): Hl | null {
   const queryLayers = ["cs-building-3d", "cs-building"].filter((l) => map.getLayer(l))
   if (!queryLayers.length) return null
   const p = map.project(lngLat)
@@ -207,13 +229,18 @@ function buildingUnder(map: maplibregl.Map, lngLat: maplibregl.LngLatLike): Bldg
   })
   if (!best) return null
   const bf = best as maplibregl.MapGeoJSONFeature
-  return { source: bf.source, sourceLayer: bf.sourceLayer as string, id: bf.id as string | number }
+  return {
+    ref: { source: bf.source, sourceLayer: bf.sourceLayer as string, id: bf.id as string | number },
+    feat: { type: "Feature", geometry: bf.geometry, properties: bf.properties || {} },
+  }
 }
 
 /** Light up exactly one building (or none), clearing the previously lit one. */
-function setActiveBuilding(map: maplibregl.Map, prev: BldgRef | null, next: BldgRef | null): BldgRef | null {
-  if (prev) { try { map.setFeatureState(prev, { hl: false }) } catch { /* tile evicted */ } }
-  if (next) { try { map.setFeatureState(next, { hl: true }) } catch { /* tile not loaded */ } }
+function setActiveBuilding(map: maplibregl.Map, prev: Hl | null, next: Hl | null): Hl | null {
+  if (prev) { try { map.setFeatureState(prev.ref, { hl: false }) } catch { /* tile evicted */ } }
+  if (next) { try { map.setFeatureState(next.ref, { hl: true }) } catch { /* tile not loaded */ } }
+  const src = map.getSource(EVT_BLDG_SRC) as maplibregl.GeoJSONSource | undefined
+  if (src) src.setData(next ? { type: "FeatureCollection", features: [next.feat] } : { type: "FeatureCollection", features: [] })
   return next
 }
 
@@ -227,7 +254,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const fitAllRef = useRef<() => void>(() => {})
   const pendulumStopRef = useRef<() => void>(() => {})
   const hlTokenRef = useRef(0)
-  const hlBuildingRef = useRef<BldgRef | null>(null) // currently lit building
+  const hlBuildingRef = useRef<Hl | null>(null) // currently lit building
   const zoneMarkersRef = useRef<Record<string, HTMLElement>>({})
   const scatterRef = useRef<maplibregl.Marker[]>([])
   const [ready, setReady] = useState(false)
@@ -239,9 +266,11 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const selZoneRef = useRef<string | null>(null); selZoneRef.current = selZone
   const selClusterRef = useRef<number | null>(null); selClusterRef.current = selCluster
 
-  // Highlight the ACTIVE event's building on demand. queryRenderedFeatures only
-  // sees on-screen buildings, so if the active event sits off-screen we gently
-  // pan to it first — that's why some buildings used to never light up.
+  // Centre the map on the ACTIVE event and light its building. Always centring
+  // guarantees the active card and its blue column are together in view — no
+  // more "where is the highlight?" with the building off-screen or off to the
+  // side. queryRenderedFeatures only sees on-screen buildings, so centring also
+  // makes the lookup reliable.
   const applyActiveHighlight = () => {
     const map = mapRef.current
     if (!map || selClusterRef.current == null) return
@@ -249,9 +278,6 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
     const mk = scatterRef.current[evIdxRef.current]
     if (!mk) { hlBuildingRef.current = setActiveBuilding(map, hlBuildingRef.current, null); return }
     const ll = mk.getLngLat()
-    const cv = map.getCanvas()
-    const p = map.project(ll)
-    const onScreen = p.x > 50 && p.x < cv.clientWidth - 50 && p.y > 150 && p.y < cv.clientHeight - 240
     const target = evIdxRef.current
     // retry on `idle`: at moveend the building tiles for a fresh view may not be
     // loaded yet, so queryRenderedFeatures finds nothing — wait for them once.
@@ -261,8 +287,8 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       if (b) hlBuildingRef.current = setActiveBuilding(map, hlBuildingRef.current, b)
       else if (retry) map.once("idle", () => doHl(false))
     }
-    if (onScreen) doHl(true)
-    else { map.easeTo({ center: ll, duration: 450 }); map.once("moveend", () => doHl(true)) }
+    map.easeTo({ center: ll, zoom: 15.2, pitch: 52, bearing: -14, duration: 450 })
+    map.once("moveend", () => doHl(true))
   }
   const applyActiveRef = useRef(applyActiveHighlight); applyActiveRef.current = applyActiveHighlight
 
@@ -336,6 +362,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         // v7 csbrand: фирменный стиль уже содержит 3D-дома (cs-building-3d) —
         // добавляем только кинематографичное небо + туман у горизонта.
         applyCinematicSky(map, false)
+        ensureEventBuildingTower(map) // blue tower layer for the active event's building
 
         placeZonesRef.current() // district bubbles (re-placed later if data was slow)
         // Fixed view anchored on central Moscow — NOT fitBounds, which would
@@ -426,8 +453,10 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
           const m = new maplibregl.Marker({ element: el, anchor: "bottom", offset: [0, -10] }).setLngLat([ll[1], ll[0]]).addTo(map)
           scatterRef.current.push(m)
         })
-        map.easeTo({ center: [cl.ll[1], cl.ll[0]], zoom: 14.8, pitch: 52, bearing: -14, duration: 600 })
-        // Once zoomed in (buildings rendered), light the active event's building.
+        // Fly straight to the first event (centred) — applyActiveHighlight then
+        // lights its building. No centroid hop, so no extra camera motion.
+        const first = cl.pts[0] || [cl.ll[0], cl.ll[1]]
+        map.easeTo({ center: [first[1], first[0]], zoom: 15.2, pitch: 52, bearing: -14, duration: 700 })
         map.once("moveend", () => { if (hlTokenRef.current === hlToken) applyActiveRef.current() })
       }
     }
