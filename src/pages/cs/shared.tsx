@@ -100,10 +100,10 @@ const KEYFRAMES = `
   .cs-zone-bubble { position: absolute; left: 0; bottom: 12px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 3px; transition: transform 0.16s cubic-bezier(0.22,1,0.36,1); }
   .cs-zone:hover .cs-zone-bubble { transform: translateX(-50%) translateY(-2px); }
   .cs-zone-dot { position: absolute; left: 0; bottom: 2px; width: 9px; height: 9px; margin-left: -4.5px; background: #0D0D0D; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 1px 3px rgba(13,13,13,0.4); }
-  .cs-zfan { position: relative; width: 46px; height: 40px; flex-shrink: 0; }
-  .cs-zfan-card { position: absolute; left: 50%; top: 50%; width: 26px; height: 34px; margin: -17px 0 0 -13px; border: 2px solid #0D0D0D; background: #fff; overflow: hidden; box-shadow: 1px 1px 0 rgba(13,13,13,0.45); transform: translateX(calc((var(--zz) - 1) * 10px)) rotate(var(--zr)); z-index: calc(3 - var(--zz)); transition: transform 0.2s; }
+  .cs-zfan { position: relative; width: 56px; height: 48px; flex-shrink: 0; }
+  .cs-zfan-card { position: absolute; left: 50%; top: 50%; width: 33px; height: 43px; margin: -21.5px 0 0 -16.5px; border: 2px solid #0D0D0D; background: #fff; overflow: hidden; box-shadow: 1px 1px 0 rgba(13,13,13,0.45); transform: translateX(calc((var(--zz) - 1) * 12px)) rotate(var(--zr)); z-index: calc(3 - var(--zz)); transition: transform 0.2s; }
   .cs-zfan-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .cs-zone:hover .cs-zfan-card { transform: translateX(calc((var(--zz) - 1) * 13px)) rotate(var(--zr)); }
+  .cs-zone:hover .cs-zfan-card { transform: translateX(calc((var(--zz) - 1) * 15px)) rotate(var(--zr)); }
   .cs-zone-count { position: absolute; right: -6px; top: -7px; z-index: 6; min-width: 18px; height: 18px; padding: 0 4px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; background: #0055FF; color: #fff; border: 2px solid #fff; border-radius: 999px; font-family: var(--cs-font-mono); font-weight: 700; font-size: 9.5px; line-height: 1; }
   .cs-zone-name { background: #fff; border: 2px solid #0D0D0D; box-shadow: 2px 2px 0 #0D0D0D; padding: 2px 7px; font-family: var(--cs-font-sans); font-weight: 900; font-size: 11px; letter-spacing: -0.01em; color: #0D0D0D; text-transform: uppercase; white-space: nowrap; }
   .cs-zone-ring { position: absolute; left: 0; bottom: 2px; width: 26px; height: 26px; margin: 0 0 -13px -13px; border-radius: 50%; border: 2px solid #0055FF; opacity: 0; pointer-events: none; }
@@ -117,6 +117,11 @@ const KEYFRAMES = `
   .cs-zone-exploded .cs-zone-bubble { opacity: 0; transform: translateX(-50%) scale(0.5); pointer-events: none; transition: opacity 0.25s ease, transform 0.25s ease; }
   .cs-zone-exploded .cs-zone-ring { animation: none; opacity: 0; }
   .cs-zone-exploded .cs-zone-dot { background: #0055FF; }
+  /* empty district — always-visible name + a solid signal-blue «нет результатов» card */
+  .cs-zone-empty { cursor: default; }
+  .cs-zone-empty .cs-zone-empty-card { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 56px; height: 42px; box-sizing: border-box; padding: 3px 6px; background: #0055FF; border: 2px solid #0D0D0D; box-shadow: 2px 2px 0 #0D0D0D; color: #fff; font-family: var(--cs-font-mono); font-weight: 700; font-size: 6.5px; line-height: 1.25; letter-spacing: 0.01em; text-transform: uppercase; text-align: center; white-space: nowrap; animation: cs-zone-empty-pulse 2.6s ease-in-out infinite; }
+  .cs-zone-empty:hover .cs-zone-bubble { transform: translateX(-50%); }
+  @keyframes cs-zone-empty-pulse { 0%,100% { transform: scale(1); box-shadow: 2px 2px 0 #0D0D0D; } 50% { transform: scale(1.04); box-shadow: 3px 3px 0 #0D0D0D; } }
   .cs-scatter-wrap { line-height: 0; }
   .cs-scatter-pin { animation: cs-scatter-in 0.4s cubic-bezier(0.22,1,0.36,1) both; animation-delay: calc(var(--si,0) * 0.045s); position: relative; }
   .cs-scatter-pin .cs-pin-card { animation: none !important; transform: none !important; transition: transform 0.22s cubic-bezier(0.22,1,0.36,1), box-shadow 0.22s ease; }

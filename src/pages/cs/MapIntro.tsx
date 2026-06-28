@@ -57,16 +57,30 @@ function zoneOf(lat: number, lng: number): string {
   return "west"
 }
 
-/** District bubble marker: fan of ≤3 posters + count + name + dot + ring. */
+/** District bubble marker. With events: fan of ≤3 posters + count + name.
+ *  Empty: a solid signal-blue card («нет результатов») in place of the fan +
+ *  name (always shown, non-interactive), so every district stays on the map
+ *  even with nothing this week. */
 function zoneBubbleEl(zone: Zone, evs: Ev[], onClick: (id: string) => void): HTMLElement {
+  const el = document.createElement("div")
+  el.dataset.zone = zone.id
+  if (!evs.length) {
+    el.className = "cs-zone cs-zone-empty"
+    el.innerHTML =
+      `<div class="cs-zone-bubble">` +
+      `<div class="cs-zone-empty-card">нет<br>результатов</div>` +
+      `<div class="cs-zone-name">${zone.t}</div></div>` +
+      `<div class="cs-zone-dot"></div>`
+    return el // no click handler — empty districts are just labels
+  }
   const fan = evs.slice(0, 3)
   const rots = [-14, 0, 14]
+  const single = fan.length === 1
+  // a lone card sits upright and centred (no fan tilt/offset)
   const thumbs = fan.map((e, i) =>
-    `<span class="cs-zfan-card" style="--zr:${rots[i] || 0}deg;--zz:${i}">${e.p ? `<img src="${e.p}" alt=""/>` : ""}</span>`,
+    `<span class="cs-zfan-card" style="--zr:${single ? 0 : rots[i] || 0}deg;--zz:${single ? 1 : i}">${e.p ? `<img src="${e.p}" alt=""/>` : ""}</span>`,
   ).join("")
-  const el = document.createElement("div")
   el.className = "cs-zone"
-  el.dataset.zone = zone.id
   el.innerHTML =
     `<div class="cs-zone-ring"></div>` +
     `<div class="cs-zone-bubble"><div class="cs-zfan">${thumbs}<span class="cs-zone-count">${evs.length}</span></div>` +
@@ -324,7 +338,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
     zoneMlRef.current = []
     zoneMarkersRef.current = {}
     ZONES.forEach((z) => {
-      if (!byZoneRef.current[z.id].length) return
+      // render ALL districts — empty ones show a pulsing ghost + name
       const el = zoneBubbleEl(z, byZoneRef.current[z.id], (id) => onZoneRef.current(id))
       zoneMarkersRef.current[z.id] = el
       const mk = new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([z.dll[1], z.dll[0]]).addTo(map)
