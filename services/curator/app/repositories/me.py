@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Sequence
 
-from sqlalchemy import delete, distinct, func, select
+from sqlalchemy import delete, distinct, func, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -73,12 +74,17 @@ class PersonalizedFeedRepository:
         - If `tag_keys` provided, restrict to events that have ANY of these tags.
         - If neither user_id nor tag_keys → all approved events, recency order.
         """
-        # Base events query
+        # Base events query — upcoming (and undated) events, soonest first.
+        # Past-dated events are dropped so the feed/map shows what's still ahead;
+        # ordering by event_time (NULLs last) keeps the recency-flood of freshly
+        # ingested posts from burying geocoded upcoming events on the map.
+        now = datetime.utcnow()
         ev_q = (
             select(EventCurated, PostRaw)
             .join(PostRaw, PostRaw.id == EventCurated.post_id)
             .where(EventCurated.status == EventStatus.approved)
-            .order_by(EventCurated.created_at.desc())
+            .where(or_(EventCurated.event_time >= now, EventCurated.event_time.is_(None)))
+            .order_by(EventCurated.event_time.asc().nulls_last())
         )
 
         # Filter by tags
