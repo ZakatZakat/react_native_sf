@@ -374,13 +374,18 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       const seen = new Set(hlBuildingsRef.current.map((h) => h.key))
       const union = [...hlBuildingsRef.current]
       let found = 0
-      cl.pts.forEach((p) => {
-        const b = buildingUnder(map, [p[1], p[0]]) // p = [lat,lng]
+      // Light the building under each event's REAL coord (e.geo) — NOT the fanned
+      // card position (cl.pts). Co-located events share e.geo, so they collapse
+      // to ONE building (the true venue), instead of painting random neighbours
+      // under the spread-out cards.
+      cl.members.forEach((ev) => {
+        const g = ev.geo; if (!g) return
+        const b = buildingUnder(map, [g[1], g[0]]) // g = [lat,lng]
         if (b) { found++; if (!seen.has(b.key)) { seen.add(b.key); union.push(b) } }
       })
       hlBuildingsRef.current = union
       renderEventBuildings(map, union)
-      if (retry && found < cl.pts.length) map.once("idle", () => collect(false))
+      if (retry && found < cl.members.length) map.once("idle", () => collect(false))
     }
     collect(true)
   }
