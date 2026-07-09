@@ -179,9 +179,8 @@ const KEYFRAMES = `
   .cs-deck-place-slot { display: contents; } /* place card becomes a direct flex item; empty slot renders nothing */
   .cs-deck-right { display: flex; flex-direction: column; align-items: flex-start; }
   .cs-deck-place { width: 140px; flex-shrink: 0; box-sizing: border-box; background: #fff; border: 2.5px solid #0D0D0D; box-shadow: 3px 4px 0 rgba(13,13,13,0.85); overflow: hidden; }
-  .cs-deck-place-img { height: 58px; border-bottom: 2px solid #0D0D0D; background: repeating-linear-gradient(45deg,#E4E4E1,#E4E4E1 6px,#d9d9d6 6px,#d9d9d6 12px); display: flex; align-items: center; justify-content: center; }
+  .cs-deck-place-img { height: 58px; border-bottom: 2px solid #0D0D0D; overflow: hidden; background: #E4E4E1; }
   .cs-deck-place-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .cs-deck-place-img span { font-family: var(--cs-font-mono); font-size: 6.5px; font-weight: 700; letter-spacing: 0.14em; color: rgba(13,13,13,0.4); text-transform: uppercase; }
   .cs-deck-place-body { padding: 6px 8px 8px; }
   .cs-deck-place-kind { font-family: var(--cs-font-mono); font-size: 6.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #0055FF; line-height: 1.2; }
   .cs-deck-place-name { font-family: var(--cs-font-sans); font-weight: 900; font-size: 12px; letter-spacing: -0.02em; line-height: 1.04; color: #0D0D0D; margin-top: 2px; }
