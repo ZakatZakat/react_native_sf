@@ -162,7 +162,7 @@ const KEYFRAMES = `
   .cs-clu-tip { width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 6px solid #0D0D0D; margin-top: -1px; }
   .cs-pola { position: relative; width: 158px; z-index: 3; cursor: pointer; display: flex; flex-direction: column; align-items: center; animation: cs-scatter-in 0.45s cubic-bezier(0.22,1,0.36,1) both; animation-delay: calc(var(--si,0) * 0.06s); }
   .cs-pola-card { width: 158px; box-sizing: border-box; background: #fff; border: 2.5px solid #0D0D0D; box-shadow: 3px 4px 0 rgba(13,13,13,0.85); overflow: hidden; transform-origin: bottom center; transition: transform 0.25s cubic-bezier(0.22,1,0.36,1), box-shadow 0.22s ease, border-color 0.2s ease; }
-  .cs-pola-img { width: 100%; height: 92px; overflow: hidden; border-bottom: 2px solid #0D0D0D; background: #E4E4E1; }
+  .cs-pola-img { width: 100%; height: 116px; overflow: hidden; border-bottom: 2px solid #0D0D0D; background: #E4E4E1; }
   .cs-pola-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .cs-pola-body { padding: 7px 8px 8px; text-align: left; line-height: normal; }
   .cs-pola-top { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-bottom: 4px; }
@@ -178,8 +178,8 @@ const KEYFRAMES = `
   .cs-deck { flex-direction: row; align-items: flex-start; gap: 8px; width: auto; }
   .cs-deck-place-slot { display: contents; } /* place card becomes a direct flex item; empty slot renders nothing */
   .cs-deck-right { display: flex; flex-direction: column; align-items: flex-start; }
-  .cs-deck-place { width: 140px; flex-shrink: 0; box-sizing: border-box; background: #fff; border: 2.5px solid #0D0D0D; box-shadow: 3px 4px 0 rgba(13,13,13,0.85); overflow: hidden; }
-  .cs-deck-place-img { height: 58px; border-bottom: 2px solid #0D0D0D; overflow: hidden; background: #E4E4E1; }
+  .cs-deck-place { width: 148px; flex-shrink: 0; box-sizing: border-box; background: #fff; border: 2.5px solid #0D0D0D; box-shadow: 3px 4px 0 rgba(13,13,13,0.85); overflow: hidden; }
+  .cs-deck-place-img { height: 78px; border-bottom: 2px solid #0D0D0D; overflow: hidden; background: #E4E4E1; }
   .cs-deck-place-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .cs-deck-place-body { padding: 6px 8px 8px; }
   .cs-deck-place-kind { font-family: var(--cs-font-mono); font-size: 6.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #0055FF; line-height: 1.2; }
@@ -188,8 +188,8 @@ const KEYFRAMES = `
   .cs-deck-place-addr { margin-top: 6px; padding-top: 5px; border-top: 1px solid rgba(13,13,13,0.12); font-family: var(--cs-font-mono); font-size: 7.5px; font-weight: 700; letter-spacing: 0.01em; line-height: 1.35; color: rgba(13,13,13,0.6); }
   .cs-deck-center { display: block; width: 100%; margin-top: 7px; border: 2px solid #0D0D0D; background: #0055FF; color: #fff; cursor: pointer; font-family: var(--cs-font-sans); font-weight: 900; font-size: 9.5px; letter-spacing: 0.01em; text-transform: uppercase; padding: 6px 4px; line-height: 1.1; }
   .cs-deck-center:active { background: #0D0D0D; }
-  .cs-deck-stack-slot { position: relative; display: block; width: 150px; }
-  .cs-deck-front { width: 150px; }
+  .cs-deck-stack-slot { position: relative; display: block; width: 158px; }
+  .cs-deck-front { width: 158px; }
   .cs-deck-front { position: relative; z-index: 3; }
   .cs-deck-ghost { position: absolute; inset: 0; background: #fff; border: 2.5px solid #0D0D0D; box-shadow: 3px 4px 0 rgba(13,13,13,0.4); }
   .cs-dg1 { transform: translate(7px, 7px) rotate(2.5deg); z-index: 2; }

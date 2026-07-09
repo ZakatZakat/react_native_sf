@@ -17,6 +17,7 @@ import type { Ev } from "./buildDerived"
 import { CS, FONT_SANS, FONT_MONO, useCsKeyframes, useOpenEvent } from "./shared"
 import { CS_STYLE_LIGHT, applyCinematicSky } from "./csMapStyle"
 import { venueInfo, type VenueInfo } from "./venues"
+import { VENUE_FOOTPRINTS } from "./venueFootprints"
 
 const MSK: [number, number] = [37.62, 55.745]
 
@@ -189,19 +190,16 @@ function placeCardHTML(vi: VenueInfo): string {
   `</div>`
 }
 
-// ── Highlight event buildings (signal-blue) ─────────────────────────────────
-// We draw the picked footprints into our OWN geojson fill-extrusion layer —
-// NOT feature-state. The MapTiler building tiles reuse feature ids across
-// tiles, so feature-state `hl` bleeds onto same-id buildings elsewhere on
-// screen (a stray blue tower far from any event). Drawing the exact geometries
-// we chose is bleed-proof. The overlay is OPAQUE and its footprint is inflated
-// a few %, so it fully covers the grey building underneath (no coincident walls
-// → no z-fighting) and reads as a solid blue building.
+// ── Highlight event venues (signal-blue) ────────────────────────────────────
+// A venue's building is drawn from a PRECOMPUTED OSM footprint (venueFootprints)
+// into our own geojson fill-extrusion layer — deterministic, no dependence on
+// MapTiler's (often-missing) building tiles or live queryRenderedFeatures, and
+// bleed-proof (unlike feature-state, whose ids repeat across tiles). The overlay
+// is opaque + inflated ~4% so it fully covers the grey building (no z-fighting).
+// Venues with no building (metro, parks, aggregators) get a blue dot instead.
 const EVT_BLDG_SRC = "cs-evt-bldg"
 const EVT_BLDG_LAYER = "cs-evt-bldg-fill"
 const FOCUS_SRC = "cs-focus"
-type BldgRef = { source: string; sourceLayer: string; id: string | number }
-type Hl = { key: string; feat: GeoJSON.Feature }
 
 function ensureEventBuildingsLayer(map: maplibregl.Map) {
   if (map.getSource(EVT_BLDG_SRC)) return
@@ -231,13 +229,11 @@ function ensureEventBuildingsLayer(map: maplibregl.Map) {
   } as maplibregl.AddLayerObject)
 }
 
-/** Show a focus dot at a [lat,lng] venue coord (or clear it with null). */
-function setFocus(map: maplibregl.Map, coord: [number, number] | null) {
+/** Show blue focus dots for point-type venues (coords already [lng,lat]). */
+function renderVenueDots(map: maplibregl.Map, coords: [number, number][]) {
   const src = map.getSource(FOCUS_SRC) as maplibregl.GeoJSONSource | undefined
   if (!src) return
-  src.setData(coord
-    ? { type: "FeatureCollection", features: [{ type: "Feature", geometry: { type: "Point", coordinates: [coord[1], coord[0]] }, properties: {} }] }
-    : { type: "FeatureCollection", features: [] })
+  src.setData({ type: "FeatureCollection", features: coords.map((c) => ({ type: "Feature", geometry: { type: "Point", coordinates: c }, properties: {} })) })
 }
 
 /** Inflate a footprint ~4% around its centroid so the opaque blue overlay's
@@ -251,10 +247,10 @@ function inflate(geom: GeoJSON.Geometry, f = 1.04): GeoJSON.Geometry {
   return geom
 }
 
-/** Push the current set of highlighted footprints into the overlay layer. */
-function renderEventBuildings(map: maplibregl.Map, hls: Hl[]) {
+/** Paint the given building footprints (blue extrusions) into the overlay. */
+function renderEventBuildings(map: maplibregl.Map, features: GeoJSON.Feature[]) {
   const src = map.getSource(EVT_BLDG_SRC) as maplibregl.GeoJSONSource | undefined
-  if (src) src.setData({ type: "FeatureCollection", features: hls.map((h) => h.feat) })
+  if (src) src.setData({ type: "FeatureCollection", features })
 }
 
 /** Rough lng/lat centroid of a (Multi)Polygon's outer ring. */
@@ -268,60 +264,10 @@ function polyCentroid(geom: GeoJSON.Geometry): [number, number] | null {
   return [x / ring.length, y / ring.length]
 }
 
-/** Ray-casting point-in-polygon over a GeoJSON Polygon/MultiPolygon (lng/lat).
- *  Tests outer rings only — building footprints have no meaningful holes. */
-function pointInPolygon(pt: [number, number], geom: GeoJSON.Geometry): boolean {
-  const rings: GeoJSON.Position[][] =
-    geom.type === "Polygon" ? [geom.coordinates[0]]
-      : geom.type === "MultiPolygon" ? geom.coordinates.map((poly) => poly[0])
-        : []
-  const [x, y] = pt
-  return rings.some((ring) => {
-    let inside = false
-    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-      const xi = ring[i][0], yi = ring[i][1], xj = ring[j][0], yj = ring[j][1]
-      if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside
-    }
-    return inside
-  })
-}
-
-/** The event's building: prefer the footprint the point is INSIDE (point-in-
- *  polygon) — that's the actual venue building — and only fall back to the
- *  nearest by centroid when the point isn't inside any. Fixes the "painted the
- *  neighbour" glitch the old nearest-centroid-only heuristic caused. Only finds
- *  RENDERED buildings, so the point must be on-screen. */
-function buildingUnder(map: maplibregl.Map, lngLat: maplibregl.LngLatLike): Hl | null {
-  const queryLayers = ["cs-building-3d", "cs-building"].filter((l) => map.getLayer(l))
-  if (!queryLayers.length) return null
-  const c0 = maplibregl.LngLat.convert(lngLat)
-  const pt: [number, number] = [c0.lng, c0.lat]
-  const p = map.project(lngLat)
-  // Tight candidate box — enough to catch the footprint under (or just beside)
-  // the point without pulling in the far neighbours the old 40px box grabbed.
-  const R = 22
-  const hits = map.queryRenderedFeatures([[p.x - R, p.y - R], [p.x + R, p.y + R]], { layers: queryLayers })
-  let best: maplibregl.MapGeoJSONFeature | null = null, bestD = Infinity
-  let inside: maplibregl.MapGeoJSONFeature | null = null, insideD = Infinity
-  hits.forEach((f) => {
-    if (f.id == null) return
-    const c = polyCentroid(f.geometry); if (!c) return
-    const cp = map.project(c)
-    const d = (cp.x - p.x) ** 2 + (cp.y - p.y) ** 2
-    if (d < bestD) { bestD = d; best = f }
-    if (pointInPolygon(pt, f.geometry) && d < insideD) { insideD = d; inside = f }
-  })
-  // Prefer the footprint the point is INSIDE. Only fall back to the nearest
-  // when the centroid is very close (~14px) — otherwise a point on a road /
-  // courtyard would paint an unrelated neighbour.
-  const chosen = (inside || (bestD < 14 * 14 ? best : null)) as maplibregl.MapGeoJSONFeature | null
-  if (!chosen) return null
-  const bf = chosen
-  const ref: BldgRef = { source: bf.source, sourceLayer: bf.sourceLayer as string, id: bf.id as string | number }
-  return {
-    key: `${ref.source}/${ref.sourceLayer}/${ref.id}`,
-    feat: { type: "Feature", geometry: inflate(bf.geometry), properties: bf.properties || {} },
-  }
+/** Build a blue-building overlay Feature from a stored footprint ring ([lng,lat]).
+ *  Inflated ~4% so it fully covers the grey MapTiler building beneath it. */
+function footprintFeature(ring: [number, number][]): GeoJSON.Feature {
+  return { type: "Feature", geometry: inflate({ type: "Polygon", coordinates: [ring] }), properties: {} }
 }
 
 export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: () => void }) {
@@ -333,8 +279,6 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const mapRef = useRef<maplibregl.Map | null>(null)
   const fitAllRef = useRef<() => void>(() => {})
   const pendulumStopRef = useRef<() => void>(() => {})
-  const hlTokenRef = useRef(0)
-  const hlBuildingsRef = useRef<Hl[]>([]) // all currently-lit event buildings
   const leaderSvgRef = useRef<SVGSVGElement | null>(null) // overlay for card→building leaders
   const leadersRef = useRef<{ card: [number, number]; target: [number, number]; i: number }[]>([])
   const deckWrapRef = useRef<HTMLDivElement | null>(null) // the cluster deck marker element
@@ -351,6 +295,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const evIdxRef = useRef(0); evIdxRef.current = evIdx
   const selZoneRef = useRef<string | null>(null); selZoneRef.current = selZone
   const selClusterRef = useRef<number | null>(null); selClusterRef.current = selCluster
+  const deckHiddenRef = useRef(false); deckHiddenRef.current = deckHidden
 
   // Draw a single leader line — only for the ACTIVE card — to its building's
   // ground point. Runs every map frame (via the `render` event) so it tracks
@@ -359,6 +304,9 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const drawLeaders = () => {
     const map = mapRef.current, svg = leaderSvgRef.current
     if (!map || !svg) return
+    // No leader while the deck is hidden («Центрировать карту») — otherwise the
+    // dashed line keeps drawing from the invisible card to the building.
+    if (deckHiddenRef.current) { if (svg.childNodes.length) svg.replaceChildren(); return }
     const ld = leadersRef.current[0]
     if (!ld) { if (svg.childNodes.length) svg.replaceChildren(); return }
     const a = map.project([ld.card[1], ld.card[0]])     // card anchor (bottom of card)
@@ -376,40 +324,31 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   }
   const drawLeadersRef = useRef(drawLeaders); drawLeadersRef.current = drawLeaders
 
-  // Light EVERY event building in the current cluster at once — not just the
-  // active card. Buildings only render at zoom ≥14, so this runs once the
-  // cluster view has zoomed in: queryRenderedFeatures finds each member's
-  // footprint (point-in-polygon) and we push them all into the blue overlay
-  // layer. Merged, so panning/swiping between cards never drops an already-lit
-  // building; a single `idle` retry catches footprints whose tiles hadn't
-  // loaded yet.
-  const lightClusterBuildings = (cl: Cluster, token: number) => {
+  // Mark every venue in the cluster: a precomputed building footprint → a blue
+  // building; a venue with no footprint (metro/park/aggregator) → a blue dot.
+  // Fully deterministic (no queryRenderedFeatures) so it's instant, consistent,
+  // and can't over-paint. De-duped so co-located events collapse to one mark.
+  const paintCluster = (cl: Cluster) => {
     const map = mapRef.current
     if (!map || !cl) return
-    if (map.getZoom() < 13.5) return // buildings not rendered yet
-    const collect = (retry: boolean) => {
-      if (hlTokenRef.current !== token) return // superseded by a newer zone/cluster
-      const seen = new Set(hlBuildingsRef.current.map((h) => h.key))
-      const union = [...hlBuildingsRef.current]
-      let found = 0
-      // Light the building under each event's REAL coord (e.geo) — NOT the fanned
-      // card position (cl.pts). Co-located events share e.geo, so they collapse
-      // to ONE building (the true venue), instead of painting random neighbours
-      // under the spread-out cards.
-      cl.members.forEach((ev) => {
-        const g = ev.geo; if (!g) return
-        const b = buildingUnder(map, [g[1], g[0]]) // g = [lat,lng]
-        if (b) { found++; if (!seen.has(b.key)) { seen.add(b.key); union.push(b) } }
-      })
-      hlBuildingsRef.current = union
-      renderEventBuildings(map, union)
-      if (retry && found < cl.members.length) map.once("idle", () => collect(false))
-    }
-    collect(true)
+    const feats: GeoJSON.Feature[] = []
+    const dots: [number, number][] = []
+    const seenFp = new Set<string>()
+    const seenDot = new Set<string>()
+    cl.members.forEach((ev) => {
+      const fp = ev.venueKey ? VENUE_FOOTPRINTS[ev.venueKey] : undefined
+      if (fp && fp.length >= 4) {
+        if (!seenFp.has(ev.venueKey)) { seenFp.add(ev.venueKey); feats.push(footprintFeature(fp)) }
+      } else if (ev.geo) {
+        const k = `${ev.geo[0].toFixed(5)},${ev.geo[1].toFixed(5)}`
+        if (!seenDot.has(k)) { seenDot.add(k); dots.push([ev.geo[1], ev.geo[0]]) }
+      }
+    })
+    renderEventBuildings(map, feats)
+    renderVenueDots(map, dots)
   }
-  const lightClusterRef = useRef(lightClusterBuildings); lightClusterRef.current = lightClusterBuildings
+  const paintClusterRef = useRef(paintCluster); paintClusterRef.current = paintCluster
 
-  // Recenter on the active card (keeps it framed) then (re)light the cluster.
   // Rebuild the deck's DOM for a given active index + (re)wire its ← / → / open
   // handlers. One marker, updated in place, so paging doesn't recreate it.
   const renderDeck = (idx: number) => {
@@ -432,22 +371,19 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       wrap.querySelector(".cs-deck-next")?.addEventListener("click", (ev) => { ev.stopPropagation(); setEvIdx((x) => (x + 1) % n) })
       wrap.addEventListener("click", (ev) => {
         const t = ev.target as HTMLElement
-        // «Центрировать карту» — плавно наводим на здание активного события
-        // (оно уже подсвечено синим), с зумом на площадку.
+        // «Центрировать карту» — прячем карточки и наводим на площадку активного
+        // события (она уже отмечена синим домом или точкой из paintCluster).
         if (t.closest?.(".cs-deck-center")) {
           ev.stopPropagation()
           const map = mapRef.current
           const g = deckMembersRef.current[evIdxRef.current]?.geo
           if (map && Array.isArray(g)) {
-            // hide the cards so the (blue) building is actually visible. Use
-            // display:none — MapLibre resets a marker's `opacity` to 1 on every
-            // move, so opacity:0 would be wiped by the easeTo below.
+            // hide the cards via display:none — MapLibre resets a marker's
+            // opacity to 1 on every move, so opacity:0 would be wiped by easeTo.
             if (deckWrapRef.current) deckWrapRef.current.style.display = "none"
             setDeckHidden(true)
-            setFocus(map, g as [number, number]) // reliable blue dot on the venue
+            deckHiddenRef.current = true; drawLeadersRef.current() // erase the leader now
             map.easeTo({ center: [g[1], g[0]], zoom: 16.6, pitch: 52, bearing: -14, duration: 650 })
-            // re-light after zooming in so the venue building is definitely blue
-            map.once("moveend", () => { const c = clustersRef.current[selZoneRef.current || ""]?.[selClusterRef.current ?? -1]; if (c) lightClusterRef.current(c, hlTokenRef.current) })
           }
           return
         }
@@ -592,12 +528,10 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
     // clear previous scatter + building highlight
     scatterRef.current.forEach((m) => m.remove())
     scatterRef.current = []
-    const hlToken = ++hlTokenRef.current
-    hlBuildingsRef.current = []
     renderEventBuildings(map, [])
+    renderVenueDots(map, [])
     leadersRef.current = []
     drawLeadersRef.current()
-    setFocus(map, null)
     setDeckHidden(false) // a fresh zone/cluster always shows its deck
     // toggle zone bubble states
     ZONES.forEach((z) => {
@@ -648,11 +582,10 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         scatterRef.current.push(m)
         leadersRef.current = [{ card: cl.ll, target: (cl.members[0]?.geo as [number, number]) ?? cl.ll, i: 0 }]
         drawLeadersRef.current()
-        // Ease to the centroid at building-visible zoom; lightClusterBuildings
-        // then lights every event building in the cluster. Pass the captured cl
-        // + token so it can't drift onto a re-clustered/stale member set.
+        // Mark venues immediately (deterministic — no need to wait for tiles),
+        // then ease to the centroid at building-visible zoom.
+        paintClusterRef.current(cl)
         map.easeTo({ center: [cl.ll[1], cl.ll[0]], zoom: 15, pitch: 52, bearing: -14, duration: 700 })
-        map.once("moveend", () => { if (hlTokenRef.current === hlToken) { lightClusterRef.current(cl, hlToken); drawLeadersRef.current() } })
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -710,7 +643,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       {selCluster != null && deckHidden && (
         <div style={{ position: "absolute", top: "30%", left: 0, right: 0, display: "flex", justifyContent: "center", zIndex: 11, pointerEvents: "none" }}>
           <button
-            onClick={() => { if (deckWrapRef.current) deckWrapRef.current.style.display = "" ; if (mapRef.current) setFocus(mapRef.current, null); setDeckHidden(false) }}
+            onClick={() => { if (deckWrapRef.current) deckWrapRef.current.style.display = "" ; setDeckHidden(false); deckHiddenRef.current = false; drawLeadersRef.current() }}
             style={{ pointerEvents: "auto", display: "inline-flex", alignItems: "center", gap: 8, background: CS.K, color: "#fff", border: `2.5px solid ${CS.K}`, boxShadow: `3px 3px 0 ${CS.B}`, padding: "9px 15px", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 13, letterSpacing: "0.02em", textTransform: "uppercase" }}
           >
             <span style={{ fontSize: 15, lineHeight: 1 }}>↑</span> Показать карточки
