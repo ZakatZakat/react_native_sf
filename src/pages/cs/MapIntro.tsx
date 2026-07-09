@@ -417,8 +417,10 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
           const map = mapRef.current
           const g = deckMembersRef.current[evIdxRef.current]?.geo
           if (map && Array.isArray(g)) {
-            // hide the cards so the (blue) building is actually visible
-            if (deckWrapRef.current) { deckWrapRef.current.style.opacity = "0"; deckWrapRef.current.style.pointerEvents = "none" }
+            // hide the cards so the (blue) building is actually visible. Use
+            // display:none — MapLibre resets a marker's `opacity` to 1 on every
+            // move, so opacity:0 would be wiped by the easeTo below.
+            if (deckWrapRef.current) deckWrapRef.current.style.display = "none"
             setDeckHidden(true)
             map.easeTo({ center: [g[1], g[0]], zoom: 16.6, pitch: 52, bearing: -14, duration: 650 })
             // re-light after zooming in so the venue building is definitely blue
@@ -684,7 +686,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       {selCluster != null && deckHidden && (
         <div style={{ position: "absolute", top: "30%", left: 0, right: 0, display: "flex", justifyContent: "center", zIndex: 11, pointerEvents: "none" }}>
           <button
-            onClick={() => { if (deckWrapRef.current) { deckWrapRef.current.style.opacity = ""; deckWrapRef.current.style.pointerEvents = "" } setDeckHidden(false) }}
+            onClick={() => { if (deckWrapRef.current) deckWrapRef.current.style.display = "" ; setDeckHidden(false) }}
             style={{ pointerEvents: "auto", display: "inline-flex", alignItems: "center", gap: 8, background: CS.K, color: "#fff", border: `2.5px solid ${CS.K}`, boxShadow: `3px 3px 0 ${CS.B}`, padding: "9px 15px", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 13, letterSpacing: "0.02em", textTransform: "uppercase" }}
           >
             <span style={{ fontSize: 15, lineHeight: 1 }}>↑</span> Показать карточки
