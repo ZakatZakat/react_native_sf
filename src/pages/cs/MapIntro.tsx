@@ -175,25 +175,26 @@ function clusterFanEl(cl: Cluster, gi: number): HTMLElement {
 }
 
 /** Single-event card marker for cluster drill-down: poster + category + date +
- *  full (2-line) title + time·venue, with a leader arrow pointing DOWN to the
- *  event's building at the ground point below it. */
+ *  title + time·venue + post description. The connector to its building is a
+ *  dynamic SVG leader (see drawLeaders) — cards can't point straight down
+ *  because co-located events fan out around a shared building. */
 function polaEl(e: Ev, i: number): HTMLElement {
-  const rots = [-3, 2, -2, 3, -2, 2, 3, -3]
   const wrap = document.createElement("div")
   wrap.className = "cs-scatter-wrap"
   const date = e.d && e.d !== "—" ? e.d : ""
   const meta = [e.tm, e.v].filter((s) => s && s !== "—").join(" · ")
+  const desc = (e.desc || "").trim()
   wrap.innerHTML =
-    `<div class="cs-pola" style="--si:${i};--pr:${rots[i % rots.length]}deg">` +
+    `<div class="cs-pola" style="--si:${i}">` +
       `<div class="cs-pola-card">` +
         `<div class="cs-pola-img">${e.p ? `<img src="${e.p}" alt=""/>` : ""}</div>` +
         `<div class="cs-pola-body">` +
           `<div class="cs-pola-top"><span class="cs-pola-cat">${esc(e.c || "событие")}</span>${date ? `<span class="cs-pola-date">${esc(date)}</span>` : ""}</div>` +
           `<div class="cs-pola-title">${esc(e.t || "")}</div>` +
           (meta ? `<div class="cs-pola-meta">${esc(meta)}</div>` : "") +
+          (desc ? `<div class="cs-pola-desc">${esc(desc)}</div>` : "") +
         `</div>` +
       `</div>` +
-      `<div class="cs-pola-lead"><span class="cs-pola-stem"></span><span class="cs-pola-arrow"></span></div>` +
     `</div>`
   return wrap
 }
@@ -319,6 +320,8 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const pendulumStopRef = useRef<() => void>(() => {})
   const hlTokenRef = useRef(0)
   const hlBuildingsRef = useRef<Hl[]>([]) // all currently-lit event buildings
+  const leaderSvgRef = useRef<SVGSVGElement | null>(null) // overlay for card→building leaders
+  const leadersRef = useRef<{ card: [number, number]; target: [number, number]; i: number }[]>([])
   const zoneMarkersRef = useRef<Record<string, HTMLElement>>({})
   const scatterRef = useRef<maplibregl.Marker[]>([])
   const [ready, setReady] = useState(false)
@@ -329,6 +332,34 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const evIdxRef = useRef(0); evIdxRef.current = evIdx
   const selZoneRef = useRef<string | null>(null); selZoneRef.current = selZone
   const selClusterRef = useRef<number | null>(null); selClusterRef.current = selCluster
+
+  // Draw the leader lines from each card to its building's ground point.
+  // Runs every map frame (via the `render` event) so the lines track pan/zoom.
+  // A card sitting right on its building (distinct venue) gets no line; only
+  // fanned-out co-located cards get a visible arrow back to the shared building.
+  const drawLeaders = () => {
+    const map = mapRef.current, svg = leaderSvgRef.current
+    if (!map || !svg) return
+    const active = evIdxRef.current
+    let out = ""
+    leadersRef.current.forEach((ld) => {
+      const a = map.project([ld.card[1], ld.card[0]])   // card anchor (bottom of card)
+      const b = map.project([ld.target[1], ld.target[0]]) // building ground point
+      const dx = b.x - a.x, dy = b.y - a.y
+      const len = Math.hypot(dx, dy)
+      if (len < 14) return // card is essentially on its building — no leader needed
+      const ux = dx / len, uy = dy / len
+      const col = ld.i === active ? "#0055FF" : "#0D0D0D"
+      const hx = b.x - ux * 9, hy = b.y - uy * 9 // arrowhead base, backed off the tip
+      const px = -uy, py = ux, w = 5.5
+      const f = (n: number) => n.toFixed(1)
+      out += `<line x1="${f(a.x)}" y1="${f(a.y)}" x2="${f(hx)}" y2="${f(hy)}" stroke="${col}" stroke-width="2.5"/>`
+      out += `<circle cx="${f(a.x)}" cy="${f(a.y)}" r="2.6" fill="${col}"/>`
+      out += `<polygon points="${f(b.x)},${f(b.y)} ${f(hx + px * w)},${f(hy + py * w)} ${f(hx - px * w)},${f(hy - py * w)}" fill="${col}"/>`
+    })
+    svg.innerHTML = out
+  }
+  const drawLeadersRef = useRef(drawLeaders); drawLeadersRef.current = drawLeaders
 
   // Light EVERY event building in the current cluster at once — not just the
   // active card. Buildings only render at zoom ≥14, so this runs once the
@@ -447,6 +478,16 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         applyCinematicSky(map, false)
         ensureEventBuildingsLayer(map) // blue overlay for event buildings
 
+        // SVG overlay for card→building leader lines (drawn every frame so they
+        // track the map). Sits above the canvas, below the DOM card markers.
+        if (boxRef.current && !leaderSvgRef.current) {
+          const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg")
+          svg.setAttribute("class", "cs-leader-svg")
+          boxRef.current.appendChild(svg)
+          leaderSvgRef.current = svg
+        }
+        map.on("render", () => drawLeadersRef.current())
+
         placeZonesRef.current() // district bubbles (re-placed later if data was slow)
         // Fixed view anchored on central Moscow — NOT fitBounds, which would
         // centre on the midpoint of whatever districts happen to exist and
@@ -489,6 +530,8 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
     const hlToken = ++hlTokenRef.current
     hlBuildingsRef.current = []
     renderEventBuildings(map, [])
+    leadersRef.current = []
+    drawLeadersRef.current()
     // toggle zone bubble states
     ZONES.forEach((z) => {
       const el = zoneMarkersRef.current[z.id]
@@ -538,6 +581,11 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
           const m = new maplibregl.Marker({ element: el, anchor: "bottom", offset: [0, 0] }).setLngLat([ll[1], ll[0]]).addTo(map)
           scatterRef.current.push(m)
         })
+        // leader targets: each card (at its fanned spot) → its real building coord
+        leadersRef.current = cl.members.map((e, i) => ({
+          card: cl.pts[i], target: (e.geo as [number, number]) ?? cl.pts[i], i,
+        }))
+        drawLeadersRef.current()
         // Fly straight to the first event (centred) — lightClusterBuildings then
         // lights EVERY event building in the cluster. No centroid hop.
         const first = cl.pts[0] || [cl.ll[0], cl.ll[1]]
@@ -556,6 +604,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       const pola = m.getElement().querySelector(".cs-pola")
       if (pola) pola.classList.toggle("cs-scatter-active", i === evIdx)
     })
+    drawLeadersRef.current() // recolour the active card's leader
     if (selCluster != null) focusActiveRef.current()
   }, [evIdx, selZone, selCluster])
 

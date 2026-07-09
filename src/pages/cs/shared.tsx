@@ -152,7 +152,6 @@ const KEYFRAMES = `
   @keyframes cs-burst-in { 0% { opacity: 0; transform: scale(0.3); } 100% { opacity: 1; transform: scale(1); } }
   /* ── v7 sys-fan (hybrid): cluster fans + polaroid drill-down ── */
   @keyframes cs-soft-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
-  @keyframes cs-pola-float { 0%,100% { transform: rotate(var(--pr,-4deg)) translateY(0); } 50% { transform: rotate(calc(var(--pr,-4deg) * -0.7)) translateY(-6px); } }
   .cs-clu { position: relative; display: flex; flex-direction: column; align-items: center; cursor: pointer; animation: cs-scatter-in 0.4s cubic-bezier(0.22,1,0.36,1) both; animation-delay: calc(var(--si,0) * 0.07s); }
   .cs-clu-fan { position: relative; width: 56px; height: 46px; animation: cs-soft-bob calc(3.4s + var(--si,0) * 0.5s) ease-in-out infinite; }
   .cs-clu-card { position: absolute; left: 50%; top: 50%; box-sizing: border-box; width: 30px; height: 38px; margin: -19px 0 0 -15px; border: 2px solid #0D0D0D; background: #fff; overflow: hidden; box-shadow: 1.5px 1.5px 0 rgba(13,13,13,0.5); transform: translateX(calc((var(--zz) - 1) * 8px)) rotate(var(--zr)); z-index: calc(4 - var(--zz)); transition: transform 0.24s cubic-bezier(0.22,1,0.36,1); }
@@ -161,23 +160,20 @@ const KEYFRAMES = `
   .cs-clu-count { position: absolute; right: -4px; top: -7px; z-index: 6; min-width: 17px; height: 17px; padding: 0 4px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; background: #0055FF; color: #fff; border: 2px solid #fff; border-radius: 999px; font-family: var(--cs-font-mono); font-weight: 700; font-size: 9px; line-height: 1; }
   .cs-clu-name { margin-top: 3px; max-width: 100px; background: #fff; border: 1.5px solid #0D0D0D; box-shadow: 1.5px 1.5px 0 rgba(13,13,13,0.8); padding: 2px 6px 2.5px; font-family: var(--cs-font-sans); font-weight: 900; font-size: 7.5px; line-height: 1.2; letter-spacing: 0.03em; text-transform: uppercase; color: #0D0D0D; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .cs-clu-tip { width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 6px solid #0D0D0D; margin-top: -1px; }
-  .cs-pola { position: relative; width: 116px; cursor: pointer; display: flex; flex-direction: column; align-items: center; animation: cs-scatter-in 0.45s cubic-bezier(0.22,1,0.36,1) both; animation-delay: calc(var(--si,0) * 0.06s); }
-  .cs-pola-card { width: 116px; box-sizing: border-box; background: #fff; border: 2.5px solid #0D0D0D; box-shadow: 3px 4px 0 rgba(13,13,13,0.85); overflow: hidden; transform: rotate(var(--pr,-3deg)); transform-origin: bottom center; transition: transform 0.25s cubic-bezier(0.22,1,0.36,1), box-shadow 0.22s ease, border-color 0.2s ease; }
-  .cs-pola-img { width: 100%; height: 62px; overflow: hidden; border-bottom: 2px solid #0D0D0D; background: #E4E4E1; }
+  .cs-pola { position: relative; width: 128px; z-index: 3; cursor: pointer; display: flex; flex-direction: column; align-items: center; animation: cs-scatter-in 0.45s cubic-bezier(0.22,1,0.36,1) both; animation-delay: calc(var(--si,0) * 0.06s); }
+  .cs-pola-card { width: 128px; box-sizing: border-box; background: #fff; border: 2.5px solid #0D0D0D; box-shadow: 3px 4px 0 rgba(13,13,13,0.85); overflow: hidden; transform-origin: bottom center; transition: transform 0.25s cubic-bezier(0.22,1,0.36,1), box-shadow 0.22s ease, border-color 0.2s ease; }
+  .cs-pola-img { width: 100%; height: 64px; overflow: hidden; border-bottom: 2px solid #0D0D0D; background: #E4E4E1; }
   .cs-pola-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .cs-pola-body { padding: 5px 6px 6px; text-align: left; line-height: normal; }
   .cs-pola-top { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-bottom: 3px; }
-  .cs-pola-cat { background: #0055FF; color: #fff; font-family: var(--cs-font-mono); font-weight: 700; font-size: 6.5px; letter-spacing: 0.07em; text-transform: uppercase; padding: 1.5px 4px; max-width: 74px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cs-pola-cat { background: #0055FF; color: #fff; font-family: var(--cs-font-mono); font-weight: 700; font-size: 6.5px; letter-spacing: 0.07em; text-transform: uppercase; padding: 1.5px 4px; max-width: 84px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .cs-pola-date { font-family: var(--cs-font-mono); font-weight: 700; font-size: 8px; letter-spacing: 0.02em; color: #0D0D0D; white-space: nowrap; }
-  .cs-pola-title { font-family: var(--cs-font-sans); font-weight: 900; font-size: 9.5px; line-height: 1.08; letter-spacing: -0.01em; text-transform: uppercase; color: #0D0D0D; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .cs-pola-title { font-family: var(--cs-font-sans); font-weight: 900; font-size: 9.5px; line-height: 1.1; letter-spacing: -0.01em; text-transform: uppercase; color: #0D0D0D; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
   .cs-pola-meta { margin-top: 3px; font-family: var(--cs-font-mono); font-weight: 700; font-size: 7px; letter-spacing: 0.02em; color: rgba(13,13,13,0.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .cs-pola-lead { display: flex; flex-direction: column; align-items: center; }
-  .cs-pola-stem { width: 2.5px; height: 15px; background: #0D0D0D; }
-  .cs-pola-arrow { width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 8px solid #0D0D0D; margin-top: -1px; }
-  .cs-pola.cs-scatter-active { z-index: 5; }
-  .cs-pola.cs-scatter-active .cs-pola-card { transform: rotate(0deg) scale(1.08); box-shadow: 4px 8px 0 #0055FF; border-color: #0055FF; }
-  .cs-pola.cs-scatter-active .cs-pola-stem { background: #0055FF; }
-  .cs-pola.cs-scatter-active .cs-pola-arrow { border-top-color: #0055FF; }
+  .cs-pola-desc { margin-top: 4px; padding-top: 4px; border-top: 1px solid rgba(13,13,13,0.12); font-family: var(--cs-font-sans); font-weight: 400; font-size: 7.6px; line-height: 1.28; letter-spacing: 0.005em; color: rgba(13,13,13,0.82); white-space: pre-line; display: -webkit-box; -webkit-line-clamp: 7; -webkit-box-orient: vertical; overflow: hidden; }
+  .cs-pola.cs-scatter-active { z-index: 6; }
+  .cs-pola.cs-scatter-active .cs-pola-card { transform: scale(1.06); box-shadow: 4px 8px 0 #0055FF; border-color: #0055FF; }
+  .cs-leader-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; overflow: visible; }
   @keyframes cs-sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
   /* map-intro zoom/pitch controls: lift above the «Вся лента» CTA so they don't collide */
   .maplibregl-ctrl-bottom-right { margin-bottom: 104px !important; margin-right: 8px !important; }
