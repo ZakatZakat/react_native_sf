@@ -199,6 +199,7 @@ function placeCardHTML(vi: VenueInfo): string {
 // → no z-fighting) and reads as a solid blue building.
 const EVT_BLDG_SRC = "cs-evt-bldg"
 const EVT_BLDG_LAYER = "cs-evt-bldg-fill"
+const FOCUS_SRC = "cs-focus"
 type BldgRef = { source: string; sourceLayer: string; id: string | number }
 type Hl = { key: string; feat: GeoJSON.Feature }
 
@@ -216,6 +217,27 @@ function ensureEventBuildingsLayer(map: maplibregl.Map) {
       "fill-extrusion-opacity": 1,
     },
   } as maplibregl.AddLayerObject)
+  // Focus marker — a blue dot + halo at the venue coord. Always visible, even
+  // where MapTiler has no building footprint to paint (e.g. mansions set back
+  // from the street). This is the reliable "here is the place" indicator.
+  map.addSource(FOCUS_SRC, { type: "geojson", data: { type: "FeatureCollection", features: [] } })
+  map.addLayer({
+    id: "cs-focus-halo", type: "circle", source: FOCUS_SRC,
+    paint: { "circle-radius": 30, "circle-color": CS.B, "circle-opacity": 0.2, "circle-blur": 0.35 },
+  } as maplibregl.AddLayerObject)
+  map.addLayer({
+    id: "cs-focus-dot", type: "circle", source: FOCUS_SRC,
+    paint: { "circle-radius": 10, "circle-color": CS.B, "circle-stroke-color": "#ffffff", "circle-stroke-width": 3 },
+  } as maplibregl.AddLayerObject)
+}
+
+/** Show a focus dot at a [lat,lng] venue coord (or clear it with null). */
+function setFocus(map: maplibregl.Map, coord: [number, number] | null) {
+  const src = map.getSource(FOCUS_SRC) as maplibregl.GeoJSONSource | undefined
+  if (!src) return
+  src.setData(coord
+    ? { type: "FeatureCollection", features: [{ type: "Feature", geometry: { type: "Point", coordinates: [coord[1], coord[0]] }, properties: {} }] }
+    : { type: "FeatureCollection", features: [] })
 }
 
 /** Inflate a footprint ~4% around its centroid so the opaque blue overlay's
@@ -422,6 +444,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
             // move, so opacity:0 would be wiped by the easeTo below.
             if (deckWrapRef.current) deckWrapRef.current.style.display = "none"
             setDeckHidden(true)
+            setFocus(map, g as [number, number]) // reliable blue dot on the venue
             map.easeTo({ center: [g[1], g[0]], zoom: 16.6, pitch: 52, bearing: -14, duration: 650 })
             // re-light after zooming in so the venue building is definitely blue
             map.once("moveend", () => { const c = clustersRef.current[selZoneRef.current || ""]?.[selClusterRef.current ?? -1]; if (c) lightClusterRef.current(c, hlTokenRef.current) })
@@ -574,6 +597,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
     renderEventBuildings(map, [])
     leadersRef.current = []
     drawLeadersRef.current()
+    setFocus(map, null)
     setDeckHidden(false) // a fresh zone/cluster always shows its deck
     // toggle zone bubble states
     ZONES.forEach((z) => {
@@ -686,7 +710,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       {selCluster != null && deckHidden && (
         <div style={{ position: "absolute", top: "30%", left: 0, right: 0, display: "flex", justifyContent: "center", zIndex: 11, pointerEvents: "none" }}>
           <button
-            onClick={() => { if (deckWrapRef.current) deckWrapRef.current.style.display = "" ; setDeckHidden(false) }}
+            onClick={() => { if (deckWrapRef.current) deckWrapRef.current.style.display = "" ; if (mapRef.current) setFocus(mapRef.current, null); setDeckHidden(false) }}
             style={{ pointerEvents: "auto", display: "inline-flex", alignItems: "center", gap: 8, background: CS.K, color: "#fff", border: `2.5px solid ${CS.K}`, boxShadow: `3px 3px 0 ${CS.B}`, padding: "9px 15px", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 13, letterSpacing: "0.02em", textTransform: "uppercase" }}
           >
             <span style={{ fontSize: 15, lineHeight: 1 }}>↑</span> Показать карточки
