@@ -1,12 +1,16 @@
 /**
- * CitySignal · 01 · Лендинг.
+ * CitySignal · 01 · Лендинг · вариант «Ван Гог».
  *
- *  Port of PipeLandingV1 — three vertical columns of scrolling posters fill
- *  the viewport, a white ink-bordered ABOUT card sits in the upper third,
- *  and a sticky "Войти в эту картинку" CTA fills the bottom edge.
+ *  Three vertical columns of scrolling blue-duotone posters fill the viewport
+ *  (the triptych "gallery" stage). A white ink-bordered ABOUT card floats in
+ *  the upper third — the «Ван Гог» reference layout: a slim CITY|SIGNAL banner
+ *  (kept as the cold-open lockup's dock target), a big «ТО ЧТО ДВИЖЕТСЯ В
+ *  ГОРОДЕ» headline + «WK 22» block, a 4-poster thumbnail strip, and a
+ *  ▮▮▮ · tagline · «142 событий» footer. A sticky «Войти в эту картинку» CTA
+ *  fills the bottom edge.
  *
- *  Posters come from Curator via useDerived() (same singleton fetch every
- *  CS screen uses) and render through cs/shared's untinted DuotonePoster.
+ *  Posters come from Curator via useDerived() (same singleton fetch every CS
+ *  screen uses).
  */
 
 import { useNavigate } from "@tanstack/react-router"
@@ -23,12 +27,7 @@ const B = CS.B
 const G55 = CS.G55
 const G70 = CS.G70
 
-const ABOUT_DESC = "Подборка событий Москвы и Петербурга, которых нет в больших афишах: подвалы, галереи, клубы, кинопоказы, лекции. Раз в неделю — одна лента под твой вкус."
-const ABOUT_STEPS = [
-  { n: "01", t: "Слежу", b: "35+ каналов" },
-  { n: "02", t: "Отбираю", b: "ред. + алг." },
-  { n: "03", t: "Шлю", b: "1 раз / нед." },
-]
+const ABOUT_TAGLINE = "Подборка событий MSC + SPB, которых нет в больших афишах. Раз в неделю."
 
 // ── Atoms ────────────────────────────────────────────────────────────────
 
@@ -162,6 +161,8 @@ export default function CsLanding() {
   const colA = base
   const colB = useMemo(() => rotate(base, Math.floor(COL_LEN / 3)).reverse(), [base])
   const colC = useMemo(() => rotate(base, Math.floor((COL_LEN * 2) / 3)), [base])
+  // 4 posters for the «Ван Гог» card thumbnail strip
+  const thumbs = useMemo(() => base.slice(0, 4), [base])
 
   const goNext = () => {
     analytics.track("cs.landing.enter", {})
@@ -208,9 +209,9 @@ export default function CsLanding() {
             style={{ background: `linear-gradient(to top, ${W}, transparent)` }}
           />
 
-          {/* ABOUT card — v6 «bar» variant: banner header CITY|SIGNAL + steps +
-              «Запустить». The .cs-about-host wrapper + City/Signal spans are
-              the homing target for the cold-open lockup. */}
+          {/* ABOUT card — «Ван Гог» variant. The slim CITY|SIGNAL banner on top
+              stays as the cold-open lockup's dock target (.cs-about-host +
+              City/Signal spans); the gallery body sits below it. */}
           <Box
             className="cs-about-host"
             position="absolute"
@@ -218,57 +219,80 @@ export default function CsLanding() {
             right={{ base: "12px", sm: "16px" }}
             top={{ base: "11%", sm: "12%" }}
             bg={W}
-            border={`2.5px solid ${K}`}
+            border={`3px solid ${K}`}
             zIndex={5}
-            style={{ boxShadow: `5px 5px 0 ${B}`, fontFamily: FONT_SANS, padding: "16px" }}
+            style={{ boxShadow: `5px 5px 0 ${B}`, fontFamily: FONT_SANS, padding: "14px" }}
           >
-            {/* banner CITY|SIGNAL — hidden while the cold-open lockup is in flight */}
-            <Box display="flex" style={{ height: 30, visibility: coldOpen ? "hidden" : "visible" }}>
-              <Box style={{ width: 118, background: K, display: "flex", alignItems: "center", paddingLeft: 11 }}>
-                <span style={{ fontWeight: 900, fontSize: 17, letterSpacing: "-0.05em", textTransform: "uppercase", color: W }}>City</span>
+            {/* slim banner CITY|SIGNAL — cold-open dock target; hidden while the lockup is in flight */}
+            <Box display="flex" style={{ height: 26, visibility: coldOpen ? "hidden" : "visible" }}>
+              <Box style={{ width: 108, background: K, display: "flex", alignItems: "center", paddingLeft: 10 }}>
+                <span style={{ fontWeight: 900, fontSize: 15, letterSpacing: "-0.05em", textTransform: "uppercase", color: W }}>City</span>
               </Box>
-              <Box style={{ flex: 1, background: B, display: "flex", alignItems: "center", justifyContent: "flex-end", paddingRight: 11 }}>
-                <span style={{ fontWeight: 900, fontSize: 17, letterSpacing: "-0.05em", textTransform: "uppercase", color: W }}>Signal</span>
+              <Box style={{ flex: 1, background: B, display: "flex", alignItems: "center", justifyContent: "flex-end", paddingRight: 10 }}>
+                <span style={{ fontWeight: 900, fontSize: 15, letterSpacing: "-0.05em", textTransform: "uppercase", color: W }}>Signal</span>
               </Box>
             </Box>
 
-            <Flex justify="space-between" align="center" mt="3">
-              <Mark color={G55}>Что это</Mark><Mark color={G55}>N°001</Mark>
+            {/* headline «ТО ЧТО ДВИЖЕТСЯ В ГОРОДЕ» + «WK 22» */}
+            <Flex justify="space-between" align="flex-start" style={{ gap: 8, marginTop: 12 }}>
+              <Text as="div" fontWeight="900" fontSize="28px" lineHeight="0.84" letterSpacing="-0.05em" textTransform="uppercase" color={K}>
+                То что<br />движется<br />в городе
+              </Text>
+              <Text as="div" fontWeight="900" fontSize="21px" lineHeight="0.9" letterSpacing="-0.03em" color={B} style={{ textAlign: "right", flexShrink: 0 }}>
+                WK<br />22
+              </Text>
             </Flex>
 
-            <Text fontWeight="900" fontSize="27px" lineHeight="0.92" letterSpacing="-0.045em" textTransform="uppercase" color={K} mt="2.5">
-              То, что <Text as="span" color={B}>движется</Text> в городе
-            </Text>
-
-            <Text fontWeight="600" fontSize="12px" lineHeight="1.5" color={G70} mt="2.5">{ABOUT_DESC}</Text>
-
-            {/* steps 01 / 02 / 03 */}
-            <Box display="flex" mt="3" style={{ borderTop: `2px solid ${K}`, borderBottom: `2px solid ${K}` }}>
-              {ABOUT_STEPS.map((s, i) => (
-                <Box key={s.n} flex="1" style={{ padding: "9px 0 10px", borderLeft: i ? `1px solid ${K}` : "none", paddingLeft: i ? "10px" : 0 }}>
-                  <Text fontSize="10px" color={B} fontWeight="700" letterSpacing="0.06em" style={{ fontFamily: FONT_MONO }}>{s.n}</Text>
-                  <Text fontWeight="900" fontSize="13.5px" letterSpacing="-0.02em" textTransform="uppercase" color={K} mt="1.5">{s.t}</Text>
+            {/* 4-poster thumbnail strip */}
+            <Box display="grid" mt="3" style={{ gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 4 }}>
+              {thumbs.map((p, i) => (
+                <Box key={`${p ?? "none"}-${i}`} overflow="hidden" bg={CS.PAGE} style={{ aspectRatio: "3 / 4", border: `1.5px solid ${K}` }}>
+                  {p && (
+                    <img
+                      src={p}
+                      alt=""
+                      loading="lazy"
+                      style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                    />
+                  )}
                 </Box>
               ))}
             </Box>
 
-            {/* «Запустить» — launches the journey (replaces the old bottom CTA + «Сейчас в эфире») */}
-            <Flex
-              as="button"
-              onClick={goNext}
-              w="100%" mt="3"
-              bg={K} color={W}
-              align="center" justify="space-between"
-              cursor="pointer"
-              style={{ border: "none", padding: "11px 11px 11px 14px", gap: 10, fontFamily: FONT_SANS }}
-              _active={{ transform: "translateY(1px)" }}
-            >
-              <Text as="span" fontWeight="900" fontSize="17px" letterSpacing="-0.025em" textTransform="uppercase">Запустить</Text>
-              <Flex as="span" align="center" justify="center" style={{ fontSize: 20, fontWeight: 900, width: 34, height: 34, background: B, color: W, flexShrink: 0 }}>→</Flex>
+            {/* footer — ▮▮▮ · tagline · «142 событий» */}
+            <Flex align="flex-start" mt="3" style={{ gap: 10, borderTop: `2px solid ${K}`, paddingTop: 10 }}>
+              <Flex style={{ gap: 2, flexShrink: 0 }}>
+                {[0, 1, 2].map((i) => <span key={i} style={{ width: 3, height: 18, background: K }} />)}
+              </Flex>
+              <Text flex="1" fontWeight="600" fontSize="9.5px" lineHeight="1.4" color={G70}>{ABOUT_TAGLINE}</Text>
+              <Box style={{ textAlign: "right", flexShrink: 0 }}>
+                <Text fontWeight="900" fontSize="20px" letterSpacing="-0.03em" color={B} lineHeight="1">142</Text>
+                <Text fontSize="8px" color={G55} style={{ fontFamily: FONT_MONO }}>событий</Text>
+              </Box>
             </Flex>
           </Box>
 
         </Box>
+      </Flex>
+
+      {/* sticky bottom CTA — «Войти в эту картинку» (Шаг 1 / 4) */}
+      <Flex
+        as="button"
+        onClick={goNext}
+        position="absolute"
+        left="0" right="0" bottom="0"
+        zIndex={30}
+        bg={K} color={W}
+        align="center" justify="space-between"
+        cursor="pointer"
+        style={{ border: "none", padding: "14px 18px 18px", gap: 10, fontFamily: FONT_SANS, textAlign: "left" }}
+        _active={{ transform: "translateY(1px)" }}
+      >
+        <Box>
+          <Mark color="rgba(255,255,255,0.5)">Шаг 1 / 4</Mark>
+          <Text fontWeight="900" fontSize="18px" letterSpacing="-0.025em" textTransform="uppercase" mt="1.5">Войти в эту картинку</Text>
+        </Box>
+        <Flex as="span" align="center" justify="center" style={{ fontSize: 26, fontWeight: 900, width: 40, height: 40, background: B, color: W, flexShrink: 0 }}>→</Flex>
       </Flex>
 
       {/* v6 cold-open «Полоса» — overlay; the City/Signal lockup settles into
