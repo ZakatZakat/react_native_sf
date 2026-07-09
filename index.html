@@ -4,6 +4,8 @@
     <meta charset="UTF-8" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Warm the connection to MapTiler early so the intro-map prewarm (loading screen) fetches tiles/glyphs faster. -->
+    <link rel="preconnect" href="https://api.maptiler.com" crossorigin />
     <!-- Load the app fonts as early as possible (in <head>, not via CSS @import)
          so the cold-open's wordmark renders in Inter from the first frame
          instead of swapping from a system fallback mid-animation. -->

@@ -5,14 +5,43 @@
  *  Auto-advances to /cs/name when the progress bar fills.
  */
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
+import maplibregl from "maplibre-gl"
 import { CS, FONT_MONO, FONT_SANS, useWordmarkFont } from "./shared"
+import { CS_STYLE_LIGHT } from "./csMapStyle"
+
+// Same intro view MapIntro opens at — so the prewarm fetches the right tiles.
+const MSK: [number, number] = [37.62, 55.745]
 
 export default function CsLoading() {
   const navigate = useNavigate()
   const [pct, setPct] = useState(0)
   const wmReady = useWordmarkFont() // hold the City/Signal lockup until Inter is loaded (no FOUT swap)
+  const warmRef = useRef<HTMLDivElement>(null)
+
+  // Prewarm the intro map while the loading screen runs: spin up the SAME
+  // MapLibre map (csbrand style + JetBrains glyphs + Moscow vector tiles) in a
+  // hidden, off-screen container so all its resources land in the browser HTTP
+  // cache. When MapIntro mounts on /cs/feed it re-requests the identical URLs →
+  // cache hits → the map draws almost immediately instead of showing a blank
+  // canvas that fills in. Best-effort: any failure (no WebGL / tile errors) is
+  // swallowed and the app behaves exactly as before.
+  useEffect(() => {
+    const el = warmRef.current
+    if (!el) return
+    let map: maplibregl.Map | null = null
+    try {
+      map = new maplibregl.Map({
+        container: el,
+        style: CS_STYLE_LIGHT,
+        center: MSK, zoom: 10.5, pitch: 52, bearing: -14,
+        interactive: false, attributionControl: false, antialias: false, fadeDuration: 0,
+      })
+      map.on("error", () => { /* warm is best-effort — ignore tile/style errors */ })
+    } catch { /* no WebGL context available — skip warming */ }
+    return () => { try { map?.remove() } catch { /* noop */ } }
+  }, [])
 
   useEffect(() => {
     let raf: number
@@ -46,6 +75,8 @@ export default function CsLoading() {
 
   return (
     <div className="cs-jr" style={{ position: "fixed", inset: 0, background: CS.B, overflow: "hidden", fontFamily: FONT_SANS, display: "flex", flexDirection: "column" }}>
+      {/* hidden map-prewarm surface — full-size (loads the right tiles) but invisible & non-interactive, behind the loading UI */}
+      <div ref={warmRef} aria-hidden style={{ position: "absolute", inset: 0, opacity: 0, pointerEvents: "none", zIndex: 0 }} />
       <div style={{ position: "absolute", inset: "-20% -20%", pointerEvents: "none", opacity: 0.16, backgroundImage: "linear-gradient(#FFFFFF 1px, transparent 1px), linear-gradient(90deg, #FFFFFF 1px, transparent 1px)", backgroundSize: "22px 22px", animation: "cs-j-drift 6s linear infinite" }} />
       <div style={{ position: "absolute", left: 0, right: 0, height: 2, zIndex: 3, pointerEvents: "none", background: "rgba(255,255,255,0.75)", boxShadow: "0 0 14px 1px rgba(255,255,255,0.7)", animation: "cs-j-scan 2.6s cubic-bezier(0.45,0,0.55,1) infinite" }} />
       <div style={{ position: "relative", zIndex: 2, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "44px 22px 0", fontFamily: FONT_MONO, fontSize: 10, letterSpacing: "0.32em", textTransform: "uppercase", color: "rgba(255,255,255,0.7)" }}>
