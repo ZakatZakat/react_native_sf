@@ -49,8 +49,8 @@ export default function ColdOpenBar({ onDone }: { onDone: () => void }) {
     if (!fontsReady) return
     const t1 = setTimeout(() => {
       // measure the card banner's real position and fly there
-      let cityDock: Pos = { left: 56, top: 164, width: 116, height: 30, fs: 17, pl: 11 }
-      let sigDock: Pos = { left: 173, top: 164, width: 127, height: 30, fs: 17, pr: 11 }
+      let cityDock: Pos = { left: 56, top: 164, width: 116, height: 30, fs: 15, pl: 11 }
+      let sigDock: Pos = { left: 173, top: 164, width: 127, height: 30, fs: 15, pr: 11 }
       try {
         const rootEl = rootRef.current!
         const rootR = rootEl.getBoundingClientRect()
@@ -66,8 +66,12 @@ export default function ColdOpenBar({ onDone }: { onDone: () => void }) {
           }
           const c = toLocal(citySpan.parentElement)
           const s = toLocal(sigSpan.parentElement)
-          cityDock = { ...c, fs: 17, pl: 11 }
-          sigDock = { ...s, fs: 17, pr: 11 }
+          // measure the banner's real font-size so the flown text lands at the
+          // exact size — no size pop when the overlay hands off to the card.
+          const cfs = parseFloat(getComputedStyle(citySpan).fontSize) / k || 15
+          const sfs = parseFloat(getComputedStyle(sigSpan).fontSize) / k || 15
+          cityDock = { ...c, fs: cfs, pl: 11 }
+          sigDock = { ...s, fs: sfs, pr: 11 }
         }
       } catch { /* fallback to static dock coords */ }
 
@@ -78,8 +82,15 @@ export default function ColdOpenBar({ onDone }: { onDone: () => void }) {
         const from: Keyframe = { left: hero.left + "px", top: hero.top + "px", width: hero.width + "px", height: hero.height + "px", boxShadow: `5px 5px 0 ${shadowCol}`, [padKey]: (hero[padField] ?? 0) + "px" }
         const to: Keyframe = { left: dock.left + "px", top: dock.top + "px", width: dock.width + "px", height: dock.height + "px", boxShadow: "0px 0px 0 rgba(0,0,0,0)", [padKey]: (dock[padField] ?? 0) + "px" }
         el.animate([from, to], opt)
-        const span = el.querySelector("span")
-        if (span) span.animate([{ fontSize: hero.fs + "px" }, { fontSize: dock.fs + "px" }], opt)
+        const span = el.querySelector("span") as HTMLElement | null
+        if (span) {
+          // Scale the text with `transform`, NOT `font-size`. Animating font-size
+          // re-rasterises the glyphs every frame → shimmer/jitter (the "рваность"
+          // + "шрифт меняется"). transform:scale reuses one rasterisation on the
+          // GPU → buttery. Pivot on the aligned edge so the text tracks its side.
+          span.style.transformOrigin = padKey === "paddingLeft" ? "left center" : "right center"
+          span.animate([{ transform: "scale(1)" }, { transform: `scale(${dock.fs / hero.fs})` }], opt)
+        }
       }
       moveBlk(cityRef.current, cityHero, cityDock, CS.B, "paddingLeft")
       moveBlk(sigRef.current, sigHero, sigDock, CS.K, "paddingRight")
