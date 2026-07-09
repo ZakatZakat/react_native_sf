@@ -78,18 +78,28 @@ export default function ColdOpenBar({ onDone }: { onDone: () => void }) {
       const opt: KeyframeAnimationOptions = { duration: D * 1000, easing: EASE, fill: "forwards" }
       const moveBlk = (el: HTMLDivElement | null, hero: Pos, dock: Pos, shadowCol: string, padKey: "paddingLeft" | "paddingRight") => {
         if (!el) return
-        const padField = padKey === "paddingLeft" ? "pl" : "pr"
-        const from: Keyframe = { left: hero.left + "px", top: hero.top + "px", width: hero.width + "px", height: hero.height + "px", boxShadow: `5px 5px 0 ${shadowCol}`, [padKey]: (hero[padField] ?? 0) + "px" }
-        const to: Keyframe = { left: dock.left + "px", top: dock.top + "px", width: dock.width + "px", height: dock.height + "px", boxShadow: "0px 0px 0 rgba(0,0,0,0)", [padKey]: (dock[padField] ?? 0) + "px" }
-        el.animate([from, to], opt)
+        // FULLY composited flight: animate the block via `transform` (translate +
+        // non-uniform scale), NOT left/top/width/height — those relayout every
+        // frame and the jank shows at the decelerating end. The block box takes
+        // the non-uniform scale (it's a solid colour, distortion invisible); the
+        // text (span) gets a counter-scale so it stays UNDISTORTED and uniform.
+        const left = padKey === "paddingLeft"
+        const csx = dock.width / hero.width
+        const csy = dock.height / hero.height
+        const heroVc = hero.top + hero.height / 2, dockVc = dock.top + dock.height / 2
+        const dy = dockVc - heroVc
+        const dx = left ? dock.left - hero.left : (dock.left + dock.width) - (hero.left + hero.width)
+        el.style.animation = "none" // drop the assemble keyframe's held transform
+        el.style.transformOrigin = left ? "0 50%" : "100% 50%"
+        el.animate([
+          { transform: "translate(0px,0px) scale(1,1)", boxShadow: `5px 5px 0 ${shadowCol}` },
+          { transform: `translate(${dx}px,${dy}px) scale(${csx},${csy})`, boxShadow: "0px 0px 0 rgba(0,0,0,0)" },
+        ], opt)
         const span = el.querySelector("span") as HTMLElement | null
         if (span) {
-          // Scale the text with `transform`, NOT `font-size`. Animating font-size
-          // re-rasterises the glyphs every frame → shimmer/jitter (the "рваность"
-          // + "шрифт меняется"). transform:scale reuses one rasterisation on the
-          // GPU → buttery. Pivot on the aligned edge so the text tracks its side.
-          span.style.transformOrigin = padKey === "paddingLeft" ? "left center" : "right center"
-          span.animate([{ transform: "scale(1)" }, { transform: `scale(${dock.fs / hero.fs})` }], opt)
+          const ts = dock.fs / hero.fs
+          span.style.transformOrigin = left ? "left center" : "right center"
+          span.animate([{ transform: "scale(1,1)" }, { transform: `scale(${(ts / csx).toFixed(4)},${(ts / csy).toFixed(4)})` }], opt)
         }
       }
       moveBlk(cityRef.current, cityHero, cityDock, CS.B, "paddingLeft")
