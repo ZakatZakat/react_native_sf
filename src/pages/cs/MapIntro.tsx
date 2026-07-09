@@ -183,7 +183,6 @@ function polaEl(e: Ev, i: number): HTMLElement {
   wrap.className = "cs-scatter-wrap"
   const date = e.d && e.d !== "—" ? e.d : ""
   const meta = [e.tm, e.v].filter((s) => s && s !== "—").join(" · ")
-  const desc = (e.desc || "").trim()
   wrap.innerHTML =
     `<div class="cs-pola" style="--si:${i}">` +
       `<div class="cs-pola-card">` +
@@ -192,7 +191,6 @@ function polaEl(e: Ev, i: number): HTMLElement {
           `<div class="cs-pola-top"><span class="cs-pola-cat">${esc(e.c || "событие")}</span>${date ? `<span class="cs-pola-date">${esc(date)}</span>` : ""}</div>` +
           `<div class="cs-pola-title">${esc(e.t || "")}</div>` +
           (meta ? `<div class="cs-pola-meta">${esc(meta)}</div>` : "") +
-          (desc ? `<div class="cs-pola-desc">${esc(desc)}</div>` : "") +
         `</div>` +
       `</div>` +
     `</div>`
@@ -333,31 +331,27 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const selZoneRef = useRef<string | null>(null); selZoneRef.current = selZone
   const selClusterRef = useRef<number | null>(null); selClusterRef.current = selCluster
 
-  // Draw the leader lines from each card to its building's ground point.
-  // Runs every map frame (via the `render` event) so the lines track pan/zoom.
-  // A card sitting right on its building (distinct venue) gets no line; only
-  // fanned-out co-located cards get a visible arrow back to the shared building.
+  // Draw a single leader line — only for the ACTIVE card — to its building's
+  // ground point. Runs every map frame (via the `render` event) so it tracks
+  // pan/zoom. Showing every card's line at once was a scary starburst when many
+  // events share one building; one thin line for the card you're on is clean.
   const drawLeaders = () => {
     const map = mapRef.current, svg = leaderSvgRef.current
     if (!map || !svg) return
-    const active = evIdxRef.current
-    let out = ""
-    leadersRef.current.forEach((ld) => {
-      const a = map.project([ld.card[1], ld.card[0]])   // card anchor (bottom of card)
-      const b = map.project([ld.target[1], ld.target[0]]) // building ground point
-      const dx = b.x - a.x, dy = b.y - a.y
-      const len = Math.hypot(dx, dy)
-      if (len < 14) return // card is essentially on its building — no leader needed
-      const ux = dx / len, uy = dy / len
-      const col = ld.i === active ? "#0055FF" : "#0D0D0D"
-      const hx = b.x - ux * 9, hy = b.y - uy * 9 // arrowhead base, backed off the tip
-      const px = -uy, py = ux, w = 5.5
-      const f = (n: number) => n.toFixed(1)
-      out += `<line x1="${f(a.x)}" y1="${f(a.y)}" x2="${f(hx)}" y2="${f(hy)}" stroke="${col}" stroke-width="2.5"/>`
-      out += `<circle cx="${f(a.x)}" cy="${f(a.y)}" r="2.6" fill="${col}"/>`
-      out += `<polygon points="${f(b.x)},${f(b.y)} ${f(hx + px * w)},${f(hy + py * w)} ${f(hx - px * w)},${f(hy - py * w)}" fill="${col}"/>`
-    })
-    svg.innerHTML = out
+    const ld = leadersRef.current.find((l) => l.i === evIdxRef.current)
+    if (!ld) { if (svg.childNodes.length) svg.replaceChildren(); return }
+    const a = map.project([ld.card[1], ld.card[0]])     // card anchor (bottom of card)
+    const b = map.project([ld.target[1], ld.target[0]]) // building ground point
+    const dx = b.x - a.x, dy = b.y - a.y
+    const len = Math.hypot(dx, dy)
+    if (len < 16) { if (svg.childNodes.length) svg.replaceChildren(); return } // card on its building
+    const ux = dx / len, uy = dy / len
+    const hx = b.x - ux * 8, hy = b.y - uy * 8 // arrowhead base, backed off the tip
+    const px = -uy, py = ux, w = 4
+    const f = (n: number) => n.toFixed(1)
+    svg.innerHTML =
+      `<line x1="${f(a.x)}" y1="${f(a.y)}" x2="${f(hx)}" y2="${f(hy)}" stroke="#0D0D0D" stroke-width="1.75" stroke-dasharray="1 4" stroke-linecap="round"/>` +
+      `<polygon points="${f(b.x)},${f(b.y)} ${f(hx + px * w)},${f(hy + py * w)} ${f(hx - px * w)},${f(hy - py * w)}" fill="#0D0D0D"/>`
   }
   const drawLeadersRef = useRef(drawLeaders); drawLeadersRef.current = drawLeaders
 

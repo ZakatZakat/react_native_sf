@@ -168,9 +168,8 @@ const KEYFRAMES = `
   .cs-pola-top { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-bottom: 3px; }
   .cs-pola-cat { background: #0055FF; color: #fff; font-family: var(--cs-font-mono); font-weight: 700; font-size: 6.5px; letter-spacing: 0.07em; text-transform: uppercase; padding: 1.5px 4px; max-width: 84px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .cs-pola-date { font-family: var(--cs-font-mono); font-weight: 700; font-size: 8px; letter-spacing: 0.02em; color: #0D0D0D; white-space: nowrap; }
-  .cs-pola-title { font-family: var(--cs-font-sans); font-weight: 900; font-size: 9.5px; line-height: 1.1; letter-spacing: -0.01em; text-transform: uppercase; color: #0D0D0D; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-  .cs-pola-meta { margin-top: 3px; font-family: var(--cs-font-mono); font-weight: 700; font-size: 7px; letter-spacing: 0.02em; color: rgba(13,13,13,0.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .cs-pola-desc { margin-top: 4px; padding-top: 4px; border-top: 1px solid rgba(13,13,13,0.12); font-family: var(--cs-font-sans); font-weight: 400; font-size: 7.6px; line-height: 1.28; letter-spacing: 0.005em; color: rgba(13,13,13,0.82); white-space: pre-line; display: -webkit-box; -webkit-line-clamp: 7; -webkit-box-orient: vertical; overflow: hidden; }
+  .cs-pola-title { font-family: var(--cs-font-sans); font-weight: 900; font-size: 9.5px; line-height: 1.12; letter-spacing: -0.01em; text-transform: uppercase; color: #0D0D0D; overflow-wrap: anywhere; }
+  .cs-pola-meta { margin-top: 4px; font-family: var(--cs-font-mono); font-weight: 700; font-size: 7px; letter-spacing: 0.02em; color: rgba(13,13,13,0.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .cs-pola.cs-scatter-active { z-index: 6; }
   .cs-pola.cs-scatter-active .cs-pola-card { transform: scale(1.06); box-shadow: 4px 8px 0 #0055FF; border-color: #0055FF; }
   .cs-leader-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; overflow: visible; }
