@@ -168,17 +168,33 @@ function deckInnerHTML(members: Ev[], idx: number): string {
       `<span class="cs-deck-count">${idx + 1} / ${n}</span>` +
       `<button class="cs-deck-next" type="button" aria-label="вперёд">→</button></div>`
     : ""
-  return `<div class="cs-pola cs-deck">` +
-    `<div class="cs-deck-stack">${ghosts}` +
-      `<div class="cs-pola-card cs-deck-front">` +
-        `<div class="cs-pola-img">${e.p ? `<img src="${e.p}" alt=""/>` : ""}</div>` +
-        `<div class="cs-pola-body">` +
-          `<div class="cs-pola-top"><span class="cs-pola-cat">${esc(e.c || "событие")}</span>${date ? `<span class="cs-pola-date">${esc(date)}</span>` : ""}</div>` +
-          `<div class="cs-pola-title cs-deck-title">${esc(e.t || "")}</div>` +
-          (meta ? `<div class="cs-pola-meta">${esc(meta)}</div>` : "") +
+  // Place card (left) — what this venue is; only when the venue is known.
+  const vi = venueInfo(e.venueKey)
+  const place = vi
+    ? `<div class="cs-deck-place">` +
+        `<div class="cs-deck-place-img">${vi.img ? `<img src="${vi.img}" alt=""/>` : `<span>фото скоро</span>`}</div>` +
+        `<div class="cs-deck-place-body">` +
+          `<div class="cs-deck-place-kind">место · ${esc(vi.kind)}</div>` +
+          `<div class="cs-deck-place-name">${esc(vi.name)}</div>` +
+          `<div class="cs-deck-place-blurb">${esc(vi.blurb)}</div>` +
         `</div>` +
-      `</div>` +
-    `</div>${nav}</div>`
+      `</div>`
+    : ""
+  return `<div class="cs-pola cs-deck">` +
+    place +
+    `<div class="cs-deck-right">` +
+      `<div class="cs-deck-stack">${ghosts}` +
+        `<div class="cs-pola-card cs-deck-front">` +
+          `<div class="cs-pola-img">${e.p ? `<img src="${e.p}" alt=""/>` : ""}</div>` +
+          `<div class="cs-pola-body">` +
+            `<div class="cs-pola-top"><span class="cs-pola-cat">${esc(e.c || "событие")}</span>${date ? `<span class="cs-pola-date">${esc(date)}</span>` : ""}</div>` +
+            `<div class="cs-pola-title cs-deck-title">${esc(e.t || "")}</div>` +
+            (meta ? `<div class="cs-pola-meta">${esc(meta)}</div>` : "") +
+          `</div>` +
+        `</div>` +
+      `</div>${nav}` +
+    `</div>` +
+  `</div>`
 }
 
 // ── Highlight event buildings (signal-blue) ─────────────────────────────────
@@ -313,6 +329,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const scatterRef = useRef<maplibregl.Marker[]>([])
   const [ready, setReady] = useState(false)
   const [failed, setFailed] = useState(false)
+  const [headOpen, setHeadOpen] = useState(true) // heading card collapse
   const [selZone, setSelZone] = useState<string | null>(null)
   const [selCluster, setSelCluster] = useState<number | null>(null)
   const [evIdx, setEvIdx] = useState(0)
@@ -603,9 +620,11 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 150, background: "linear-gradient(rgba(13,13,13,0.18), rgba(13,13,13,0))", zIndex: 6, pointerEvents: "none" }} />
       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 180, background: "linear-gradient(rgba(13,13,13,0), rgba(13,13,13,0.22))", zIndex: 6, pointerEvents: "none" }} />
 
-      {/* heading card — brutalist (design MapHeading · classic) */}
+      {/* heading card — brutalist (design MapHeading · classic); collapsible */}
+      {headOpen ? (
       <div style={{ position: "absolute", top: "calc(env(safe-area-inset-top,0px) + 16px)", left: 14, right: 14, zIndex: 10 }}>
-        <div style={{ background: CS.W, border: `2.5px solid ${CS.K}`, boxShadow: `4px 4px 0 ${CS.K}`, padding: "12px 14px" }}>
+        <div style={{ position: "relative", background: CS.W, border: `2.5px solid ${CS.K}`, boxShadow: `4px 4px 0 ${CS.K}`, padding: "12px 14px" }}>
+          <button onClick={() => setHeadOpen(false)} aria-label="скрыть шапку" style={{ position: "absolute", top: 8, right: 8, width: 26, height: 26, border: `2px solid ${CS.K}`, background: CS.W, cursor: "pointer", fontSize: 13, fontWeight: 900, lineHeight: 1, color: CS.K, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
           <div style={{ fontFamily: FONT_MONO, fontSize: 9, fontWeight: 700, letterSpacing: "0.24em", textTransform: "uppercase", color: "rgba(13,13,13,0.55)" }}>сначала — карта · WK 22</div>
           <div style={{ fontFamily: FONT_SANS, fontWeight: 900, fontSize: 34, letterSpacing: "-0.045em", lineHeight: 0.9, color: CS.K, marginTop: 6 }}>Что рядом</div>
           <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap", marginTop: 11 }}>
@@ -614,6 +633,15 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
           </div>
         </div>
       </div>
+      ) : (
+      <div style={{ position: "absolute", top: "calc(env(safe-area-inset-top,0px) + 16px)", left: 14, zIndex: 10 }}>
+        <button onClick={() => setHeadOpen(true)} aria-label="показать шапку" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: CS.W, border: `2.5px solid ${CS.K}`, boxShadow: `3px 3px 0 ${CS.K}`, padding: "7px 11px", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 14, letterSpacing: "-0.02em", color: CS.K, textTransform: "uppercase" }}>
+          Что рядом
+          <span style={{ background: CS.B, color: "#fff", fontFamily: FONT_MONO, fontSize: 9, fontWeight: 700, padding: "1.5px 5px", letterSpacing: "0.02em" }}>{totalPlaced}</span>
+          <span style={{ fontSize: 11, lineHeight: 1 }}>▾</span>
+        </button>
+      </div>
+      )}
 
       {/* bottom — hint + «Вся лента» CTA (hidden when a zone is open) */}
       {!selZone && (
@@ -650,39 +678,9 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
               </div>
             </div>
           ) : (
-          <div style={{ padding: "0 14px 10px" }}>
-            {/* Место (слева) + карточка ивента (справа) — в один ряд, без нагромождения */}
-            <div style={{ display: "flex", alignItems: "stretch", gap: 8 }}>
-              {(() => {
-                const vi = venueInfo(deckEvents[evIdx]?.venueKey)
-                if (!vi) return null
-                return (
-                  <div style={{ flex: "1.1", minWidth: 0, border: `2.5px solid ${CS.K}`, boxShadow: `3px 3px 0 ${CS.B}`, background: CS.W, padding: "7px 9px", display: "flex", flexDirection: "column" }}>
-                    <div style={{ fontFamily: FONT_MONO, fontSize: 7.5, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: CS.B }}>место · {vi.kind}</div>
-                    <div style={{ fontWeight: 900, fontSize: 13, letterSpacing: "-0.02em", lineHeight: 1.02, color: CS.K, marginTop: 2 }}>{vi.name}</div>
-                    <div style={{ fontFamily: FONT_SANS, fontSize: 9.5, lineHeight: 1.3, color: "rgba(13,13,13,0.7)", marginTop: 4, display: "-webkit-box", WebkitLineClamp: 5, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{vi.blurb}</div>
-                  </div>
-                )
-              })()}
-              <button onClick={() => openRef.current(deckEvents[evIdx])} style={{ flex: "1", minWidth: 0, display: "flex", flexDirection: "column", textAlign: "left", padding: 0, border: `2.5px solid ${CS.K}`, boxShadow: `3px 3px 0 ${CS.K}`, background: CS.W, cursor: "pointer", overflow: "hidden" }}>
-                <div style={{ width: "100%", height: 62, flexShrink: 0, borderBottom: `2px solid ${CS.K}`, overflow: "hidden", background: "#eee" }}>
-                  {deckEvents[evIdx]?.p && <img key={deckEvents[evIdx].id} src={deckEvents[evIdx].p!} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", animation: "cs-burst-in 0.3s ease both" }} />}
-                </div>
-                <div style={{ padding: "6px 8px 7px" }}>
-                  <span style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 7.5, letterSpacing: "0.12em", textTransform: "uppercase", color: CS.B }}>{deckEvents[evIdx]?.c}</span>
-                  <div style={{ fontWeight: 900, fontSize: 12.5, letterSpacing: "-0.02em", lineHeight: 1.06, color: CS.K, marginTop: 2, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{deckEvents[evIdx]?.t}</div>
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 6, marginTop: 4, fontFamily: FONT_MONO, fontSize: 8.5, color: "rgba(13,13,13,0.55)" }}>
-                    <span style={{ overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{deckEvents[evIdx]?.v}</span>
-                    <span style={{ color: CS.K, fontWeight: 700, whiteSpace: "nowrap" }}>{deckEvents[evIdx]?.tm}</span>
-                  </div>
-                </div>
-              </button>
-            </div>
-            {/* листалка — тонкой полосой под парой */}
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
-              <button onClick={() => setEvIdx((i) => (i - 1 + deckEvents.length) % deckEvents.length)} style={{ flex: 1, height: 30, border: `2px solid ${CS.K}`, background: CS.W, cursor: "pointer", fontSize: 15, fontWeight: 900, color: CS.K, lineHeight: 1 }}>←</button>
-              <span style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 11, color: CS.K, minWidth: 46, textAlign: "center" }}>{evIdx + 1} / {deckEvents.length}</span>
-              <button onClick={() => setEvIdx((i) => (i + 1) % deckEvents.length)} style={{ flex: 1, height: 30, border: `2px solid ${CS.K}`, background: CS.W, cursor: "pointer", fontSize: 15, fontWeight: 900, color: CS.K, lineHeight: 1 }}>→</button>
+          <div style={{ padding: "0 14px 11px" }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 7, background: CS.W, border: `2px solid ${CS.K}`, boxShadow: `2px 2px 0 ${CS.K}`, padding: "7px 11px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 10, letterSpacing: "0.04em", color: CS.K }}>
+              <span style={{ width: 8, height: 8, background: CS.B, borderRadius: "50%" }} />карточки — на карте · листай ← →
             </div>
           </div>
           )}

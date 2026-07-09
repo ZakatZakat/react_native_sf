@@ -174,8 +174,19 @@ const KEYFRAMES = `
   .cs-pola.cs-scatter-active .cs-pola-card { transform: scale(1.06); box-shadow: 4px 8px 0 #0055FF; border-color: #0055FF; }
   .cs-leader-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; overflow: visible; }
   /* cluster deck (fanned card stack with ← N/total → pager) */
-  .cs-deck { align-items: flex-start; }
-  .cs-deck-stack { position: relative; width: 158px; }
+  /* deck = place card (left) + event stack & pager (right), centred pair */
+  .cs-deck { flex-direction: row; align-items: flex-start; gap: 8px; width: auto; }
+  .cs-deck-right { display: flex; flex-direction: column; align-items: flex-start; }
+  .cs-deck-place { width: 140px; flex-shrink: 0; box-sizing: border-box; background: #fff; border: 2.5px solid #0D0D0D; box-shadow: 3px 4px 0 rgba(13,13,13,0.85); overflow: hidden; }
+  .cs-deck-place-img { height: 58px; border-bottom: 2px solid #0D0D0D; background: repeating-linear-gradient(45deg,#E4E4E1,#E4E4E1 6px,#d9d9d6 6px,#d9d9d6 12px); display: flex; align-items: center; justify-content: center; }
+  .cs-deck-place-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .cs-deck-place-img span { font-family: var(--cs-font-mono); font-size: 6.5px; font-weight: 700; letter-spacing: 0.14em; color: rgba(13,13,13,0.4); text-transform: uppercase; }
+  .cs-deck-place-body { padding: 6px 8px 8px; }
+  .cs-deck-place-kind { font-family: var(--cs-font-mono); font-size: 6.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #0055FF; line-height: 1.2; }
+  .cs-deck-place-name { font-family: var(--cs-font-sans); font-weight: 900; font-size: 12px; letter-spacing: -0.02em; line-height: 1.04; color: #0D0D0D; margin-top: 2px; }
+  .cs-deck-place-blurb { font-family: var(--cs-font-sans); font-size: 8px; line-height: 1.32; color: rgba(13,13,13,0.68); margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
+  .cs-deck-stack { position: relative; width: 150px; }
+  .cs-deck-front { width: 150px; }
   .cs-deck-front { position: relative; z-index: 3; }
   .cs-deck-ghost { position: absolute; inset: 0; background: #fff; border: 2.5px solid #0D0D0D; box-shadow: 3px 4px 0 rgba(13,13,13,0.4); }
   .cs-dg1 { transform: translate(7px, 7px) rotate(2.5deg); z-index: 2; }
