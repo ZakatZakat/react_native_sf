@@ -138,7 +138,8 @@ function clusterByProximity(evs: Ev[], radiusM = 250): Cluster[] {
   return out
 }
 
-/** Cluster fan marker (v7 makeClusterEl): 3 posters + count + «N событий». */
+/** Cluster fan marker (v7 makeClusterEl): 3 posters + a NUMBER badge (matches
+ *  the numbered list in the sheet) + the event count. */
 function clusterFanEl(cl: Cluster, gi: number): HTMLElement {
   const rots = [-12, 0, 12]
   const thumbs = cl.members.slice(0, 3).map((e, i) =>
@@ -149,9 +150,27 @@ function clusterFanEl(cl: Cluster, gi: number): HTMLElement {
   wrap.style.cssText = "display:flex;flex-direction:column;align-items:center;"
   wrap.innerHTML =
     `<div class="cs-clu" style="--si:${gi}"><div class="cs-clu-fan">${thumbs}` +
+    `<span class="cs-clu-num">${gi + 1}</span>` +
     `<span class="cs-clu-count">${cl.members.length}</span></div>` +
-    `<div class="cs-clu-name">${RU_PLURAL(cl.members.length)}</div><div class="cs-clu-tip"></div></div>`
+    `<div class="cs-clu-tip"></div></div>`
   return wrap
+}
+
+/** Human label for a cluster: its dominant known venue, else the members'
+ *  venue/channel text. Used by the numbered list in the sheet. */
+function clusterLabel(cl: Cluster): { name: string; sub: string } {
+  const counts = new Map<string, number>()
+  cl.members.forEach((e) => { if (e.venueKey) counts.set(e.venueKey, (counts.get(e.venueKey) || 0) + 1) })
+  let bestKey = "", bestN = 0
+  counts.forEach((n, k) => { if (n > bestN) { bestN = n; bestKey = k } })
+  const vi = venueInfo(bestKey)
+  if (vi) return { name: vi.name, sub: vi.address || vi.kind }
+  // No known venue: title = a REAL location text (Ev.v is `location || "@channel"`,
+  // so skip the bare @handle), else a friendly generic; the channel goes to the
+  // subtitle where a raw handle reads fine.
+  const e = cl.members[0]
+  const loc = e?.v && e.v !== "—" && !e.v.startsWith("@") ? e.v : ""
+  return { name: loc || "Места рядом", sub: e?.ch || RU_PLURAL(cl.members.length) }
 }
 
 /** Inner HTML for the cluster DECK: the active event as a full card in front,
@@ -714,10 +733,21 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
           </div>
           {/* level 1 (clusters): hint to drill in · level 2 (cluster): event carousel */}
           {!activeCluster ? (
-            <div style={{ padding: "0 14px 11px" }}>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 7, background: CS.W, border: `2px solid ${CS.K}`, boxShadow: `2px 2px 0 ${CS.K}`, padding: "7px 11px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 10, letterSpacing: "0.04em", color: CS.K }}>
-                <span style={{ width: 8, height: 8, background: CS.B, borderRadius: "50%" }} />тапни кластер, чтобы раскрыть
-              </div>
+            <div style={{ padding: "0 12px 10px", maxHeight: 264, overflowY: "auto" }}>
+              {(selZone ? (clustersByZone[selZone] || []) : []).map((cl, gi) => {
+                const { name, sub } = clusterLabel(cl)
+                return (
+                  <button key={gi} onClick={() => setSelCluster(gi)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "9px 4px", background: "transparent", border: "none", borderTop: gi === 0 ? "none" : "1.5px solid rgba(13,13,13,0.12)", cursor: "pointer", textAlign: "left" }}>
+                    <span style={{ width: 22, height: 22, flexShrink: 0, background: CS.K, color: "#fff", borderRadius: 999, fontFamily: FONT_MONO, fontWeight: 700, fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center" }}>{gi + 1}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 900, fontSize: 13, letterSpacing: "-0.01em", lineHeight: 1, textTransform: "uppercase", color: CS.K, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
+                      <div style={{ fontFamily: FONT_MONO, fontSize: 8, color: "rgba(13,13,13,0.55)", marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</div>
+                    </div>
+                    <span style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 11, color: CS.B, flexShrink: 0 }}>{cl.members.length}</span>
+                    <span style={{ fontSize: 15, fontWeight: 900, color: CS.K, flexShrink: 0, marginLeft: 2 }}>→</span>
+                  </button>
+                )
+              })}
             </div>
           ) : (
           <div style={{ padding: "0 14px 11px" }}>
