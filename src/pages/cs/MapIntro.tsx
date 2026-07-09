@@ -187,33 +187,13 @@ function polaEl(e: Ev, i: number): HTMLElement {
 }
 
 // ── Highlight the event's building (signal-blue) ────────────────────────────
-// Two parts so the building is BOTH artifact-free AND impossible to miss:
-//   1. feature-state recolours the real building blue → any wall that overlaps
-//      the tower below is blue-on-blue, so there's no z-fighting.
-//   2. a taller blue overlay "tower" (geojson) rises ~28m above the real roof,
-//      so even a tiny/low venue building is a clear landmark above its
-//      neighbours at the 3D tilt (recolour alone was invisible for small ones).
-// Only the ACTIVE card's nearest building lights up.
-const EVT_BLDG_SRC = "cs-evt-bldg"
-const EVT_BLDG_LAYER = "cs-evt-bldg-tower"
+// One clean mechanism: feature-state `hl` recolours the REAL building blue and
+// (in csMapStyle) lifts it to a min ~42m landmark. No overlay geometry, so
+// there's nothing to z-fight with the real walls — the earlier synthetic
+// "tower" overlapped the building in the same volume and shimmered/dithered.
+// Only the ACTIVE card's building lights up (point-in-polygon pick).
 type BldgRef = { source: string; sourceLayer: string; id: string | number }
-type Hl = { ref: BldgRef; feat: GeoJSON.Feature }
-
-function ensureEventBuildingTower(map: maplibregl.Map) {
-  if (map.getSource(EVT_BLDG_SRC)) return
-  map.addSource(EVT_BLDG_SRC, { type: "geojson", data: { type: "FeatureCollection", features: [] } })
-  map.addLayer({
-    id: EVT_BLDG_LAYER, type: "fill-extrusion", source: EVT_BLDG_SRC, minzoom: 13,
-    paint: {
-      "fill-extrusion-color": CS.B,
-      // fixed 45m so every highlighted venue — even a tiny footprint — reads as
-      // a clear blue column above its neighbours.
-      "fill-extrusion-height": 45,
-      "fill-extrusion-base": 0,
-      "fill-extrusion-opacity": 0.96,
-    },
-  } as maplibregl.AddLayerObject)
-}
+type Hl = { ref: BldgRef }
 
 /** Rough lng/lat centroid of a (Multi)Polygon's outer ring. */
 function polyCentroid(geom: GeoJSON.Geometry): [number, number] | null {
@@ -274,7 +254,6 @@ function buildingUnder(map: maplibregl.Map, lngLat: maplibregl.LngLatLike): Hl |
   const bf = chosen
   return {
     ref: { source: bf.source, sourceLayer: bf.sourceLayer as string, id: bf.id as string | number },
-    feat: { type: "Feature", geometry: bf.geometry, properties: bf.properties || {} },
   }
 }
 
@@ -282,8 +261,6 @@ function buildingUnder(map: maplibregl.Map, lngLat: maplibregl.LngLatLike): Hl |
 function setActiveBuilding(map: maplibregl.Map, prev: Hl | null, next: Hl | null): Hl | null {
   if (prev) { try { map.setFeatureState(prev.ref, { hl: false }) } catch { /* tile evicted */ } }
   if (next) { try { map.setFeatureState(next.ref, { hl: true }) } catch { /* tile not loaded */ } }
-  const src = map.getSource(EVT_BLDG_SRC) as maplibregl.GeoJSONSource | undefined
-  if (src) src.setData(next ? { type: "FeatureCollection", features: [next.feat] } : { type: "FeatureCollection", features: [] })
   return next
 }
 
@@ -405,7 +382,6 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         // v7 csbrand: фирменный стиль уже содержит 3D-дома (cs-building-3d) —
         // добавляем только кинематографичное небо + туман у горизонта.
         applyCinematicSky(map, false)
-        ensureEventBuildingTower(map) // blue tower layer for the active event's building
 
         placeZonesRef.current() // district bubbles (re-placed later if data was slow)
         // Fixed view anchored on central Moscow — NOT fitBounds, which would
