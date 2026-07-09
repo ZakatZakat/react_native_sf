@@ -19,6 +19,27 @@ export const CS = {
 export const FONT_SANS = "var(--cs-font-sans)"
 export const FONT_MONO = "var(--cs-font-mono)"
 
+/** Gate splash wordmarks on the heavy Inter weights actually loading. Plain
+ *  `document.fonts.ready` resolves as soon as the *current* queue is empty —
+ *  before the big 900-weight lockup is even requested — so the wordmark paints
+ *  in a system fallback and visibly swaps to Inter a frame later. We explicitly
+ *  request the faces and wait, with a safety cap so it never hangs. */
+export function useWordmarkFont(capMs = 1500): boolean {
+  const [ready, setReady] = useState(false)
+  useEffect(() => {
+    let done = false
+    const finish = () => { if (!done) { done = true; setReady(true) } }
+    const fonts = (document as Document & { fonts?: { load: (f: string) => Promise<unknown>; ready: Promise<unknown> } }).fonts
+    if (fonts?.load) {
+      Promise.all([fonts.load('900 1rem "Inter"'), fonts.load('800 1rem "Inter"')])
+        .then(() => fonts.ready).then(finish, finish)
+    } else { finish() }
+    const t = setTimeout(finish, capMs)
+    return () => clearTimeout(t)
+  }, [capMs])
+  return ready
+}
+
 // Decorative "barcode" strip on the Pass card.
 export const PBARS = [3, 6, 2, 8, 3, 5, 2, 7, 4, 3, 6, 2, 9, 3, 5, 2, 6, 3, 4, 7]
 

@@ -13,7 +13,7 @@
  */
 
 import { useEffect, useRef, useState } from "react"
-import { CS, FONT_SANS } from "./shared"
+import { CS, FONT_SANS, useWordmarkFont } from "./shared"
 
 const EASE = "cubic-bezier(0.65,0,0.32,1)"
 const D = 0.7 // flight duration (s)
@@ -24,9 +24,9 @@ export default function ColdOpenBar({ onDone }: { onDone: () => void }) {
   const [exiting, setExiting] = useState(false)
   // Gate the montage on web-fonts ready — without this the FIRST paint renders
   // the City/Signal lockup in a system fallback and visibly swaps to Inter
-  // mid-flight. The original v6 was masked by its in-browser Babel boot delay;
-  // a compiled build paints instantly, so we gate explicitly (capped 800ms).
-  const [fontsReady, setFontsReady] = useState(false)
+  // mid-flight. The shared hook explicitly loads the Inter 900/800 faces (not
+  // just `fonts.ready`, which resolves before the lockup font is requested).
+  const fontsReady = useWordmarkFont()
   const rootRef = useRef<HTMLDivElement>(null)
   const cityRef = useRef<HTMLDivElement>(null)
   const sigRef = useRef<HTMLDivElement>(null)
@@ -44,15 +44,6 @@ export default function ColdOpenBar({ onDone }: { onDone: () => void }) {
   // centre (hero) positions in overlay-local coords (offset to viewport centre)
   const cityHero: Pos = { left: 50 + off.dx, top: 256 + off.dy, width: 172, height: 78, fs: 44, pl: 15 }
   const sigHero: Pos = { left: 76 + off.dx, top: 342 + off.dy, width: 200, height: 78, fs: 44, pr: 15 }
-
-  useEffect(() => {
-    let done = false
-    const ready = () => { if (!done) { done = true; setFontsReady(true) } }
-    const fonts = (document as Document & { fonts?: { ready: Promise<unknown> } }).fonts
-    if (fonts?.ready) fonts.ready.then(ready)
-    const t = setTimeout(ready, 800)
-    return () => clearTimeout(t)
-  }, [])
 
   useEffect(() => {
     if (!fontsReady) return

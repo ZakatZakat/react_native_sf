@@ -7,11 +7,12 @@
 
 import { useEffect, useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
-import { CS, FONT_MONO, FONT_SANS } from "./shared"
+import { CS, FONT_MONO, FONT_SANS, useWordmarkFont } from "./shared"
 
 export default function CsLoading() {
   const navigate = useNavigate()
   const [pct, setPct] = useState(0)
+  const wmReady = useWordmarkFont() // hold the City/Signal lockup until Inter is loaded (no FOUT swap)
 
   useEffect(() => {
     let raf: number
@@ -52,7 +53,7 @@ export default function CsLoading() {
         <span>MSC · SPB</span>
       </div>
       <div style={{ position: "relative", zIndex: 2, flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 22px" }}>
-        <div style={{ position: "relative" }}>
+        <div style={{ position: "relative", visibility: wmReady ? "visible" : "hidden" }}>
           <div style={{ position: "absolute", left: 0, top: 0, animation: "cs-j-ghost 3.4s ease-in-out infinite" }}>{L("City", CS.NAVY)}{L("Signal", CS.NAVY)}</div>
           <div style={{ position: "relative" }}>{L("City", CS.W)}{L("Signal", CS.W)}</div>
         </div>
