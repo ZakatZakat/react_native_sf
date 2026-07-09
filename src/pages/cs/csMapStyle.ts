@@ -50,13 +50,7 @@ export function makeCSStyle(dark: boolean): StyleSpecification {
         paint: { "fill-color": ["case", ["boolean", ["feature-state", "hl"], false], P.accent, P.building], "fill-outline-color": P.bout, "fill-opacity": ["interpolate", ["linear"], ["zoom"], 13, 0, 14, 0.92] } },
       { id: "cs-building-3d", type: "fill-extrusion", source: "composite", "source-layer": "building", minzoom: 14,
         paint: { "fill-extrusion-color": ["case", ["boolean", ["feature-state", "hl"], false], P.accent, P.b3d],
-          // Highlighted building (feature-state hl) is lifted to a min ~42m so
-          // even a tiny gallery footprint reads as a clear blue landmark — no
-          // separate overlay geometry, so nothing z-fights with the real walls.
-          "fill-extrusion-height": ["interpolate", ["linear"], ["zoom"], 14, 0, 15.5,
-            ["case", ["boolean", ["feature-state", "hl"], false],
-              ["max", ["coalesce", ["to-number", ["get", "render_height"]], 8], 42],
-              ["coalesce", ["to-number", ["get", "render_height"]], 8]]],
+          "fill-extrusion-height": ["interpolate", ["linear"], ["zoom"], 14, 0, 15.5, ["coalesce", ["to-number", ["get", "render_height"]], 8]],
           "fill-extrusion-base": ["coalesce", ["to-number", ["get", "render_min_height"]], 0],
           "fill-extrusion-opacity": 0.95 } },
       { id: "cs-road-casing", type: "line", source: "composite", "source-layer": "transportation",

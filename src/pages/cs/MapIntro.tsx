@@ -186,14 +186,51 @@ function polaEl(e: Ev, i: number): HTMLElement {
   return wrap
 }
 
-// ── Highlight the event's building (signal-blue) ────────────────────────────
-// One clean mechanism: feature-state `hl` recolours the REAL building blue and
-// (in csMapStyle) lifts it to a min ~42m landmark. No overlay geometry, so
-// there's nothing to z-fight with the real walls — the earlier synthetic
-// "tower" overlapped the building in the same volume and shimmered/dithered.
-// Only the ACTIVE card's building lights up (point-in-polygon pick).
+// ── Highlight event buildings (signal-blue) ─────────────────────────────────
+// We draw the picked footprints into our OWN geojson fill-extrusion layer —
+// NOT feature-state. The MapTiler building tiles reuse feature ids across
+// tiles, so feature-state `hl` bleeds onto same-id buildings elsewhere on
+// screen (a stray blue tower far from any event). Drawing the exact geometries
+// we chose is bleed-proof. The overlay is OPAQUE and its footprint is inflated
+// a few %, so it fully covers the grey building underneath (no coincident walls
+// → no z-fighting) and reads as a solid blue building.
+const EVT_BLDG_SRC = "cs-evt-bldg"
+const EVT_BLDG_LAYER = "cs-evt-bldg-fill"
 type BldgRef = { source: string; sourceLayer: string; id: string | number }
-type Hl = { ref: BldgRef }
+type Hl = { key: string; feat: GeoJSON.Feature }
+
+function ensureEventBuildingsLayer(map: maplibregl.Map) {
+  if (map.getSource(EVT_BLDG_SRC)) return
+  map.addSource(EVT_BLDG_SRC, { type: "geojson", data: { type: "FeatureCollection", features: [] } })
+  map.addLayer({
+    id: EVT_BLDG_LAYER, type: "fill-extrusion", source: EVT_BLDG_SRC, minzoom: 13,
+    paint: {
+      "fill-extrusion-color": CS.B,
+      // real building height, floored at ~42m so a tiny gallery still reads as a
+      // landmark, +4m so the blue top clears the grey roof it covers.
+      "fill-extrusion-height": ["+", ["max", ["coalesce", ["to-number", ["get", "render_height"]], 8], 42], 4],
+      "fill-extrusion-base": ["coalesce", ["to-number", ["get", "render_min_height"]], 0],
+      "fill-extrusion-opacity": 1,
+    },
+  } as maplibregl.AddLayerObject)
+}
+
+/** Inflate a footprint ~4% around its centroid so the opaque blue overlay's
+ *  walls sit just outside the grey building's walls — no coincident faces. */
+function inflate(geom: GeoJSON.Geometry, f = 1.04): GeoJSON.Geometry {
+  const c = polyCentroid(geom); if (!c) return geom
+  const [cx, cy] = c
+  const sp = (p: GeoJSON.Position): GeoJSON.Position => [cx + (p[0] - cx) * f, cy + (p[1] - cy) * f]
+  if (geom.type === "Polygon") return { type: "Polygon", coordinates: geom.coordinates.map((r) => r.map(sp)) }
+  if (geom.type === "MultiPolygon") return { type: "MultiPolygon", coordinates: geom.coordinates.map((poly) => poly.map((r) => r.map(sp))) }
+  return geom
+}
+
+/** Push the current set of highlighted footprints into the overlay layer. */
+function renderEventBuildings(map: maplibregl.Map, hls: Hl[]) {
+  const src = map.getSource(EVT_BLDG_SRC) as maplibregl.GeoJSONSource | undefined
+  if (src) src.setData({ type: "FeatureCollection", features: hls.map((h) => h.feat) })
+}
 
 /** Rough lng/lat centroid of a (Multi)Polygon's outer ring. */
 function polyCentroid(geom: GeoJSON.Geometry): [number, number] | null {
@@ -252,21 +289,11 @@ function buildingUnder(map: maplibregl.Map, lngLat: maplibregl.LngLatLike): Hl |
   const chosen = (inside || best) as maplibregl.MapGeoJSONFeature | null
   if (!chosen) return null
   const bf = chosen
+  const ref: BldgRef = { source: bf.source, sourceLayer: bf.sourceLayer as string, id: bf.id as string | number }
   return {
-    ref: { source: bf.source, sourceLayer: bf.sourceLayer as string, id: bf.id as string | number },
+    key: `${ref.source}/${ref.sourceLayer}/${ref.id}`,
+    feat: { type: "Feature", geometry: inflate(bf.geometry), properties: bf.properties || {} },
   }
-}
-
-/** Light up exactly one building (or none), clearing the previously lit one. */
-const bldgKey = (r: BldgRef) => `${r.source}/${r.sourceLayer}/${r.id}`
-
-/** Paint a SET of buildings blue via feature-state, diffing against the
- *  previously-lit set: clear the ones no longer wanted, light the rest. */
-function setEventBuildings(map: maplibregl.Map, prev: Hl[], next: Hl[]): Hl[] {
-  const nextKeys = new Set(next.map((h) => bldgKey(h.ref)))
-  prev.forEach((h) => { if (!nextKeys.has(bldgKey(h.ref))) { try { map.setFeatureState(h.ref, { hl: false }) } catch { /* tile evicted */ } } })
-  next.forEach((h) => { try { map.setFeatureState(h.ref, { hl: true }) } catch { /* tile not loaded */ } })
-  return next
 }
 
 export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: () => void }) {
@@ -291,18 +318,13 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const selZoneRef = useRef<string | null>(null); selZoneRef.current = selZone
   const selClusterRef = useRef<number | null>(null); selClusterRef.current = selCluster
 
-  // Centre the map on the ACTIVE event and light its building. Always centring
-  // guarantees the active card and its blue column are together in view — no
-  // more "where is the highlight?" with the building off-screen or off to the
-  // side. queryRenderedFeatures only sees on-screen buildings, so centring also
-  // makes the lookup reliable.
   // Light EVERY event building in the current cluster at once — not just the
   // active card. Buildings only render at zoom ≥14, so this runs once the
   // cluster view has zoomed in: queryRenderedFeatures finds each member's
-  // footprint (point-in-polygon) and feature-state paints them all blue.
-  // Set-based + merged, so panning/swiping between cards never flickers an
-  // already-lit building off; a single `idle` retry catches footprints whose
-  // tiles hadn't loaded yet.
+  // footprint (point-in-polygon) and we push them all into the blue overlay
+  // layer. Merged, so panning/swiping between cards never drops an already-lit
+  // building; a single `idle` retry catches footprints whose tiles hadn't
+  // loaded yet.
   const lightClusterBuildings = () => {
     const map = mapRef.current
     const zone = selZoneRef.current, ci = selClusterRef.current
@@ -312,14 +334,15 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
     if (!cl) return
     const collect = (retry: boolean) => {
       if (selZoneRef.current !== zone || selClusterRef.current !== ci) return
-      const seen = new Set(hlBuildingsRef.current.map((h) => bldgKey(h.ref)))
+      const seen = new Set(hlBuildingsRef.current.map((h) => h.key))
       const union = [...hlBuildingsRef.current]
       let found = 0
       cl.pts.forEach((p) => {
         const b = buildingUnder(map, [p[1], p[0]]) // p = [lat,lng]
-        if (b) { found++; const k = bldgKey(b.ref); if (!seen.has(k)) { seen.add(k); union.push(b) } }
+        if (b) { found++; if (!seen.has(b.key)) { seen.add(b.key); union.push(b) } }
       })
-      hlBuildingsRef.current = setEventBuildings(map, hlBuildingsRef.current, union)
+      hlBuildingsRef.current = union
+      renderEventBuildings(map, union)
       if (retry && found < cl.pts.length) map.once("idle", () => collect(false))
     }
     collect(true)
@@ -410,6 +433,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         // v7 csbrand: фирменный стиль уже содержит 3D-дома (cs-building-3d) —
         // добавляем только кинематографичное небо + туман у горизонта.
         applyCinematicSky(map, false)
+        ensureEventBuildingsLayer(map) // blue overlay for event buildings
 
         placeZonesRef.current() // district bubbles (re-placed later if data was slow)
         // Fixed view anchored on central Moscow — NOT fitBounds, which would
@@ -451,7 +475,8 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
     scatterRef.current.forEach((m) => m.remove())
     scatterRef.current = []
     const hlToken = ++hlTokenRef.current
-    hlBuildingsRef.current = setEventBuildings(map, hlBuildingsRef.current, [])
+    hlBuildingsRef.current = []
+    renderEventBuildings(map, [])
     // toggle zone bubble states
     ZONES.forEach((z) => {
       const el = zoneMarkersRef.current[z.id]
