@@ -322,6 +322,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const [ready, setReady] = useState(false)
   const [failed, setFailed] = useState(false)
   const [headOpen, setHeadOpen] = useState(true) // heading card collapse
+  const [deckHidden, setDeckHidden] = useState(false) // hide the deck to reveal the centred building
   const [selZone, setSelZone] = useState<string | null>(null)
   const [selCluster, setSelCluster] = useState<number | null>(null)
   const [evIdx, setEvIdx] = useState(0)
@@ -416,7 +417,11 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
           const map = mapRef.current
           const g = deckMembersRef.current[evIdxRef.current]?.geo
           if (map && Array.isArray(g)) {
-            map.easeTo({ center: [g[1], g[0]], zoom: 16, pitch: 52, bearing: -14, duration: 650 })
+            // hide the cards so the (blue) building is actually visible
+            if (deckWrapRef.current) { deckWrapRef.current.style.opacity = "0"; deckWrapRef.current.style.pointerEvents = "none" }
+            setDeckHidden(true)
+            map.easeTo({ center: [g[1], g[0]], zoom: 16.6, pitch: 52, bearing: -14, duration: 650 })
+            // re-light after zooming in so the venue building is definitely blue
             map.once("moveend", () => { const c = clustersRef.current[selZoneRef.current || ""]?.[selClusterRef.current ?? -1]; if (c) lightClusterRef.current(c, hlTokenRef.current) })
           }
           return
@@ -567,6 +572,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
     renderEventBuildings(map, [])
     leadersRef.current = []
     drawLeadersRef.current()
+    setDeckHidden(false) // a fresh zone/cluster always shows its deck
     // toggle zone bubble states
     ZONES.forEach((z) => {
       const el = zoneMarkersRef.current[z.id]
@@ -672,6 +678,18 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
           <span style={{ fontSize: 11, lineHeight: 1 }}>▾</span>
         </button>
       </div>
+      )}
+
+      {/* «Показать карточки» — возвращает колоду после «Центрировать карту» */}
+      {selCluster != null && deckHidden && (
+        <div style={{ position: "absolute", top: "30%", left: 0, right: 0, display: "flex", justifyContent: "center", zIndex: 11, pointerEvents: "none" }}>
+          <button
+            onClick={() => { if (deckWrapRef.current) { deckWrapRef.current.style.opacity = ""; deckWrapRef.current.style.pointerEvents = "" } setDeckHidden(false) }}
+            style={{ pointerEvents: "auto", display: "inline-flex", alignItems: "center", gap: 8, background: CS.K, color: "#fff", border: `2.5px solid ${CS.K}`, boxShadow: `3px 3px 0 ${CS.B}`, padding: "9px 15px", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 13, letterSpacing: "0.02em", textTransform: "uppercase" }}
+          >
+            <span style={{ fontSize: 15, lineHeight: 1 }}>↑</span> Показать карточки
+          </button>
+        </div>
       )}
 
       {/* bottom — hint + «Вся лента» CTA (hidden when a zone is open) */}
