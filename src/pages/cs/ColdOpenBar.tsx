@@ -91,7 +91,7 @@ export default function ColdOpenBar({ onDone }: { onDone: () => void }) {
         const dx = left ? dock.left - hero.left : (dock.left + dock.width) - (hero.left + hero.width)
         el.style.animation = "none" // drop the assemble keyframe's held transform
         el.style.transformOrigin = left ? "0 50%" : "100% 50%"
-        el.animate([
+        const a = el.animate([
           { transform: "translate(0px,0px) scale(1,1)", boxShadow: `5px 5px 0 ${shadowCol}` },
           { transform: `translate(${dx}px,${dy}px) scale(${csx},${csy})`, boxShadow: "0px 0px 0 rgba(0,0,0,0)" },
         ], opt)
@@ -101,12 +101,17 @@ export default function ColdOpenBar({ onDone }: { onDone: () => void }) {
           span.style.transformOrigin = left ? "left center" : "right center"
           span.animate([{ transform: "scale(1,1)" }, { transform: `scale(${(ts / csx).toFixed(4)},${(ts / csy).toFixed(4)})` }], opt)
         }
+        return a
       }
-      moveBlk(cityRef.current, cityHero, cityDock, CS.B, "paddingLeft")
+      const cityA = moveBlk(cityRef.current, cityHero, cityDock, CS.B, "paddingLeft")
       moveBlk(sigRef.current, sigHero, sigDock, CS.K, "paddingRight")
       setExiting(true)
+      // Hand off to the real banner the INSTANT the flight lands — no 160ms
+      // linger where the docked lockup sits then abruptly swaps (the residual
+      // «отъезжание» at the very end). onfinish fires exactly at the flight end.
+      if (cityA) cityA.onfinish = () => onDoneRef.current()
     }, 2900)
-    const t2 = setTimeout(() => onDoneRef.current(), 3760)
+    const t2 = setTimeout(() => onDoneRef.current(), 4200) // safety fallback
     return () => { clearTimeout(t1); clearTimeout(t2) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fontsReady])
