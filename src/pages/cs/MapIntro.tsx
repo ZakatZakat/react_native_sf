@@ -721,30 +721,27 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       {/* district bottom-sheet — selected zone deck */}
       {selZone && deckEvents.length > 0 && (
         <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 12, background: CS.W, borderTop: `3px solid ${CS.K}`, boxShadow: "0 -6px 0 rgba(13,13,13,0.08)", animation: "cs-sheet-up 0.34s cubic-bezier(0.22,1,0.36,1) both", paddingBottom: "env(safe-area-inset-bottom,0px)" }}>
-          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", padding: "9px 14px 6px" }}>
-            <div>
-              <div style={{ fontFamily: FONT_MONO, fontSize: 8, fontWeight: 700, letterSpacing: "0.24em", textTransform: "uppercase", color: "rgba(13,13,13,0.55)" }}>{activeCluster ? `кластер · ${ZONE_BY_ID[selZone].t}` : `район · ${ZONE_BY_ID[selZone].sub}`}</div>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 1 }}>
-                <span style={{ fontWeight: 900, fontSize: 20, letterSpacing: "-0.04em", lineHeight: 0.9, color: CS.K, textTransform: "uppercase" }}>{activeCluster ? "Места рядом" : ZONE_BY_ID[selZone].t}</span>
-                <span style={{ background: CS.B, color: "#fff", padding: "2px 6px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, letterSpacing: "0.04em" }}>{deckEvents.length} событий</span>
-              </div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "7px 14px 5px" }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8, minWidth: 0 }}>
+              <span style={{ fontWeight: 900, fontSize: 16, letterSpacing: "-0.03em", lineHeight: 1, color: CS.K, textTransform: "uppercase", whiteSpace: "nowrap" }}>{activeCluster ? "Места рядом" : ZONE_BY_ID[selZone].t}</span>
+              <span style={{ background: CS.B, color: "#fff", padding: "2px 6px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 8.5, letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{deckEvents.length} событий</span>
             </div>
-            <button onClick={() => (activeCluster ? setSelCluster(null) : setSelZone(null))} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: CS.W, border: `2px solid ${CS.K}`, padding: "4px 8px", cursor: "pointer", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, letterSpacing: "0.05em", textTransform: "uppercase", color: CS.K }}>{activeCluster ? "← кластеры" : "← все районы"}</button>
+            <button onClick={() => (activeCluster ? setSelCluster(null) : setSelZone(null))} style={{ display: "inline-flex", alignItems: "center", gap: 5, flexShrink: 0, background: CS.W, border: `2px solid ${CS.K}`, padding: "4px 8px", cursor: "pointer", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, letterSpacing: "0.05em", textTransform: "uppercase", color: CS.K }}>{activeCluster ? "← кластеры" : "← районы"}</button>
           </div>
           {/* level 1 (clusters): hint to drill in · level 2 (cluster): event carousel */}
           {!activeCluster ? (
-            <div style={{ padding: "0 12px 10px", maxHeight: 264, overflowY: "auto" }}>
+            <div style={{ padding: "0 12px 8px", maxHeight: 168, overflowY: "auto" }}>
               {(selZone ? (clustersByZone[selZone] || []) : []).map((cl, gi) => {
                 const { name, sub } = clusterLabel(cl)
                 return (
-                  <button key={gi} onClick={() => setSelCluster(gi)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "9px 4px", background: "transparent", border: "none", borderTop: gi === 0 ? "none" : "1.5px solid rgba(13,13,13,0.12)", cursor: "pointer", textAlign: "left" }}>
-                    <span style={{ width: 22, height: 22, flexShrink: 0, background: CS.K, color: "#fff", borderRadius: 999, fontFamily: FONT_MONO, fontWeight: 700, fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center" }}>{gi + 1}</span>
+                  <button key={gi} onClick={() => setSelCluster(gi)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "5px 4px", background: "transparent", border: "none", borderTop: gi === 0 ? "none" : "1px solid rgba(13,13,13,0.12)", cursor: "pointer", textAlign: "left" }}>
+                    <span style={{ width: 18, height: 18, flexShrink: 0, background: CS.K, color: "#fff", borderRadius: 999, fontFamily: FONT_MONO, fontWeight: 700, fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>{gi + 1}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 900, fontSize: 13, letterSpacing: "-0.01em", lineHeight: 1, textTransform: "uppercase", color: CS.K, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
-                      <div style={{ fontFamily: FONT_MONO, fontSize: 8, color: "rgba(13,13,13,0.55)", marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</div>
+                      <div style={{ fontWeight: 900, fontSize: 11.5, letterSpacing: "-0.01em", lineHeight: 1.05, textTransform: "uppercase", color: CS.K, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
+                      <div style={{ fontFamily: FONT_MONO, fontSize: 7.5, color: "rgba(13,13,13,0.5)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</div>
                     </div>
-                    <span style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 11, color: CS.B, flexShrink: 0 }}>{cl.members.length}</span>
-                    <span style={{ fontSize: 15, fontWeight: 900, color: CS.K, flexShrink: 0, marginLeft: 2 }}>→</span>
+                    <span style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 10.5, color: CS.B, flexShrink: 0 }}>{cl.members.length}</span>
+                    <span style={{ fontSize: 13, fontWeight: 900, color: CS.K, flexShrink: 0, marginLeft: 2 }}>→</span>
                   </button>
                 )
               })}
