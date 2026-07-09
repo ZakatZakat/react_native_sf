@@ -38,6 +38,7 @@ export type FeedItem = {
   filter_score: number
   created_at: string
   geo?: [number, number] | null
+  venue?: string | null // gazetteer venue key (e.g. "ges2") for the place card
 }
 
 export type CuratorTag = {

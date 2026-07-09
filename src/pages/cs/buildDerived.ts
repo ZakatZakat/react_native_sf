@@ -35,6 +35,7 @@ export type Ev = {
   note: string      // short editorial note ("до утра" / "редакция топит") — optional
   dur: string       // duration ("до 08:00" / "96 мин") — optional
   geo: [number, number] | null  // resolved [lat, lng] for the map, if geocoded
+  venueKey: string  // gazetteer venue key (e.g. "ges2") for the place card, or ""
 }
 
 export type DerivedData = {
@@ -82,6 +83,7 @@ export function toEv(e: FeedItem): Ev {
     note: "",  // ditto — editorial highlight, populated by curator later
     dur: "",   // duration — curator doesn't carry it yet
     geo: (Array.isArray(e.geo) && e.geo.length === 2) ? [e.geo[0], e.geo[1]] : null,
+    venueKey: e.venue || "",
   }
 }
 

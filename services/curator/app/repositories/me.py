@@ -149,6 +149,11 @@ class PersonalizedFeedRepository:
                     if isinstance(ev.location_meta, dict) and ev.location_meta.get("lat") is not None
                     else None
                 ),
+                # Gazetteer venue key (e.g. "ges2", "garage") for the place card.
+                "venue": (
+                    ev.location_meta.get("venue")
+                    if isinstance(ev.location_meta, dict) else None
+                ),
             })
 
         # Resolve channel handles in a single query

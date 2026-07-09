@@ -14,8 +14,9 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import maplibregl from "maplibre-gl"
 import "maplibre-gl/dist/maplibre-gl.css"
 import type { Ev } from "./buildDerived"
-import { CS, FONT_SANS, FONT_MONO, SK, useCsKeyframes, useOpenEvent } from "./shared"
+import { CS, FONT_SANS, FONT_MONO, useCsKeyframes, useOpenEvent } from "./shared"
 import { CS_STYLE_LIGHT, applyCinematicSky } from "./csMapStyle"
+import { venueInfo } from "./venues"
 
 const MSK: [number, number] = [37.62, 55.745]
 
@@ -96,7 +97,7 @@ function zoneBubbleEl(zone: Zone, evs: Ev[], onClick: (id: string) => void): HTM
 // anchor everything to REAL geo coordinates: clusters by true proximity, fans
 // at member centroids, polaroids on each event's actual spot.
 
-type Cluster = { ll: [number, number]; members: Ev[]; pts: [number, number][] }
+type Cluster = { ll: [number, number]; members: Ev[] }
 
 const RU_PLURAL = (n: number) =>
   `${n} ${n % 10 === 1 && n % 100 !== 11 ? "событие" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? "события" : "событий"}`
@@ -110,9 +111,13 @@ function metersBetween(a: [number, number], b: [number, number]): number {
 }
 
 /** Greedy geographic clustering by REAL proximity (radius in metres). Each
- *  cluster sits at its members' centroid; singles keep real coords (same-venue
- *  duplicates fan out via realPositions). */
-function clusterByProximity(evs: Ev[], radiusM = 650): Cluster[] {
+ *  cluster sits at its members' centroid. Co-located events (same building)
+ *  are distance ~0 so they always group; the deck flips through them. */
+function clusterByProximity(evs: Ev[], radiusM = 250): Cluster[] {
+  // 250m (not 650m): a cluster should be truly co-located venues, not a whole
+  // district — 650m greedily swallowed the dense centre into one blob and lit
+  // dozens of buildings. Co-located events (dist ~0) still group; distinct
+  // venues >250m apart split into their own clusters.
   const withGeo = evs.filter((e) => e.geo)
   const used = new Array(withGeo.length).fill(false)
   const out: Cluster[] = []
@@ -127,34 +132,8 @@ function clusterByProximity(evs: Ev[], radiusM = 650): Cluster[] {
     }
     const lat = members.reduce((s, e) => s + (e.geo as [number, number])[0], 0) / members.length
     const lng = members.reduce((s, e) => s + (e.geo as [number, number])[1], 0) / members.length
-    out.push({ ll: [lat, lng], members, pts: realPositions(members) })
+    out.push({ ll: [lat, lng], members })
   }
-  return out
-}
-
-/** Drill-down positions for a cluster's events: each event sits on its OWN real
- *  coordinate (so the card hovers over its real building). Only events that
- *  share the exact same venue are spread — placed on a small ring around it so
- *  the polaroids don't overlap at the L2 zoom while staying on the spot. */
-function realPositions(evs: Ev[]): [number, number][] {
-  const groups = new Map<string, number[]>()
-  evs.forEach((e, i) => {
-    const [la, ln] = e.geo as [number, number]
-    const key = `${la.toFixed(4)},${ln.toFixed(4)}`
-    const arr = groups.get(key); if (arr) arr.push(i); else groups.set(key, [i])
-  })
-  const out: [number, number][] = new Array(evs.length)
-  groups.forEach((idxs) => {
-    const n = idxs.length
-    idxs.forEach((idx, j) => {
-      const [la, ln] = evs[idx].geo as [number, number]
-      if (n === 1) { out[idx] = [la, ln]; return }
-      const cosLat = Math.cos((la * Math.PI) / 180)
-      const r = Math.max(95, 28 * n) // ring radius, metres — keeps cards from overlapping
-      const a = (j / n) * 2 * Math.PI + 0.5
-      out[idx] = [la + (r * Math.sin(a)) / 111320, ln + (r * Math.cos(a)) / (111320 * cosLat)]
-    })
-  })
   return out
 }
 
@@ -302,7 +281,10 @@ function buildingUnder(map: maplibregl.Map, lngLat: maplibregl.LngLatLike): Hl |
     if (d < bestD) { bestD = d; best = f }
     if (pointInPolygon(pt, f.geometry) && d < insideD) { insideD = d; inside = f }
   })
-  const chosen = (inside || best) as maplibregl.MapGeoJSONFeature | null
+  // Prefer the footprint the point is INSIDE. Only fall back to the nearest
+  // when the centroid is very close (~14px) — otherwise a point on a road /
+  // courtyard would paint an unrelated neighbour.
+  const chosen = (inside || (bestD < 14 * 14 ? best : null)) as maplibregl.MapGeoJSONFeature | null
   if (!chosen) return null
   const bf = chosen
   const ref: BldgRef = { source: bf.source, sourceLayer: bf.sourceLayer as string, id: bf.id as string | number }
@@ -369,15 +351,12 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   // layer. Merged, so panning/swiping between cards never drops an already-lit
   // building; a single `idle` retry catches footprints whose tiles hadn't
   // loaded yet.
-  const lightClusterBuildings = () => {
+  const lightClusterBuildings = (cl: Cluster, token: number) => {
     const map = mapRef.current
-    const zone = selZoneRef.current, ci = selClusterRef.current
-    if (!map || zone == null || ci == null) return
+    if (!map || !cl) return
     if (map.getZoom() < 13.5) return // buildings not rendered yet
-    const cl = clustersRef.current[zone]?.[ci]
-    if (!cl) return
     const collect = (retry: boolean) => {
-      if (selZoneRef.current !== zone || selClusterRef.current !== ci) return
+      if (hlTokenRef.current !== token) return // superseded by a newer zone/cluster
       const seen = new Set(hlBuildingsRef.current.map((h) => h.key))
       const union = [...hlBuildingsRef.current]
       let found = 0
@@ -590,9 +569,10 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         leadersRef.current = [{ card: cl.ll, target: (cl.members[0]?.geo as [number, number]) ?? cl.ll, i: 0 }]
         drawLeadersRef.current()
         // Ease to the centroid at building-visible zoom; lightClusterBuildings
-        // then lights every event building in the cluster.
+        // then lights every event building in the cluster. Pass the captured cl
+        // + token so it can't drift onto a re-clustered/stale member set.
         map.easeTo({ center: [cl.ll[1], cl.ll[0]], zoom: 15, pitch: 52, bearing: -14, duration: 700 })
-        map.once("moveend", () => { if (hlTokenRef.current === hlToken) { lightClusterRef.current(); drawLeadersRef.current() } })
+        map.once("moveend", () => { if (hlTokenRef.current === hlToken) { lightClusterRef.current(cl, hlToken); drawLeadersRef.current() } })
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -669,7 +649,27 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
                 <span style={{ width: 8, height: 8, background: CS.B, borderRadius: "50%" }} />тапни кластер, чтобы раскрыть
               </div>
             </div>
-          ) : (
+          ) : (<>
+          {(() => {
+            const vi = venueInfo(deckEvents[evIdx]?.venueKey)
+            if (!vi) return null
+            return (
+              <div style={{ padding: "0 14px 8px" }}>
+                <div style={{ display: "flex", gap: 10, border: `2.5px solid ${CS.K}`, boxShadow: `3px 3px 0 ${CS.B}`, background: CS.W, overflow: "hidden" }}>
+                  <div style={{ width: 74, flexShrink: 0, borderRight: `2px solid ${CS.K}`, background: "repeating-linear-gradient(45deg,#E4E4E1,#E4E4E1 6px,#d9d9d6 6px,#d9d9d6 12px)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {vi.img
+                      ? <img src={vi.img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                      : <span style={{ fontFamily: FONT_MONO, fontSize: 7, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(13,13,13,0.4)", textTransform: "uppercase", transform: "rotate(-90deg)", whiteSpace: "nowrap" }}>фото скоро</span>}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0, padding: "8px 10px" }}>
+                    <div style={{ fontFamily: FONT_MONO, fontSize: 8, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: CS.B }}>место · {vi.kind}</div>
+                    <div style={{ fontWeight: 900, fontSize: 15, letterSpacing: "-0.02em", lineHeight: 1.04, color: CS.K, marginTop: 3 }}>{vi.name}</div>
+                    <div style={{ fontFamily: FONT_SANS, fontSize: 10.5, lineHeight: 1.34, color: "rgba(13,13,13,0.72)", marginTop: 5 }}>{vi.blurb}</div>
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
           <div style={{ padding: "0 14px 10px" }}>
             <div style={{ display: "flex", alignItems: "stretch", gap: 8 }}>
               <button onClick={() => setEvIdx((i) => (i - 1 + deckEvents.length) % deckEvents.length)} style={{ width: 28, flexShrink: 0, border: `2px solid ${CS.K}`, background: CS.W, cursor: "pointer", fontSize: 15, fontWeight: 900, color: CS.K, lineHeight: 1 }}>←</button>
@@ -689,7 +689,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
               <button onClick={() => setEvIdx((i) => (i + 1) % deckEvents.length)} style={{ width: 28, flexShrink: 0, border: `2px solid ${CS.K}`, background: CS.W, cursor: "pointer", fontSize: 15, fontWeight: 900, color: CS.K, lineHeight: 1 }}>→</button>
             </div>
           </div>
-          )}
+          </>)}
           <div style={{ padding: "0 14px 12px" }}>
             <button onClick={onEnter} style={{ width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "10px 18px", border: `2.5px solid ${CS.K}`, background: CS.K, color: "#fff", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 13, letterSpacing: "0.04em", textTransform: "uppercase", boxShadow: `3px 3px 0 ${CS.B}` }}>
               <span>Открыть район в ленте</span><span style={{ fontSize: 15, lineHeight: 1 }}>→</span>

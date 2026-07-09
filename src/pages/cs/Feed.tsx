@@ -39,7 +39,7 @@ import MapIntro from "./MapIntro"
 const FALLBACK: Ev = {
   id: "—", t: "—", sub: "", v: "—", d: "—", tm: "—",
   p: null, c: "—", catKey: "", ch: "@—",
-  desc: "", price: "—", note: "",
+  desc: "", price: "—", note: "", venueKey: "",
 }
 
 /** Pick N events from the feed; pad with positionally-unique placeholders

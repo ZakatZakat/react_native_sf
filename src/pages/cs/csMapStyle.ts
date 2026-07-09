@@ -43,13 +43,13 @@ export function makeCSStyle(dark: boolean): StyleSpecification {
         paint: { "line-color": P.accent, "line-opacity": 0.4, "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.4, 14, 1.6] } },
       { id: "cs-waterway", type: "line", source: "composite", "source-layer": "waterway",
         paint: { "line-color": P.water, "line-width": ["interpolate", ["linear"], ["zoom"], 10, 0.5, 16, 2.4] } },
+      // Event buildings are highlighted via the separate cs-evt-bldg overlay
+      // (MapIntro), NOT feature-state — MapTiler reuses building ids across
+      // tiles, so feature-state bled onto same-id buildings elsewhere.
       { id: "cs-building", type: "fill", source: "composite", "source-layer": "building", minzoom: 13,
-        // colour flips to signal-blue when the feature-state `hl` is set (the
-        // event's building) — recolours the real building in place, so there's
-        // no overlay extrusion to z-fight with.
-        paint: { "fill-color": ["case", ["boolean", ["feature-state", "hl"], false], P.accent, P.building], "fill-outline-color": P.bout, "fill-opacity": ["interpolate", ["linear"], ["zoom"], 13, 0, 14, 0.92] } },
+        paint: { "fill-color": P.building, "fill-outline-color": P.bout, "fill-opacity": ["interpolate", ["linear"], ["zoom"], 13, 0, 14, 0.92] } },
       { id: "cs-building-3d", type: "fill-extrusion", source: "composite", "source-layer": "building", minzoom: 14,
-        paint: { "fill-extrusion-color": ["case", ["boolean", ["feature-state", "hl"], false], P.accent, P.b3d],
+        paint: { "fill-extrusion-color": P.b3d,
           "fill-extrusion-height": ["interpolate", ["linear"], ["zoom"], 14, 0, 15.5, ["coalesce", ["to-number", ["get", "render_height"]], 8]],
           "fill-extrusion-base": ["coalesce", ["to-number", ["get", "render_min_height"]], 0],
           "fill-extrusion-opacity": 0.95 } },

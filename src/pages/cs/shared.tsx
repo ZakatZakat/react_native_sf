@@ -160,22 +160,22 @@ const KEYFRAMES = `
   .cs-clu-count { position: absolute; right: -4px; top: -7px; z-index: 6; min-width: 17px; height: 17px; padding: 0 4px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; background: #0055FF; color: #fff; border: 2px solid #fff; border-radius: 999px; font-family: var(--cs-font-mono); font-weight: 700; font-size: 9px; line-height: 1; }
   .cs-clu-name { margin-top: 3px; max-width: 100px; background: #fff; border: 1.5px solid #0D0D0D; box-shadow: 1.5px 1.5px 0 rgba(13,13,13,0.8); padding: 2px 6px 2.5px; font-family: var(--cs-font-sans); font-weight: 900; font-size: 7.5px; line-height: 1.2; letter-spacing: 0.03em; text-transform: uppercase; color: #0D0D0D; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .cs-clu-tip { width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 6px solid #0D0D0D; margin-top: -1px; }
-  .cs-pola { position: relative; width: 128px; z-index: 3; cursor: pointer; display: flex; flex-direction: column; align-items: center; animation: cs-scatter-in 0.45s cubic-bezier(0.22,1,0.36,1) both; animation-delay: calc(var(--si,0) * 0.06s); }
-  .cs-pola-card { width: 128px; box-sizing: border-box; background: #fff; border: 2.5px solid #0D0D0D; box-shadow: 3px 4px 0 rgba(13,13,13,0.85); overflow: hidden; transform-origin: bottom center; transition: transform 0.25s cubic-bezier(0.22,1,0.36,1), box-shadow 0.22s ease, border-color 0.2s ease; }
-  .cs-pola-img { width: 100%; height: 64px; overflow: hidden; border-bottom: 2px solid #0D0D0D; background: #E4E4E1; }
+  .cs-pola { position: relative; width: 158px; z-index: 3; cursor: pointer; display: flex; flex-direction: column; align-items: center; animation: cs-scatter-in 0.45s cubic-bezier(0.22,1,0.36,1) both; animation-delay: calc(var(--si,0) * 0.06s); }
+  .cs-pola-card { width: 158px; box-sizing: border-box; background: #fff; border: 2.5px solid #0D0D0D; box-shadow: 3px 4px 0 rgba(13,13,13,0.85); overflow: hidden; transform-origin: bottom center; transition: transform 0.25s cubic-bezier(0.22,1,0.36,1), box-shadow 0.22s ease, border-color 0.2s ease; }
+  .cs-pola-img { width: 100%; height: 92px; overflow: hidden; border-bottom: 2px solid #0D0D0D; background: #E4E4E1; }
   .cs-pola-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .cs-pola-body { padding: 5px 6px 6px; text-align: left; line-height: normal; }
-  .cs-pola-top { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-bottom: 3px; }
-  .cs-pola-cat { background: #0055FF; color: #fff; font-family: var(--cs-font-mono); font-weight: 700; font-size: 6.5px; letter-spacing: 0.07em; text-transform: uppercase; padding: 1.5px 4px; max-width: 84px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .cs-pola-date { font-family: var(--cs-font-mono); font-weight: 700; font-size: 8px; letter-spacing: 0.02em; color: #0D0D0D; white-space: nowrap; }
-  .cs-pola-title { font-family: var(--cs-font-sans); font-weight: 900; font-size: 9.5px; line-height: 1.12; letter-spacing: -0.01em; text-transform: uppercase; color: #0D0D0D; overflow-wrap: anywhere; }
-  .cs-pola-meta { margin-top: 4px; font-family: var(--cs-font-mono); font-weight: 700; font-size: 7px; letter-spacing: 0.02em; color: rgba(13,13,13,0.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cs-pola-body { padding: 7px 8px 8px; text-align: left; line-height: normal; }
+  .cs-pola-top { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-bottom: 4px; }
+  .cs-pola-cat { background: #0055FF; color: #fff; font-family: var(--cs-font-mono); font-weight: 700; font-size: 7.5px; letter-spacing: 0.07em; text-transform: uppercase; padding: 2px 5px; max-width: 108px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cs-pola-date { font-family: var(--cs-font-mono); font-weight: 700; font-size: 9.5px; letter-spacing: 0.02em; color: #0D0D0D; white-space: nowrap; }
+  .cs-pola-title { font-family: var(--cs-font-sans); font-weight: 900; font-size: 12px; line-height: 1.1; letter-spacing: -0.015em; text-transform: uppercase; color: #0D0D0D; overflow-wrap: anywhere; }
+  .cs-pola-meta { margin-top: 5px; font-family: var(--cs-font-mono); font-weight: 700; font-size: 8.5px; letter-spacing: 0.02em; color: rgba(13,13,13,0.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .cs-pola.cs-scatter-active { z-index: 6; }
   .cs-pola.cs-scatter-active .cs-pola-card { transform: scale(1.06); box-shadow: 4px 8px 0 #0055FF; border-color: #0055FF; }
   .cs-leader-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; overflow: visible; }
   /* cluster deck (fanned card stack with ← N/total → pager) */
   .cs-deck { align-items: flex-start; }
-  .cs-deck-stack { position: relative; width: 128px; }
+  .cs-deck-stack { position: relative; width: 158px; }
   .cs-deck-front { position: relative; z-index: 3; }
   .cs-deck-ghost { position: absolute; inset: 0; background: #fff; border: 2.5px solid #0D0D0D; box-shadow: 3px 4px 0 rgba(13,13,13,0.4); }
   .cs-dg1 { transform: translate(7px, 7px) rotate(2.5deg); z-index: 2; }
@@ -886,7 +886,7 @@ export function GoingAgenda() {
               p: ev.p, c: ev.cat, catKey: "",
               ch: ev.ch,
               desc: "Открой канал для подробностей.",
-              price: "—",
+              price: "—", venueKey: "",
             }
             return (
               <div
