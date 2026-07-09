@@ -226,23 +226,52 @@ function polyCentroid(geom: GeoJSON.Geometry): [number, number] | null {
   return [x / ring.length, y / ring.length]
 }
 
-/** The building nearest a lng/lat (null if none rendered / no id). Only finds
+/** Ray-casting point-in-polygon over a GeoJSON Polygon/MultiPolygon (lng/lat).
+ *  Tests outer rings only — building footprints have no meaningful holes. */
+function pointInPolygon(pt: [number, number], geom: GeoJSON.Geometry): boolean {
+  const rings: GeoJSON.Position[][] =
+    geom.type === "Polygon" ? [geom.coordinates[0]]
+      : geom.type === "MultiPolygon" ? geom.coordinates.map((poly) => poly[0])
+        : []
+  const [x, y] = pt
+  return rings.some((ring) => {
+    let inside = false
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const xi = ring[i][0], yi = ring[i][1], xj = ring[j][0], yj = ring[j][1]
+      if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside
+    }
+    return inside
+  })
+}
+
+/** The event's building: prefer the footprint the point is INSIDE (point-in-
+ *  polygon) — that's the actual venue building — and only fall back to the
+ *  nearest by centroid when the point isn't inside any. Fixes the "painted the
+ *  neighbour" glitch the old nearest-centroid-only heuristic caused. Only finds
  *  RENDERED buildings, so the point must be on-screen. */
 function buildingUnder(map: maplibregl.Map, lngLat: maplibregl.LngLatLike): Hl | null {
   const queryLayers = ["cs-building-3d", "cs-building"].filter((l) => map.getLayer(l))
   if (!queryLayers.length) return null
+  const c0 = maplibregl.LngLat.convert(lngLat)
+  const pt: [number, number] = [c0.lng, c0.lat]
   const p = map.project(lngLat)
-  const hits = map.queryRenderedFeatures([[p.x - 40, p.y - 40], [p.x + 40, p.y + 40]], { layers: queryLayers })
+  // Tight candidate box — enough to catch the footprint under (or just beside)
+  // the point without pulling in the far neighbours the old 40px box grabbed.
+  const R = 22
+  const hits = map.queryRenderedFeatures([[p.x - R, p.y - R], [p.x + R, p.y + R]], { layers: queryLayers })
   let best: maplibregl.MapGeoJSONFeature | null = null, bestD = Infinity
+  let inside: maplibregl.MapGeoJSONFeature | null = null, insideD = Infinity
   hits.forEach((f) => {
     if (f.id == null) return
     const c = polyCentroid(f.geometry); if (!c) return
     const cp = map.project(c)
     const d = (cp.x - p.x) ** 2 + (cp.y - p.y) ** 2
     if (d < bestD) { bestD = d; best = f }
+    if (pointInPolygon(pt, f.geometry) && d < insideD) { insideD = d; inside = f }
   })
-  if (!best) return null
-  const bf = best as maplibregl.MapGeoJSONFeature
+  const chosen = (inside || best) as maplibregl.MapGeoJSONFeature | null
+  if (!chosen) return null
+  const bf = chosen
   return {
     ref: { source: bf.source, sourceLayer: bf.sourceLayer as string, id: bf.id as string | number },
     feat: { type: "Feature", geometry: bf.geometry, properties: bf.properties || {} },
