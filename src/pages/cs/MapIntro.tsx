@@ -16,7 +16,7 @@ import "maplibre-gl/dist/maplibre-gl.css"
 import type { Ev } from "./buildDerived"
 import { CS, FONT_SANS, FONT_MONO, useCsKeyframes, useOpenEvent } from "./shared"
 import { CS_STYLE_LIGHT, applyCinematicSky } from "./csMapStyle"
-import { venueInfo } from "./venues"
+import { venueInfo, type VenueInfo } from "./venues"
 
 const MSK: [number, number] = [37.62, 55.745]
 
@@ -157,42 +157,32 @@ function clusterFanEl(cl: Cluster, gi: number): HTMLElement {
  *  up to two "ghost" cards fanned behind to show the pile, and a ← N/total →
  *  pager. Co-located events (all at one building) are a tidy deck you flip
  *  through, not a confusing ring of overlapping cards. */
-function deckInnerHTML(members: Ev[], idx: number): string {
-  const e = members[idx]
+/** Just the event side of the deck (ghosts + front card) — rebuilt on paging. */
+function eventStackHTML(members: Ev[], i: number): string {
+  const e = members[i]
   const n = members.length
   const date = e.d && e.d !== "—" ? e.d : ""
   const meta = [e.tm, e.v].filter((s) => s && s !== "—").join(" · ")
   const ghosts = n > 1 ? `<div class="cs-deck-ghost cs-dg2"></div><div class="cs-deck-ghost cs-dg1"></div>` : ""
-  const nav = n > 1
-    ? `<div class="cs-deck-nav"><button class="cs-deck-prev" type="button" aria-label="назад">←</button>` +
-      `<span class="cs-deck-count">${idx + 1} / ${n}</span>` +
-      `<button class="cs-deck-next" type="button" aria-label="вперёд">→</button></div>`
-    : ""
-  // Place card (left) — what this venue is; only when the venue is known.
-  const vi = venueInfo(e.venueKey)
-  const place = vi
-    ? `<div class="cs-deck-place">` +
-        `<div class="cs-deck-place-img">${vi.img ? `<img src="${vi.img}" alt=""/>` : `<span>фото скоро</span>`}</div>` +
-        `<div class="cs-deck-place-body">` +
-          `<div class="cs-deck-place-kind">место · ${esc(vi.kind)}</div>` +
-          `<div class="cs-deck-place-name">${esc(vi.name)}</div>` +
-          `<div class="cs-deck-place-blurb">${esc(vi.blurb)}</div>` +
-        `</div>` +
-      `</div>`
-    : ""
-  return `<div class="cs-pola cs-deck">` +
-    place +
-    `<div class="cs-deck-right">` +
-      `<div class="cs-deck-stack">${ghosts}` +
-        `<div class="cs-pola-card cs-deck-front">` +
-          `<div class="cs-pola-img">${e.p ? `<img src="${e.p}" alt=""/>` : ""}</div>` +
-          `<div class="cs-pola-body">` +
-            `<div class="cs-pola-top"><span class="cs-pola-cat">${esc(e.c || "событие")}</span>${date ? `<span class="cs-pola-date">${esc(date)}</span>` : ""}</div>` +
-            `<div class="cs-pola-title cs-deck-title">${esc(e.t || "")}</div>` +
-            (meta ? `<div class="cs-pola-meta">${esc(meta)}</div>` : "") +
-          `</div>` +
-        `</div>` +
-      `</div>${nav}` +
+  return ghosts +
+    `<div class="cs-pola-card cs-deck-front">` +
+      `<div class="cs-pola-img">${e.p ? `<img src="${e.p}" alt=""/>` : ""}</div>` +
+      `<div class="cs-pola-body">` +
+        `<div class="cs-pola-top"><span class="cs-pola-cat">${esc(e.c || "событие")}</span>${date ? `<span class="cs-pola-date">${esc(date)}</span>` : ""}</div>` +
+        `<div class="cs-pola-title cs-deck-title">${esc(e.t || "")}</div>` +
+        (meta ? `<div class="cs-pola-meta">${esc(meta)}</div>` : "") +
+      `</div>` +
+    `</div>`
+}
+
+/** The place card (left) — rebuilt ONLY when the venue changes. */
+function placeCardHTML(vi: VenueInfo): string {
+  return `<div class="cs-deck-place">` +
+    `<div class="cs-deck-place-img">${vi.img ? `<img src="${vi.img}" alt=""/>` : `<span>фото скоро</span>`}</div>` +
+    `<div class="cs-deck-place-body">` +
+      `<div class="cs-deck-place-kind">место · ${esc(vi.kind)}</div>` +
+      `<div class="cs-deck-place-name">${esc(vi.name)}</div>` +
+      `<div class="cs-deck-place-blurb">${esc(vi.blurb)}</div>` +
     `</div>` +
   `</div>`
 }
@@ -403,10 +393,37 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
     const members = deckMembersRef.current
     const n = members.length
     if (!n) return
-    wrap.innerHTML = deckInnerHTML(members, ((idx % n) + n) % n)
-    wrap.querySelector(".cs-deck-prev")?.addEventListener("click", (ev) => { ev.stopPropagation(); setEvIdx((i) => (i - 1 + n) % n) })
-    wrap.querySelector(".cs-deck-next")?.addEventListener("click", (ev) => { ev.stopPropagation(); setEvIdx((i) => (i + 1) % n) })
-    wrap.querySelector(".cs-deck-front")?.addEventListener("click", (ev) => { ev.stopPropagation(); openRef.current(members[evIdxRef.current] ?? members[0]) })
+    const i = ((idx % n) + n) % n
+    const e = members[i]
+    // Build the shell + wire handlers once per cluster (wrap is recreated on
+    // cluster change, so a fresh wrap has no .cs-deck yet).
+    if (!wrap.querySelector(".cs-deck")) {
+      const nav = n > 1
+        ? `<div class="cs-deck-nav"><button class="cs-deck-prev" type="button" aria-label="назад">←</button><span class="cs-deck-count"></span><button class="cs-deck-next" type="button" aria-label="вперёд">→</button></div>`
+        : ""
+      wrap.innerHTML = `<div class="cs-pola cs-deck"><div class="cs-deck-place-slot"></div><div class="cs-deck-right"><div class="cs-deck-stack-slot"></div>${nav}</div></div>`
+      wrap.dataset.venue = " " // sentinel → force the first place render
+      wrap.querySelector(".cs-deck-prev")?.addEventListener("click", (ev) => { ev.stopPropagation(); setEvIdx((x) => (x - 1 + n) % n) })
+      wrap.querySelector(".cs-deck-next")?.addEventListener("click", (ev) => { ev.stopPropagation(); setEvIdx((x) => (x + 1) % n) })
+      wrap.addEventListener("click", (ev) => {
+        const t = ev.target as HTMLElement
+        if (t.closest?.(".cs-deck-front")) openRef.current(deckMembersRef.current[evIdxRef.current] ?? deckMembersRef.current[0])
+      })
+    }
+    // Place card — update ONLY when the venue changes, so paging same-venue
+    // events doesn't re-render (flicker) the identical place card.
+    const vk = e.venueKey || ""
+    if (wrap.dataset.venue !== vk) {
+      const slot = wrap.querySelector(".cs-deck-place-slot")
+      const vi = venueInfo(vk)
+      if (slot) slot.innerHTML = vi ? placeCardHTML(vi) : ""
+      wrap.dataset.venue = vk
+    }
+    // Event card + counter — always update on paging.
+    const stackSlot = wrap.querySelector(".cs-deck-stack-slot")
+    if (stackSlot) stackSlot.innerHTML = eventStackHTML(members, i)
+    const count = wrap.querySelector(".cs-deck-count")
+    if (count) count.textContent = `${i + 1} / ${n}`
   }
   const renderDeckRef = useRef(renderDeck); renderDeckRef.current = renderDeck
 
