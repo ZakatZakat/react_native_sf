@@ -76,6 +76,39 @@ REGISTRATION: Pattern[str] = re.compile(
     re.IGNORECASE,
 )
 
+# ── Digest / roundup detection ─────────────────────────────────────
+# Aggregator "week ahead" posts list dozens of events across many days with
+# many links. They score high on every event signal, so without a guard they
+# auto-approve and show as ONE bogus event. Reject them up front.
+URL_RE: Pattern[str] = re.compile(
+    r"https?://|t\.me/|instagram\.com|vk\.(?:com|ru)|timepad\.ru|telegra\.ph|teatr\.mos\.ru",
+    re.IGNORECASE,
+)
+ROUNDUP_KW: Pattern[str] = re.compile(
+    r"#\s*артобз|#\s*артраспис|#\s*афиш|обзор\s+недел|расписан\w*\s+недел|афиш\w*\s+недел|"
+    r"подборк|дайджест|смотрим\s+каналы|продолжение\s+следует|что\s+посетить|"
+    r"событи[йя]\s+недел|план\s+на\s+недел",
+    re.IGNORECASE,
+)
+
+
+def looks_like_digest(text: str) -> bool:
+    """True if the post is a multi-event roundup, not a single event."""
+    urls = len(URL_RE.findall(text))
+    weekdays = len({w.lower()[:4] for w in WEEKDAY.findall(text)})
+    dates = len(DATE_DD_MONTH.findall(text)) + len(DATE_DD_MM.findall(text))
+    if ROUNDUP_KW.search(text):
+        return True
+    if urls >= 5:  # a single event rarely carries 5+ distinct links
+        return True
+    if weekdays >= 4:  # 4+ different weekdays enumerated = a week plan
+        return True
+    if weekdays >= 3 and urls >= 3:
+        return True
+    if dates >= 6 and urls >= 3:
+        return True
+    return False
+
 
 @dataclass
 class DetectionHits:
@@ -107,6 +140,12 @@ class DetectionResult:
 def detect_event(text: str) -> DetectionResult:
     if not text:
         return DetectionResult(0, [], DetectionHits())
+
+    # Digest / roundup posts (a week's worth of events in one message) score
+    # high on every signal — reject before scoring so they never surface as a
+    # single event.
+    if looks_like_digest(text):
+        return DetectionResult(0, ["digest"], DetectionHits())
 
     hits = DetectionHits()
     score = 0
