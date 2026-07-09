@@ -74,17 +74,20 @@ class PersonalizedFeedRepository:
         - If `tag_keys` provided, restrict to events that have ANY of these tags.
         - If neither user_id nor tag_keys → all approved events, recency order.
         """
-        # Base events query — upcoming (and undated) events, soonest first.
-        # Past-dated events are dropped so the feed/map shows what's still ahead;
-        # ordering by event_time (NULLs last) keeps the recency-flood of freshly
-        # ingested posts from burying geocoded upcoming events on the map.
+        # Base events query — upcoming (and undated) events. Past-dated events
+        # are dropped so the feed/map shows what's still ahead. Geocoded events
+        # come FIRST (then by soonest event_time): the map plots only events
+        # with coordinates, and most upcoming events lack them (no auto-geocode
+        # yet), so without this the recency-flood of un-geocoded aggregator
+        # posts buries the few geocoded ones out of the fetch window and the map
+        # renders empty. Geo-first keeps placeable events in the window.
         now = datetime.utcnow()
         ev_q = (
             select(EventCurated, PostRaw)
             .join(PostRaw, PostRaw.id == EventCurated.post_id)
             .where(EventCurated.status == EventStatus.approved)
             .where(or_(EventCurated.event_time >= now, EventCurated.event_time.is_(None)))
-            .order_by(EventCurated.event_time.asc().nulls_last())
+            .order_by(EventCurated.location_meta.isnot(None).desc(), EventCurated.event_time.asc().nulls_last())
         )
 
         # Filter by tags
