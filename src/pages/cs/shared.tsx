@@ -161,12 +161,23 @@ const KEYFRAMES = `
   .cs-clu-count { position: absolute; right: -4px; top: -7px; z-index: 6; min-width: 17px; height: 17px; padding: 0 4px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; background: #0055FF; color: #fff; border: 2px solid #fff; border-radius: 999px; font-family: var(--cs-font-mono); font-weight: 700; font-size: 9px; line-height: 1; }
   .cs-clu-name { margin-top: 3px; max-width: 100px; background: #fff; border: 1.5px solid #0D0D0D; box-shadow: 1.5px 1.5px 0 rgba(13,13,13,0.8); padding: 2px 6px 2.5px; font-family: var(--cs-font-sans); font-weight: 900; font-size: 7.5px; line-height: 1.2; letter-spacing: 0.03em; text-transform: uppercase; color: #0D0D0D; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .cs-clu-tip { width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 6px solid #0D0D0D; margin-top: -1px; }
-  .cs-pola { position: relative; width: 46px; height: 58px; cursor: pointer; animation: cs-scatter-in 0.45s cubic-bezier(0.22,1,0.36,1) both; animation-delay: calc(var(--si,0) * 0.06s); }
-  .cs-pola-card { position: absolute; inset: 0; box-sizing: border-box; background: #fff; border: 2px solid #0D0D0D; box-shadow: 2.5px 3px 0 rgba(13,13,13,0.75); padding: 3px 3px 0; animation: cs-pola-float calc(3.6s + var(--si,0) * 0.35s) ease-in-out infinite; transition: transform 0.25s cubic-bezier(0.22,1,0.36,1), box-shadow 0.22s ease; }
-  .cs-pola-img { width: 100%; height: 36px; overflow: hidden; outline: 1px solid rgba(13,13,13,0.18); }
+  .cs-pola { position: relative; width: 116px; cursor: pointer; display: flex; flex-direction: column; align-items: center; animation: cs-scatter-in 0.45s cubic-bezier(0.22,1,0.36,1) both; animation-delay: calc(var(--si,0) * 0.06s); }
+  .cs-pola-card { width: 116px; box-sizing: border-box; background: #fff; border: 2.5px solid #0D0D0D; box-shadow: 3px 4px 0 rgba(13,13,13,0.85); overflow: hidden; transform: rotate(var(--pr,-3deg)); transform-origin: bottom center; transition: transform 0.25s cubic-bezier(0.22,1,0.36,1), box-shadow 0.22s ease, border-color 0.2s ease; }
+  .cs-pola-img { width: 100%; height: 62px; overflow: hidden; border-bottom: 2px solid #0D0D0D; background: #E4E4E1; }
   .cs-pola-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .cs-pola-name { height: 13px; line-height: 13px; text-align: center; font-family: var(--cs-font-sans); font-weight: 900; font-size: 5.8px; letter-spacing: 0.04em; text-transform: uppercase; color: #0D0D0D; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .cs-pola.cs-scatter-active .cs-pola-card { animation: none; transform: rotate(0deg) translateY(-5px) scale(1.3); box-shadow: 3px 6px 0 #0D0D0D; }
+  .cs-pola-body { padding: 5px 6px 6px; text-align: left; line-height: normal; }
+  .cs-pola-top { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-bottom: 3px; }
+  .cs-pola-cat { background: #0055FF; color: #fff; font-family: var(--cs-font-mono); font-weight: 700; font-size: 6.5px; letter-spacing: 0.07em; text-transform: uppercase; padding: 1.5px 4px; max-width: 74px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cs-pola-date { font-family: var(--cs-font-mono); font-weight: 700; font-size: 8px; letter-spacing: 0.02em; color: #0D0D0D; white-space: nowrap; }
+  .cs-pola-title { font-family: var(--cs-font-sans); font-weight: 900; font-size: 9.5px; line-height: 1.08; letter-spacing: -0.01em; text-transform: uppercase; color: #0D0D0D; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .cs-pola-meta { margin-top: 3px; font-family: var(--cs-font-mono); font-weight: 700; font-size: 7px; letter-spacing: 0.02em; color: rgba(13,13,13,0.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cs-pola-lead { display: flex; flex-direction: column; align-items: center; }
+  .cs-pola-stem { width: 2.5px; height: 15px; background: #0D0D0D; }
+  .cs-pola-arrow { width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 8px solid #0D0D0D; margin-top: -1px; }
+  .cs-pola.cs-scatter-active { z-index: 5; }
+  .cs-pola.cs-scatter-active .cs-pola-card { transform: rotate(0deg) scale(1.08); box-shadow: 4px 8px 0 #0055FF; border-color: #0055FF; }
+  .cs-pola.cs-scatter-active .cs-pola-stem { background: #0055FF; }
+  .cs-pola.cs-scatter-active .cs-pola-arrow { border-top-color: #0055FF; }
   @keyframes cs-sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
   /* map-intro zoom/pitch controls: lift above the «Вся лента» CTA so they don't collide */
   .maplibregl-ctrl-bottom-right { margin-bottom: 104px !important; margin-right: 8px !important; }

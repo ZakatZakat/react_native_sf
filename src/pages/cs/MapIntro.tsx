@@ -174,15 +174,27 @@ function clusterFanEl(cl: Cluster, gi: number): HTMLElement {
   return wrap
 }
 
-/** Single-event polaroid marker (v7 makePolaEl) for cluster drill-down. */
+/** Single-event card marker for cluster drill-down: poster + category + date +
+ *  full (2-line) title + time·venue, with a leader arrow pointing DOWN to the
+ *  event's building at the ground point below it. */
 function polaEl(e: Ev, i: number): HTMLElement {
-  const rots = [-6, 4, -3, 6, -5, 3, 5, -4]
+  const rots = [-3, 2, -2, 3, -2, 2, 3, -3]
   const wrap = document.createElement("div")
   wrap.className = "cs-scatter-wrap"
+  const date = e.d && e.d !== "—" ? e.d : ""
+  const meta = [e.tm, e.v].filter((s) => s && s !== "—").join(" · ")
   wrap.innerHTML =
-    `<div class="cs-pola" style="--si:${i};--pr:${rots[i % rots.length]}deg"><div class="cs-pola-card">` +
-    `<div class="cs-pola-img">${e.p ? `<img src="${e.p}" alt=""/>` : ""}</div>` +
-    `<div class="cs-pola-name">${esc(e.t || "")}</div></div></div>`
+    `<div class="cs-pola" style="--si:${i};--pr:${rots[i % rots.length]}deg">` +
+      `<div class="cs-pola-card">` +
+        `<div class="cs-pola-img">${e.p ? `<img src="${e.p}" alt=""/>` : ""}</div>` +
+        `<div class="cs-pola-body">` +
+          `<div class="cs-pola-top"><span class="cs-pola-cat">${esc(e.c || "событие")}</span>${date ? `<span class="cs-pola-date">${esc(date)}</span>` : ""}</div>` +
+          `<div class="cs-pola-title">${esc(e.t || "")}</div>` +
+          (meta ? `<div class="cs-pola-meta">${esc(meta)}</div>` : "") +
+        `</div>` +
+      `</div>` +
+      `<div class="cs-pola-lead"><span class="cs-pola-stem"></span><span class="cs-pola-arrow"></span></div>` +
+    `</div>`
   return wrap
 }
 
@@ -520,9 +532,10 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
           const el = polaEl(e, i)
           el.style.cursor = "pointer"
           el.addEventListener("click", (ev) => { ev.stopPropagation(); setEvIdx(i); openRef.current(e) })
-          // anchor "bottom" + lift: the card floats ABOVE its building like a tag.
+          // anchor "bottom": the leader arrow's TIP sits on the event coord, so
+          // it points straight down at the building rising from that ground spot.
           // Cards stay on their real coords (no snap-move → no "redistribute" jump).
-          const m = new maplibregl.Marker({ element: el, anchor: "bottom", offset: [0, -10] }).setLngLat([ll[1], ll[0]]).addTo(map)
+          const m = new maplibregl.Marker({ element: el, anchor: "bottom", offset: [0, 0] }).setLngLat([ll[1], ll[0]]).addTo(map)
           scatterRef.current.push(m)
         })
         // Fly straight to the first event (centred) — lightClusterBuildings then
