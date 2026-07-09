@@ -649,47 +649,43 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
                 <span style={{ width: 8, height: 8, background: CS.B, borderRadius: "50%" }} />тапни кластер, чтобы раскрыть
               </div>
             </div>
-          ) : (<>
-          {(() => {
-            const vi = venueInfo(deckEvents[evIdx]?.venueKey)
-            if (!vi) return null
-            return (
-              <div style={{ padding: "0 14px 8px" }}>
-                <div style={{ display: "flex", gap: 10, border: `2.5px solid ${CS.K}`, boxShadow: `3px 3px 0 ${CS.B}`, background: CS.W, overflow: "hidden" }}>
-                  <div style={{ width: 74, flexShrink: 0, borderRight: `2px solid ${CS.K}`, background: "repeating-linear-gradient(45deg,#E4E4E1,#E4E4E1 6px,#d9d9d6 6px,#d9d9d6 12px)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {vi.img
-                      ? <img src={vi.img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                      : <span style={{ fontFamily: FONT_MONO, fontSize: 7, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(13,13,13,0.4)", textTransform: "uppercase", transform: "rotate(-90deg)", whiteSpace: "nowrap" }}>фото скоро</span>}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0, padding: "8px 10px" }}>
-                    <div style={{ fontFamily: FONT_MONO, fontSize: 8, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: CS.B }}>место · {vi.kind}</div>
-                    <div style={{ fontWeight: 900, fontSize: 15, letterSpacing: "-0.02em", lineHeight: 1.04, color: CS.K, marginTop: 3 }}>{vi.name}</div>
-                    <div style={{ fontFamily: FONT_SANS, fontSize: 10.5, lineHeight: 1.34, color: "rgba(13,13,13,0.72)", marginTop: 5 }}>{vi.blurb}</div>
-                  </div>
-                </div>
-              </div>
-            )
-          })()}
+          ) : (
           <div style={{ padding: "0 14px 10px" }}>
+            {/* Место (слева) + карточка ивента (справа) — в один ряд, без нагромождения */}
             <div style={{ display: "flex", alignItems: "stretch", gap: 8 }}>
-              <button onClick={() => setEvIdx((i) => (i - 1 + deckEvents.length) % deckEvents.length)} style={{ width: 28, flexShrink: 0, border: `2px solid ${CS.K}`, background: CS.W, cursor: "pointer", fontSize: 15, fontWeight: 900, color: CS.K, lineHeight: 1 }}>←</button>
-              <button onClick={() => openRef.current(deckEvents[evIdx])} style={{ flex: 1, minWidth: 0, display: "flex", gap: 0, textAlign: "left", padding: 0, border: `2.5px solid ${CS.K}`, boxShadow: `3px 3px 0 ${CS.K}`, background: CS.W, cursor: "pointer", overflow: "hidden" }}>
-                <div style={{ width: 60, flexShrink: 0, borderRight: `2px solid ${CS.K}`, overflow: "hidden", background: "#eee" }}>
+              {(() => {
+                const vi = venueInfo(deckEvents[evIdx]?.venueKey)
+                if (!vi) return null
+                return (
+                  <div style={{ flex: "1.1", minWidth: 0, border: `2.5px solid ${CS.K}`, boxShadow: `3px 3px 0 ${CS.B}`, background: CS.W, padding: "7px 9px", display: "flex", flexDirection: "column" }}>
+                    <div style={{ fontFamily: FONT_MONO, fontSize: 7.5, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: CS.B }}>место · {vi.kind}</div>
+                    <div style={{ fontWeight: 900, fontSize: 13, letterSpacing: "-0.02em", lineHeight: 1.02, color: CS.K, marginTop: 2 }}>{vi.name}</div>
+                    <div style={{ fontFamily: FONT_SANS, fontSize: 9.5, lineHeight: 1.3, color: "rgba(13,13,13,0.7)", marginTop: 4, display: "-webkit-box", WebkitLineClamp: 5, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{vi.blurb}</div>
+                  </div>
+                )
+              })()}
+              <button onClick={() => openRef.current(deckEvents[evIdx])} style={{ flex: "1", minWidth: 0, display: "flex", flexDirection: "column", textAlign: "left", padding: 0, border: `2.5px solid ${CS.K}`, boxShadow: `3px 3px 0 ${CS.K}`, background: CS.W, cursor: "pointer", overflow: "hidden" }}>
+                <div style={{ width: "100%", height: 62, flexShrink: 0, borderBottom: `2px solid ${CS.K}`, overflow: "hidden", background: "#eee" }}>
                   {deckEvents[evIdx]?.p && <img key={deckEvents[evIdx].id} src={deckEvents[evIdx].p!} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", animation: "cs-burst-in 0.3s ease both" }} />}
                 </div>
-                <div style={{ flex: 1, minWidth: 0, padding: "7px 9px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
-                  <span style={{ fontWeight: 900, fontSize: 7.5, letterSpacing: "0.14em", textTransform: "uppercase", color: CS.B }}>{deckEvents[evIdx]?.c}</span>
-                  <div style={{ fontWeight: 900, fontSize: 15, letterSpacing: "-0.02em", lineHeight: 1, color: CS.K, marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{deckEvents[evIdx]?.t}</div>
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 5, fontFamily: FONT_MONO, fontSize: 9.5, color: "rgba(13,13,13,0.55)" }}>
+                <div style={{ padding: "6px 8px 7px" }}>
+                  <span style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 7.5, letterSpacing: "0.12em", textTransform: "uppercase", color: CS.B }}>{deckEvents[evIdx]?.c}</span>
+                  <div style={{ fontWeight: 900, fontSize: 12.5, letterSpacing: "-0.02em", lineHeight: 1.06, color: CS.K, marginTop: 2, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{deckEvents[evIdx]?.t}</div>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 6, marginTop: 4, fontFamily: FONT_MONO, fontSize: 8.5, color: "rgba(13,13,13,0.55)" }}>
                     <span style={{ overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{deckEvents[evIdx]?.v}</span>
                     <span style={{ color: CS.K, fontWeight: 700, whiteSpace: "nowrap" }}>{deckEvents[evIdx]?.tm}</span>
                   </div>
                 </div>
               </button>
-              <button onClick={() => setEvIdx((i) => (i + 1) % deckEvents.length)} style={{ width: 28, flexShrink: 0, border: `2px solid ${CS.K}`, background: CS.W, cursor: "pointer", fontSize: 15, fontWeight: 900, color: CS.K, lineHeight: 1 }}>→</button>
+            </div>
+            {/* листалка — тонкой полосой под парой */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+              <button onClick={() => setEvIdx((i) => (i - 1 + deckEvents.length) % deckEvents.length)} style={{ flex: 1, height: 30, border: `2px solid ${CS.K}`, background: CS.W, cursor: "pointer", fontSize: 15, fontWeight: 900, color: CS.K, lineHeight: 1 }}>←</button>
+              <span style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 11, color: CS.K, minWidth: 46, textAlign: "center" }}>{evIdx + 1} / {deckEvents.length}</span>
+              <button onClick={() => setEvIdx((i) => (i + 1) % deckEvents.length)} style={{ flex: 1, height: 30, border: `2px solid ${CS.K}`, background: CS.W, cursor: "pointer", fontSize: 15, fontWeight: 900, color: CS.K, lineHeight: 1 }}>→</button>
             </div>
           </div>
-          </>)}
+          )}
           <div style={{ padding: "0 14px 12px" }}>
             <button onClick={onEnter} style={{ width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "10px 18px", border: `2.5px solid ${CS.K}`, background: CS.K, color: "#fff", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 13, letterSpacing: "0.04em", textTransform: "uppercase", boxShadow: `3px 3px 0 ${CS.B}` }}>
               <span>Открыть район в ленте</span><span style={{ fontSize: 15, lineHeight: 1 }}>→</span>
