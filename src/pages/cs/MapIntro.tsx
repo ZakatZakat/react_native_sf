@@ -576,13 +576,29 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         const m = new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([cl.ll[1], cl.ll[0]]).addTo(map)
         scatterRef.current.push(m)
       })
-      // easeTo a fixed zoom on the event-weighted centroid — robust to a single
-      // far-flung event (which would blow up a fitBounds and leave the view at
-      // city scale), and immune to the pitched-camera fitBounds under-zoom.
-      if (clusters.length) {
-        let sx = 0, sy = 0, n = 0
-        clusters.forEach((c) => { sx += c.ll[1] * c.members.length; sy += c.ll[0] * c.members.length; n += c.members.length })
-        map.easeTo({ center: [sx / n, sy / n], zoom: 12.6, pitch: 52, bearing: -14, duration: 800 })
+      // Frame the WHOLE zone: fit all cluster centroids inside the visible area
+      // (inset from the heading + bottom sheet) so nothing hides at the edges —
+      // the old fixed 12.6 left far-apart clusters stranded in the corners. Use
+      // cameraForBounds (computes center+zoom flat, for the target bearing) then
+      // apply pitch — sidesteps MapLibre's pitched-fitBounds under-zoom. Zoom is
+      // clamped so a single far-flung cluster can't blow it past city scale and
+      // a tight zone doesn't over-zoom.
+      if (clusters.length === 1) {
+        map.easeTo({ center: [clusters[0].ll[1], clusters[0].ll[0]], zoom: 13.2, pitch: 52, bearing: -14, duration: 800 })
+      } else if (clusters.length > 1) {
+        const fallback = () => {
+          let sx = 0, sy = 0, n = 0
+          clusters.forEach((c) => { sx += c.ll[1] * c.members.length; sy += c.ll[0] * c.members.length; n += c.members.length })
+          map.easeTo({ center: [sx / n, sy / n], zoom: 12.4, pitch: 52, bearing: -14, duration: 800 })
+        }
+        try {
+          const b = new maplibregl.LngLatBounds()
+          clusters.forEach((c) => b.extend([c.ll[1], c.ll[0]]))
+          const cam = map.cameraForBounds(b, { padding: { top: 200, bottom: 210, left: 40, right: 40 }, maxZoom: 13.4, bearing: -14 })
+          if (cam?.center) {
+            map.easeTo({ center: cam.center, zoom: Math.max(10.8, Math.min(13.4, cam.zoom ?? 12.4)), pitch: 52, bearing: -14, duration: 800 })
+          } else fallback()
+        } catch { fallback() }
       }
     } else {
       // Level 2 — ONE fanned deck at the cluster centre; browse with ← →.
