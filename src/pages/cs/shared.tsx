@@ -173,6 +173,18 @@ const KEYFRAMES = `
   .cs-pola.cs-scatter-active { z-index: 6; }
   .cs-pola.cs-scatter-active .cs-pola-card { transform: scale(1.06); box-shadow: 4px 8px 0 #0055FF; border-color: #0055FF; }
   .cs-leader-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; overflow: visible; }
+  /* cluster deck (fanned card stack with ← N/total → pager) */
+  .cs-deck { align-items: flex-start; }
+  .cs-deck-stack { position: relative; width: 128px; }
+  .cs-deck-front { position: relative; z-index: 3; }
+  .cs-deck-ghost { position: absolute; inset: 0; background: #fff; border: 2.5px solid #0D0D0D; box-shadow: 3px 4px 0 rgba(13,13,13,0.4); }
+  .cs-dg1 { transform: translate(7px, 7px) rotate(2.5deg); z-index: 2; }
+  .cs-dg2 { transform: translate(13px, 14px) rotate(5deg); z-index: 1; }
+  .cs-deck-title { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .cs-deck-nav { display: inline-flex; align-items: center; gap: 5px; margin-top: 9px; background: #0D0D0D; padding: 4px 5px; box-shadow: 2px 2px 0 #0055FF; }
+  .cs-deck-nav button { width: 22px; height: 22px; border: none; background: #fff; color: #0D0D0D; font-weight: 900; font-size: 13px; line-height: 1; cursor: pointer; font-family: var(--cs-font-sans); }
+  .cs-deck-nav button:active { background: #0055FF; color: #fff; }
+  .cs-deck-count { font-family: var(--cs-font-mono); font-weight: 700; font-size: 9px; color: #fff; padding: 0 3px; white-space: nowrap; }
   @keyframes cs-sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
   /* map-intro zoom/pitch controls: lift above the «Вся лента» CTA so they don't collide */
   .maplibregl-ctrl-bottom-right { margin-bottom: 104px !important; margin-right: 8px !important; }

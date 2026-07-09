@@ -174,27 +174,32 @@ function clusterFanEl(cl: Cluster, gi: number): HTMLElement {
   return wrap
 }
 
-/** Single-event card marker for cluster drill-down: poster + category + date +
- *  title + time·venue + post description. The connector to its building is a
- *  dynamic SVG leader (see drawLeaders) — cards can't point straight down
- *  because co-located events fan out around a shared building. */
-function polaEl(e: Ev, i: number): HTMLElement {
-  const wrap = document.createElement("div")
-  wrap.className = "cs-scatter-wrap"
+/** Inner HTML for the cluster DECK: the active event as a full card in front,
+ *  up to two "ghost" cards fanned behind to show the pile, and a ← N/total →
+ *  pager. Co-located events (all at one building) are a tidy deck you flip
+ *  through, not a confusing ring of overlapping cards. */
+function deckInnerHTML(members: Ev[], idx: number): string {
+  const e = members[idx]
+  const n = members.length
   const date = e.d && e.d !== "—" ? e.d : ""
   const meta = [e.tm, e.v].filter((s) => s && s !== "—").join(" · ")
-  wrap.innerHTML =
-    `<div class="cs-pola" style="--si:${i}">` +
-      `<div class="cs-pola-card">` +
+  const ghosts = n > 1 ? `<div class="cs-deck-ghost cs-dg2"></div><div class="cs-deck-ghost cs-dg1"></div>` : ""
+  const nav = n > 1
+    ? `<div class="cs-deck-nav"><button class="cs-deck-prev" type="button" aria-label="назад">←</button>` +
+      `<span class="cs-deck-count">${idx + 1} / ${n}</span>` +
+      `<button class="cs-deck-next" type="button" aria-label="вперёд">→</button></div>`
+    : ""
+  return `<div class="cs-pola cs-deck">` +
+    `<div class="cs-deck-stack">${ghosts}` +
+      `<div class="cs-pola-card cs-deck-front">` +
         `<div class="cs-pola-img">${e.p ? `<img src="${e.p}" alt=""/>` : ""}</div>` +
         `<div class="cs-pola-body">` +
           `<div class="cs-pola-top"><span class="cs-pola-cat">${esc(e.c || "событие")}</span>${date ? `<span class="cs-pola-date">${esc(date)}</span>` : ""}</div>` +
-          `<div class="cs-pola-title">${esc(e.t || "")}</div>` +
+          `<div class="cs-pola-title cs-deck-title">${esc(e.t || "")}</div>` +
           (meta ? `<div class="cs-pola-meta">${esc(meta)}</div>` : "") +
         `</div>` +
       `</div>` +
-    `</div>`
-  return wrap
+    `</div>${nav}</div>`
 }
 
 // ── Highlight event buildings (signal-blue) ─────────────────────────────────
@@ -320,6 +325,8 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const hlBuildingsRef = useRef<Hl[]>([]) // all currently-lit event buildings
   const leaderSvgRef = useRef<SVGSVGElement | null>(null) // overlay for card→building leaders
   const leadersRef = useRef<{ card: [number, number]; target: [number, number]; i: number }[]>([])
+  const deckWrapRef = useRef<HTMLDivElement | null>(null) // the cluster deck marker element
+  const deckMembersRef = useRef<Ev[]>([])
   const zoneMarkersRef = useRef<Record<string, HTMLElement>>({})
   const scatterRef = useRef<maplibregl.Marker[]>([])
   const [ready, setReady] = useState(false)
@@ -338,7 +345,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const drawLeaders = () => {
     const map = mapRef.current, svg = leaderSvgRef.current
     if (!map || !svg) return
-    const ld = leadersRef.current.find((l) => l.i === evIdxRef.current)
+    const ld = leadersRef.current[0]
     if (!ld) { if (svg.childNodes.length) svg.replaceChildren(); return }
     const a = map.project([ld.card[1], ld.card[0]])     // card anchor (bottom of card)
     const b = map.project([ld.target[1], ld.target[0]]) // building ground point
@@ -392,18 +399,20 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const lightClusterRef = useRef(lightClusterBuildings); lightClusterRef.current = lightClusterBuildings
 
   // Recenter on the active card (keeps it framed) then (re)light the cluster.
-  const focusActiveAndLight = () => {
-    const map = mapRef.current
-    if (!map || selClusterRef.current == null) return
-    const mk = scatterRef.current[evIdxRef.current]
-    if (mk) {
-      map.easeTo({ center: mk.getLngLat(), zoom: 15.2, pitch: 52, bearing: -14, duration: 450 })
-      map.once("moveend", () => lightClusterRef.current())
-    } else {
-      lightClusterRef.current()
-    }
+  // Rebuild the deck's DOM for a given active index + (re)wire its ← / → / open
+  // handlers. One marker, updated in place, so paging doesn't recreate it.
+  const renderDeck = (idx: number) => {
+    const wrap = deckWrapRef.current
+    if (!wrap) return
+    const members = deckMembersRef.current
+    const n = members.length
+    if (!n) return
+    wrap.innerHTML = deckInnerHTML(members, ((idx % n) + n) % n)
+    wrap.querySelector(".cs-deck-prev")?.addEventListener("click", (ev) => { ev.stopPropagation(); setEvIdx((i) => (i - 1 + n) % n) })
+    wrap.querySelector(".cs-deck-next")?.addEventListener("click", (ev) => { ev.stopPropagation(); setEvIdx((i) => (i + 1) % n) })
+    wrap.querySelector(".cs-deck-front")?.addEventListener("click", (ev) => { ev.stopPropagation(); openRef.current(members[evIdxRef.current] ?? members[0]) })
   }
-  const focusActiveRef = useRef(focusActiveAndLight); focusActiveRef.current = focusActiveAndLight
+  const renderDeckRef = useRef(renderDeck); renderDeckRef.current = renderDeck
 
   // group real geocoded events by centre-disk + directional sector
   const byZone = useMemo(() => {
@@ -566,45 +575,39 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         map.easeTo({ center: [sx / n, sy / n], zoom: 12.6, pitch: 52, bearing: -14, duration: 800 })
       }
     } else {
-      // Level 2 — polaroids on each event's REAL spot.
+      // Level 2 — ONE fanned deck at the cluster centre; browse with ← →.
       const cl = clusters[selCluster]
       if (cl) {
-        cl.members.forEach((e, i) => {
-          const ll = cl.pts[i]
-          const el = polaEl(e, i)
-          el.style.cursor = "pointer"
-          el.addEventListener("click", (ev) => { ev.stopPropagation(); setEvIdx(i); openRef.current(e) })
-          // anchor "bottom": the leader arrow's TIP sits on the event coord, so
-          // it points straight down at the building rising from that ground spot.
-          // Cards stay on their real coords (no snap-move → no "redistribute" jump).
-          const m = new maplibregl.Marker({ element: el, anchor: "bottom", offset: [0, 0] }).setLngLat([ll[1], ll[0]]).addTo(map)
-          scatterRef.current.push(m)
-        })
-        // leader targets: each card (at its fanned spot) → its real building coord
-        leadersRef.current = cl.members.map((e, i) => ({
-          card: cl.pts[i], target: (e.geo as [number, number]) ?? cl.pts[i], i,
-        }))
+        const wrap = document.createElement("div")
+        wrap.className = "cs-scatter-wrap"
+        deckMembersRef.current = cl.members
+        deckWrapRef.current = wrap
+        renderDeckRef.current(0)
+        // anchor "bottom" at the cluster centroid; the leader points from here
+        // down to the active event's real building.
+        const m = new maplibregl.Marker({ element: wrap, anchor: "bottom", offset: [0, -6] }).setLngLat([cl.ll[1], cl.ll[0]]).addTo(map)
+        scatterRef.current.push(m)
+        leadersRef.current = [{ card: cl.ll, target: (cl.members[0]?.geo as [number, number]) ?? cl.ll, i: 0 }]
         drawLeadersRef.current()
-        // Fly straight to the first event (centred) — lightClusterBuildings then
-        // lights EVERY event building in the cluster. No centroid hop.
-        const first = cl.pts[0] || [cl.ll[0], cl.ll[1]]
-        map.easeTo({ center: [first[1], first[0]], zoom: 15.2, pitch: 52, bearing: -14, duration: 700 })
-        map.once("moveend", () => { if (hlTokenRef.current === hlToken) lightClusterRef.current() })
+        // Ease to the centroid at building-visible zoom; lightClusterBuildings
+        // then lights every event building in the cluster.
+        map.easeTo({ center: [cl.ll[1], cl.ll[0]], zoom: 15, pitch: 52, bearing: -14, duration: 700 })
+        map.once("moveend", () => { if (hlTokenRef.current === hlToken) { lightClusterRef.current(); drawLeadersRef.current() } })
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selZone, selCluster, ready])
 
-  // highlight the active polaroid; every event building in the cluster is
-  // already lit blue, so swiping just reframes the active card and re-lights
-  // (merging in any buildings whose tiles weren't loaded before).
+  // Paging the deck: rebuild its front card + re-point the leader at the new
+  // active event's building. No camera move — the deck stays put.
   useEffect(() => {
-    scatterRef.current.forEach((m, i) => {
-      const pola = m.getElement().querySelector(".cs-pola")
-      if (pola) pola.classList.toggle("cs-scatter-active", i === evIdx)
-    })
-    drawLeadersRef.current() // recolour the active card's leader
-    if (selCluster != null) focusActiveRef.current()
+    if (selCluster == null) return
+    renderDeckRef.current(evIdx)
+    const members = deckMembersRef.current
+    const ld = leadersRef.current[0]
+    const g = members[evIdx]?.geo
+    if (ld && Array.isArray(g)) ld.target = g as [number, number]
+    drawLeadersRef.current()
   }, [evIdx, selZone, selCluster])
 
   const activeCluster = selZone != null && selCluster != null ? (clustersByZone[selZone]?.[selCluster] ?? null) : null
