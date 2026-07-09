@@ -324,6 +324,23 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   }
   const drawLeadersRef = useRef(drawLeaders); drawLeadersRef.current = drawLeaders
 
+  // Scale the deck WITH the map zoom so it doesn't dominate the view when you
+  // zoom out (constant-px markers otherwise stay huge over a tiny map). Scale
+  // tracks the map (2^Δzoom from the cluster's home zoom 15), clamped so cards
+  // never vanish or get absurd. Applied to the inner .cs-deck (the marker sets
+  // its own transform on the wrap, so we scale a child to avoid clobbering it).
+  const DECK_REF_ZOOM = 15
+  const scaleDeck = () => {
+    const map = mapRef.current, wrap = deckWrapRef.current
+    if (!map || !wrap) return
+    const inner = wrap.firstElementChild as HTMLElement | null // .cs-pola.cs-deck
+    if (!inner) return
+    const s = Math.min(1.2, Math.max(0.34, Math.pow(2, map.getZoom() - DECK_REF_ZOOM)))
+    inner.style.transformOrigin = "bottom center"
+    inner.style.transform = `scale(${s.toFixed(3)})`
+  }
+  const scaleDeckRef = useRef(scaleDeck); scaleDeckRef.current = scaleDeck
+
   // Mark every venue in the cluster: a precomputed building footprint → a blue
   // building; a venue with no footprint (metro/park/aggregator) → a blue dot.
   // Fully deterministic (no queryRenderedFeatures) so it's instant, consistent,
@@ -487,7 +504,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
           boxRef.current.appendChild(svg)
           leaderSvgRef.current = svg
         }
-        map.on("render", () => drawLeadersRef.current())
+        map.on("render", () => { drawLeadersRef.current(); scaleDeckRef.current() })
 
         placeZonesRef.current() // district bubbles (re-placed later if data was slow)
         // Fixed view anchored on central Moscow — NOT fitBounds, which would
@@ -576,6 +593,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         deckMembersRef.current = cl.members
         deckWrapRef.current = wrap
         renderDeckRef.current(0)
+        scaleDeckRef.current() // size the deck to the current zoom right away
         // anchor "bottom" at the cluster centroid; the leader points from here
         // down to the active event's real building.
         const m = new maplibregl.Marker({ element: wrap, anchor: "bottom", offset: [0, -6] }).setLngLat([cl.ll[1], cl.ll[0]]).addTo(map)

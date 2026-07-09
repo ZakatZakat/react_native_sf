@@ -175,7 +175,7 @@ const KEYFRAMES = `
   .cs-leader-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; overflow: visible; }
   /* cluster deck (fanned card stack with ← N/total → pager) */
   /* deck = place card (left) + event stack & pager (right), centred pair */
-  .cs-deck { flex-direction: row; align-items: flex-start; gap: 8px; width: auto; }
+  .cs-deck { flex-direction: row; align-items: flex-start; gap: 8px; width: auto; animation: none; }
   .cs-deck-place-slot { display: contents; } /* place card becomes a direct flex item; empty slot renders nothing */
   .cs-deck-right { display: flex; flex-direction: column; align-items: flex-start; }
   .cs-deck-place { width: 148px; flex-shrink: 0; box-sizing: border-box; background: #fff; border: 2.5px solid #0D0D0D; box-shadow: 3px 4px 0 rgba(13,13,13,0.85); overflow: hidden; }
