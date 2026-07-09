@@ -183,6 +183,8 @@ function placeCardHTML(vi: VenueInfo): string {
       `<div class="cs-deck-place-kind">место · ${esc(vi.kind)}</div>` +
       `<div class="cs-deck-place-name">${esc(vi.name)}</div>` +
       `<div class="cs-deck-place-blurb">${esc(vi.blurb)}</div>` +
+      (vi.address ? `<div class="cs-deck-place-addr">📍 ${esc(vi.address)}</div>` : "") +
+      `<button class="cs-deck-center" type="button">Центрировать карту</button>` +
     `</div>` +
   `</div>`
 }
@@ -407,6 +409,18 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       wrap.querySelector(".cs-deck-next")?.addEventListener("click", (ev) => { ev.stopPropagation(); setEvIdx((x) => (x + 1) % n) })
       wrap.addEventListener("click", (ev) => {
         const t = ev.target as HTMLElement
+        // «Центрировать карту» — плавно наводим на здание активного события
+        // (оно уже подсвечено синим), с зумом на площадку.
+        if (t.closest?.(".cs-deck-center")) {
+          ev.stopPropagation()
+          const map = mapRef.current
+          const g = deckMembersRef.current[evIdxRef.current]?.geo
+          if (map && Array.isArray(g)) {
+            map.easeTo({ center: [g[1], g[0]], zoom: 16, pitch: 52, bearing: -14, duration: 650 })
+            map.once("moveend", () => { const c = clustersRef.current[selZoneRef.current || ""]?.[selClusterRef.current ?? -1]; if (c) lightClusterRef.current(c, hlTokenRef.current) })
+          }
+          return
+        }
         if (t.closest?.(".cs-deck-front")) openRef.current(deckMembersRef.current[evIdxRef.current] ?? deckMembersRef.current[0])
       })
     }
