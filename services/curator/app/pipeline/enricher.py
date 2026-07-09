@@ -9,6 +9,7 @@ from typing import Optional
 
 import dateparser
 
+from app.pipeline import gazetteer
 from app.pipeline.detector import DetectionHits
 
 
@@ -25,6 +26,7 @@ class EnrichmentResult:
     event_time: Optional[datetime]
     event_time_end: Optional[datetime]
     location_text: Optional[str]
+    location_meta: Optional[dict]
     price_text: Optional[str]
     price_kopecks: Optional[int]
 
@@ -46,7 +48,12 @@ def _build_dt(date_snippet: str | None, time_snippet: str | None, base: datetime
     return _parse_dt(composed, base=base)
 
 
-def enrich_event(text: str, hits: DetectionHits, published_at: datetime | None = None) -> EnrichmentResult:
+def enrich_event(
+    text: str,
+    hits: DetectionHits,
+    published_at: datetime | None = None,
+    channel_handle: str | None = None,
+) -> EnrichmentResult:
     # ── Datetime ──
     date_snippet = hits.date[0] if hits.date else (hits.relative_day[0] if hits.relative_day else None)
     time_snippet = None
@@ -72,6 +79,12 @@ def enrich_event(text: str, hits: DetectionHits, published_at: datetime | None =
         # Prefer specific (metro/street) over institution; first hit usually best
         location_text = hits.venues[0][:255]
 
+    # ── Geo (building-precise, gazetteer — issue #2) ──
+    # Venue named in the post wins; else the source channel's own building.
+    location_meta = gazetteer.geocode(
+        text=text, location_text=location_text, channel_handle=channel_handle
+    )
+
     # ── Price ──
     price_text: str | None = None
     price_kopecks: int | None = None
@@ -92,6 +105,7 @@ def enrich_event(text: str, hits: DetectionHits, published_at: datetime | None =
         event_time=event_time,
         event_time_end=event_time_end,
         location_text=location_text,
+        location_meta=location_meta,
         price_text=price_text,
         price_kopecks=price_kopecks,
     )

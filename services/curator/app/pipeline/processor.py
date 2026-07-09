@@ -109,7 +109,9 @@ class PipelineProcessor:
                 if not detection.is_event_review:
                     rejected += 1
                     continue
-                enrichment = enrich_event(p.text, detection.hits, published_at=p.published_at)
+                enrichment = enrich_event(
+                    p.text, detection.hits, published_at=p.published_at, channel_handle=ch.handle
+                )
                 status = (
                     EventStatus.approved
                     if detection.is_event_auto

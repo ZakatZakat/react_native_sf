@@ -73,6 +73,7 @@ class EventsRepository:
             event_time=enrichment.event_time,
             event_time_end=enrichment.event_time_end,
             location_text=enrichment.location_text,
+            location_meta=enrichment.location_meta,
             price_text=enrichment.price_text,
             price_kopecks=enrichment.price_kopecks,
             filter_score=detection.score,
