@@ -162,9 +162,14 @@ export function buildDerived(events: FeedItem[]): DerivedData {
     s.forEach((x) => { if (l.has(x)) inter++ })
     return s.size ? inter / s.size : 0
   }
-  const seenExact = new Set<string>()
-  const keptNames = new Map<string, Set<string>[]>() // event_time → kept name-sets
-  const uniqueEvents = events.filter((e) => {
+  // How informative a title is — number of significant tokens. A generic date
+  // («10 июля» → 0) loses to a real name («MAGIC TRIBE x TRIANGLE…» → 5), so the
+  // better-titled copy of a cross-post is the one we keep.
+  const titleScore = (e: FeedItem) => tokenize(e.title).length
+  const kept: FeedItem[] = []
+  const exactToIdx = new Map<string, number>() // exact key → index in `kept`
+  const nameBuckets = new Map<string, { nm: Set<string>; idx: number }[]>() // display time → name-sets
+  for (const e of events) {
     // Bucket by the DISPLAYED date+time — cross-posts sometimes carry the start
     // time stored differently (seconds / timezone), so an exact match on the raw
     // event_time misses them even though the user sees the same «10.07 · 18:00».
@@ -177,21 +182,33 @@ export function buildDerived(events: FeedItem[]): DerivedData {
     if (e.media_hash) exact.push(`img:${e.media_hash}|${t}`)
     const body = (e.description || "").trim().toLowerCase().replace(/\s+/g, " ")
     if (body) exact.push(`txt:${body}|${t}`)
-    if (exact.some((k) => seenExact.has(k))) return false
-    // Fuzzy cross-post match: same start time + heavy name-word overlap. Catches
-    // re-worded captions and re-uploaded (byte-different) posters that the exact
-    // keys miss — «MAGIC TRIBE x TRIANGLE / MADE IN BALI» vs a generic «10 июля»
-    // whose body names the same event.
+    // Fuzzy name key: same start time + heavy name-word overlap. Catches re-worded
+    // captions and re-uploaded (byte-different) posters that exact keys miss.
     const nm = t ? nameTokens(e) : new Set<string>()
-    if (nm.size >= 4) {
-      const bucket = keptNames.get(t) ?? []
-      if (bucket.some((prev) => prev.size >= 4 && overlap(nm, prev) >= 0.8)) return false
-      bucket.push(nm)
-      keptNames.set(t, bucket)
+
+    // Find an already-kept event this one duplicates (exact first, then fuzzy).
+    let dupIdx = -1
+    for (const k of exact) { const i = exactToIdx.get(k); if (i !== undefined) { dupIdx = i; break } }
+    if (dupIdx < 0 && nm.size >= 4) {
+      const hit = (nameBuckets.get(t) ?? []).find((b) => b.nm.size >= 4 && overlap(nm, b.nm) >= 0.8)
+      if (hit) dupIdx = hit.idx
     }
-    exact.forEach((k) => seenExact.add(k))
-    return true
-  })
+
+    if (dupIdx >= 0) {
+      // Duplicate — swap in the better-titled copy (keeps its feed position), and
+      // register this copy's keys against the same slot so later dups still match.
+      if (titleScore(e) > titleScore(kept[dupIdx])) kept[dupIdx] = e
+      exact.forEach((k) => { if (!exactToIdx.has(k)) exactToIdx.set(k, dupIdx) })
+      if (nm.size >= 4) { const b = nameBuckets.get(t) ?? []; b.push({ nm, idx: dupIdx }); nameBuckets.set(t, b) }
+      continue
+    }
+
+    const idx = kept.length
+    kept.push(e)
+    exact.forEach((k) => exactToIdx.set(k, idx))
+    if (nm.size >= 4) { const b = nameBuckets.get(t) ?? []; b.push({ nm, idx }); nameBuckets.set(t, b) }
+  }
+  const uniqueEvents = kept
 
   const withImg = uniqueEvents.filter((e) => resolvePoster(e) !== null)
   const allEv = withImg.map(toEv)
