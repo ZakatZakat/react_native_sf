@@ -46,3 +46,5 @@ ENV/
 
 # Media
 backend/media/
+# Claude Code personal settings
+.claude/settings.local.json

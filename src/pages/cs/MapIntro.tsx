@@ -138,21 +138,25 @@ function clusterByProximity(evs: Ev[], radiusM = 250): Cluster[] {
   return out
 }
 
-/** Cluster fan marker (v7 makeClusterEl): 3 posters + a NUMBER badge (matches
- *  the numbered list in the sheet) + the event count. */
+/** Cluster fan marker (v7 makeClusterEl): up to 3 posters + a NUMBER badge
+ *  (matches the numbered list in the sheet) + the event count + a place label.
+ *  A lone poster sits upright and centred (no fan tilt). */
 function clusterFanEl(cl: Cluster, gi: number): HTMLElement {
+  const fan = cl.members.slice(0, 3)
+  const single = fan.length === 1
   const rots = [-12, 0, 12]
-  const thumbs = cl.members.slice(0, 3).map((e, i) =>
-    `<span class="cs-clu-card" style="--zr:${rots[i] || 0}deg;--zz:${i}">${e.p ? `<img src="${e.p}" alt=""/>` : ""}</span>`,
+  const thumbs = fan.map((e, i) =>
+    `<span class="cs-clu-card" style="--zr:${single ? 0 : (rots[i] || 0)}deg;--zz:${single ? 1 : i}">${e.p ? `<img src="${e.p}" alt=""/>` : ""}</span>`,
   ).join("")
+  const { name } = clusterLabel(cl)
   const wrap = document.createElement("div")
   wrap.className = "cs-scatter-wrap"
   wrap.style.cssText = "display:flex;flex-direction:column;align-items:center;"
   wrap.innerHTML =
-    `<div class="cs-clu" style="--si:${gi}"><div class="cs-clu-fan">${thumbs}` +
+    `<div class="cs-clu${single ? " cs-clu-single" : ""}" style="--si:${gi}"><div class="cs-clu-fan">${thumbs}` +
     `<span class="cs-clu-num">${gi + 1}</span>` +
     `<span class="cs-clu-count">${cl.members.length}</span></div>` +
-    `<div class="cs-clu-tip"></div></div>`
+    `<div class="cs-clu-name">${esc(name)}</div></div>`
   return wrap
 }
 
@@ -614,7 +618,12 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
 
     const clusters = clustersRef.current[selZone] || []
     if (selCluster == null) {
-      // Level 1 — cluster fans at real member centroids; tap drills in.
+      // Level 1 — cluster fans at their REAL positions; tap a fan to drill in.
+      //
+      // Fans stay on true coords so tapping one doesn't make it jump — Level 2
+      // just flies the camera into the same spot. Spread districts (Восток
+      // scatters venues ~4 km) are handled purely by ZOOMING OUT to fit them
+      // all in the band between the heading card and the district sheet.
       clusters.forEach((cl, gi) => {
         const el = clusterFanEl(cl, gi)
         el.style.cursor = "pointer"
@@ -622,30 +631,70 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         const m = new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([cl.ll[1], cl.ll[0]]).addTo(map)
         scatterRef.current.push(m)
       })
-      // Frame the WHOLE zone: fit all cluster centroids inside the visible area
-      // (inset from the heading + bottom sheet) so nothing hides at the edges —
-      // the old fixed 12.6 left far-apart clusters stranded in the corners. Use
-      // cameraForBounds (computes center+zoom flat, for the target bearing) then
-      // apply pitch — sidesteps MapLibre's pitched-fitBounds under-zoom. Zoom is
-      // clamped so a single far-flung cluster can't blow it past city scale and
-      // a tight zone doesn't over-zoom.
-      if (clusters.length === 1) {
-        map.easeTo({ center: [clusters[0].ll[1], clusters[0].ll[0]], zoom: 13.2, pitch: 52, bearing: -14, duration: 800 })
-      } else if (clusters.length > 1) {
-        const fallback = () => {
-          let sx = 0, sy = 0, n = 0
-          clusters.forEach((c) => { sx += c.ll[1] * c.members.length; sy += c.ll[0] * c.members.length; n += c.members.length })
-          map.easeTo({ center: [sx / n, sy / n], zoom: 12.4, pitch: 52, bearing: -14, duration: 800 })
-        }
-        try {
-          const b = new maplibregl.LngLatBounds()
-          clusters.forEach((c) => b.extend([c.ll[1], c.ll[0]]))
-          const cam = map.cameraForBounds(b, { padding: { top: 200, bottom: 210, left: 40, right: 40 }, maxZoom: 13.4, bearing: -14 })
-          if (cam?.center) {
-            map.easeTo({ center: cam.center, zoom: Math.max(10.8, Math.min(13.4, cam.zoom ?? 12.4)), pitch: 52, bearing: -14, duration: 800 })
-          } else fallback()
-        } catch { fallback() }
+      // Fit all fans by ZOOMING OUT to a zoom WE compute (Web-Mercator fit),
+      // not map.cameraForBounds — the latter silently folds in the map's
+      // leftover padding and returned null/oddly-low zooms here. The overview
+      // is kept at a GENTLE pitch so the flat fit stays honest (at 52° the edge
+      // venues Черкизовская↔Пролетарская slide off the sides) and reads clearer.
+      // Level 2 tilts back to 52 for the cinematic building view.
+      const OVERVIEW_PITCH = 30
+      const lats = clusters.map((c) => c.ll[0])
+      const lngs = clusters.map((c) => c.ll[1])
+      const minLat = Math.min(...lats), maxLat = Math.max(...lats)
+      const minLng = Math.min(...lngs), maxLng = Math.max(...lngs)
+      const cLat = (minLat + maxLat) / 2, cLng = (minLng + maxLng) / 2
+      // normalised Web-Mercator Y in [0,1]
+      const mercY = (lat: number) => {
+        const s = Math.sin((lat * Math.PI) / 180)
+        return 0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)
       }
+      const W = map.getContainer().clientWidth || 375
+      const H = map.getContainer().clientHeight || 812
+      // visible band = viewport minus the heading card (top) and the district
+      // sheet (bottom); the fans anchor from the bottom so they draw upward.
+      const usableW = Math.max(120, W - 56)
+      // reserve extra up top: fans anchor at the bottom, so the card + place
+      // label draw ~90px ABOVE the geo point — without this the top fan tucks
+      // under the heading card.
+      const usableH = Math.max(120, H - 250 - 300)
+      const lngFrac = Math.max((maxLng - minLng) / 360, 1e-6)
+      const latFrac = Math.max(Math.abs(mercY(maxLat) - mercY(minLat)), 1e-6)
+      const zLng = Math.log2(usableW / (256 * lngFrac))
+      const zLat = Math.log2(usableH / (256 * latFrac))
+      // Headroom below the exact fit: covers the −14° bearing + 30° pitch
+      // stretching the box, and leaves a little breathing room around the fans.
+      const zoom = Math.max(10.3, Math.min(14.0, Math.min(zLng, zLat) - 0.85))
+      map.easeTo({ center: [cLng, cLat], zoom, pitch: OVERVIEW_PITCH, bearing: -14, duration: 800, padding: { top: 250, bottom: 300, left: 20, right: 20 } })
+
+      // De-overlap: once the camera settles, project every fan to the screen
+      // and shove any that sit closer than one card-width apart (co-located
+      // venues like Фабрика/Страдариум) away from each other with a pixel
+      // offset — the geo anchor is unchanged, so tapping still drills into the
+      // right building. A few relaxation passes spread a tight knot evenly.
+      const deOverlap = () => {
+        const ms = scatterRef.current
+        if (ms.length < 2) return
+        const pts = ms.map((mk) => map.project(mk.getLngLat()))
+        const off = ms.map(() => ({ x: 0, y: 0 }))
+        const MIN = 80 // ~fan card + place label width, so labels clear too
+        for (let it = 0; it < 40; it++) {
+          for (let a = 0; a < ms.length; a++) {
+            for (let b = a + 1; b < ms.length; b++) {
+              let dx = (pts[b].x + off[b].x) - (pts[a].x + off[a].x)
+              let dy = (pts[b].y + off[b].y) - (pts[a].y + off[a].y)
+              let d = Math.hypot(dx, dy)
+              if (d < 0.01) { dx = 1; dy = 0; d = 1 } // exact overlap → split sideways
+              if (d < MIN) {
+                const push = (MIN - d) / 2
+                off[a].x -= (dx / d) * push; off[a].y -= (dy / d) * push
+                off[b].x += (dx / d) * push; off[b].y += (dy / d) * push
+              }
+            }
+          }
+        }
+        ms.forEach((mk, i) => mk.setOffset([off[i].x, off[i].y]))
+      }
+      map.once("moveend", deOverlap)
     } else {
       // Level 2 — ONE fanned deck at the cluster centre; browse with ← →.
       const cl = clusters[selCluster]
@@ -757,7 +806,8 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
           </div>
           {/* level 1 (clusters): hint to drill in · level 2 (cluster): event carousel */}
           {!activeCluster ? (
-            <div style={{ padding: "0 12px 8px", maxHeight: 168, overflowY: "auto" }}>
+            <div style={{ position: "relative" }}>
+            <div style={{ padding: "0 12px 12px", maxHeight: 168, overflowY: "auto" }}>
               {(selZone ? (clustersByZone[selZone] || []) : []).map((cl, gi) => {
                 const { name, sub } = clusterLabel(cl)
                 return (
@@ -773,6 +823,9 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
                 )
               })}
             </div>
+            {/* bottom fade — softens the scroll cut-off and hints "more below" */}
+            <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 22, background: "linear-gradient(rgba(255,255,255,0), #fff)", pointerEvents: "none" }} />
+            </div>
           ) : (
           <div style={{ padding: "0 14px 11px" }}>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 7, background: CS.W, border: `2px solid ${CS.K}`, boxShadow: `2px 2px 0 ${CS.K}`, padding: "7px 11px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 10, letterSpacing: "0.04em", color: CS.K }}>
@@ -780,7 +833,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
             </div>
           </div>
           )}
-          <div style={{ padding: "0 14px 12px" }}>
+          <div style={{ padding: "11px 14px 12px", borderTop: "1.5px solid rgba(13,13,13,0.14)", background: CS.W }}>
             <button onClick={onEnter} style={{ width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "10px 18px", border: `2.5px solid ${CS.K}`, background: CS.K, color: "#fff", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 13, letterSpacing: "0.04em", textTransform: "uppercase", boxShadow: `3px 3px 0 ${CS.B}` }}>
               <span>Открыть район в ленте</span><span style={{ fontSize: 15, lineHeight: 1 }}>→</span>
             </button>
