@@ -507,9 +507,9 @@ function BoardView({ feed, btn = "b", name = "Гость", onMap }: { feed: Ev[]
         </div>
       </div>
 
-      {/* mapcombo body — map → выбор недели (hero) → каталог (all upcoming) */}
+      {/* board body — выбор недели (hero) → каталог (all upcoming). The inline
+          map was removed from the feed (the map lives in the intro overlay). */}
       <div key={nonce}>
-        <CsMap events={E} height={236} />
         <div style={{ padding: "0 14px" }}>
           <SectionLabel>выбор недели</SectionLabel>
           {hero && <BoardLead ev={hero} />}
