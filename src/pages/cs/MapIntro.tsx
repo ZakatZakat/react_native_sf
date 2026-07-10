@@ -49,7 +49,7 @@ const CITY: [number, number] = [55.7520, 37.6175]
 const R_CENTER_KM = 1.8
 // clusters shown per page (map fans + sheet list) once a district is opened —
 // kept small so the sheet stays short and the map stays visible above it
-const PER_PAGE = 5
+const PER_PAGE = 4
 
 function zoneOf(lat: number, lng: number): string {
   const cosLat = Math.cos((CITY[0] * Math.PI) / 180)
@@ -829,12 +829,15 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       {/* district bottom-sheet — selected zone deck */}
       {selZone && deckEvents.length > 0 && (
         <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 12, background: CS.W, borderTop: `3px solid ${CS.K}`, boxShadow: "0 -6px 0 rgba(13,13,13,0.08)", animation: "cs-sheet-up 0.34s cubic-bezier(0.22,1,0.36,1) both", paddingBottom: "env(safe-area-inset-bottom,0px)" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "7px 14px 5px" }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 8, minWidth: 0 }}>
-              <span style={{ fontWeight: 900, fontSize: 16, letterSpacing: "-0.03em", lineHeight: 1, color: CS.K, textTransform: "uppercase", whiteSpace: "nowrap" }}>{activeCluster ? "Места рядом" : ZONE_BY_ID[selZone].t}</span>
-              <span style={{ background: CS.B, color: "#fff", padding: "2px 6px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 8.5, letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{deckEvents.length} событий</span>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "5px 14px 2px" }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 7, minWidth: 0 }}>
+              <span style={{ fontWeight: 900, fontSize: 14, letterSpacing: "-0.03em", lineHeight: 1, color: CS.K, textTransform: "uppercase", whiteSpace: "nowrap" }}>{activeCluster ? "Места рядом" : ZONE_BY_ID[selZone].t}</span>
+              <span style={{ background: CS.B, color: "#fff", padding: "2px 5px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 8, letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{deckEvents.length} событий</span>
             </div>
-            <button onClick={() => (activeCluster ? setSelCluster(null) : setSelZone(null))} style={{ display: "inline-flex", alignItems: "center", gap: 5, flexShrink: 0, background: CS.W, border: `2px solid ${CS.K}`, padding: "4px 8px", cursor: "pointer", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, letterSpacing: "0.05em", textTransform: "uppercase", color: CS.K }}>{activeCluster ? "← кластеры" : "← районы"}</button>
+            <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+              <button onClick={() => (activeCluster ? setSelCluster(null) : setSelZone(null))} style={{ display: "inline-flex", alignItems: "center", flexShrink: 0, background: CS.W, border: `2px solid ${CS.K}`, padding: "4px 8px", cursor: "pointer", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, letterSpacing: "0.05em", textTransform: "uppercase", color: CS.K }}>{activeCluster ? "← кластеры" : "← районы"}</button>
+              <button onClick={onEnter} style={{ display: "inline-flex", alignItems: "center", flexShrink: 0, background: CS.K, border: `2px solid ${CS.K}`, padding: "4px 8px", cursor: "pointer", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, letterSpacing: "0.05em", textTransform: "uppercase", color: "#fff" }}>Лента →</button>
+            </div>
           </div>
           {/* level 1 (clusters): hint to drill in · level 2 (cluster): event carousel */}
           {!activeCluster ? (
@@ -844,26 +847,31 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
               const page = Math.min(selPage, pages - 1)
               const start = page * PER_PAGE
               const shownCl = all.map((cl, gi) => ({ cl, gi })).slice(start, start + PER_PAGE)
-              const pgBtn = (active: boolean) => ({ minWidth: 30, height: 30, boxSizing: "border-box" as const, border: `2px solid ${CS.K}`, background: active ? CS.B : "#F0EEE7", color: active ? "#fff" : CS.K, fontFamily: FONT_MONO, fontWeight: 700, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 7px", boxShadow: `2px 2px 0 ${CS.K}` })
+              const pgBtn = (active: boolean) => ({ minWidth: 26, height: 26, boxSizing: "border-box" as const, border: `2px solid ${CS.K}`, background: active ? CS.B : "#F0EEE7", color: active ? "#fff" : CS.K, fontFamily: FONT_MONO, fontWeight: 700, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 6px", boxShadow: `2px 2px 0 ${CS.K}` })
               const arwBtn = { ...pgBtn(false), background: CS.K, color: "#fff" }
               return (
                 <div>
-                  {pages > 1 && (
-                    <div style={{ display: "flex", gap: 6, alignItems: "center", padding: "1px 12px 9px", flexWrap: "wrap" }}>
-                      <button onClick={() => setSelPage(Math.max(0, page - 1))} style={arwBtn}>‹</button>
-                      {Array.from({ length: pages }, (_, p) => (
-                        <button key={p} onClick={() => setSelPage(p)} style={pgBtn(p === page)}>{p + 1}</button>
-                      ))}
-                      <button onClick={() => setSelPage(Math.min(pages - 1, page + 1))} style={arwBtn}>›</button>
-                    </div>
-                  )}
-                  <div style={{ padding: "0 12px 12px" }}>
+                  {pages > 1 && (() => {
+                    const ws = Math.max(0, Math.min(page - 2, pages - 5))
+                    const we = Math.min(pages - 1, ws + 4)
+                    const nums = []
+                    for (let p = ws; p <= we; p++) nums.push(p)
+                    return (
+                      <div style={{ display: "flex", gap: 5, alignItems: "center", padding: "1px 12px 6px" }}>
+                        <button onClick={() => setSelPage(Math.max(0, page - 1))} style={arwBtn}>‹</button>
+                        {nums.map((p) => (<button key={p} onClick={() => setSelPage(p)} style={pgBtn(p === page)}>{p + 1}</button>))}
+                        <button onClick={() => setSelPage(Math.min(pages - 1, page + 1))} style={arwBtn}>›</button>
+                        {we < pages - 1 && <span style={{ fontFamily: FONT_MONO, fontSize: 11, color: "rgba(13,13,13,0.4)" }}>/{pages}</span>}
+                      </div>
+                    )
+                  })()}
+                  <div style={{ padding: "0 12px 7px" }}>
                     {shownCl.map(({ cl, gi }) => {
                       const { name } = clusterLabel(cl)
                       return (
-                        <button key={gi} onClick={() => setSelCluster(gi)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "5px 4px", background: "transparent", border: "none", borderTop: gi === start ? "none" : "1px solid rgba(13,13,13,0.1)", cursor: "pointer", textAlign: "left" }}>
-                          <span style={{ width: 17, height: 17, flexShrink: 0, background: CS.B, color: "#fff", borderRadius: 999, fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9.5, display: "flex", alignItems: "center", justifyContent: "center" }}>{gi + 1}</span>
-                          <span style={{ flex: 1, minWidth: 0, fontWeight: 900, fontSize: 11.5, letterSpacing: "-0.01em", textTransform: "uppercase", color: CS.K, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
+                        <button key={gi} onClick={() => setSelCluster(gi)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "3px 4px", background: "transparent", border: "none", borderTop: gi === start ? "none" : "1px solid rgba(13,13,13,0.1)", cursor: "pointer", textAlign: "left" }}>
+                          <span style={{ width: 16, height: 16, flexShrink: 0, background: CS.B, color: "#fff", borderRadius: 999, fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center" }}>{gi + 1}</span>
+                          <span style={{ flex: 1, minWidth: 0, fontWeight: 900, fontSize: 11, letterSpacing: "-0.01em", textTransform: "uppercase", color: CS.K, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
                           <span style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 10.5, color: CS.B, flexShrink: 0 }}>{cl.members.length}</span>
                           <span style={{ fontSize: 13, fontWeight: 900, color: CS.K, flexShrink: 0, marginLeft: 2 }}>→</span>
                         </button>
@@ -880,11 +888,6 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
             </div>
           </div>
           )}
-          <div style={{ padding: "8px 14px 9px", borderTop: "1.5px solid rgba(13,13,13,0.14)", background: CS.W }}>
-            <button onClick={onEnter} style={{ width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "8px 16px", border: `2.5px solid ${CS.K}`, background: CS.K, color: "#fff", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 12, letterSpacing: "0.04em", textTransform: "uppercase", boxShadow: `3px 3px 0 ${CS.B}` }}>
-              <span>Открыть район в ленте</span><span style={{ fontSize: 14, lineHeight: 1 }}>→</span>
-            </button>
-          </div>
         </div>
       )}
     </div>
