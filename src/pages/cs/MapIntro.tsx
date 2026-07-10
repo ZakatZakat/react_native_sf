@@ -834,9 +834,9 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
               <span style={{ fontWeight: 900, fontSize: 14, letterSpacing: "-0.03em", lineHeight: 1, color: CS.K, textTransform: "uppercase", whiteSpace: "nowrap" }}>{activeCluster ? "Места рядом" : ZONE_BY_ID[selZone].t}</span>
               <span style={{ background: CS.B, color: "#fff", padding: "2px 5px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 8, letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{deckEvents.length} событий</span>
             </div>
-            <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-              <button onClick={() => (activeCluster ? setSelCluster(null) : setSelZone(null))} style={{ display: "inline-flex", alignItems: "center", flexShrink: 0, background: CS.W, border: `2px solid ${CS.K}`, padding: "4px 8px", cursor: "pointer", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, letterSpacing: "0.05em", textTransform: "uppercase", color: CS.K }}>{activeCluster ? "← кластеры" : "← районы"}</button>
-              <button onClick={onEnter} style={{ display: "inline-flex", alignItems: "center", flexShrink: 0, background: CS.K, border: `2px solid ${CS.K}`, padding: "4px 8px", cursor: "pointer", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, letterSpacing: "0.05em", textTransform: "uppercase", color: "#fff" }}>Лента →</button>
+            <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+              <button onClick={() => (activeCluster ? setSelCluster(null) : setSelZone(null))} style={{ display: "inline-flex", alignItems: "center", flexShrink: 0, background: CS.W, border: `2px solid ${CS.K}`, padding: "6px 11px", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "0.03em", textTransform: "uppercase", color: CS.K, boxShadow: `2px 2px 0 ${CS.K}` }}>{activeCluster ? "← кластеры" : "← районы"}</button>
+              <button onClick={onEnter} style={{ display: "inline-flex", alignItems: "center", flexShrink: 0, background: CS.K, border: `2px solid ${CS.K}`, padding: "6px 11px", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "0.03em", textTransform: "uppercase", color: "#fff", boxShadow: `2px 2px 0 ${CS.B}` }}>Лента →</button>
             </div>
           </div>
           {/* level 1 (clusters): hint to drill in · level 2 (cluster): event carousel */}
