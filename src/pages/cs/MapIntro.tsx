@@ -44,7 +44,11 @@ const inMoscow = (lat: number, lng: number) => lat >= 55.3 && lat <= 56.1 && lng
 // instead of dumping everything past the centre into «Центр» (the old
 // nearest-zone-centre rule pulled the whole central band into one zone).
 const CITY: [number, number] = [55.7520, 37.6175]
-const R_CENTER_KM = 3.0
+// 1.8km (was 3.0): the 3km centre swallowed ~half of all events into «Центр».
+// A tighter core pushes the 2–3km ring out to its real directional sector.
+const R_CENTER_KM = 1.8
+// clusters shown per page (map fans + sheet list) once a district is opened
+const PER_PAGE = 6
 
 function zoneOf(lat: number, lng: number): string {
   const cosLat = Math.cos((CITY[0] * Math.PI) / 180)
@@ -343,6 +347,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const [deckHidden, setDeckHidden] = useState(false) // hide the deck to reveal the centred building
   const [selZone, setSelZone] = useState<string | null>(null)
   const [selCluster, setSelCluster] = useState<number | null>(null)
+  const [selPage, setSelPage] = useState(0)  // page within the opened district (Level 1)
   const [evIdx, setEvIdx] = useState(0)
   const evIdxRef = useRef(0); evIdxRef.current = evIdx
   const selZoneRef = useRef<string | null>(null); selZoneRef.current = selZone
@@ -506,7 +511,8 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   // sys-fan clusters per zone (real-proximity grouping)
   const clustersByZone = useMemo(() => {
     const m: Record<string, Cluster[]> = {}
-    ZONES.forEach((z) => { m[z.id] = clusterByProximity(byZone[z.id]) })
+    // sort clusters by event count desc → biggest venues lead each page
+    ZONES.forEach((z) => { m[z.id] = clusterByProximity(byZone[z.id]).sort((a, b) => b.members.length - a.members.length) })
     return m
   }, [byZone])
   const clustersRef = useRef(clustersByZone); clustersRef.current = clustersByZone
@@ -534,7 +540,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const placeZonesRef = useRef(placeZones); placeZonesRef.current = placeZones
 
   // reset drill-down + carousel when the zone or cluster changes
-  useEffect(() => { setSelCluster(null) }, [selZone])
+  useEffect(() => { setSelCluster(null); setSelPage(0) }, [selZone])
   useEffect(() => { setEvIdx(0) }, [selZone, selCluster])
 
   // (re)place district bubbles when the feed data lands — covers the case where
@@ -642,7 +648,11 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       // just flies the camera into the same spot. Spread districts (Восток
       // scatters venues ~4 km) are handled purely by ZOOMING OUT to fit them
       // all in the band between the heading card and the district sheet.
-      clusters.forEach((cl, gi) => {
+      // Only the CURRENT PAGE's clusters draw — keeps a dense district (Центр)
+      // uncluttered. The badge number (gi+1) stays GLOBAL so it matches the
+      // numbered sheet list, and tapping still opens the right cluster.
+      const shown = clusters.map((cl, gi) => ({ cl, gi })).slice(selPage * PER_PAGE, selPage * PER_PAGE + PER_PAGE)
+      shown.forEach(({ cl, gi }) => {
         const el = clusterFanEl(cl, gi)
         el.style.cursor = "pointer"
         el.addEventListener("click", (ev) => { ev.stopPropagation(); setSelCluster(gi) })
@@ -659,8 +669,8 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       // venues Черкизовская↔Пролетарская slide off the sides) and reads clearer.
       // Level 2 tilts back to 52 for the cinematic building view.
       const OVERVIEW_PITCH = 30
-      const lats = clusters.map((c) => c.ll[0])
-      const lngs = clusters.map((c) => c.ll[1])
+      const lats = shown.map((s) => s.cl.ll[0])
+      const lngs = shown.map((s) => s.cl.ll[1])
       const minLat = Math.min(...lats), maxLat = Math.max(...lats)
       const minLng = Math.min(...lngs), maxLng = Math.max(...lngs)
       const cLat = (minLat + maxLat) / 2, cLng = (minLng + maxLng) / 2
@@ -739,7 +749,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selZone, selCluster, ready, badImg])
+  }, [selZone, selCluster, selPage, ready, badImg])
 
   // Paging the deck: rebuild its front card + re-point the leader at the new
   // active event's building. No camera move — the deck stays put.
@@ -827,26 +837,44 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
           </div>
           {/* level 1 (clusters): hint to drill in · level 2 (cluster): event carousel */}
           {!activeCluster ? (
-            <div style={{ position: "relative" }}>
-            <div style={{ padding: "0 12px 12px", maxHeight: 168, overflowY: "auto" }}>
-              {(selZone ? (clustersByZone[selZone] || []) : []).map((cl, gi) => {
-                const { name, sub } = clusterLabel(cl)
-                return (
-                  <button key={gi} onClick={() => setSelCluster(gi)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "5px 4px", background: "transparent", border: "none", borderTop: gi === 0 ? "none" : "1px solid rgba(13,13,13,0.12)", cursor: "pointer", textAlign: "left" }}>
-                    <span style={{ width: 18, height: 18, flexShrink: 0, background: CS.K, color: "#fff", borderRadius: 999, fontFamily: FONT_MONO, fontWeight: 700, fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>{gi + 1}</span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 900, fontSize: 11.5, letterSpacing: "-0.01em", lineHeight: 1.05, textTransform: "uppercase", color: CS.K, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
-                      <div style={{ fontFamily: FONT_MONO, fontSize: 7.5, color: "rgba(13,13,13,0.5)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</div>
+            (() => {
+              const all = selZone ? (clustersByZone[selZone] || []) : []
+              const pages = Math.max(1, Math.ceil(all.length / PER_PAGE))
+              const page = Math.min(selPage, pages - 1)
+              const start = page * PER_PAGE
+              const shownCl = all.map((cl, gi) => ({ cl, gi })).slice(start, start + PER_PAGE)
+              const pgBtn = (active: boolean) => ({ minWidth: 30, height: 30, boxSizing: "border-box" as const, border: `2px solid ${CS.K}`, background: active ? CS.B : "#F0EEE7", color: active ? "#fff" : CS.K, fontFamily: FONT_MONO, fontWeight: 700, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 7px", boxShadow: `2px 2px 0 ${CS.K}` })
+              const arwBtn = { ...pgBtn(false), background: CS.K, color: "#fff" }
+              return (
+                <div>
+                  {pages > 1 && (
+                    <div style={{ display: "flex", gap: 6, alignItems: "center", padding: "1px 12px 9px", flexWrap: "wrap" }}>
+                      <button onClick={() => setSelPage(Math.max(0, page - 1))} style={arwBtn}>‹</button>
+                      {Array.from({ length: pages }, (_, p) => (
+                        <button key={p} onClick={() => setSelPage(p)} style={pgBtn(p === page)}>{p + 1}</button>
+                      ))}
+                      <button onClick={() => setSelPage(Math.min(pages - 1, page + 1))} style={arwBtn}>›</button>
                     </div>
-                    <span style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 10.5, color: CS.B, flexShrink: 0 }}>{cl.members.length}</span>
-                    <span style={{ fontSize: 13, fontWeight: 900, color: CS.K, flexShrink: 0, marginLeft: 2 }}>→</span>
-                  </button>
-                )
-              })}
-            </div>
-            {/* bottom fade — softens the scroll cut-off and hints "more below" */}
-            <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 22, background: "linear-gradient(rgba(255,255,255,0), #fff)", pointerEvents: "none" }} />
-            </div>
+                  )}
+                  <div style={{ padding: "0 12px 12px" }}>
+                    {shownCl.map(({ cl, gi }) => {
+                      const { name, sub } = clusterLabel(cl)
+                      return (
+                        <button key={gi} onClick={() => setSelCluster(gi)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "7px 4px", background: "transparent", border: "none", borderTop: gi === start ? "none" : "1px solid rgba(13,13,13,0.12)", cursor: "pointer", textAlign: "left" }}>
+                          <span style={{ width: 20, height: 20, flexShrink: 0, background: CS.B, color: "#fff", borderRadius: 999, fontFamily: FONT_MONO, fontWeight: 700, fontSize: 10.5, display: "flex", alignItems: "center", justifyContent: "center" }}>{gi + 1}</span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 900, fontSize: 12, letterSpacing: "-0.01em", lineHeight: 1.08, textTransform: "uppercase", color: CS.K, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
+                            <div style={{ fontFamily: FONT_MONO, fontSize: 8, color: "rgba(13,13,13,0.5)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</div>
+                          </div>
+                          <span style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 11, color: CS.B, flexShrink: 0 }}>{cl.members.length}</span>
+                          <span style={{ fontSize: 14, fontWeight: 900, color: CS.K, flexShrink: 0, marginLeft: 2 }}>→</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })()
           ) : (
           <div style={{ padding: "0 14px 11px" }}>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 7, background: CS.W, border: `2px solid ${CS.K}`, boxShadow: `2px 2px 0 ${CS.K}`, padding: "7px 11px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 10, letterSpacing: "0.04em", color: CS.K }}>
