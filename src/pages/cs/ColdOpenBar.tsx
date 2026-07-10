@@ -18,7 +18,7 @@ import { CS, FONT_SANS, useWordmarkFont } from "./shared"
 const EASE = "cubic-bezier(0.65,0,0.32,1)"
 const D = 0.7 // flight duration (s)
 
-type Pos = { left: number; top: number; width: number; height: number; fs: number; pl?: number; pr?: number }
+type Pos = { left: number; top: number; width: number; height: number; fs: number; pl?: number; pr?: number; tin?: number }
 
 export default function ColdOpenBar({ onDone }: { onDone: () => void }) {
   const [exiting, setExiting] = useState(false)
@@ -66,12 +66,17 @@ export default function ColdOpenBar({ onDone }: { onDone: () => void }) {
           }
           const c = toLocal(citySpan.parentElement)
           const s = toLocal(sigSpan.parentElement)
+          const cSpan = toLocal(citySpan)
+          const sSpan = toLocal(sigSpan)
           // measure the banner's real font-size so the flown text lands at the
           // exact size — no size pop when the overlay hands off to the card.
           const cfs = parseFloat(getComputedStyle(citySpan).fontSize) / k || 15
           const sfs = parseFloat(getComputedStyle(sigSpan).fontSize) / k || 15
-          cityDock = { ...c, fs: cfs, pl: 11 }
-          sigDock = { ...s, fs: sfs, pr: 11 }
+          // real text inset from the plate's anchored edge (= banner padding),
+          // so the flown glyphs settle exactly on the banner text instead of on
+          // the scaled-down hero padding (kills the horizontal snap at handoff).
+          cityDock = { ...c, fs: cfs, pl: 11, tin: Math.max(0, cSpan.left - c.left) }
+          sigDock = { ...s, fs: sfs, pr: 11, tin: Math.max(0, (s.left + s.width) - (sSpan.left + sSpan.width)) }
         }
       } catch { /* fallback to static dock coords */ }
 
@@ -98,8 +103,18 @@ export default function ColdOpenBar({ onDone }: { onDone: () => void }) {
         const span = el.querySelector("span") as HTMLElement | null
         if (span) {
           const ts = dock.fs / hero.fs
+          // Correct the glyph's resting X. The text rides the plate's scaled
+          // padding (heroPad*csx ≈ 3.9px), but the real banner insets its text
+          // by `tin` px (≈10). Glide that gap closed over the flight so the
+          // handoff to the real banner has no horizontal jump ("разъезжание").
+          const heroPad = (left ? hero.pl : hero.pr) ?? 0
+          const tin = dock.tin ?? 10
+          const lx = left ? tin / csx - heroPad : heroPad - tin / csx
           span.style.transformOrigin = left ? "left center" : "right center"
-          span.animate([{ transform: "scale(1,1)" }, { transform: `scale(${(ts / csx).toFixed(4)},${(ts / csy).toFixed(4)})` }], opt)
+          span.animate([
+            { transform: "translate(0px,0) scale(1,1)" },
+            { transform: `translate(${lx.toFixed(2)}px,0) scale(${(ts / csx).toFixed(4)},${(ts / csy).toFixed(4)})` },
+          ], opt)
         }
         return a
       }
