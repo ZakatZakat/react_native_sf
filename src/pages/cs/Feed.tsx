@@ -226,6 +226,14 @@ function GridCard({ ev, i }: { ev: Ev; i: number }) {
  *  distinct footer block (meta · full title · venue · description). */
 function MosaicCard({ ev, i, h }: { ev: Ev; i: number; h: number }) {
   const open = useOpenEvent()
+  // Slight scrapbook tilt + gentle idle float. Three nested layers so the
+  // transforms compose instead of overriding each other: entrance (once) →
+  // float (idle, infinite) → static rotate on the card itself. Float only on
+  // the first cards — hundreds of infinite anims would tax mobile.
+  const rot = [-2.5, 2, -1.5, 2.5][i % 4]
+  const dur = (4.6 + (Math.abs(rot) % 3) * 0.7).toFixed(2)
+  const delay = ((Math.abs(Math.round(rot * 7)) % 20) / 10).toFixed(2)
+  const float = i < 20
   // venue / subtitle only if it's a real place (not a bare @channel handle)
   const venue = ev.v && !ev.v.startsWith("@") ? ev.v : ""
   const time = ev.tm && ev.tm !== "—" ? ev.tm : ""
@@ -236,27 +244,31 @@ function MosaicCard({ ev, i, h }: { ev: Ev; i: number; h: number }) {
   const nl = (ev.desc || "").indexOf("\n")
   const body = nl >= 0 ? ev.desc.slice(nl + 1).replace(/\s+/g, " ").trim() : ""
   return (
-    <div
-      onClick={() => open(ev)}
-      style={{
-        marginBottom: 20, background: SK.paper, border: `2.5px solid ${SK.ink}`,
-        boxShadow: `3px 4px 0 ${SK.ink}`, overflow: "hidden", cursor: "pointer",
-        animation: `sk-refresh 0.5s cubic-bezier(0.22,1,0.36,1) ${(Math.min(i, 12) * 0.06).toFixed(2)}s both`,
-      }}
-    >
-      {/* poster — full-bleed inside the frame; date badge, its bottom edge is the divider */}
-      <div style={{ position: "relative", height: h, borderBottom: `2.5px solid ${SK.ink}`, background: "#E4E4E1", overflow: "hidden" }}>
-        {ev.p && <img src={ev.p} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
-        <span style={{ position: "absolute", top: 8, right: 8, background: SK.ink, color: SK.paper, fontWeight: 900, fontSize: 13, letterSpacing: "0.02em", lineHeight: 1, padding: "5px 8px" }}>{ev.d}</span>
-      </div>
-      {/* footer block */}
-      <div style={{ padding: "9px 11px 11px" }}>
-        <div style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9.5, letterSpacing: "0.03em", color: SK.ink55, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{meta}</div>
-        <div style={{ fontWeight: 900, fontSize: 15, letterSpacing: "-0.01em", lineHeight: 1.08, color: SK.ink, marginTop: 6, textTransform: "uppercase", overflowWrap: "anywhere" }}>{ev.t}</div>
-        {venue && <div style={{ fontWeight: 700, fontSize: 11, lineHeight: 1.25, color: SK.ink55, marginTop: 5 }}>{venue}</div>}
-        {body && (
-          <div style={{ fontSize: 10.5, lineHeight: 1.34, color: SK.ink55, marginTop: 7, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{body}</div>
-        )}
+    <div style={{ marginBottom: 20, animation: `sk-refresh 0.5s cubic-bezier(0.22,1,0.36,1) ${(Math.min(i, 12) * 0.06).toFixed(2)}s both` }}>
+      <div style={{ animation: float ? `sk-float ${dur}s ease-in-out ${delay}s infinite` : undefined }}>
+        <div
+          onClick={() => open(ev)}
+          style={{
+            transform: `rotate(${rot}deg)`,
+            background: SK.paper, border: `2.5px solid ${SK.ink}`,
+            boxShadow: `3px 4px 0 ${SK.ink}`, overflow: "hidden", cursor: "pointer",
+          }}
+        >
+          {/* poster — full-bleed inside the frame; date badge, its bottom edge is the divider */}
+          <div style={{ position: "relative", height: h, borderBottom: `2.5px solid ${SK.ink}`, background: "#E4E4E1", overflow: "hidden" }}>
+            {ev.p && <img src={ev.p} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
+            <span style={{ position: "absolute", top: 8, right: 8, background: SK.ink, color: SK.paper, fontWeight: 900, fontSize: 13, letterSpacing: "0.02em", lineHeight: 1, padding: "5px 8px" }}>{ev.d}</span>
+          </div>
+          {/* footer block */}
+          <div style={{ padding: "9px 11px 11px" }}>
+            <div style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9.5, letterSpacing: "0.03em", color: SK.ink55, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{meta}</div>
+            <div style={{ fontWeight: 900, fontSize: 15, letterSpacing: "-0.01em", lineHeight: 1.08, color: SK.ink, marginTop: 6, textTransform: "uppercase", overflowWrap: "anywhere" }}>{ev.t}</div>
+            {venue && <div style={{ fontWeight: 700, fontSize: 11, lineHeight: 1.25, color: SK.ink55, marginTop: 5 }}>{venue}</div>}
+            {body && (
+              <div style={{ fontSize: 10.5, lineHeight: 1.34, color: SK.ink55, marginTop: 7, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{body}</div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )
