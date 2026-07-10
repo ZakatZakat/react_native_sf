@@ -204,7 +204,7 @@ function placeCardHTML(vi: VenueInfo): string {
       `<div class="cs-deck-place-name">${esc(vi.name)}</div>` +
       `<div class="cs-deck-place-blurb">${esc(vi.blurb)}</div>` +
       (vi.address ? `<div class="cs-deck-place-addr">📍 ${esc(vi.address)}</div>` : "") +
-      `<button class="cs-deck-center" type="button">Центрировать карту</button>` +
+      `<button class="cs-deck-center" type="button">Показать на карте</button>` +
     `</div>` +
   `</div>`
 }
