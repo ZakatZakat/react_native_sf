@@ -58,6 +58,19 @@ export function resolvePoster(e: FeedItem): string | null {
   return r && isImg(r) ? r : null
 }
 
+/** Strip a leading date and/or emoji prefix that some channels prepend to the
+ *  post title (e.g. "10.07 🌟 GROOVE LESSON" → "GROOVE LESSON"). The date is
+ *  already shown on the card/poster, so it's noise in the title. Falls back to
+ *  the original if stripping would empty it. */
+export function cleanTitle(raw: string): string {
+  const orig = (raw || "").trim()
+  // leading date token: 10.07 / 10.07.2026 / 10/07
+  let s = orig.replace(/^\s*\d{1,2}[.\/]\d{1,2}(?:[.\/]\d{2,4})?/, "").trim()
+  // leading emoji / stars / separators up to the first real letter, digit or quote
+  s = s.replace(/^[^\p{L}\p{Nd}«"'(]+/u, "").trim()
+  return s || orig
+}
+
 export function toEv(e: FeedItem): Ev {
   const primaryKey = (e.tags ?? [])[0] ?? "contemporary"
   const interest = INTEREST_BY_KEY[primaryKey]
@@ -71,7 +84,7 @@ export function toEv(e: FeedItem): Ev {
   const channel = e.channel.replace(/^@/, "")
   return {
     id: e.id,
-    t: e.title || "Событие",
+    t: cleanTitle(e.title || "Событие"),
     sub: "",  // curator doesn't carry editorial subtitles yet — left empty by design
     v: e.location || `@${channel}`,
     d, tm,
