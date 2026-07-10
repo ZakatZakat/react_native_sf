@@ -136,6 +136,7 @@ class PersonalizedFeedRepository:
                 "title": (post.text.split("\n", 1)[0][:200]) if post.text else "Событие",
                 "description": post.text,
                 "media_urls": post.media_urls or [],
+                "media_hash": post.media_hash,  # de-dupe key: identical poster across cross-posts
                 "event_time": ev.event_time.isoformat() if ev.event_time else None,
                 "event_time_end": ev.event_time_end.isoformat() if ev.event_time_end else None,
                 "location": ev.location_text,

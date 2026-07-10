@@ -30,6 +30,7 @@ export type FeedItem = {
   title: string
   description: string
   media_urls: string[]
+  media_hash?: string | null // sha256 of the poster — reliable cross-post de-dupe key
   event_time: string | null
   event_time_end: string | null
   location: string | null

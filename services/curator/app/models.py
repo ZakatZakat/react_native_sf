@@ -73,6 +73,10 @@ class PostRaw(Base):
     message_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
     text: Mapped[str] = mapped_column(Text, default="", nullable=False)
     media_urls: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+    # sha256 of the first media file — cross-posts of one event carry byte-identical
+    # posters under different URLs, so this is the reliable de-dupe key. Backfilled
+    # + kept fresh by deploy/hash_media.sh (curator has no media mount to hash live).
+    media_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     published_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=False), nullable=True)
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), default=datetime.utcnow, nullable=False)
 

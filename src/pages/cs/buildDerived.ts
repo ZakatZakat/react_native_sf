@@ -118,8 +118,16 @@ export function buildDerived(events: FeedItem[]): DerivedData {
   // when there's no body so text-less events are never merged.
   const seenEvents = new Set<string>()
   const uniqueEvents = events.filter((e) => {
+    // Prefer the poster's content hash: cross-posts of one event carry a
+    // BYTE-IDENTICAL image under different URLs and often different captions,
+    // so a text key misses them. Fall back to the body when there's no hash
+    // (e.g. text-only posts), then to the row id so distinct items never merge.
     const body = (e.description || "").trim().toLowerCase().replace(/\s+/g, " ")
-    const key = body ? `${body}|${e.event_time || ""}` : `__row_${e.id}`
+    const key = e.media_hash
+      ? `img:${e.media_hash}|${e.event_time || ""}`
+      : body
+        ? `txt:${body}|${e.event_time || ""}`
+        : `__row_${e.id}`
     if (seenEvents.has(key)) return false
     seenEvents.add(key)
     return true
