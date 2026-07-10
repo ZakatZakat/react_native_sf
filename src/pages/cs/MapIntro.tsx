@@ -205,8 +205,26 @@ function placeCardHTML(vi: VenueInfo): string {
       `<div class="cs-deck-place-blurb">${esc(vi.blurb)}</div>` +
       (vi.address ? `<div class="cs-deck-place-addr">📍 ${esc(vi.address)}</div>` : "") +
       `<button class="cs-deck-center" type="button">Показать на карте</button>` +
+      `<button class="cs-deck-yandex" type="button" data-q="${esc(vi.name + (vi.address ? ", " + vi.address : ""))}">Яндекс.Карты →</button>` +
     `</div>` +
   `</div>`
+}
+
+/** Open an external URL from inside the Telegram mini-app (falls back to a
+ *  normal new tab when running in a plain browser). */
+function openExternalMap(url: string): void {
+  const tg = (window as unknown as { Telegram?: { WebApp?: { openLink?: (u: string) => void } } }).Telegram?.WebApp
+  if (tg?.openLink) tg.openLink(url)
+  else window.open(url, "_blank", "noopener")
+}
+
+/** Yandex.Maps deep-link: a dropped pin at exact coords, else an address search. */
+function yandexMapsUrl(geo: [number, number] | null | undefined, query: string): string {
+  if (Array.isArray(geo) && geo.length === 2) {
+    const [lat, lng] = geo
+    return `https://yandex.ru/maps/?ll=${lng},${lat}&z=17&pt=${lng},${lat},pm2rdm`
+  }
+  return `https://yandex.ru/maps/?text=${encodeURIComponent(query)}`
 }
 
 // ── Highlight event venues (signal-blue) ────────────────────────────────────
@@ -421,6 +439,15 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
             deckHiddenRef.current = true; drawLeadersRef.current() // erase the leader now
             map.easeTo({ center: [g[1], g[0]], zoom: 16.6, pitch: 52, bearing: -14, duration: 650 })
           }
+          return
+        }
+        // «Открыть в Яндекс.Картах» — редирект наружу на площадку активного
+        // события (точный пин по координатам, иначе поиск по адресу).
+        const yaBtn = t.closest?.(".cs-deck-yandex") as HTMLElement | null
+        if (yaBtn) {
+          ev.stopPropagation()
+          const g = deckMembersRef.current[evIdxRef.current]?.geo
+          openExternalMap(yandexMapsUrl(g, yaBtn.dataset.q || ""))
           return
         }
         if (t.closest?.(".cs-deck-front")) openRef.current(deckMembersRef.current[evIdxRef.current] ?? deckMembersRef.current[0])

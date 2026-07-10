@@ -192,6 +192,8 @@ const KEYFRAMES = `
   .cs-deck-place-addr { margin-top: 6px; padding-top: 5px; border-top: 1px solid rgba(13,13,13,0.12); font-family: var(--cs-font-mono); font-size: 7.5px; font-weight: 700; letter-spacing: 0.01em; line-height: 1.35; color: rgba(13,13,13,0.6); }
   .cs-deck-center { display: block; width: 100%; margin-top: 7px; border: 2px solid #0D0D0D; background: #0055FF; color: #fff; cursor: pointer; font-family: var(--cs-font-sans); font-weight: 900; font-size: 9.5px; letter-spacing: 0.01em; text-transform: uppercase; padding: 6px 4px; line-height: 1.1; }
   .cs-deck-center:active { background: #0D0D0D; }
+  .cs-deck-yandex { display: block; width: 100%; margin-top: 5px; border: 2px solid #0D0D0D; background: #fff; color: #0D0D0D; cursor: pointer; font-family: var(--cs-font-sans); font-weight: 900; font-size: 8.5px; letter-spacing: 0.02em; text-transform: uppercase; padding: 5px 4px; line-height: 1.1; }
+  .cs-deck-yandex:active { background: #FC3F1D; border-color: #FC3F1D; color: #fff; }
   .cs-deck-stack-slot { position: relative; display: block; width: 158px; }
   .cs-deck-front { width: 158px; }
   .cs-deck-front { position: relative; z-index: 3; }
