@@ -594,22 +594,11 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         map.jumpTo(VIEW)
         setReady(true)
 
-        // gentle camera pendulum until the user touches the map
-        const baseBearing = map.getBearing()
-        const startT = performance.now()
-        let raf = 0, stopped = false
-        const stop = () => { stopped = true; cancelAnimationFrame(raf); ["mousedown", "touchstart", "wheel", "dragstart"].forEach((ev) => map!.off(ev as any, stop)) }
-        ;["mousedown", "touchstart", "wheel", "dragstart"].forEach((ev) => map!.on(ev as any, stop))
-        pendulumStopRef.current = stop
-        const tick = (now: number) => {
-          // Stop the wobble once a zone is picked — otherwise the per-frame
-          // setBearing interrupts the zone fitBounds easeTo (tapping a DOM
-          // marker doesn't fire the map's mousedown, so `stop` never triggers).
-          if (stopped || !mapRef.current || selZoneRef.current) return
-          map!.setBearing(baseBearing + 13 * Math.sin(((now - startT) * 2 * Math.PI) / 30000))
-          raf = requestAnimationFrame(tick)
-        }
-        raf = requestAnimationFrame(tick)
+        // NOTE: removed the idle camera "pendulum" — it called map.setBearing()
+        // every frame, forcing a full 3D re-render (buildings + sky + all DOM
+        // markers re-project) ~60×/sec AT REST. That was the constant stutter.
+        // The camera now sits still (still a 3D pitched view, just not swaying);
+        // pendulumStopRef stays the default no-op so the drill-in code is intact.
       })
     } catch { setFailed(true) }
     return () => { try { map?.remove() } catch { /* noop */ } finally { mapRef.current = null } }
