@@ -552,7 +552,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
     try {
       map = new maplibregl.Map({
         container: boxRef.current, style: CS_STYLE_LIGHT, center: MSK, zoom: 10.5,
-        pitch: 52, bearing: -14, antialias: true, attributionControl: { compact: true },
+        pitch: 52, bearing: -14, antialias: true, attributionControl: false,
       })
       map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "bottom-right")
       map.on("error", () => setFailed(true))
