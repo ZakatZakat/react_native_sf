@@ -182,21 +182,28 @@ function SectionLabel({ children, style }: { children: React.ReactNode; style?: 
 function BoardLead({ ev }: { ev: Ev }) {
   const open = useOpenEvent()
   return (
-    <div onClick={() => open(ev)} style={{ display: "flex", alignItems: "center", gap: 12, background: SK.paper, border: `2px solid ${SK.ink}`, boxShadow: `4px 4px 0 ${SK.ink}`, padding: 8, cursor: "pointer", animation: "sk-refresh 0.5s cubic-bezier(0.22,1,0.36,1) both" }}>
+    <div onClick={() => open(ev)} style={{ display: "flex", alignItems: "stretch", gap: 12, background: SK.paper, border: `2px solid ${SK.ink}`, boxShadow: `4px 4px 0 ${SK.ink}`, padding: 8, cursor: "pointer", animation: "sk-refresh 0.5s cubic-bezier(0.22,1,0.36,1) both" }}>
       {/* poster shown whole at its own aspect (no crop) — fits within a box,
-          so a wide poster stays short and the card grows for a tall one. */}
-      {ev.p && <img src={ev.p} alt="" draggable={false} style={{ display: "block", flexShrink: 0, maxWidth: 150, maxHeight: 172, width: "auto", height: "auto", border: `1.5px solid ${SK.ink}` }} />}
-      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          so a wide poster stays short and the card grows for a tall one.
+          alignSelf center keeps it undistorted while the card stretches. */}
+      {ev.p && <img src={ev.p} alt="" draggable={false} style={{ display: "block", flexShrink: 0, alignSelf: "center", maxWidth: 150, maxHeight: 172, width: "auto", height: "auto", border: `1.5px solid ${SK.ink}` }} />}
+      {/* content stretches to the card height; rows spread edge-to-edge so the
+          text/badges fill the component instead of clustering in a corner. */}
+      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
           <CatChip c={ev.c} dark />
           <Lbl size={8} style={{ letterSpacing: "0.2em" }}>выбор редакции</Lbl>
         </div>
-        <div style={{ fontWeight: 900, fontSize: 21, letterSpacing: "-0.03em", lineHeight: 0.94, marginTop: 7, color: SK.ink, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{ev.t}</div>
-        {ev.sub && <div style={{ fontFamily: FONT_SANS, fontWeight: 600, fontSize: 11, color: SK.ink55, marginTop: 2 }}>{ev.sub}</div>}
-        <div style={{ fontFamily: FONT_MONO, fontSize: 9.5, letterSpacing: "0.04em", color: SK.ink, marginTop: "auto", lineHeight: 1.5, overflow: "hidden" }}>{ev.v}<br />{ev.d} · {ev.tm}{ev.dur ? ` · ${ev.dur}` : ""}</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 8 }}>
-          <PriceTag ev={ev} />
-          <span style={{ fontFamily: FONT_MONO, fontSize: 9, color: SK.ink55, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{ev.ch}</span>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", minHeight: 0 }}>
+          <div style={{ fontWeight: 900, fontSize: 25, letterSpacing: "-0.03em", lineHeight: 0.96, color: SK.ink, textTransform: "uppercase", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{ev.t}</div>
+          {ev.sub && <div style={{ fontFamily: FONT_SANS, fontWeight: 600, fontSize: 11, color: SK.ink55, marginTop: 3 }}>{ev.sub}</div>}
+        </div>
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8 }}>
+          <div style={{ fontFamily: FONT_MONO, fontSize: 9.5, letterSpacing: "0.04em", color: SK.ink, lineHeight: 1.5, minWidth: 0, overflow: "hidden" }}>{ev.v}<br />{ev.d} · {ev.tm}{ev.dur ? ` · ${ev.dur}` : ""}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 7, flexShrink: 0 }}>
+            <PriceTag ev={ev} />
+            <span style={{ fontFamily: FONT_MONO, fontSize: 9, color: SK.ink55, whiteSpace: "nowrap" }}>{ev.ch}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -224,7 +231,7 @@ function GridCard({ ev, i }: { ev: Ev; i: number }) {
 /** Masonry mosaic card — rotated poster with overlay chips + caption. */
 /** Catalog card — one bordered component: framed poster (date badge) + a
  *  distinct footer block (meta · full title · venue · description). */
-function MosaicCard({ ev, i, h }: { ev: Ev; i: number; h: number }) {
+function MosaicCard({ ev, i }: { ev: Ev; i: number }) {
   const open = useOpenEvent()
   // Slight scrapbook tilt + gentle idle float. Three nested layers so the
   // transforms compose instead of overriding each other: entrance (once) →
@@ -244,7 +251,7 @@ function MosaicCard({ ev, i, h }: { ev: Ev; i: number; h: number }) {
   const nl = (ev.desc || "").indexOf("\n")
   const body = nl >= 0 ? ev.desc.slice(nl + 1).replace(/\s+/g, " ").trim() : ""
   return (
-    <div style={{ marginBottom: 20, animation: `sk-refresh 0.5s cubic-bezier(0.22,1,0.36,1) ${(Math.min(i, 12) * 0.06).toFixed(2)}s both` }}>
+    <div style={{ breakInside: "avoid", WebkitColumnBreakInside: "avoid", marginBottom: 20, animation: `sk-refresh 0.5s cubic-bezier(0.22,1,0.36,1) ${(Math.min(i, 12) * 0.06).toFixed(2)}s both` }}>
       <div style={{ animation: float ? `sk-float ${dur}s ease-in-out ${delay}s infinite` : undefined }}>
         <div
           onClick={() => open(ev)}
@@ -276,13 +283,13 @@ function MosaicCard({ ev, i, h }: { ev: Ev; i: number; h: number }) {
   )
 }
 
-function MosaicGrid({ events, heights = [188, 138, 138, 188, 168, 150, 150, 168] }: { events: Ev[]; heights?: number[] }) {
-  const colL = events.filter((_, i) => i % 2 === 0)
-  const colR = events.filter((_, i) => i % 2 === 1)
+function MosaicGrid({ events }: { events: Ev[] }) {
+  // CSS multi-column = real masonry: the browser balances the two columns by
+  // height, so variable-aspect posters no longer leave one column short with a
+  // gap. `break-inside: avoid` on each card keeps it intact within a column.
   return (
-    <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
-      <div style={{ flex: 1, minWidth: 0 }}>{colL.map((e, i) => <MosaicCard key={e.id} ev={e} i={i * 2} h={heights[(i * 2) % heights.length]} />)}</div>
-      <div style={{ flex: 1, minWidth: 0, paddingTop: 28 }}>{colR.map((e, i) => <MosaicCard key={e.id} ev={e} i={i * 2 + 1} h={heights[(i * 2 + 1) % heights.length]} />)}</div>
+    <div style={{ columnCount: 2, columnGap: 14 }}>
+      {events.map((e, i) => <MosaicCard key={e.id} ev={e} i={i} />)}
     </div>
   )
 }
@@ -616,7 +623,7 @@ function BoardView({ feed, btn = "b", name = "Гость", onMap }: { feed: Ev[]
           {hero && <BoardLead ev={hero} />}
           <SectionLabel>каталог</SectionLabel>
           {catalog.length > 0 ? (
-            <MosaicGrid events={catalog} heights={[248, 224, 236, 220, 244]} />
+            <MosaicGrid events={catalog} />
           ) : (
             <div style={{ fontFamily: FONT_MONO, fontSize: 11, color: SK.ink55, letterSpacing: "0.04em", padding: "10px 2px 4px" }}>
               в категории «{cat.toLowerCase()}» пока пусто
