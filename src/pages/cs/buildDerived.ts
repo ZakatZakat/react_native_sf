@@ -106,13 +106,29 @@ export function shelfNote(cat: string): string {
 }
 
 export function buildDerived(events: FeedItem[]): DerivedData {
-  const withImg = events.filter((e) => resolvePoster(e) !== null)
+  // Collapse cross-posts. The same real-world event is often published in
+  // several channels (or reposted in one), arriving as separate feed rows —
+  // each with its OWN downloaded copy of the identical poster (same image,
+  // different URL), so a URL-level dedupe can't catch it. Key on the full post
+  // body + start time: true cross-posts are byte-identical copy-paste, while
+  // distinct events (even ones that share a generic first line like «📍Москва»
+  // or a date header) differ in the body and are kept. Fall back to the row id
+  // when there's no body so text-less events are never merged.
+  const seenEvents = new Set<string>()
+  const uniqueEvents = events.filter((e) => {
+    const body = (e.description || "").trim().toLowerCase().replace(/\s+/g, " ")
+    const key = body ? `${body}|${e.event_time || ""}` : `__row_${e.id}`
+    if (seenEvents.has(key)) return false
+    seenEvents.add(key)
+    return true
+  })
+
+  const withImg = uniqueEvents.filter((e) => resolvePoster(e) !== null)
   const allEv = withImg.map(toEv)
 
-  // 8 distinct poster URLs for the landing triptych, padded with fallbacks
-  // if the feed gave us fewer than 8 images. Dedupe by URL first — several
-  // events can share the same media file, and without this the triptych (and
-  // the About-card thumbnail strip) shows the same poster twice.
+  // 8 distinct poster URLs for the landing triptych, padded with fallbacks if
+  // the feed gave us fewer than 8 images. Also dedupe by URL as a final guard
+  // (exact same media file) after the cross-post collapse above.
   const tripPool = [...new Set(allEv.map((e) => e.p).filter((u): u is string => !!u))]
   const triptychPosters: (string | null)[] = []
   for (let i = 0; i < 8; i++) {
