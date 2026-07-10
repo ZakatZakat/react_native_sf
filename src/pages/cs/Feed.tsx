@@ -225,14 +225,24 @@ function GridCard({ ev, i }: { ev: Ev; i: number }) {
 function MosaicCard({ ev, i, h }: { ev: Ev; i: number; h: number }) {
   const rot = [-2.5, 2, -1.5, 2.5][i % 4]
   const n = going(ev, i)
+  // venue only if it's a real place (not a bare @channel handle)
+  const venue = ev.v && !ev.v.startsWith("@") ? ev.v : ""
+  // description = the post body BELOW its first line (the first line is the
+  // title, already shown in full above — don't repeat it).
+  const nl = (ev.desc || "").indexOf("\n")
+  const body = nl >= 0 ? ev.desc.slice(nl + 1).replace(/\s+/g, " ").trim() : ""
   return (
-    <div style={{ position: "relative", marginBottom: 16, animation: `sk-refresh 0.5s cubic-bezier(0.22,1,0.36,1) ${(Math.min(i, 12) * 0.06).toFixed(2)}s both` }}>
+    <div style={{ position: "relative", marginBottom: 20, animation: `sk-refresh 0.5s cubic-bezier(0.22,1,0.36,1) ${(Math.min(i, 12) * 0.06).toFixed(2)}s both` }}>
       <Clip ev={ev} w="100%" h={h} rot={rot} float={i < 20} />
       <span style={{ position: "absolute", top: 8, left: 8 }}><CatChip c={ev.c} dark /></span>
       <span style={{ position: "absolute", top: 8, right: 8, transform: "rotate(3deg)" }}><PriceTag ev={ev} solid /></span>
-      <div style={{ marginTop: 9, marginLeft: 4 }}>
-        <div style={{ fontWeight: 900, fontSize: 13, letterSpacing: "-0.02em", lineHeight: 0.98, color: SK.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ev.t}</div>
-        <div style={{ fontFamily: FONT_MONO, fontSize: 8.5, letterSpacing: "0.04em", color: SK.ink55, marginTop: 4 }}>{ev.d} · {ev.tm} · идут {n}</div>
+      {/* description panel — full title (never cropped) + meta + body snippet */}
+      <div style={{ marginTop: 10, marginLeft: 2, borderLeft: `2.5px solid ${SK.blue}`, paddingLeft: 9 }}>
+        <div style={{ fontWeight: 900, fontSize: 14, letterSpacing: "-0.02em", lineHeight: 1.06, color: SK.ink, overflowWrap: "anywhere" }}>{ev.t}</div>
+        <div style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 8.5, letterSpacing: "0.05em", color: SK.ink55, marginTop: 5, textTransform: "uppercase" }}>{ev.d} · {ev.tm}{venue ? ` · ${venue}` : ""} · идут {n}</div>
+        {body && (
+          <div style={{ fontSize: 10.5, lineHeight: 1.34, color: SK.ink55, marginTop: 7, display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{body}</div>
+        )}
       </div>
     </div>
   )
