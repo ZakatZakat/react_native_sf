@@ -88,7 +88,7 @@ const KEYFRAMES = `
   @keyframes cs-j-curtain-mark { 0%, 15% { transform: translateY(0) scale(1); } 100% { transform: translateY(-24px) scale(0.86); } }
   @keyframes cs-j-stamp  { 0% { opacity: 0; transform: translateX(-50%) scale(0.5); } 100% { opacity: 1; } }
   /* v3 scrapbook feed */
-  @keyframes sk-float    { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+  @keyframes sk-float    { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
   @keyframes sk-refresh  { from { opacity: 0; transform: translateY(16px) scale(0.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
   @keyframes sk-week-up  { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes cs-week-wipe { from { transform: translateY(0); } to { transform: translateY(-101%); } }

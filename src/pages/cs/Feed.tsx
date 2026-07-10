@@ -254,15 +254,17 @@ function MosaicCard({ ev, i, h }: { ev: Ev; i: number; h: number }) {
             boxShadow: `3px 4px 0 ${SK.ink}`, overflow: "hidden", cursor: "pointer",
           }}
         >
-          {/* poster — full-bleed inside the frame; date badge, its bottom edge is the divider */}
-          <div style={{ position: "relative", height: h, borderBottom: `2.5px solid ${SK.ink}`, background: "#E4E4E1", overflow: "hidden" }}>
-            {ev.p && <img src={ev.p} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
+          {/* poster — natural aspect so the whole image shows uncropped; the
+              card grows to fit it (maxHeight caps a runaway-tall poster).
+              Its bottom edge is the divider; the date badge floats top-right. */}
+          <div style={{ position: "relative", minHeight: 120, borderBottom: `2.5px solid ${SK.ink}`, background: "#E4E4E1", overflow: "hidden" }}>
+            {ev.p && <img src={ev.p} alt="" loading="lazy" style={{ width: "100%", height: "auto", maxHeight: 380, objectFit: "cover", display: "block" }} />}
             <span style={{ position: "absolute", top: 8, right: 8, background: SK.ink, color: SK.paper, fontWeight: 900, fontSize: 13, letterSpacing: "0.02em", lineHeight: 1, padding: "5px 8px" }}>{ev.d}</span>
           </div>
           {/* footer block */}
           <div style={{ padding: "9px 11px 11px" }}>
             <div style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9.5, letterSpacing: "0.03em", color: SK.ink55, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{meta}</div>
-            <div style={{ fontWeight: 900, fontSize: 15, letterSpacing: "-0.01em", lineHeight: 1.08, color: SK.ink, marginTop: 6, textTransform: "uppercase", overflowWrap: "anywhere" }}>{ev.t}</div>
+            <div style={{ fontWeight: 900, fontSize: 15, letterSpacing: "-0.01em", lineHeight: 1.08, color: SK.ink, marginTop: 6, textTransform: "uppercase", overflowWrap: "anywhere", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{ev.t}</div>
             {venue && <div style={{ fontWeight: 700, fontSize: 11, lineHeight: 1.25, color: SK.ink55, marginTop: 5 }}>{venue}</div>}
             {body && (
               <div style={{ fontSize: 10.5, lineHeight: 1.34, color: SK.ink55, marginTop: 7, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{body}</div>
@@ -669,7 +671,7 @@ export default function CsFeed() {
     const cutoff = new Date(); cutoff.setHours(0, 0, 0, 0)
     const c = cutoff.getTime()
     return allEvents
-      .filter((e) => e.ts == null || e.ts >= c)
+      .filter((e) => e.p && (e.ts == null || e.ts >= c))
       .sort((a, b) => (a.ts ?? Infinity) - (b.ts ?? Infinity))
   }, [allEvents])
   const edge = EDGE_PRESETS[edgeKey] ?? EDGE_PRESETS.thin
