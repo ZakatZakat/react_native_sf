@@ -47,8 +47,9 @@ const CITY: [number, number] = [55.7520, 37.6175]
 // 1.8km (was 3.0): the 3km centre swallowed ~half of all events into «Центр».
 // A tighter core pushes the 2–3km ring out to its real directional sector.
 const R_CENTER_KM = 1.8
-// clusters shown per page (map fans + sheet list) once a district is opened
-const PER_PAGE = 6
+// clusters shown per page (map fans + sheet list) once a district is opened —
+// kept small so the sheet stays short and the map stays visible above it
+const PER_PAGE = 5
 
 function zoneOf(lat: number, lng: number): string {
   const cosLat = Math.cos((CITY[0] * Math.PI) / 180)
@@ -860,14 +861,14 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
                     {shownCl.map(({ cl, gi }) => {
                       const { name, sub } = clusterLabel(cl)
                       return (
-                        <button key={gi} onClick={() => setSelCluster(gi)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "7px 4px", background: "transparent", border: "none", borderTop: gi === start ? "none" : "1px solid rgba(13,13,13,0.12)", cursor: "pointer", textAlign: "left" }}>
-                          <span style={{ width: 20, height: 20, flexShrink: 0, background: CS.B, color: "#fff", borderRadius: 999, fontFamily: FONT_MONO, fontWeight: 700, fontSize: 10.5, display: "flex", alignItems: "center", justifyContent: "center" }}>{gi + 1}</span>
+                        <button key={gi} onClick={() => setSelCluster(gi)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "4px 4px", background: "transparent", border: "none", borderTop: gi === start ? "none" : "1px solid rgba(13,13,13,0.12)", cursor: "pointer", textAlign: "left" }}>
+                          <span style={{ width: 17, height: 17, flexShrink: 0, background: CS.B, color: "#fff", borderRadius: 999, fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9.5, display: "flex", alignItems: "center", justifyContent: "center" }}>{gi + 1}</span>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontWeight: 900, fontSize: 12, letterSpacing: "-0.01em", lineHeight: 1.08, textTransform: "uppercase", color: CS.K, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
-                            <div style={{ fontFamily: FONT_MONO, fontSize: 8, color: "rgba(13,13,13,0.5)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</div>
+                            <div style={{ fontWeight: 900, fontSize: 11, letterSpacing: "-0.01em", lineHeight: 1.02, textTransform: "uppercase", color: CS.K, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
+                            <div style={{ fontFamily: FONT_MONO, fontSize: 7.5, color: "rgba(13,13,13,0.5)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</div>
                           </div>
-                          <span style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 11, color: CS.B, flexShrink: 0 }}>{cl.members.length}</span>
-                          <span style={{ fontSize: 14, fontWeight: 900, color: CS.K, flexShrink: 0, marginLeft: 2 }}>→</span>
+                          <span style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 10.5, color: CS.B, flexShrink: 0 }}>{cl.members.length}</span>
+                          <span style={{ fontSize: 13, fontWeight: 900, color: CS.K, flexShrink: 0, marginLeft: 2 }}>→</span>
                         </button>
                       )
                     })}
