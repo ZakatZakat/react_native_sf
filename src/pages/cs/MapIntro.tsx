@@ -859,14 +859,11 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
                   )}
                   <div style={{ padding: "0 12px 12px" }}>
                     {shownCl.map(({ cl, gi }) => {
-                      const { name, sub } = clusterLabel(cl)
+                      const { name } = clusterLabel(cl)
                       return (
-                        <button key={gi} onClick={() => setSelCluster(gi)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "4px 4px", background: "transparent", border: "none", borderTop: gi === start ? "none" : "1px solid rgba(13,13,13,0.12)", cursor: "pointer", textAlign: "left" }}>
+                        <button key={gi} onClick={() => setSelCluster(gi)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "5px 4px", background: "transparent", border: "none", borderTop: gi === start ? "none" : "1px solid rgba(13,13,13,0.1)", cursor: "pointer", textAlign: "left" }}>
                           <span style={{ width: 17, height: 17, flexShrink: 0, background: CS.B, color: "#fff", borderRadius: 999, fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9.5, display: "flex", alignItems: "center", justifyContent: "center" }}>{gi + 1}</span>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontWeight: 900, fontSize: 11, letterSpacing: "-0.01em", lineHeight: 1.02, textTransform: "uppercase", color: CS.K, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
-                            <div style={{ fontFamily: FONT_MONO, fontSize: 7.5, color: "rgba(13,13,13,0.5)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</div>
-                          </div>
+                          <span style={{ flex: 1, minWidth: 0, fontWeight: 900, fontSize: 11.5, letterSpacing: "-0.01em", textTransform: "uppercase", color: CS.K, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
                           <span style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 10.5, color: CS.B, flexShrink: 0 }}>{cl.members.length}</span>
                           <span style={{ fontSize: 13, fontWeight: 900, color: CS.K, flexShrink: 0, marginLeft: 2 }}>→</span>
                         </button>
@@ -883,9 +880,9 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
             </div>
           </div>
           )}
-          <div style={{ padding: "11px 14px 12px", borderTop: "1.5px solid rgba(13,13,13,0.14)", background: CS.W }}>
-            <button onClick={onEnter} style={{ width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "10px 18px", border: `2.5px solid ${CS.K}`, background: CS.K, color: "#fff", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 13, letterSpacing: "0.04em", textTransform: "uppercase", boxShadow: `3px 3px 0 ${CS.B}` }}>
-              <span>Открыть район в ленте</span><span style={{ fontSize: 15, lineHeight: 1 }}>→</span>
+          <div style={{ padding: "8px 14px 9px", borderTop: "1.5px solid rgba(13,13,13,0.14)", background: CS.W }}>
+            <button onClick={onEnter} style={{ width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "8px 16px", border: `2.5px solid ${CS.K}`, background: CS.K, color: "#fff", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 12, letterSpacing: "0.04em", textTransform: "uppercase", boxShadow: `3px 3px 0 ${CS.B}` }}>
+              <span>Открыть район в ленте</span><span style={{ fontSize: 14, lineHeight: 1 }}>→</span>
             </button>
           </div>
         </div>
