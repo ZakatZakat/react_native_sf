@@ -584,6 +584,57 @@ export function MiniSwitch({ on, onClick }: { on: boolean; onClick?: (e: React.M
   )
 }
 
+// Info labels that curator posts commonly use — pulled onto their own line
+// and bolded in the sheet so «когда / где / вход» are scannable.
+const DESC_LABELS = "Когда|Где|Адрес|Место|Вход|Цена|Стоимость|Билеты|Возраст|Программа|Начало|Сбор|Регистрация|Что|Как|Тайминг|Расписание"
+const DESC_LABEL_RE = new RegExp(`^(${DESC_LABELS})\\s*[:：]\\s*(.*)$`, "i")
+
+/** Trim a verbose geocoded address down to street + building — drop the
+ *  trailing district / city / postal-code tail («…, Бутырский, Москва, 127015»)
+ *  and a leading city, keeping only what's useful in a compact place block. */
+function shortAddress(addr: string): string {
+  const parts = (addr || "").split(",").map((p) => p.trim()).filter(Boolean)
+  if (!parts.length) return ""
+  let lastNum = -1
+  parts.forEach((p, i) => { if (/\d/.test(p) && !/^\d{5,6}$/.test(p)) lastNum = i })
+  let s = (lastNum >= 0 ? parts.slice(0, lastNum + 1) : parts.slice(0, 2)).join(", ")
+  s = s.replace(/^(?:г\.?\s*)?(?:Москва|Санкт-Петербург|Петербург|СПб)\s*,\s*/i, "")
+  return s
+}
+
+/** Reflow a flat curator post body into readable lines: strip the channel
+ *  promo tail, drop a leading title/venue repeat, put info labels on their own
+ *  line, and break the run-on into one sentence per line. The source usually
+ *  arrives as a single wall of text with no newlines. `heads` = strings whose
+ *  verbatim repeat at the very top is redundant (event title, venue). */
+function formatEventDesc(raw: string, ...heads: string[]): string {
+  let s = (raw || "").replace(/\r/g, " ").replace(/ /g, " ").replace(/[ \t]+/g, " ").trim()
+  if (!s) return ""
+  // strip trailing channel CTA / promo / links (NB: no \b — it doesn't match
+  // after a Cyrillic letter in JS regex without the /u flag)
+  s = s.replace(/\s*(?:Подписаться|Подпишись|Подписывайтесь|Подписка на канал)[\s\S]*$/i, "").trim()
+  s = s.replace(/\s*[|｜]\s*[^|｜]*(?:москв|подмосков|питер|петербург|афиш|канал|подпис|интересные\s+места|мест[аоуы])[^|｜]*$/i, "").trim()
+  s = s.replace(/\s*(?:https?:\/\/|t\.me\/)\S*\s*$/i, "").trim()
+  s = s.replace(/[\s|•·]+$/, "").trim()
+  // labels → own line
+  s = s.replace(new RegExp(`\\s+(${DESC_LABELS})\\s*[:：]`, "g"), "\n$1:")
+  // one sentence per line (break after . ! ? … when the next char starts a new clause)
+  s = s.replace(/([.!?…])\s+(?=[«"„(A-ZА-ЯЁ0-9])/g, "$1\n")
+  const norm = (x: string) => x.toLowerCase().replace(/[^0-9a-zа-яё ]/gi, " ").replace(/\s+/g, " ").trim()
+  const headNorms = heads.map(norm).filter((h) => h.length > 3)
+  const noDate = (x: string) => x.replace(/^\s*\d{1,2}[.\/]\d{1,2}(?:[.\/]\d{2,4})?\s*[—–\-·]*\s*/, "")
+  const lines = s.replace(/\n{3,}/g, "\n\n").replace(/[ \t]+\n/g, "\n").trim().split("\n").map((l) => l.trim())
+  // drop leading blanks + lines that just repeat the title / venue (with or
+  // without a leading date, e.g. "10.07 — Groove Lesson")
+  while (lines.length) {
+    const l = lines[0]
+    if (l === "") { lines.shift(); continue }
+    if (headNorms.includes(norm(l)) || headNorms.includes(norm(noDate(l)))) { lines.shift(); continue }
+    break
+  }
+  return lines.join("\n").trim()
+}
+
 function EventSheet({ ev, onClose }: { ev: Ev | null; onClose: () => void }) {
   const [shown, setShown] = useState(false)
   useEffect(() => {
@@ -632,12 +683,14 @@ function EventSheet({ ev, onClose }: { ev: Ev | null; onClose: () => void }) {
           <div style={{ width: 44, height: 4, background: CS.K }} />
         </div>
         <div style={{ overflowY: "auto", overflowX: "hidden" }}>
-          {/* poster — v3 portrait 4:5 frame */}
-          <div style={{ position: "relative", margin: "8px 14px 0", border: `2.5px solid ${CS.K}`, overflow: "hidden", aspectRatio: "4 / 5", background: CS.K }}>
+          {/* poster — the frame hugs the image's own aspect: landscape posters
+              go full width, portrait ones shrink to a centred column capped at
+              maxHeight. No forced crop (not squished) and no letterbox bars. */}
+          <div style={{ position: "relative", margin: "8px auto 0", width: "fit-content", maxWidth: "calc(100% - 28px)", border: `2.5px solid ${CS.K}`, overflow: "hidden", background: CS.K, lineHeight: 0 }}>
             {ev.p && (
               <img
                 src={ev.p} alt=""
-                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                style={{ display: "block", width: "auto", height: "auto", maxWidth: "100%", maxHeight: "40vh" }}
               />
             )}
             <div style={{ position: "absolute", top: 8, left: 8, background: CS.B, color: CS.W, padding: "4px 8px", border: `1.5px solid ${CS.K}`, fontWeight: 900, fontSize: 9, letterSpacing: "0.16em", textTransform: "uppercase" }}>{ev.c}</div>
@@ -660,7 +713,7 @@ function EventSheet({ ev, onClose }: { ev: Ev | null; onClose: () => void }) {
               const vi = venueInfo(ev.venueKey)
               const name = vi?.name || (ev.v && ev.v !== "—" && !ev.v.startsWith("@") ? ev.v : "")
               if (!name) return null
-              const sub = vi ? [vi.kind, vi.address].filter(Boolean).join(" · ") : ""
+              const sub = vi ? [vi.kind, shortAddress(vi.address)].filter(Boolean).join(" · ") : ""
               return (
                 <div style={{ display: "flex", gap: 10, marginTop: 11, padding: "9px 11px", border: `2px solid ${CS.K}`, background: CS.W, boxShadow: `2.5px 2.5px 0 ${CS.B}` }}>
                   <span style={{ fontSize: 15, lineHeight: 1.15, flexShrink: 0 }}>📍</span>
@@ -673,7 +726,17 @@ function EventSheet({ ev, onClose }: { ev: Ev | null; onClose: () => void }) {
               )
             })()}
             <div style={{ height: 2, background: CS.K, margin: "12px 0 11px" }} />
-            <div style={{ fontWeight: 500, fontSize: 13.5, lineHeight: 1.55, color: CS.G70, paddingBottom: 18 }}>{ev.desc}</div>
+            <div style={{ fontWeight: 500, fontSize: 13.5, lineHeight: 1.5, color: CS.G70, paddingBottom: 18 }}>
+              {formatEventDesc(ev.desc, ev.t, ev.v, venueInfo(ev.venueKey)?.name || "").split("\n").map((line, i) => {
+                if (!line.trim()) return <div key={i} style={{ height: 8 }} />
+                const m = line.match(DESC_LABEL_RE)
+                return (
+                  <div key={i} style={{ marginTop: i === 0 ? 0 : 7 }}>
+                    {m ? <><span style={{ fontWeight: 800, color: CS.K }}>{m[1]}: </span>{m[2]}</> : line}
+                  </div>
+                )
+              })}
+            </div>
           </div>
         </div>
         {/* Footer — single-CTA "Добавить" toggles Going. Reminder strip
