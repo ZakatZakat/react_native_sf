@@ -186,7 +186,7 @@ function eventStackHTML(members: Ev[], i: number): string {
   const ghosts = n > 1 ? `<div class="cs-deck-ghost cs-dg2"></div><div class="cs-deck-ghost cs-dg1"></div>` : ""
   return ghosts +
     `<div class="cs-pola-card cs-deck-front">` +
-      `<div class="cs-pola-img">${e.p ? `<img src="${e.p}" alt=""/>` : ""}</div>` +
+      `<div class="cs-pola-img">${e.p ? `<img class="cs-pola-img-bg" src="${e.p}" alt=""/><img class="cs-pola-img-fg" src="${e.p}" alt=""/>` : ""}</div>` +
       `<div class="cs-pola-body">` +
         `<div class="cs-pola-top"><span class="cs-pola-cat">${esc(e.c || "событие")}</span>${date ? `<span class="cs-pola-date">${esc(date)}</span>` : ""}</div>` +
         `<div class="cs-pola-title cs-deck-title">${esc(e.t || "")}</div>` +

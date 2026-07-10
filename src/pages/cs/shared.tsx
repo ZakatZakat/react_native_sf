@@ -163,8 +163,11 @@ const KEYFRAMES = `
   .cs-clu-tip { width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 6px solid #0D0D0D; margin-top: -1px; }
   .cs-pola { position: relative; width: 158px; z-index: 3; cursor: pointer; display: flex; flex-direction: column; align-items: center; animation: cs-scatter-in 0.45s cubic-bezier(0.22,1,0.36,1) both; animation-delay: calc(var(--si,0) * 0.06s); }
   .cs-pola-card { width: 158px; box-sizing: border-box; background: #fff; border: 2.5px solid #0D0D0D; box-shadow: 3px 4px 0 rgba(13,13,13,0.85); overflow: hidden; transform-origin: bottom center; transition: transform 0.25s cubic-bezier(0.22,1,0.36,1), box-shadow 0.22s ease, border-color 0.2s ease; }
-  .cs-pola-img { width: 100%; height: 116px; overflow: hidden; border-bottom: 2px solid #0D0D0D; background: #E4E4E1; }
-  .cs-pola-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .cs-pola-img { position: relative; width: 100%; height: 116px; overflow: hidden; border-bottom: 2px solid #0D0D0D; background: #E4E4E1; }
+  /* Show the WHOLE poster (contain, never cropped); fill the letterbox with a
+     blurred copy of the same image so the bars read as intentional, not empty. */
+  .cs-pola-img .cs-pola-img-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scale(1.15); filter: blur(12px) saturate(1.1) brightness(0.9); display: block; }
+  .cs-pola-img .cs-pola-img-fg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; z-index: 1; }
   .cs-pola-body { padding: 7px 8px 8px; text-align: left; line-height: normal; }
   .cs-pola-top { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-bottom: 4px; }
   .cs-pola-cat { background: #0055FF; color: #fff; font-family: var(--cs-font-mono); font-weight: 700; font-size: 7.5px; letter-spacing: 0.07em; text-transform: uppercase; padding: 2px 5px; max-width: 108px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
