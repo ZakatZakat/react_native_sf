@@ -108,28 +108,42 @@ export function shelfNote(cat: string): string {
 }
 
 export function buildDerived(events: FeedItem[]): DerivedData {
-  // Collapse cross-posts. The same real-world event is often published in
-  // several channels (or reposted in one), arriving as separate feed rows —
-  // each with its OWN downloaded copy of the identical poster (same image,
-  // different URL), so a URL-level dedupe can't catch it. Key on the full post
-  // body + start time: true cross-posts are byte-identical copy-paste, while
-  // distinct events (even ones that share a generic first line like «📍Москва»
-  // or a date header) differ in the body and are kept. Fall back to the row id
-  // when there's no body so text-less events are never merged.
+  // Collapse cross-posts. One event is posted across channels with different
+  // captions AND sometimes different posters (resized / re-cropped, so NOT
+  // byte-identical). Match on ANY of three identities at the SAME start time:
+  //   • img — poster sha256 (catches byte-identical re-uploads)
+  //   • sig — the sorted set of a title's significant words (catches the same
+  //           event whose caption/poster differ but title words match, e.g.
+  //           «MAGIC TRIBE x TRIANGLE /-/ MADE IN BALI» ≈ «MAGIC TRIBE x
+  //           TRIANGLE | MADE IN BALI»)
+  //   • txt — full body (identical copy-paste)
+  // Only KEPT events record their keys → no transitive over-merge. `sig` needs
+  // ≥3 significant tokens + a real start time so short/generic titles can't
+  // merge unrelated events.
+  const TITLE_STOP = new Set([
+    "январь", "января", "февраль", "февраля", "март", "марта", "апрель", "апреля", "май", "мая", "июнь", "июня", "июль", "июля", "август", "августа", "сентябрь", "сентября", "октябрь", "октября", "ноябрь", "ноября", "декабрь", "декабря",
+    "понедельник", "вторник", "среда", "среду", "четверг", "пятница", "пятницу", "суббота", "субботу", "воскресенье",
+    "для", "что", "как", "это", "все", "уже", "при", "под", "над", "без", "про", "или", "где", "там", "так", "the", "and", "for", "with",
+  ])
+  const titleSig = (title: string): string => {
+    const toks = (title || "")
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s]/gu, " ")
+      .split(/\s+/)
+      .filter((w) => w.length >= 3 && !/^\d+$/.test(w) && !TITLE_STOP.has(w))
+    return toks.length >= 3 ? [...new Set(toks)].sort().join("|") : ""
+  }
   const seenEvents = new Set<string>()
   const uniqueEvents = events.filter((e) => {
-    // Prefer the poster's content hash: cross-posts of one event carry a
-    // BYTE-IDENTICAL image under different URLs and often different captions,
-    // so a text key misses them. Fall back to the body when there's no hash
-    // (e.g. text-only posts), then to the row id so distinct items never merge.
+    const t = e.event_time || ""
+    const keys: string[] = []
+    if (e.media_hash) keys.push(`img:${e.media_hash}|${t}`)
+    if (t) { const s = titleSig(e.title); if (s) keys.push(`sig:${s}|${t}`) }
     const body = (e.description || "").trim().toLowerCase().replace(/\s+/g, " ")
-    const key = e.media_hash
-      ? `img:${e.media_hash}|${e.event_time || ""}`
-      : body
-        ? `txt:${body}|${e.event_time || ""}`
-        : `__row_${e.id}`
-    if (seenEvents.has(key)) return false
-    seenEvents.add(key)
+    if (body) keys.push(`txt:${body}|${t}`)
+    if (!keys.length) keys.push(`row:${e.id}`)
+    if (keys.some((k) => seenEvents.has(k))) return false
+    keys.forEach((k) => seenEvents.add(k))
     return true
   })
 
