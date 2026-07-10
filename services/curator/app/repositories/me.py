@@ -87,6 +87,10 @@ class PersonalizedFeedRepository:
             .join(PostRaw, PostRaw.id == EventCurated.post_id)
             .where(EventCurated.status == EventStatus.approved)
             .where(or_(EventCurated.event_time >= now, EventCurated.event_time.is_(None)))
+            # Moscow-only feed: drop events tagged as another city. region is set
+            # by the city-detection pass (coords for geocoded, poster-vision for
+            # the rest); unset/unknown defaults to moscow so nothing is lost.
+            .where(func.coalesce(EventCurated.location_meta["region"].astext, "moscow").notin_(["spb", "other"]))
             .order_by(EventCurated.location_meta.isnot(None).desc(), EventCurated.event_time.asc().nulls_last())
         )
 

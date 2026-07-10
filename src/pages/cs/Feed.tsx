@@ -109,7 +109,7 @@ function DiaryView({ feed }: { feed: Ev[] }) {
 
       <div style={{ position: "absolute", left: 0, right: 0, top: 1000, textAlign: "center" }}>
         <Scribble color={SK.ink35} w={110} />
-        <div><Lbl size={9} style={{ letterSpacing: "0.24em" }}>{feed.length} событий · msc—spb · wk22</Lbl></div>
+        <div><Lbl size={9} style={{ letterSpacing: "0.24em" }}>{feed.length} событий · москва · wk22</Lbl></div>
       </div>
     </div>
   )
@@ -445,10 +445,67 @@ function RefreshGlyph({ variant = "b", spin = 0 }: { variant?: string; spin?: nu
   </>)
 }
 
+/** Full-screen catalog search — filters the board's events by title / venue /
+ *  channel / category as you type; tap a result to open its sheet. Replaces the
+ *  «искать место» search that lived in the removed inline map. */
+function BoardSearch({ events, onClose }: { events: Ev[]; onClose: () => void }) {
+  const open = useOpenEvent()
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [q, setQ] = useState("")
+  useEffect(() => { inputRef.current?.focus() }, [])
+  const query = q.trim().toLowerCase()
+  const results = useMemo(
+    () => (query
+      ? events.filter((e) => `${e.t} ${e.v} ${e.ch} ${e.c}`.toLowerCase().includes(query))
+      : events),
+    [events, query],
+  )
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 9000, background: SK.paper, display: "flex", flexDirection: "column", fontFamily: FONT_SANS }}>
+      {/* search bar + close */}
+      <div style={{ flexShrink: 0, display: "flex", gap: 8, padding: "12px 14px", borderBottom: `2.5px solid ${SK.ink}` }}>
+        <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, border: `2px solid ${SK.ink}`, background: SK.paper, padding: "9px 12px", boxShadow: `3px 3px 0 ${SK.ink}` }}>
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none" style={{ flexShrink: 0 }}><circle cx="6.5" cy="6.5" r="4.7" stroke={SK.ink} strokeWidth="2" /><line x1="10" y1="10" x2="13.5" y2="13.5" stroke={SK.ink} strokeWidth="2" strokeLinecap="round" /></svg>
+          <input ref={inputRef} value={q} onChange={(e) => setQ(e.target.value)} placeholder="поиск по афише…" style={{ flex: 1, minWidth: 0, border: "none", outline: "none", background: "transparent", fontFamily: FONT_MONO, fontSize: 12, letterSpacing: "0.03em", color: SK.ink }} />
+          {q && <button onClick={() => setQ("")} aria-label="Очистить" style={{ flexShrink: 0, border: "none", background: "none", cursor: "pointer", padding: 0, fontFamily: FONT_SANS, fontWeight: 900, fontSize: 15, lineHeight: 1, color: SK.ink55 }}>✕</button>}
+        </div>
+        <button onClick={onClose} aria-label="Закрыть поиск" style={{ flexShrink: 0, width: 42, border: `2px solid ${SK.ink}`, background: SK.ink, color: SK.paper, boxShadow: `3px 3px 0 ${SK.blue}`, cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 16, lineHeight: 1 }}>✕</button>
+      </div>
+      {/* count */}
+      <div style={{ flexShrink: 0, padding: "10px 15px 2px", fontFamily: FONT_MONO, fontSize: 9.5, letterSpacing: "0.12em", textTransform: "uppercase", color: SK.ink55 }}>{query ? "найдено" : "вся афиша"} · {results.length}</div>
+      {/* results */}
+      <div className="sk-scroll" style={{ flex: 1, overflowY: "auto", padding: "6px 15px 24px" }}>
+        {results.length === 0 && (
+          <div style={{ padding: "44px 0", textAlign: "center", fontFamily: FONT_MONO, fontSize: 12, letterSpacing: "0.04em", color: SK.ink55 }}>ничего не нашлось</div>
+        )}
+        {results.map((e) => {
+          const venue = e.v && !e.v.startsWith("@") ? e.v : ""
+          const date = [e.d, e.tm].filter((s) => s && s !== "—").join(" · ")
+          const sub = [venue, e.ch].filter(Boolean).join(" · ")
+          return (
+            <button key={e.id} onClick={() => open(e)} style={{ width: "100%", display: "flex", gap: 11, alignItems: "flex-start", padding: "10px 0", borderTop: "1px solid rgba(13,13,13,0.12)", background: "transparent", cursor: "pointer", textAlign: "left" }}>
+              <div style={{ flexShrink: 0, width: 46, height: 58, border: `2px solid ${SK.ink}`, background: "#E4E4E1", overflow: "hidden" }}>{e.p && <img src={e.p} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}</div>
+              <div style={{ flex: 1, minWidth: 0, paddingTop: 1 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ background: SK.blue, color: "#fff", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 7.5, letterSpacing: "0.06em", textTransform: "uppercase", padding: "2px 5px", whiteSpace: "nowrap" }}>{e.c}</span>
+                  {date && <span style={{ fontFamily: FONT_MONO, fontSize: 9, color: SK.ink55, whiteSpace: "nowrap" }}>{date}</span>}
+                </div>
+                <div style={{ fontWeight: 900, fontSize: 13.5, lineHeight: 1.1, letterSpacing: "-0.01em", textTransform: "uppercase", color: SK.ink, marginTop: 5, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{e.t}</div>
+                {sub && <div style={{ fontFamily: FONT_MONO, fontSize: 9.5, color: SK.ink55, marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</div>}
+              </div>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 function BoardView({ feed, btn = "b", name = "Гость", onMap }: { feed: Ev[]; btn?: string; name?: string; onMap?: () => void }) {
   const nav = useContext(NavCtx)
   const [nonce, setNonce] = useState(0)
   const [sweep, setSweep] = useState(0)
+  const [searchOpen, setSearchOpen] = useState(false)
   // Full upcoming catalog (already future-filtered + chronological upstream).
   const E = useMemo(() => feed.filter((e) => e && !e.id.startsWith("__placeholder")), [feed])
   // «Выбор недели» hero rotates through the soonest few on each refresh; the
@@ -463,34 +520,21 @@ function BoardView({ feed, btn = "b", name = "Гость", onMap }: { feed: Ev[]
     <div style={{ width: "100%", paddingBottom: 54 }}>
       {/* header — title block on the left, profile + refresh on the right */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "stretch", gap: 12, padding: "0 14px", marginBottom: 22 }}>
-        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "space-between", background: SK.paper, border: `2px solid ${SK.ink}`, padding: "12px 12px 13px", transform: "rotate(-1deg)", boxShadow: `3px 3px 0 ${SK.ink}` }}>
-          <Lbl size={9} style={{ letterSpacing: "0.3em" }}>доска недели · wk 22</Lbl>
-          <div style={{ fontWeight: 900, fontSize: 26, letterSpacing: "-0.04em", lineHeight: 0.9, marginTop: 3, color: SK.ink }}>Что в городе</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6 }}>
-            <Lbl size={9}>{E.length} событий · москва—спб</Lbl>
+        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "space-between", background: SK.paper, border: `2px solid ${SK.ink}`, padding: "11px 13px 12px", transform: "rotate(-1deg)", boxShadow: `3px 3px 0 ${SK.ink}` }}>
+          <Lbl size={10} style={{ letterSpacing: "0.3em" }}>доска недели · wk 22</Lbl>
+          <div style={{ fontWeight: 900, fontSize: 35, letterSpacing: "-0.045em", lineHeight: 0.9, marginTop: 4, color: SK.ink }}>Что в городе</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
+            <Lbl size={10}>{E.length} событий · москва</Lbl>
           </div>
         </div>
-        <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 10, marginTop: 2 }}>
-          <ProfileBadge name={name} onClick={nav.openProfile} />
-          <button
-            onClick={refresh}
-            aria-label="Обновить ленту"
-            style={{
-              width: 38, height: 38, background: SK.paper,
-              border: `2px solid ${SK.ink}`,
-              boxShadow: `2.5px 2.5px 0 ${SK.blue}`,
-              cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              padding: 0,
-            }}
-          >
-            <RefreshGlyph variant={btn} spin={sweep} />
-          </button>
-          {onMap && (
+        {/* controls — 2×2 cluster: [search][ГО] on top, [refresh][map] below.
+            Compact so the title card doesn't stretch tall. */}
+        <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, marginTop: 2 }}>
+          <div style={{ display: "flex", gap: 8 }}>
             <button
-              onClick={onMap}
-              aria-label="Открыть карту"
-              title="Карта"
+              onClick={() => setSearchOpen(true)}
+              aria-label="Поиск по афише"
+              title="Поиск"
               style={{
                 width: 38, height: 38, background: SK.paper,
                 border: `2px solid ${SK.ink}`,
@@ -500,12 +544,49 @@ function BoardView({ feed, btn = "b", name = "Гость", onMap }: { feed: Ev[]
                 padding: 0,
               }}
             >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                <path d="M12 21 C12 21 5 13.5 5 9 A7 7 0 0 1 19 9 C19 13.5 12 21 12 21 Z" stroke={SK.ink} strokeWidth="2" strokeLinejoin="round" />
-                <circle cx="12" cy="9" r="2.6" fill={SK.blue} />
+              <svg width="19" height="19" viewBox="0 0 19 19" fill="none">
+                <circle cx="8" cy="8" r="5.6" stroke={SK.ink} strokeWidth="2.2" />
+                <line x1="12.3" y1="12.3" x2="17" y2="17" stroke={SK.ink} strokeWidth="2.2" strokeLinecap="round" />
               </svg>
             </button>
-          )}
+            <ProfileBadge name={name} onClick={nav.openProfile} />
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              onClick={refresh}
+              aria-label="Обновить ленту"
+              style={{
+                width: 38, height: 38, background: SK.paper,
+                border: `2px solid ${SK.ink}`,
+                boxShadow: `2.5px 2.5px 0 ${SK.blue}`,
+                cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                padding: 0,
+              }}
+            >
+              <RefreshGlyph variant={btn} spin={sweep} />
+            </button>
+            {onMap && (
+              <button
+                onClick={onMap}
+                aria-label="Открыть карту"
+                title="Карта"
+                style={{
+                  width: 38, height: 38, background: SK.paper,
+                  border: `2px solid ${SK.ink}`,
+                  boxShadow: `2.5px 2.5px 0 ${SK.blue}`,
+                  cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  padding: 0,
+                }}
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 21 C12 21 5 13.5 5 9 A7 7 0 0 1 19 9 C19 13.5 12 21 12 21 Z" stroke={SK.ink} strokeWidth="2" strokeLinejoin="round" />
+                  <circle cx="12" cy="9" r="2.6" fill={SK.blue} />
+                </svg>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -529,6 +610,8 @@ function BoardView({ feed, btn = "b", name = "Гость", onMap }: { feed: Ev[]
           <Lbl color={SK.paper} size={9} style={{ letterSpacing: "0.18em" }}>{total.toLocaleString("ru")} идут · обновлено сейчас</Lbl>
         </span>
       </div>
+
+      {searchOpen && <BoardSearch events={E} onClose={() => setSearchOpen(false)} />}
     </div>
   )
 }
