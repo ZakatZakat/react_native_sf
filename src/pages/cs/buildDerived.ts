@@ -138,25 +138,58 @@ export function buildDerived(events: FeedItem[]): DerivedData {
     "понедельник", "вторник", "среда", "среду", "четверг", "пятница", "пятницу", "суббота", "субботу", "воскресенье",
     "для", "что", "как", "это", "все", "уже", "при", "под", "над", "без", "про", "или", "где", "там", "так", "the", "and", "for", "with",
   ])
-  const titleSig = (title: string): string => {
-    const toks = (title || "")
+  const tokenize = (s: string): string[] =>
+    (s || "")
       .toLowerCase()
       .replace(/[^\p{L}\p{N}\s]/gu, " ")
       .split(/\s+/)
       .filter((w) => w.length >= 3 && !/^\d+$/.test(w) && !TITLE_STOP.has(w))
-    return toks.length >= 3 ? [...new Set(toks)].sort().join("|") : ""
+  // Name-word set for an event: from the title, or (when the title is too
+  // generic, e.g. «10 июля») from the title + the head of the body, which
+  // usually leads with the event name.
+  const nameTokens = (e: FeedItem): Set<string> => {
+    let toks = tokenize(e.title)
+    if (toks.length < 4) toks = tokenize(`${e.title || ""} ${(e.description || "").slice(0, 80)}`)
+    return new Set(toks)
   }
-  const seenEvents = new Set<string>()
+  // Containment (overlap coefficient) — |∩| / smaller set. Better than Jaccard
+  // for cross-posts where one caption is a clean title («MADE IN BALI») and the
+  // other buries the same name in a longer body (extra tokens shouldn't tank the
+  // score): a clean name fully inside the noisy one scores 1.0.
+  const overlap = (a: Set<string>, b: Set<string>): number => {
+    const [s, l] = a.size <= b.size ? [a, b] : [b, a]
+    let inter = 0
+    s.forEach((x) => { if (l.has(x)) inter++ })
+    return s.size ? inter / s.size : 0
+  }
+  const seenExact = new Set<string>()
+  const keptNames = new Map<string, Set<string>[]>() // event_time → kept name-sets
   const uniqueEvents = events.filter((e) => {
-    const t = e.event_time || ""
-    const keys: string[] = []
-    if (e.media_hash) keys.push(`img:${e.media_hash}|${t}`)
-    if (t) { const s = titleSig(e.title); if (s) keys.push(`sig:${s}|${t}`) }
+    // Bucket by the DISPLAYED date+time — cross-posts sometimes carry the start
+    // time stored differently (seconds / timezone), so an exact match on the raw
+    // event_time misses them even though the user sees the same «10.07 · 18:00».
+    const td = e.event_time ? new Date(e.event_time) : null
+    const t = td && !Number.isNaN(td.getTime())
+      ? td.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" }) + " " + td.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })
+      : ""
+    // Exact keys: byte-identical poster or identical body at the same time.
+    const exact: string[] = []
+    if (e.media_hash) exact.push(`img:${e.media_hash}|${t}`)
     const body = (e.description || "").trim().toLowerCase().replace(/\s+/g, " ")
-    if (body) keys.push(`txt:${body}|${t}`)
-    if (!keys.length) keys.push(`row:${e.id}`)
-    if (keys.some((k) => seenEvents.has(k))) return false
-    keys.forEach((k) => seenEvents.add(k))
+    if (body) exact.push(`txt:${body}|${t}`)
+    if (exact.some((k) => seenExact.has(k))) return false
+    // Fuzzy cross-post match: same start time + heavy name-word overlap. Catches
+    // re-worded captions and re-uploaded (byte-different) posters that the exact
+    // keys miss — «MAGIC TRIBE x TRIANGLE / MADE IN BALI» vs a generic «10 июля»
+    // whose body names the same event.
+    const nm = t ? nameTokens(e) : new Set<string>()
+    if (nm.size >= 4) {
+      const bucket = keptNames.get(t) ?? []
+      if (bucket.some((prev) => prev.size >= 4 && overlap(nm, prev) >= 0.8)) return false
+      bucket.push(nm)
+      keptNames.set(t, bucket)
+    }
+    exact.forEach((k) => seenExact.add(k))
     return true
   })
 
