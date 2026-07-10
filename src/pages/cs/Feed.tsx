@@ -515,6 +515,14 @@ function BoardView({ feed, btn = "b", name = "Гость", onMap }: { feed: Ev[]
   const rest = E.filter((_, i) => i !== heroIdx)
   const refresh = () => { setNonce((n) => n + 1); setSweep((s) => s + 360) }
   const total = E.reduce((s, e, i) => s + going(e, i), 0)
+  // Category filter — applies ONLY to the «Каталог» grid; «выбор недели» stays.
+  const [cat, setCat] = useState("Все")
+  const cats = useMemo(() => {
+    const seen: string[] = []
+    for (const e of E) if (e.c && e.c !== "—" && !seen.includes(e.c)) seen.push(e.c)
+    return ["Все", ...seen]
+  }, [E])
+  const catalog = cat === "Все" ? rest : rest.filter((e) => e.c === cat)
 
   return (
     <div style={{ width: "100%", paddingBottom: 54 }}>
@@ -590,17 +598,29 @@ function BoardView({ feed, btn = "b", name = "Гость", onMap }: { feed: Ev[]
         </div>
       </div>
 
-      {/* board body — выбор недели (hero) → каталог (all upcoming). The inline
-          map was removed from the feed (the map lives in the intro overlay). */}
-      <div key={nonce}>
+      {/* category filter — chips filter the «Каталог» grid only (hero stays) */}
+      <div className="sk-scroll" style={{ display: "flex", gap: 8, overflowX: "auto", padding: "0 14px 4px", marginBottom: 14 }}>
+        {cats.map((c) => {
+          const on = cat === c
+          return (
+            <button key={c} onClick={() => setCat(c)} style={{ flexShrink: 0, padding: "6px 12px", border: `2px solid ${SK.ink}`, background: on ? SK.ink : SK.paper, color: on ? SK.paper : SK.ink, fontFamily: FONT_SANS, fontWeight: 800, fontSize: 10.5, letterSpacing: "0.05em", textTransform: "uppercase", whiteSpace: "nowrap", cursor: "pointer" }}>{c}</button>
+          )
+        })}
+      </div>
+
+      {/* board body — выбор недели (hero) → каталог (filtered by category). The
+          inline map was removed from the feed (the map lives in the intro). */}
+      <div key={`${nonce}-${cat}`}>
         <div style={{ padding: "0 14px" }}>
           <SectionLabel>выбор недели</SectionLabel>
           {hero && <BoardLead ev={hero} />}
-          {rest.length > 0 && (
-            <>
-              <SectionLabel>каталог</SectionLabel>
-              <MosaicGrid events={rest} heights={[248, 224, 236, 220, 244]} />
-            </>
+          <SectionLabel>каталог</SectionLabel>
+          {catalog.length > 0 ? (
+            <MosaicGrid events={catalog} heights={[248, 224, 236, 220, 244]} />
+          ) : (
+            <div style={{ fontFamily: FONT_MONO, fontSize: 11, color: SK.ink55, letterSpacing: "0.04em", padding: "10px 2px 4px" }}>
+              в категории «{cat.toLowerCase()}» пока пусто
+            </div>
           )}
         </div>
       </div>
