@@ -39,7 +39,7 @@ import MapIntro from "./MapIntro"
 const FALLBACK: Ev = {
   id: "—", t: "—", sub: "", v: "—", d: "—", tm: "—",
   p: null, c: "—", catKey: "", ch: "@—",
-  desc: "", price: "—", note: "", venueKey: "",
+  desc: "", price: "—", note: "", venueKey: "", ts: null,
 }
 
 /** Pick N events from the feed; pad with positionally-unique placeholders
@@ -226,8 +226,8 @@ function MosaicCard({ ev, i, h }: { ev: Ev; i: number; h: number }) {
   const rot = [-2.5, 2, -1.5, 2.5][i % 4]
   const n = going(ev, i)
   return (
-    <div style={{ position: "relative", marginBottom: 16, animation: `sk-refresh 0.5s cubic-bezier(0.22,1,0.36,1) ${(i * 0.06).toFixed(2)}s both` }}>
-      <Clip ev={ev} w="100%" h={h} rot={rot} />
+    <div style={{ position: "relative", marginBottom: 16, animation: `sk-refresh 0.5s cubic-bezier(0.22,1,0.36,1) ${(Math.min(i, 12) * 0.06).toFixed(2)}s both` }}>
+      <Clip ev={ev} w="100%" h={h} rot={rot} float={i < 20} />
       <span style={{ position: "absolute", top: 8, left: 8 }}><CatChip c={ev.c} dark /></span>
       <span style={{ position: "absolute", top: 8, right: 8, transform: "rotate(3deg)" }}><PriceTag ev={ev} solid /></span>
       <div style={{ marginTop: 9, marginLeft: 4 }}>
@@ -411,12 +411,13 @@ function BoardView({ feed, btn = "b", name = "Гость", onMap }: { feed: Ev[]
   const nav = useContext(NavCtx)
   const [nonce, setNonce] = useState(0)
   const [sweep, setSweep] = useState(0)
-  // Shuffle deterministically by nonce so the order changes on every refresh.
-  const order = useMemo(() => {
-    const idx = feed.map((_, i) => i)
-    return idx.sort((a, b) => ((a * 7 + nonce * 13) % 11) - ((b * 7 + nonce * 13) % 11))
-  }, [nonce, feed])
-  const E = order.map((i) => feed[i]).filter((e) => e && !e.id.startsWith("__placeholder")).slice(0, 8)
+  // Full upcoming catalog (already future-filtered + chronological upstream).
+  const E = useMemo(() => feed.filter((e) => e && !e.id.startsWith("__placeholder")), [feed])
+  // «Выбор недели» hero rotates through the soonest few on each refresh; the
+  // catalog below always shows the rest of what's ahead.
+  const heroIdx = E.length ? nonce % Math.min(E.length, 6) : 0
+  const hero = E[heroIdx]
+  const rest = E.filter((_, i) => i !== heroIdx)
   const refresh = () => { setNonce((n) => n + 1); setSweep((s) => s + 360) }
   const total = E.reduce((s, e, i) => s + going(e, i), 0)
 
@@ -470,21 +471,16 @@ function BoardView({ feed, btn = "b", name = "Гость", onMap }: { feed: Ev[]
         </div>
       </div>
 
-      {/* mapcombo body — map → выбор недели (hero + 2 grid) → россыпью (mosaic) */}
+      {/* mapcombo body — map → выбор недели (hero) → каталог (all upcoming) */}
       <div key={nonce}>
         <CsMap events={E} height={236} />
         <div style={{ padding: "0 14px" }}>
           <SectionLabel>выбор недели</SectionLabel>
-          {E[0] && <BoardLead ev={E[0]} />}
-          {(E[1] || E[2]) && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "22px 14px", marginTop: 20 }}>
-              {[E[1], E[2]].filter(Boolean).map((e, i) => <GridCard key={e.id} ev={e} i={i} />)}
-            </div>
-          )}
-          {E.length > 3 && (
+          {hero && <BoardLead ev={hero} />}
+          {rest.length > 0 && (
             <>
-              <SectionLabel>россыпью</SectionLabel>
-              <MosaicGrid events={E.slice(3)} heights={[168, 150, 150, 168, 160]} />
+              <SectionLabel>каталог</SectionLabel>
+              <MosaicGrid events={rest} heights={[168, 150, 150, 168, 160]} />
             </>
           )}
         </div>
@@ -630,6 +626,16 @@ export default function CsFeed() {
   // All events (flattened from the category pool) — the map intro wants
   // every geocoded event, not just the 8 in the main feed.
   const allEvents = useMemo(() => Object.values(derived.pool).flat(), [derived])
+  // Доска catalog — every UPCOMING event (from the start of today), soonest
+  // first; undated events go last. Powers the «выбор недели» hero + full
+  // «Каталог» so the board shows everything ahead, not a truncated slice.
+  const boardCatalog = useMemo(() => {
+    const cutoff = new Date(); cutoff.setHours(0, 0, 0, 0)
+    const c = cutoff.getTime()
+    return allEvents
+      .filter((e) => e.ts == null || e.ts >= c)
+      .sort((a, b) => (a.ts ?? Infinity) - (b.ts ?? Infinity))
+  }, [allEvents])
   const edge = EDGE_PRESETS[edgeKey] ?? EDGE_PRESETS.thin
 
   const navValue = useMemo(
@@ -652,7 +658,7 @@ export default function CsFeed() {
   let inner: React.ReactNode
   if (view === "diary") inner = <DiaryView feed={feed} />
   else if (view === "journal") inner = <JournalView feed={feed} name={safeName} />
-  else inner = <BoardView feed={feed} btn={btn} name={safeName} onMap={() => setShowIntro(true)} />
+  else inner = <BoardView feed={boardCatalog} btn={btn} name={safeName} onMap={() => setShowIntro(true)} />
 
   return (
     <NavCtx.Provider value={navValue}>

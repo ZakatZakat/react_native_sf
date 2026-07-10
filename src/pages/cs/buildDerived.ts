@@ -36,6 +36,7 @@ export type Ev = {
   dur: string       // duration ("до 08:00" / "96 мин") — optional
   geo: [number, number] | null  // resolved [lat, lng] for the map, if geocoded
   venueKey: string  // gazetteer venue key (e.g. "ges2") for the place card, or ""
+  ts: number | null // event start as epoch ms (for future-filtering / sorting), null if undated
 }
 
 export type DerivedData = {
@@ -84,6 +85,7 @@ export function toEv(e: FeedItem): Ev {
     dur: "",   // duration — curator doesn't carry it yet
     geo: (Array.isArray(e.geo) && e.geo.length === 2) ? [e.geo[0], e.geo[1]] : null,
     venueKey: e.venue || "",
+    ts: dateObj && !Number.isNaN(dateObj.getTime()) ? dateObj.getTime() : null,
   }
 }
 

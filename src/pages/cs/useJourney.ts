@@ -30,9 +30,20 @@ async function ensureFetched(): Promise<DerivedData> {
   if (inflight) return inflight
   inflight = (async () => {
     try {
+      // Fetch EVERY upcoming event, not a single capped page — the server
+      // limits one request to ≤200, so page through until a short page.
       const events = await analytics.measure(
         "api.call",
-        () => Curator.getFeed({ limit: 120 }),
+        async () => {
+          const PAGE = 200
+          const all = [] as Awaited<ReturnType<typeof Curator.getFeed>>
+          for (let offset = 0; offset < 4000; offset += PAGE) {
+            const batch = await Curator.getFeed({ limit: PAGE, offset })
+            all.push(...batch)
+            if (batch.length < PAGE) break
+          }
+          return all
+        },
         { path: "/me/feed", method: "GET", page: "cs_journey" },
       )
       const d = buildDerived(events)

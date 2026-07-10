@@ -716,13 +716,14 @@ export const EdgeCtx = createContext<EdgePreset>(EDGE_PRESETS.thin)
 /** Scrapbook poster — rotated, contour-bordered, gently floating.
  *  Reads the edge preset from EdgeCtx; tapping opens the event modal. */
 export function Clip({
-  ev, w, h, rot = 0, style,
+  ev, w, h, rot = 0, style, float = true,
 }: {
   ev: Ev | null
   w: number
   h: number
   rot?: number
   style?: React.CSSProperties
+  float?: boolean  // gentle idle float; disable for long lists (many infinite anims tax mobile)
 }) {
   const e = useContext(EdgeCtx)
   const open = useOpenEvent()
@@ -730,7 +731,7 @@ export function Clip({
   const dur = (4.6 + (Math.abs(rot) % 3) * 0.7).toFixed(2)
   const delay = ((Math.abs(Math.round(rot * 7)) % 20) / 10).toFixed(2)
   return (
-    <div style={{ ...style, animation: `sk-float ${dur}s ease-in-out ${delay}s infinite` }}>
+    <div style={{ ...style, animation: float ? `sk-float ${dur}s ease-in-out ${delay}s infinite` : undefined }}>
       <div
         onClick={ev ? () => open(ev) : undefined}
         style={{
@@ -744,7 +745,7 @@ export function Clip({
       >
         <div style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden" }}>
           {ev?.p && (
-            <img src={ev.p} alt="" draggable={false} style={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }} />
+            <img src={ev.p} alt="" draggable={false} loading="lazy" style={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }} />
           )}
           {card && ev && (
             <>
@@ -793,7 +794,7 @@ export function Polaroid({
       >
         <div style={{ position: "relative", width: "100%", height: ph, overflow: "hidden", background: "#0b1d52", borderBottom: card ? "none" : `1px solid ${SK.ink}` }}>
           {ev?.p && (
-            <img src={ev.p} alt="" draggable={false} style={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }} />
+            <img src={ev.p} alt="" draggable={false} loading="lazy" style={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }} />
           )}
           {card && ev && (
             <>
@@ -906,7 +907,7 @@ export function GoingAgenda() {
               p: ev.p, c: ev.cat, catKey: "",
               ch: ev.ch,
               desc: "Открой канал для подробностей.",
-              price: "—", venueKey: "",
+              price: "—", venueKey: "", ts: null,
             }
             return (
               <div
