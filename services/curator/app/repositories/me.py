@@ -90,7 +90,7 @@ class PersonalizedFeedRepository:
             # Moscow-only feed: drop events tagged as another city. region is set
             # by the city-detection pass (coords for geocoded, poster-vision for
             # the rest); unset/unknown defaults to moscow so nothing is lost.
-            .where(func.coalesce(EventCurated.location_meta["region"].astext, "moscow").notin_(["spb", "other"]))
+            .where(func.coalesce(EventCurated.location_meta.op("->>")("region"), "moscow").notin_(["spb", "other"]))
             .order_by(EventCurated.location_meta.isnot(None).desc(), EventCurated.event_time.asc().nulls_last())
         )
 
