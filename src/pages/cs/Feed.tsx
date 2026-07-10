@@ -182,10 +182,10 @@ function SectionLabel({ children, style }: { children: React.ReactNode; style?: 
 function BoardLead({ ev }: { ev: Ev }) {
   const open = useOpenEvent()
   return (
-    <div onClick={() => open(ev)} style={{ display: "flex", gap: 12, background: SK.paper, border: `2px solid ${SK.ink}`, boxShadow: `4px 4px 0 ${SK.ink}`, padding: 8, cursor: "pointer", animation: "sk-refresh 0.5s cubic-bezier(0.22,1,0.36,1) both" }}>
-      <div style={{ width: 116, flexShrink: 0, height: 150, overflow: "hidden", border: `1.5px solid ${SK.ink}` }}>
-        {ev.p && <img src={ev.p} alt="" draggable={false} style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
-      </div>
+    <div onClick={() => open(ev)} style={{ display: "flex", alignItems: "center", gap: 12, background: SK.paper, border: `2px solid ${SK.ink}`, boxShadow: `4px 4px 0 ${SK.ink}`, padding: 8, cursor: "pointer", animation: "sk-refresh 0.5s cubic-bezier(0.22,1,0.36,1) both" }}>
+      {/* poster shown whole at its own aspect (no crop) — fits within a box,
+          so a wide poster stays short and the card grows for a tall one. */}
+      {ev.p && <img src={ev.p} alt="" draggable={false} style={{ display: "block", flexShrink: 0, maxWidth: 150, maxHeight: 172, width: "auto", height: "auto", border: `1.5px solid ${SK.ink}` }} />}
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <CatChip c={ev.c} dark />
