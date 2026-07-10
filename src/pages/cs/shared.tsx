@@ -153,14 +153,16 @@ const KEYFRAMES = `
   /* ── v7 sys-fan (hybrid): cluster fans + polaroid drill-down ── */
   @keyframes cs-soft-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
   .cs-clu { position: relative; display: flex; flex-direction: column; align-items: center; cursor: pointer; animation: cs-scatter-in 0.4s cubic-bezier(0.22,1,0.36,1) both; animation-delay: calc(var(--si,0) * 0.07s); }
-  .cs-clu-fan { position: relative; width: 56px; height: 46px; animation: cs-soft-bob calc(3.4s + var(--si,0) * 0.5s) ease-in-out infinite; }
-  .cs-clu-card { position: absolute; left: 50%; top: 50%; box-sizing: border-box; width: 30px; height: 38px; margin: -19px 0 0 -15px; border: 2px solid #0D0D0D; background: #fff; overflow: hidden; box-shadow: 1.5px 1.5px 0 rgba(13,13,13,0.5); transform: translateX(calc((var(--zz) - 1) * 8px)) rotate(var(--zr)); z-index: calc(4 - var(--zz)); transition: transform 0.24s cubic-bezier(0.22,1,0.36,1); }
+  .cs-clu-fan { position: relative; width: 78px; height: 64px; animation: cs-soft-bob calc(3.4s + var(--si,0) * 0.5s) ease-in-out infinite; }
+  .cs-clu-card { position: absolute; left: 50%; top: 50%; box-sizing: border-box; width: 44px; height: 54px; margin: -27px 0 0 -22px; border: 2px solid #0D0D0D; background: #fff; overflow: hidden; box-shadow: 2px 2px 0 rgba(13,13,13,0.5); transform: translateX(calc((var(--zz) - 1) * 12px)) rotate(var(--zr)); z-index: calc(4 - var(--zz)); transition: transform 0.24s cubic-bezier(0.22,1,0.36,1); }
   .cs-clu-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .cs-clu:hover .cs-clu-card, .cs-clu-active .cs-clu-card { transform: translateX(calc((var(--zz) - 1) * 15px)) rotate(calc(var(--zr) * 1.4)); }
+  .cs-clu:hover .cs-clu-card, .cs-clu-active .cs-clu-card { transform: translateX(calc((var(--zz) - 1) * 18px)) rotate(calc(var(--zr) * 1.4)); }
+  /* a lone poster: upright, centred, no fan spread */
+  .cs-clu-single .cs-clu-card { transform: none; }
+  .cs-clu-single:hover .cs-clu-card, .cs-clu-single.cs-clu-active .cs-clu-card { transform: translateY(-2px); }
   .cs-clu-count { position: absolute; right: -4px; top: -7px; z-index: 6; min-width: 17px; height: 17px; padding: 0 4px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; background: #0055FF; color: #fff; border: 2px solid #fff; border-radius: 999px; font-family: var(--cs-font-mono); font-weight: 700; font-size: 9px; line-height: 1; }
   .cs-clu-num { position: absolute; left: -6px; top: -7px; z-index: 7; width: 19px; height: 19px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; background: #0D0D0D; color: #fff; border: 2px solid #fff; border-radius: 999px; font-family: var(--cs-font-mono); font-weight: 700; font-size: 10px; line-height: 1; }
-  .cs-clu-name { margin-top: 3px; max-width: 100px; background: #fff; border: 1.5px solid #0D0D0D; box-shadow: 1.5px 1.5px 0 rgba(13,13,13,0.8); padding: 2px 6px 2.5px; font-family: var(--cs-font-sans); font-weight: 900; font-size: 7.5px; line-height: 1.2; letter-spacing: 0.03em; text-transform: uppercase; color: #0D0D0D; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .cs-clu-tip { width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 6px solid #0D0D0D; margin-top: -1px; }
+  .cs-clu-name { margin-top: 4px; max-width: 108px; background: #fff; border: 1.5px solid #0D0D0D; box-shadow: 1.5px 1.5px 0 rgba(13,13,13,0.8); padding: 2.5px 6px 3px; font-family: var(--cs-font-sans); font-weight: 900; font-size: 8px; line-height: 1.18; letter-spacing: 0.02em; text-transform: uppercase; color: #0D0D0D; text-align: center; white-space: normal; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .cs-pola { position: relative; width: 158px; z-index: 3; cursor: pointer; display: flex; flex-direction: column; align-items: center; animation: cs-scatter-in 0.45s cubic-bezier(0.22,1,0.36,1) both; animation-delay: calc(var(--si,0) * 0.06s); }
   .cs-pola-card { width: 158px; box-sizing: border-box; background: #fff; border: 2.5px solid #0D0D0D; box-shadow: 3px 4px 0 rgba(13,13,13,0.85); overflow: hidden; transform-origin: bottom center; transition: transform 0.25s cubic-bezier(0.22,1,0.36,1), box-shadow 0.22s ease, border-color 0.2s ease; }
   /* The poster sets the card height: full width at its own aspect ratio, so it
@@ -658,7 +660,7 @@ function EventSheet({ ev, onClose }: { ev: Ev | null; onClose: () => void }) {
           {isOn && (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "11px 14px 0" }}>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontFamily: FONT_MONO, fontSize: 9.5, fontWeight: 700, letterSpacing: "0.12em", color: CS.B, textTransform: "uppercase" }}>✓ В моих</div>
+                <div style={{ fontFamily: FONT_MONO, fontSize: 9.5, fontWeight: 700, letterSpacing: "0.12em", color: CS.B, textTransform: "uppercase" }}>✓ Профиль</div>
                 <div style={{ fontWeight: 600, fontSize: 11, color: CS.G55, marginTop: 2 }}>{remind ? "Напомним за день до начала" : "Без напоминания"}</div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
@@ -681,7 +683,7 @@ function EventSheet({ ev, onClose }: { ev: Ev | null; onClose: () => void }) {
                 transition: "background 0.14s",
               }}
             >
-              {isOn ? <><span>В моих</span><span style={{ fontSize: 16, lineHeight: 1 }}>✓</span></> : <><span>Добавить</span><span style={{ fontSize: 17, lineHeight: 1 }}>→</span></>}
+              {isOn ? <><span>Профиль</span><span style={{ fontSize: 16, lineHeight: 1 }}>✓</span></> : <><span>Добавить</span><span style={{ fontSize: 17, lineHeight: 1 }}>→</span></>}
             </button>
           </div>
         </div>
