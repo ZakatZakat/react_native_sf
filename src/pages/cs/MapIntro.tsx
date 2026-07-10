@@ -353,6 +353,9 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const evIdxRef = useRef(0); evIdxRef.current = evIdx
   const selZoneRef = useRef<string | null>(null); selZoneRef.current = selZone
   const selClusterRef = useRef<number | null>(null); selClusterRef.current = selCluster
+  // zone whose overview camera is already fit — so paging (selPage) doesn't
+  // re-fly the camera each tap (that 800ms easeTo per page was the jank)
+  const overviewFitRef = useRef<string | null>(null)
   const deckHiddenRef = useRef(false); deckHiddenRef.current = deckHidden
 
   // Draw a single leader line — only for the ACTIVE card — to its building's
@@ -635,7 +638,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       const bub = el.querySelector<HTMLElement>(".cs-zone-bubble")
       if (bub) bub.style.display = selZone === z.id ? "none" : ""
     })
-    if (!selZone) { fitAllRef.current(); return }
+    if (!selZone) { overviewFitRef.current = null; fitAllRef.current(); return }
     // Stop the idle wobble before any programmatic camera move — its per-frame
     // setBearing would otherwise cancel the easeTo (a DOM-marker tap never fires
     // the map's mousedown, so the auto-stop on interaction doesn't trigger).
@@ -670,8 +673,9 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       // venues Черкизовская↔Пролетарская slide off the sides) and reads clearer.
       // Level 2 tilts back to 52 for the cinematic building view.
       const OVERVIEW_PITCH = 30
-      const lats = shown.map((s) => s.cl.ll[0])
-      const lngs = shown.map((s) => s.cl.ll[1])
+      // fit the WHOLE district (all clusters) so paging never needs a camera move
+      const lats = clusters.map((c) => c.ll[0])
+      const lngs = clusters.map((c) => c.ll[1])
       const minLat = Math.min(...lats), maxLat = Math.max(...lats)
       const minLng = Math.min(...lngs), maxLng = Math.max(...lngs)
       const cLat = (minLat + maxLat) / 2, cLng = (minLng + maxLng) / 2
@@ -696,7 +700,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       // Headroom below the exact fit: covers the −14° bearing + 30° pitch
       // stretching the box, and leaves a little breathing room around the fans.
       const zoom = Math.max(10.3, Math.min(14.0, Math.min(zLng, zLat) - 0.85))
-      map.easeTo({ center: [cLng, cLat], zoom, pitch: OVERVIEW_PITCH, bearing: -14, duration: 800, padding: { top: 250, bottom: 300, left: 20, right: 20 } })
+      // camera fit is applied once per district (below, after deOverlap)
 
       // De-overlap: once the camera settles, project every fan to the screen
       // and shove any that sit closer than one card-width apart (co-located
@@ -726,8 +730,18 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         }
         ms.forEach((mk, i) => mk.setOffset([off[i].x, off[i].y]))
       }
-      map.once("moveend", deOverlap)
+      if (overviewFitRef.current !== selZone) {
+        // first entry into this district → fit the camera ONCE
+        overviewFitRef.current = selZone
+        map.easeTo({ center: [cLng, cLat], zoom, pitch: OVERVIEW_PITCH, bearing: -14, duration: 800, padding: { top: 250, bottom: 300, left: 20, right: 20 } })
+        map.once("moveend", deOverlap)
+      } else {
+        // paging within the same district → NO camera move (that per-page 800ms
+        // fly was the jank); just re-spread the freshly-drawn page's fans
+        requestAnimationFrame(() => deOverlap())
+      }
     } else {
+      overviewFitRef.current = null  // Level 2 open → re-fit overview on return
       // Level 2 — ONE fanned deck at the cluster centre; browse with ← →.
       const cl = clusters[selCluster]
       if (cl) {
