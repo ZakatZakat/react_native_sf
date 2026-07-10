@@ -202,7 +202,7 @@ function eventStackHTML(members: Ev[], i: number): string {
 /** The place card (left) — rebuilt ONLY when the venue changes. */
 function placeCardHTML(vi: VenueInfo): string {
   return `<div class="cs-deck-place">` +
-    (vi.img ? `<div class="cs-deck-place-img"><img src="${vi.img}" alt=""/></div>` : "") +
+    (vi.img ? `<div class="cs-deck-place-img"><img class="cs-deck-place-bg" src="${vi.img}" alt=""/><img class="cs-deck-place-fg" src="${vi.img}" alt=""/></div>` : "") +
     `<div class="cs-deck-place-body">` +
       `<div class="cs-deck-place-kind">место · ${esc(vi.kind)}</div>` +
       `<div class="cs-deck-place-name">${esc(vi.name)}</div>` +
