@@ -480,7 +480,7 @@ function BoardView({ feed, btn = "b", name = "Гость", onMap }: { feed: Ev[]
           {rest.length > 0 && (
             <>
               <SectionLabel>каталог</SectionLabel>
-              <MosaicGrid events={rest} heights={[168, 150, 150, 168, 160]} />
+              <MosaicGrid events={rest} heights={[248, 224, 236, 220, 244]} />
             </>
           )}
         </div>
