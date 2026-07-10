@@ -407,7 +407,7 @@ function RefreshGlyph({ variant = "b", spin = 0 }: { variant?: string; spin?: nu
   </>)
 }
 
-function BoardView({ feed, btn = "b", name = "Гость" }: { feed: Ev[]; btn?: string; name?: string }) {
+function BoardView({ feed, btn = "b", name = "Гость", onMap }: { feed: Ev[]; btn?: string; name?: string; onMap?: () => void }) {
   const nav = useContext(NavCtx)
   const [nonce, setNonce] = useState(0)
   const [sweep, setSweep] = useState(0)
@@ -423,8 +423,8 @@ function BoardView({ feed, btn = "b", name = "Гость" }: { feed: Ev[]; btn?:
   return (
     <div style={{ width: "100%", paddingBottom: 54 }}>
       {/* header — title block on the left, profile + refresh on the right */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, padding: "0 14px", marginBottom: 22 }}>
-        <div style={{ flex: 1, minWidth: 0, background: SK.paper, border: `2px solid ${SK.ink}`, padding: "10px 12px 11px", transform: "rotate(-1deg)", boxShadow: `3px 3px 0 ${SK.ink}` }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "stretch", gap: 12, padding: "0 14px", marginBottom: 22 }}>
+        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "space-between", background: SK.paper, border: `2px solid ${SK.ink}`, padding: "12px 12px 13px", transform: "rotate(-1deg)", boxShadow: `3px 3px 0 ${SK.ink}` }}>
           <Lbl size={9} style={{ letterSpacing: "0.3em" }}>доска недели · wk 22</Lbl>
           <div style={{ fontWeight: 900, fontSize: 26, letterSpacing: "-0.04em", lineHeight: 0.9, marginTop: 3, color: SK.ink }}>Что в городе</div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6 }}>
@@ -447,6 +447,26 @@ function BoardView({ feed, btn = "b", name = "Гость" }: { feed: Ev[]; btn?:
           >
             <RefreshGlyph variant={btn} spin={sweep} />
           </button>
+          {onMap && (
+            <button
+              onClick={onMap}
+              aria-label="Открыть карту"
+              title="Карта"
+              style={{
+                width: 38, height: 38, background: SK.paper,
+                border: `2px solid ${SK.ink}`,
+                boxShadow: `2.5px 2.5px 0 ${SK.blue}`,
+                cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                padding: 0,
+              }}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                <path d="M12 21 C12 21 5 13.5 5 9 A7 7 0 0 1 19 9 C19 13.5 12 21 12 21 Z" stroke={SK.ink} strokeWidth="2" strokeLinejoin="round" />
+                <circle cx="12" cy="9" r="2.6" fill={SK.blue} />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
 
@@ -632,7 +652,7 @@ export default function CsFeed() {
   let inner: React.ReactNode
   if (view === "diary") inner = <DiaryView feed={feed} />
   else if (view === "journal") inner = <JournalView feed={feed} name={safeName} />
-  else inner = <BoardView feed={feed} btn={btn} name={safeName} />
+  else inner = <BoardView feed={feed} btn={btn} name={safeName} onMap={() => setShowIntro(true)} />
 
   return (
     <NavCtx.Provider value={navValue}>
@@ -656,12 +676,6 @@ export default function CsFeed() {
                 {inner}
               </div>
               {view === "board" && showIntro && <MapIntro events={allEvents} onEnter={dismissIntro} />}
-              {view === "board" && !showIntro && (
-                <button
-                  onClick={() => setShowIntro(true)}
-                  style={{ position: "absolute", top: 10, right: 12, zIndex: 20, padding: "6px 11px", border: `2px solid ${CS.K}`, background: CS.W, color: CS.K, cursor: "pointer", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 10, letterSpacing: "0.06em", textTransform: "uppercase" }}
-                >↻ карта</button>
-              )}
             </div>
           </EdgeCtx.Provider>
         </EventModalProvider>
