@@ -21,8 +21,11 @@ PSQL="docker exec -i $DB psql -U postgres -d tg_events -q -t -A"
 # 1. ensure the column exists (no-op after the first run)
 echo "ALTER TABLE curator.posts_raw ADD COLUMN IF NOT EXISTS media_hash varchar;" | $PSQL >/dev/null
 
-# 2. filenames of posts that still need a hash (first media file only)
-NEED=$(echo "SELECT split_part(media_urls->>0, chr(47), -1) FROM curator.posts_raw WHERE media_hash IS NULL AND json_array_length(media_urls) > 0;" | $PSQL)
+# 2. filenames of posts that still need a hash (first media file only).
+#    Scope to posts backing UPCOMING events — those are the only ones the feed
+#    de-dupes; old posts often reference media already removed by cleanup, so
+#    hashing them is pointless and would grow unbounded.
+NEED=$(echo "SELECT split_part(p.media_urls->>0, chr(47), -1) FROM curator.posts_raw p WHERE p.media_hash IS NULL AND json_array_length(p.media_urls) > 0 AND EXISTS (SELECT 1 FROM curator.events_curated e WHERE e.post_id = p.id AND e.status = 'approved' AND (e.event_time >= now() OR e.event_time IS NULL));" | $PSQL)
 if [ -z "$NEED" ]; then
   echo "$(date -u +%FT%TZ) media_hash: nothing to hash"
   exit 0
