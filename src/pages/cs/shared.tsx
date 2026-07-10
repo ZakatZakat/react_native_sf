@@ -7,6 +7,7 @@
 
 import { createContext, useContext, useEffect, useRef, useState } from "react"
 import { haptics } from "../../lib/haptics"
+import { venueInfo } from "./venues"
 
 // ── Tokens ────────────────────────────────────────────────────────────────
 
@@ -642,14 +643,32 @@ function EventSheet({ ev, onClose }: { ev: Ev | null; onClose: () => void }) {
               <span>{ev.d} · {ev.tm}</span><span>{ev.price}</span>
             </div>
           </div>
-          {/* body — title + venue/channel + description (no meta-rows table) */}
+          {/* body — title + source + place block + description */}
           <div style={{ padding: "13px 14px 0" }}>
             <div style={{ fontWeight: 900, fontSize: 22, lineHeight: 0.96, letterSpacing: "-0.03em", textTransform: "uppercase", color: CS.K }}>{ev.t}</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
-              <span style={{ fontWeight: 800, fontSize: 12, color: CS.K }}>{ev.v}</span>
-              <span style={{ width: 3, height: 3, background: CS.G35, borderRadius: "50%" }} />
-              <span style={{ fontFamily: FONT_MONO, fontSize: 10.5, color: CS.B, fontWeight: 700 }}>{ev.ch}</span>
-            </div>
+            {ev.ch && ev.ch !== "@—" && (
+              <div style={{ marginTop: 7 }}>
+                <span style={{ fontFamily: FONT_MONO, fontSize: 10.5, color: CS.B, fontWeight: 700 }}>{ev.ch}</span>
+              </div>
+            )}
+            {/* Место — venue block: rich gazetteer info when known, else the raw
+                location text. Sits right under the title so «где» is obvious. */}
+            {(() => {
+              const vi = venueInfo(ev.venueKey)
+              const name = vi?.name || (ev.v && ev.v !== "—" && !ev.v.startsWith("@") ? ev.v : "")
+              if (!name) return null
+              const sub = vi ? [vi.kind, vi.address].filter(Boolean).join(" · ") : ""
+              return (
+                <div style={{ display: "flex", gap: 10, marginTop: 11, padding: "9px 11px", border: `2px solid ${CS.K}`, background: CS.W, boxShadow: `2.5px 2.5px 0 ${CS.B}` }}>
+                  <span style={{ fontSize: 15, lineHeight: 1.15, flexShrink: 0 }}>📍</span>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontFamily: FONT_MONO, fontSize: 8, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: CS.B }}>Место</div>
+                    <div style={{ fontWeight: 900, fontSize: 13.5, letterSpacing: "-0.01em", color: CS.K, marginTop: 2, lineHeight: 1.12, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{name}</div>
+                    {sub && <div style={{ fontFamily: FONT_MONO, fontSize: 10, color: CS.G55, marginTop: 3, lineHeight: 1.3 }}>{sub}</div>}
+                  </div>
+                </div>
+              )
+            })()}
             <div style={{ height: 2, background: CS.K, margin: "12px 0 11px" }} />
             <div style={{ fontWeight: 500, fontSize: 13.5, lineHeight: 1.55, color: CS.G70, paddingBottom: 18 }}>{ev.desc}</div>
           </div>
