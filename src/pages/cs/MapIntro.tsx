@@ -146,7 +146,7 @@ function clusterFanEl(cl: Cluster, gi: number): HTMLElement {
   const single = fan.length === 1
   const rots = [-12, 0, 12]
   const thumbs = fan.map((e, i) =>
-    `<span class="cs-clu-card" style="--zr:${single ? 0 : (rots[i] || 0)}deg;--zz:${single ? 1 : i}">${e.p ? `<img src="${e.p}" alt=""/>` : ""}</span>`,
+    `<span class="cs-clu-card" style="--zr:${single ? 0 : (rots[i] || 0)}deg;--zz:${single ? 1 : i}">${e.p ? `<img src="${e.p}" alt="" data-eid="${esc(e.id)}"/>` : ""}</span>`,
   ).join("")
   const { name } = clusterLabel(cl)
   const wrap = document.createElement("div")
@@ -190,7 +190,7 @@ function eventStackHTML(members: Ev[], i: number): string {
   const ghosts = n > 1 ? `<div class="cs-deck-ghost cs-dg2"></div><div class="cs-deck-ghost cs-dg1"></div>` : ""
   return ghosts +
     `<div class="cs-pola-card cs-deck-front">` +
-      `<div class="cs-pola-img">${e.p ? `<img src="${e.p}" alt=""/>` : ""}</div>` +
+      `<div class="cs-pola-img">${e.p ? `<img src="${e.p}" alt="" data-eid="${esc(e.id)}"/>` : ""}</div>` +
       `<div class="cs-pola-body">` +
         `<div class="cs-pola-top"><span class="cs-pola-cat">${esc(e.c || "событие")}</span>${date ? `<span class="cs-pola-date">${esc(date)}</span>` : ""}</div>` +
         `<div class="cs-pola-title cs-deck-title">${esc(e.t || "")}</div>` +
@@ -328,6 +328,17 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const scatterRef = useRef<maplibregl.Marker[]>([])
   const [ready, setReady] = useState(false)
   const [failed, setFailed] = useState(false)
+  // Events whose poster URL actually failed to load (404 / broken). `resolvePoster`
+  // already nulls out events with no image at all; this catches the ones that
+  // pass that check but 404 at runtime. Either way such events are dropped from
+  // the map, so a broken-image card is never shown.
+  const [badImg, setBadImg] = useState<Set<string>>(() => new Set())
+  const badImgRef = useRef(badImg); badImgRef.current = badImg
+  const reportBadImg = (id?: string | null) => {
+    if (!id || badImgRef.current.has(id)) return
+    setBadImg((prev) => { const n = new Set(prev); n.add(id); return n })
+  }
+  const reportBadImgRef = useRef(reportBadImg); reportBadImgRef.current = reportBadImg
   const [headOpen, setHeadOpen] = useState(true) // heading card collapse
   const [deckHidden, setDeckHidden] = useState(false) // hide the deck to reveal the centred building
   const [selZone, setSelZone] = useState<string | null>(null)
@@ -468,21 +479,28 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
     }
     // Event card + counter — always update on paging.
     const stackSlot = wrap.querySelector(".cs-deck-stack-slot")
-    if (stackSlot) stackSlot.innerHTML = eventStackHTML(members, i)
+    if (stackSlot) {
+      stackSlot.innerHTML = eventStackHTML(members, i)
+      stackSlot.querySelector("img[data-eid]")?.addEventListener("error", (ev) =>
+        reportBadImgRef.current((ev.target as HTMLElement).dataset.eid))
+    }
     const count = wrap.querySelector(".cs-deck-count")
     if (count) count.textContent = `${i + 1} / ${n}`
   }
   const renderDeckRef = useRef(renderDeck); renderDeckRef.current = renderDeck
 
-  // group real geocoded events by centre-disk + directional sector
+  // group real geocoded events by centre-disk + directional sector. Drop
+  // events with no resolved poster (e.p === null) entirely — a card with a
+  // missing/broken image looks broken, so such events never make it onto the
+  // map, into a cluster deck, or the district counts.
   const byZone = useMemo(() => {
     const m: Record<string, Ev[]> = {}
     ZONES.forEach((z) => (m[z.id] = []))
     events.forEach((e) => {
-      if (e.geo && inMoscow(e.geo[0], e.geo[1])) m[zoneOf(e.geo[0], e.geo[1])].push(e)
+      if (e.p && !badImg.has(e.id) && e.geo && inMoscow(e.geo[0], e.geo[1])) m[zoneOf(e.geo[0], e.geo[1])].push(e)
     })
     return m
-  }, [events])
+  }, [events, badImg])
   const byZoneRef = useRef(byZone); byZoneRef.current = byZone
   const totalPlaced = useMemo(() => Object.values(byZone).reduce((a, b) => a + b.length, 0), [byZone])
   // sys-fan clusters per zone (real-proximity grouping)
@@ -628,6 +646,9 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         const el = clusterFanEl(cl, gi)
         el.style.cursor = "pointer"
         el.addEventListener("click", (ev) => { ev.stopPropagation(); setSelCluster(gi) })
+        // A poster that 404s → drop that event from the map (re-clusters without it).
+        el.querySelectorAll("img[data-eid]").forEach((im) =>
+          im.addEventListener("error", () => reportBadImgRef.current((im as HTMLElement).dataset.eid)))
         const m = new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([cl.ll[1], cl.ll[0]]).addTo(map)
         scatterRef.current.push(m)
       })
@@ -718,7 +739,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selZone, selCluster, ready])
+  }, [selZone, selCluster, ready, badImg])
 
   // Paging the deck: rebuild its front card + re-point the leader at the new
   // active event's building. No camera move — the deck stays put.
