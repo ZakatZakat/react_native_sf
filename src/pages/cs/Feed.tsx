@@ -222,30 +222,40 @@ function GridCard({ ev, i }: { ev: Ev; i: number }) {
 }
 
 /** Masonry mosaic card — rotated poster with overlay chips + caption. */
+/** Catalog card — one bordered component: framed poster (date badge) + a
+ *  distinct footer block (meta · full title · venue · description). */
 function MosaicCard({ ev, i, h }: { ev: Ev; i: number; h: number }) {
-  const rot = [-2.5, 2, -1.5, 2.5][i % 4]
+  const open = useOpenEvent()
   // venue / subtitle only if it's a real place (not a bare @channel handle)
   const venue = ev.v && !ev.v.startsWith("@") ? ev.v : ""
   const time = ev.tm && ev.tm !== "—" ? ev.tm : ""
+  const price = ev.price && ev.price !== "—" ? ev.price : ""
+  const meta = [ev.ch, time, price].filter(Boolean).join(" · ")
   // description = the post body BELOW its first line (the first line is the
   // title, already shown in full above — don't repeat it).
   const nl = (ev.desc || "").indexOf("\n")
   const body = nl >= 0 ? ev.desc.slice(nl + 1).replace(/\s+/g, " ").trim() : ""
   return (
-    <div style={{ position: "relative", marginBottom: 20, animation: `sk-refresh 0.5s cubic-bezier(0.22,1,0.36,1) ${(Math.min(i, 12) * 0.06).toFixed(2)}s both` }}>
-      <Clip ev={ev} w="100%" h={h} rot={rot} float={i < 20} />
-      {/* price stays as the only image overlay; category moves down into the foot */}
-      <span style={{ position: "absolute", top: 8, right: 8, transform: "rotate(3deg)" }}><PriceTag ev={ev} solid /></span>
-      {/* card foot — catalog form: rule · «date · time | category» · full title · venue · description */}
-      <div style={{ marginTop: 9, borderTop: `1.5px solid ${SK.ink}`, paddingTop: 7 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
-          <span style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, letterSpacing: "0.04em", color: SK.ink, whiteSpace: "nowrap" }}>{ev.d}{time ? ` · ${time}` : ""}</span>
-          <span style={{ fontFamily: FONT_MONO, fontSize: 9, letterSpacing: "0.14em", color: SK.ink55, textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{ev.c}</span>
-        </div>
-        <div style={{ fontWeight: 900, fontSize: 15, letterSpacing: "-0.02em", lineHeight: 1.08, color: SK.ink, marginTop: 7, overflowWrap: "anywhere" }}>{ev.t}</div>
-        {venue && <div style={{ fontSize: 11, lineHeight: 1.25, color: SK.ink55, marginTop: 5 }}>{venue}</div>}
+    <div
+      onClick={() => open(ev)}
+      style={{
+        marginBottom: 20, background: SK.paper, border: `2.5px solid ${SK.ink}`,
+        boxShadow: `3px 4px 0 ${SK.ink}`, overflow: "hidden", cursor: "pointer",
+        animation: `sk-refresh 0.5s cubic-bezier(0.22,1,0.36,1) ${(Math.min(i, 12) * 0.06).toFixed(2)}s both`,
+      }}
+    >
+      {/* poster — full-bleed inside the frame; date badge, its bottom edge is the divider */}
+      <div style={{ position: "relative", height: h, borderBottom: `2.5px solid ${SK.ink}`, background: "#E4E4E1", overflow: "hidden" }}>
+        {ev.p && <img src={ev.p} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
+        <span style={{ position: "absolute", top: 8, right: 8, background: SK.ink, color: SK.paper, fontWeight: 900, fontSize: 13, letterSpacing: "0.02em", lineHeight: 1, padding: "5px 8px" }}>{ev.d}</span>
+      </div>
+      {/* footer block */}
+      <div style={{ padding: "9px 11px 11px" }}>
+        <div style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9.5, letterSpacing: "0.03em", color: SK.ink55, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{meta}</div>
+        <div style={{ fontWeight: 900, fontSize: 15, letterSpacing: "-0.01em", lineHeight: 1.08, color: SK.ink, marginTop: 6, textTransform: "uppercase", overflowWrap: "anywhere" }}>{ev.t}</div>
+        {venue && <div style={{ fontWeight: 700, fontSize: 11, lineHeight: 1.25, color: SK.ink55, marginTop: 5 }}>{venue}</div>}
         {body && (
-          <div style={{ fontSize: 10.5, lineHeight: 1.34, color: SK.ink55, marginTop: 6, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{body}</div>
+          <div style={{ fontSize: 10.5, lineHeight: 1.34, color: SK.ink55, marginTop: 7, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{body}</div>
         )}
       </div>
     </div>
