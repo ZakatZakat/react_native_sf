@@ -110,8 +110,10 @@ export function buildDerived(events: FeedItem[]): DerivedData {
   const allEv = withImg.map(toEv)
 
   // 8 distinct poster URLs for the landing triptych, padded with fallbacks
-  // if the feed gave us fewer than 8 images.
-  const tripPool = allEv.map((e) => e.p).filter((u): u is string => !!u)
+  // if the feed gave us fewer than 8 images. Dedupe by URL first — several
+  // events can share the same media file, and without this the triptych (and
+  // the About-card thumbnail strip) shows the same poster twice.
+  const tripPool = [...new Set(allEv.map((e) => e.p).filter((u): u is string => !!u))]
   const triptychPosters: (string | null)[] = []
   for (let i = 0; i < 8; i++) {
     triptychPosters.push(tripPool[i % Math.max(1, tripPool.length)] ?? null)

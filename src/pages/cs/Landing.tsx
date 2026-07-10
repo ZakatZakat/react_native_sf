@@ -161,8 +161,18 @@ export default function CsLanding() {
   const colA = base
   const colB = useMemo(() => rotate(base, Math.floor(COL_LEN / 3)).reverse(), [base])
   const colC = useMemo(() => rotate(base, Math.floor((COL_LEN * 2) / 3)), [base])
-  // 4 posters for the «Ван Гог» card thumbnail strip
-  const thumbs = useMemo(() => base.slice(0, 4), [base])
+  // 4 posters for the «Ван Гог» card thumbnail strip — distinct images only
+  // (no repeated event posters); pad with null if the feed has fewer than 4.
+  const thumbs = useMemo(() => {
+    const seen = new Set<string>()
+    const out: (string | null)[] = []
+    for (const p of base) {
+      if (p && !seen.has(p)) { seen.add(p); out.push(p) }
+      if (out.length === 4) break
+    }
+    while (out.length < 4) out.push(null)
+    return out
+  }, [base])
 
   const goNext = () => {
     analytics.track("cs.landing.enter", {})
