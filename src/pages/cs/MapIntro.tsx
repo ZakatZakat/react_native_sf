@@ -615,15 +615,23 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         // drift east when only Центр+Восток are populated. Padding offsets the
         // centre below the heading card so the central districts sit in view.
         const VIEW = { center: [37.6190, 55.7600] as [number, number], zoom: 10.4, pitch: 52, bearing: -14, padding: { top: 230, bottom: 170, left: 0, right: 0 } }
-        fitAllRef.current = () => map!.easeTo({ ...VIEW, duration: 700 })
-        map.jumpTo(VIEW)
+        // Opening flourish — the map "spins as it opens" again, but SELF-
+        // TERMINATING: it opens pre-rotated and glides into its resting bearing
+        // ONCE via a single ease-out easeTo, then the camera goes fully idle. No
+        // return to the old INFINITE pendulum (that called setBearing() every
+        // frame forever → a full 3D re-render 60×/sec AT REST — the stutter).
+        // The first fitAllRef() (fired by the explode effect on `ready`) runs
+        // the flourish; later returns to overview use a quick plain fit.
+        let opened = false
+        const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
+        fitAllRef.current = () => {
+          if (!opened) { opened = true; map!.easeTo({ ...VIEW, duration: 6200, easing: easeOutCubic }) }
+          else map!.easeTo({ ...VIEW, duration: 700 })
+        }
+        map.jumpTo({ ...VIEW, bearing: VIEW.bearing + 28 }) // open pre-rotated → eases home
+        // tapping a district mid-spin cancels the flourish before the zone fly-in
+        pendulumStopRef.current = () => { try { map!.stop() } catch { /* noop */ } }
         setReady(true)
-
-        // NOTE: removed the idle camera "pendulum" — it called map.setBearing()
-        // every frame, forcing a full 3D re-render (buildings + sky + all DOM
-        // markers re-project) ~60×/sec AT REST. That was the constant stutter.
-        // The camera now sits still (still a 3D pitched view, just not swaying);
-        // pendulumStopRef stays the default no-op so the drill-in code is intact.
       })
     } catch { setFailed(true) }
     return () => { try { map?.remove() } catch { /* noop */ } finally { mapRef.current = null } }
