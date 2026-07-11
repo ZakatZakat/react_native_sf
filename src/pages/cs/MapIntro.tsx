@@ -885,16 +885,31 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       {/* district bottom-sheet — selected zone deck */}
       {selZone && deckEvents.length > 0 && (
         <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 12, background: CS.W, borderTop: `3px solid ${CS.K}`, boxShadow: "0 -6px 0 rgba(13,13,13,0.08)", animation: "cs-sheet-up 0.34s cubic-bezier(0.22,1,0.36,1) both", paddingBottom: "env(safe-area-inset-bottom,0px)" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "5px 14px 2px" }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 7, minWidth: 0 }}>
-              <span style={{ fontWeight: 900, fontSize: 14, letterSpacing: "-0.03em", lineHeight: 1, color: CS.K, textTransform: "uppercase", whiteSpace: "nowrap" }}>{activeCluster ? "Места рядом" : ZONE_BY_ID[selZone].t}</span>
-              <span style={{ background: CS.B, color: "#fff", padding: "2px 5px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 8, letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{deckEvents.length} событий</span>
-            </div>
-            <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-              <button onClick={() => (activeCluster ? setSelCluster(null) : setSelZone(null))} style={{ display: "inline-flex", alignItems: "center", flexShrink: 0, background: CS.W, border: `2px solid ${CS.K}`, padding: "6px 11px", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "0.03em", textTransform: "uppercase", color: CS.K, boxShadow: `2px 2px 0 ${CS.K}` }}>{activeCluster ? "← кластеры" : "← районы"}</button>
+          {activeCluster ? (
+            /* Level 2 — one tidy row: [← кластеры] · centred count + swipe hint
+               · [Лента →]. No redundant «Места рядом» title (the deck already
+               shows the venue), and the swipe hint lives here now, so the old
+               cramped second hint row is gone. */
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "10px 14px" }}>
+              <button onClick={() => setSelCluster(null)} style={{ display: "inline-flex", alignItems: "center", flexShrink: 0, background: CS.W, border: `2px solid ${CS.K}`, padding: "6px 11px", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "0.03em", textTransform: "uppercase", color: CS.K, boxShadow: `2px 2px 0 ${CS.K}` }}>← кластеры</button>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, minWidth: 0 }}>
+                <span style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 12, letterSpacing: "0.02em", color: CS.K, whiteSpace: "nowrap" }}><span style={{ color: CS.B }}>●</span> {RU_PLURAL(deckEvents.length)}</span>
+                <span style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, letterSpacing: "0.06em", color: "rgba(13,13,13,0.5)", textTransform: "uppercase", whiteSpace: "nowrap" }}>листай ← →</span>
+              </div>
               <button onClick={onEnter} style={{ display: "inline-flex", alignItems: "center", flexShrink: 0, background: CS.K, border: `2px solid ${CS.K}`, padding: "6px 11px", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "0.03em", textTransform: "uppercase", color: "#fff", boxShadow: `2px 2px 0 ${CS.B}` }}>Лента →</button>
             </div>
-          </div>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "5px 14px 2px" }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 7, minWidth: 0 }}>
+                <span style={{ fontWeight: 900, fontSize: 14, letterSpacing: "-0.03em", lineHeight: 1, color: CS.K, textTransform: "uppercase", whiteSpace: "nowrap" }}>{ZONE_BY_ID[selZone].t}</span>
+                <span style={{ background: CS.B, color: "#fff", padding: "2px 5px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 8, letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{RU_PLURAL(deckEvents.length)}</span>
+              </div>
+              <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                <button onClick={() => setSelZone(null)} style={{ display: "inline-flex", alignItems: "center", flexShrink: 0, background: CS.W, border: `2px solid ${CS.K}`, padding: "6px 11px", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "0.03em", textTransform: "uppercase", color: CS.K, boxShadow: `2px 2px 0 ${CS.K}` }}>← районы</button>
+                <button onClick={onEnter} style={{ display: "inline-flex", alignItems: "center", flexShrink: 0, background: CS.K, border: `2px solid ${CS.K}`, padding: "6px 11px", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "0.03em", textTransform: "uppercase", color: "#fff", boxShadow: `2px 2px 0 ${CS.B}` }}>Лента →</button>
+              </div>
+            </div>
+          )}
           {/* level 1 (clusters): hint to drill in · level 2 (cluster): event carousel */}
           {!activeCluster ? (
             (() => {
@@ -937,13 +952,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
                 </div>
               )
             })()
-          ) : (
-          <div style={{ padding: "0 14px 11px" }}>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 7, background: CS.W, border: `2px solid ${CS.K}`, boxShadow: `2px 2px 0 ${CS.K}`, padding: "7px 11px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 10, letterSpacing: "0.04em", color: CS.K }}>
-              <span style={{ width: 8, height: 8, background: CS.B, borderRadius: "50%" }} />карточки — на карте · листай ← →
-            </div>
-          </div>
-          )}
+          ) : null /* Level 2 hint moved into the header row above */}
         </div>
       )}
     </div>
