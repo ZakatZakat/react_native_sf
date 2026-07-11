@@ -833,28 +833,34 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 150, background: "linear-gradient(rgba(13,13,13,0.18), rgba(13,13,13,0))", zIndex: 6, pointerEvents: "none" }} />
       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 180, background: "linear-gradient(rgba(13,13,13,0), rgba(13,13,13,0.22))", zIndex: 6, pointerEvents: "none" }} />
 
-      {/* heading card — brutalist (design MapHeading · classic); collapsible */}
-      {headOpen ? (
-      <div style={{ position: "absolute", top: "calc(env(safe-area-inset-top,0px) + 16px)", left: 14, right: 14, zIndex: 10 }}>
-        <div style={{ position: "relative", background: CS.W, border: `2.5px solid ${CS.K}`, boxShadow: `4px 4px 0 ${CS.K}`, padding: "12px 14px" }}>
-          <button onClick={() => setHeadOpen(false)} aria-label="скрыть шапку" style={{ position: "absolute", top: 8, right: 8, width: 26, height: 26, border: `2px solid ${CS.K}`, background: CS.W, cursor: "pointer", fontSize: 13, fontWeight: 900, lineHeight: 1, color: CS.K, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
-          <div style={{ fontFamily: FONT_MONO, fontSize: 9, fontWeight: 700, letterSpacing: "0.24em", textTransform: "uppercase", color: "rgba(13,13,13,0.55)" }}>сначала — карта · WK 22</div>
-          <div style={{ fontFamily: FONT_SANS, fontWeight: 900, fontSize: 34, letterSpacing: "-0.045em", lineHeight: 0.9, color: CS.K, marginTop: 6 }}>Что рядом</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap", marginTop: 11 }}>
-            <span style={{ background: CS.B, color: "#fff", padding: "3px 9px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 10, letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{totalPlaced} событий · {zoneCount} районов</span>
-            <span style={{ background: CS.W, color: CS.K, border: `1.5px solid ${CS.K}`, padding: "2px 7px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, letterSpacing: "0.06em", whiteSpace: "nowrap" }}>движок · CitySignal · 3D</span>
+      {/* top-left stack: heading card + a «back to districts» button that shows
+          once a district/cluster is open. The only way back to the overview used
+          to be the tiny «← районы» in the bottom-sheet corner (easy to miss) —
+          this puts an obvious return right under the «Что рядом» title. */}
+      <div style={{ position: "absolute", top: "calc(env(safe-area-inset-top,0px) + 16px)", left: 14, right: 14, zIndex: 10, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 9 }}>
+        {headOpen ? (
+          <div style={{ position: "relative", width: "100%", background: CS.W, border: `2.5px solid ${CS.K}`, boxShadow: `4px 4px 0 ${CS.K}`, padding: "12px 14px" }}>
+            <button onClick={() => setHeadOpen(false)} aria-label="скрыть шапку" style={{ position: "absolute", top: 8, right: 8, width: 26, height: 26, border: `2px solid ${CS.K}`, background: CS.W, cursor: "pointer", fontSize: 13, fontWeight: 900, lineHeight: 1, color: CS.K, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+            <div style={{ fontFamily: FONT_MONO, fontSize: 9, fontWeight: 700, letterSpacing: "0.24em", textTransform: "uppercase", color: "rgba(13,13,13,0.55)" }}>сначала — карта · WK 22</div>
+            <div style={{ fontFamily: FONT_SANS, fontWeight: 900, fontSize: 34, letterSpacing: "-0.045em", lineHeight: 0.9, color: CS.K, marginTop: 6 }}>Что рядом</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap", marginTop: 11 }}>
+              <span style={{ background: CS.B, color: "#fff", padding: "3px 9px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 10, letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{totalPlaced} событий · {zoneCount} районов</span>
+              <span style={{ background: CS.W, color: CS.K, border: `1.5px solid ${CS.K}`, padding: "2px 7px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, letterSpacing: "0.06em", whiteSpace: "nowrap" }}>движок · CitySignal · 3D</span>
+            </div>
           </div>
-        </div>
+        ) : (
+          <button onClick={() => setHeadOpen(true)} aria-label="показать шапку" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: CS.W, border: `2.5px solid ${CS.K}`, boxShadow: `3px 3px 0 ${CS.K}`, padding: "7px 11px", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 14, letterSpacing: "-0.02em", color: CS.K, textTransform: "uppercase" }}>
+            Что рядом
+            <span style={{ background: CS.B, color: "#fff", fontFamily: FONT_MONO, fontSize: 9, fontWeight: 700, padding: "1.5px 5px", letterSpacing: "0.02em" }}>{totalPlaced}</span>
+            <span style={{ fontSize: 11, lineHeight: 1 }}>▾</span>
+          </button>
+        )}
+        {selZone && (
+          <button onClick={() => setSelZone(null)} aria-label="вернуться к районам" style={{ display: "inline-flex", alignItems: "center", gap: 7, background: CS.K, color: "#fff", border: `2.5px solid ${CS.K}`, boxShadow: `3px 3px 0 ${CS.B}`, padding: "8px 13px", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 13, letterSpacing: "0.01em", textTransform: "uppercase" }}>
+            <span style={{ fontSize: 15, lineHeight: 1 }}>←</span> Все районы
+          </button>
+        )}
       </div>
-      ) : (
-      <div style={{ position: "absolute", top: "calc(env(safe-area-inset-top,0px) + 16px)", left: 14, zIndex: 10 }}>
-        <button onClick={() => setHeadOpen(true)} aria-label="показать шапку" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: CS.W, border: `2.5px solid ${CS.K}`, boxShadow: `3px 3px 0 ${CS.K}`, padding: "7px 11px", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 14, letterSpacing: "-0.02em", color: CS.K, textTransform: "uppercase" }}>
-          Что рядом
-          <span style={{ background: CS.B, color: "#fff", fontFamily: FONT_MONO, fontSize: 9, fontWeight: 700, padding: "1.5px 5px", letterSpacing: "0.02em" }}>{totalPlaced}</span>
-          <span style={{ fontSize: 11, lineHeight: 1 }}>▾</span>
-        </button>
-      </div>
-      )}
 
       {/* «Показать карточки» — возвращает колоду после «Центрировать карту» */}
       {selCluster != null && deckHidden && (
