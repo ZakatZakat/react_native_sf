@@ -93,6 +93,8 @@ function zoneBubbleEl(zone: Zone, evs: Ev[], onClick: (id: string) => void): HTM
     `<div class="cs-zone-bubble"><div class="cs-zfan">${thumbs}<span class="cs-zone-count">${evs.length}</span></div>` +
     `<div class="cs-zone-name">${zone.t}</div></div>` +
     `<div class="cs-zone-dot"></div>`
+  // a bubble poster that 404s → hide it in place (no global bad-image tracking)
+  el.querySelectorAll("img").forEach((im) => im.addEventListener("error", () => { (im as HTMLElement).style.display = "none" }))
   el.addEventListener("click", (e) => { e.stopPropagation(); onClick(zone.id) })
   return el
 }
@@ -334,17 +336,11 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const scatterRef = useRef<maplibregl.Marker[]>([])
   const [ready, setReady] = useState(false)
   const [failed, setFailed] = useState(false)
-  // Events whose poster URL actually failed to load (404 / broken). `resolvePoster`
-  // already nulls out events with no image at all; this catches the ones that
-  // pass that check but 404 at runtime. Either way such events are dropped from
-  // the map, so a broken-image card is never shown.
-  const [badImg, setBadImg] = useState<Set<string>>(() => new Set())
-  const badImgRef = useRef(badImg); badImgRef.current = badImg
-  const reportBadImg = (id?: string | null) => {
-    if (!id || badImgRef.current.has(id)) return
-    setBadImg((prev) => { const n = new Set(prev); n.add(id); return n })
-  }
-  const reportBadImgRef = useRef(reportBadImg); reportBadImgRef.current = reportBadImg
+  // A poster that 404s at runtime is hidden IN PLACE (its <img> is display:none'd,
+  // leaving a clean blank card frame). We deliberately do NOT remove the event
+  // from clustering: doing that mutated a global Set → re-clustered + re-sorted →
+  // the explode effect re-ran and the dense «Центр» fans reshuffled/repositioned
+  // for the first few seconds as posters streamed in («всё летает при открытии»).
   const [headOpen, setHeadOpen] = useState(true) // heading card collapse
   const [deckHidden, setDeckHidden] = useState(false) // hide the deck to reveal the centred building
   const [selZone, setSelZone] = useState<string | null>(null)
@@ -524,7 +520,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
     if (stackSlot) {
       stackSlot.innerHTML = eventStackHTML(members, i)
       stackSlot.querySelector("img[data-eid]")?.addEventListener("error", (ev) =>
-        reportBadImgRef.current((ev.target as HTMLElement).dataset.eid))
+        { (ev.target as HTMLElement).style.display = "none" })
     }
     const count = wrap.querySelector(".cs-deck-count")
     if (count) count.textContent = `${i + 1} / ${n}`
@@ -539,10 +535,10 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
     const m: Record<string, Ev[]> = {}
     ZONES.forEach((z) => (m[z.id] = []))
     events.forEach((e) => {
-      if (e.p && !badImg.has(e.id) && e.geo && inMoscow(e.geo[0], e.geo[1])) m[zoneOf(e.geo[0], e.geo[1])].push(e)
+      if (e.p && e.geo && inMoscow(e.geo[0], e.geo[1])) m[zoneOf(e.geo[0], e.geo[1])].push(e)
     })
     return m
-  }, [events, badImg])
+  }, [events])
   const byZoneRef = useRef(byZone); byZoneRef.current = byZone
   const totalPlaced = useMemo(() => Object.values(byZone).reduce((a, b) => a + b.length, 0), [byZone])
   // sys-fan clusters per zone (real-proximity grouping)
@@ -702,9 +698,10 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         const el = clusterFanEl(cl, gi)
         el.style.cursor = "pointer"
         el.addEventListener("click", (ev) => { ev.stopPropagation(); setSelCluster(gi) })
-        // A poster that 404s → drop that event from the map (re-clusters without it).
+        // A poster that 404s → hide just that <img> (leaves the card frame as a
+        // clean blank, keeps the fan geometry). NO re-cluster — that was the jank.
         el.querySelectorAll("img[data-eid]").forEach((im) =>
-          im.addEventListener("error", () => reportBadImgRef.current((im as HTMLElement).dataset.eid)))
+          im.addEventListener("error", () => { (im as HTMLElement).style.display = "none" }))
         const m = new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([cl.ll[1], cl.ll[0]]).addTo(map)
         scatterRef.current.push(m)
       })
@@ -806,7 +803,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selZone, selCluster, selPage, ready, badImg])
+  }, [selZone, selCluster, selPage, ready])
 
   // Paging the deck: rebuild its front card + re-point the leader at the new
   // active event's building. No camera move — the deck stays put.
