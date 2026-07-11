@@ -823,11 +823,18 @@ export default function CsFeed() {
               overflow: "hidden",
             }}>
               <ScreenBG theme="grid" opacity={0.5} />
-              {/* Hide the board while the map intro is up so it doesn't flash
-                  through before the map paints on entry. */}
-              <div className="sk-scroll" key={view} style={{ position: "absolute", inset: 0, overflowY: "auto", overflowX: "hidden", visibility: view === "board" && showIntro ? "hidden" : "visible" }}>
+              {/* While the map intro covers the board, DON'T mount it — not
+                  even hidden. The board is the full upcoming catalog (200+
+                  MosaicCards + their lazy posters) in a CSS multi-column
+                  masonry; behind the opaque map that's 2500 dead DOM nodes,
+                  200+ image decodes, and — every time a poster streams in and
+                  changes a card's height — a full re-balance of all columns on
+                  the main thread. That reflow storm is the stutter you feel the
+                  instant the map opens. Unmounting also kills the flash-through
+                  the old visibility:hidden guarded against (nothing to flash). */}
+              <div className="sk-scroll" key={view} style={{ position: "absolute", inset: 0, overflowY: "auto", overflowX: "hidden" }}>
                 <div style={{ height: 46 }} />
-                {inner}
+                {!(view === "board" && showIntro) && inner}
               </div>
               {view === "board" && showIntro && <MapIntro events={allEvents} onEnter={dismissIntro} />}
             </div>

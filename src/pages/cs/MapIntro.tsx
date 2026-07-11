@@ -326,6 +326,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const fitAllRef = useRef<() => void>(() => {})
   const pendulumStopRef = useRef<() => void>(() => {})
   const leaderSvgRef = useRef<SVGSVGElement | null>(null) // overlay for card→building leaders
+  const leaderNodesRef = useRef<{ line: SVGLineElement; poly: SVGPolygonElement } | null>(null) // reused leader nodes
   const leadersRef = useRef<{ card: [number, number]; target: [number, number]; i: number }[]>([])
   const deckWrapRef = useRef<HTMLDivElement | null>(null) // the cluster deck marker element
   const deckMembersRef = useRef<Ev[]>([])
@@ -365,23 +366,42 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const drawLeaders = () => {
     const map = mapRef.current, svg = leaderSvgRef.current
     if (!map || !svg) return
+    const hide = () => {
+      const n = leaderNodesRef.current
+      if (n) { n.line.style.display = "none"; n.poly.style.display = "none" }
+    }
     // No leader while the deck is hidden («Центрировать карту») — otherwise the
     // dashed line keeps drawing from the invisible card to the building.
-    if (deckHiddenRef.current) { if (svg.childNodes.length) svg.replaceChildren(); return }
+    if (deckHiddenRef.current) return hide()
     const ld = leadersRef.current[0]
-    if (!ld) { if (svg.childNodes.length) svg.replaceChildren(); return }
+    if (!ld) return hide()
     const a = map.project([ld.card[1], ld.card[0]])     // card anchor (bottom of card)
     const b = map.project([ld.target[1], ld.target[0]]) // building ground point
     const dx = b.x - a.x, dy = b.y - a.y
     const len = Math.hypot(dx, dy)
-    if (len < 16) { if (svg.childNodes.length) svg.replaceChildren(); return } // card on its building
+    if (len < 16) return hide() // card on its building
     const ux = dx / len, uy = dy / len
     const hx = b.x - ux * 8, hy = b.y - uy * 8 // arrowhead base, backed off the tip
     const px = -uy, py = ux, w = 4
     const f = (n: number) => n.toFixed(1)
-    svg.innerHTML =
-      `<line x1="${f(a.x)}" y1="${f(a.y)}" x2="${f(hx)}" y2="${f(hy)}" stroke="#0D0D0D" stroke-width="1.75" stroke-dasharray="1 4" stroke-linecap="round"/>` +
-      `<polygon points="${f(b.x)},${f(b.y)} ${f(hx + px * w)},${f(hy + py * w)} ${f(hx - px * w)},${f(hy - py * w)}" fill="#0D0D0D"/>`
+    // Build the two leader nodes ONCE, then only mutate their geometry attrs on
+    // each frame — reassigning svg.innerHTML re-parsed the SVG markup ~60×/sec
+    // during a Level-2 pan.
+    let nodes = leaderNodesRef.current
+    if (!nodes) {
+      const NS = "http://www.w3.org/2000/svg"
+      const line = document.createElementNS(NS, "line")
+      line.setAttribute("stroke", "#0D0D0D"); line.setAttribute("stroke-width", "1.75")
+      line.setAttribute("stroke-dasharray", "1 4"); line.setAttribute("stroke-linecap", "round")
+      const poly = document.createElementNS(NS, "polygon")
+      poly.setAttribute("fill", "#0D0D0D")
+      svg.appendChild(line); svg.appendChild(poly)
+      nodes = leaderNodesRef.current = { line, poly }
+    }
+    nodes.line.style.display = ""; nodes.poly.style.display = ""
+    nodes.line.setAttribute("x1", f(a.x)); nodes.line.setAttribute("y1", f(a.y))
+    nodes.line.setAttribute("x2", f(hx)); nodes.line.setAttribute("y2", f(hy))
+    nodes.poly.setAttribute("points", `${f(b.x)},${f(b.y)} ${f(hx + px * w)},${f(hy + py * w)} ${f(hx - px * w)},${f(hy - py * w)}`)
   }
   const drawLeadersRef = useRef(drawLeaders); drawLeadersRef.current = drawLeaders
 
@@ -562,7 +582,12 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
     try {
       map = new maplibregl.Map({
         container: boxRef.current, style: CS_STYLE_LIGHT, center: MSK, zoom: 10.5,
-        pitch: 52, bearing: -14, antialias: true, attributionControl: false,
+        // antialias:false — MSAA is a context-creation flag paid on EVERY
+        // rendered frame across the whole pitch:52 viewport (the opening
+        // tile-fade + every pan), the dominant per-frame GPU cost on mobile.
+        // At retina DPR the softer building/label edges are barely visible; the
+        // smoothness win is large. Flip back to true if the edges bother you.
+        pitch: 52, bearing: -14, antialias: false, attributionControl: false,
       })
       map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "bottom-right")
       map.on("error", () => setFailed(true))
@@ -616,6 +641,12 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
     renderVenueDots(map, [])
     leadersRef.current = []
     drawLeadersRef.current()
+    // Leaving any open Level-2 deck → drop its refs so the per-frame render
+    // handler (scaleDeck / drawLeaders) stops writing to the marker node that
+    // was just .remove()d above. The Level-2 branch below re-sets them when a
+    // cluster is (re)opened.
+    deckWrapRef.current = null
+    deckMembersRef.current = []
     setDeckHidden(false) // a fresh zone/cluster always shows its deck
     // toggle zone bubble states
     ZONES.forEach((z) => {
