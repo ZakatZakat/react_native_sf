@@ -855,11 +855,33 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
             <span style={{ fontSize: 11, lineHeight: 1 }}>▾</span>
           </button>
         )}
-        {selZone && (
-          <button onClick={() => setSelZone(null)} aria-label="вернуться к районам" style={{ display: "inline-flex", alignItems: "center", gap: 7, background: CS.K, color: "#fff", border: `2.5px solid ${CS.K}`, boxShadow: `3px 3px 0 ${CS.B}`, padding: "8px 13px", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 13, letterSpacing: "0.01em", textTransform: "uppercase" }}>
-            <span style={{ fontSize: 15, lineHeight: 1 }}>←</span> Все районы
-          </button>
-        )}
+        {selZone && (() => {
+          // Breadcrumb: Районы › [зона] › [место]. Past crumbs are white/tappable
+          // (jump to that level); the current level is the solid black crumb. This
+          // is the ONE place all map navigation lives — the scattered «← Все
+          // районы» / «← кластеры» buttons are gone.
+          const zoneName = ZONE_BY_ID[selZone].t
+          const atCluster = selCluster != null && !!activeCluster
+          const clusterName = activeCluster ? clusterLabel(activeCluster).name : ""
+          const past = { display: "inline-flex", alignItems: "center", flexShrink: 0, background: CS.W, border: `2px solid ${CS.K}`, boxShadow: `2px 2px 0 ${CS.K}`, padding: "5px 9px", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "0.02em", textTransform: "uppercase" as const, color: CS.K }
+          const now = { display: "inline-block", maxWidth: 176, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const, background: CS.K, color: "#fff", border: `2px solid ${CS.K}`, boxShadow: `2px 2px 0 ${CS.B}`, padding: "5px 9px", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "0.02em", textTransform: "uppercase" as const }
+          const sep = { fontSize: 15, color: "rgba(13,13,13,0.4)", fontWeight: 700, margin: "0 1px" }
+          return (
+            <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 3 }}>
+              <button onClick={() => setSelZone(null)} style={past}>Районы</button>
+              <span style={sep}>›</span>
+              {atCluster ? (
+                <>
+                  <button onClick={() => setSelCluster(null)} style={past}>{zoneName}</button>
+                  <span style={sep}>›</span>
+                  <span style={now}>{clusterName}</span>
+                </>
+              ) : (
+                <span style={now}>{zoneName}</span>
+              )}
+            </div>
+          )
+        })()}
       </div>
 
       {/* «Показать карточки» — возвращает колоду после «Центрировать карту» */}
@@ -892,26 +914,24 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       {selZone && deckEvents.length > 0 && (
         <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 12, background: CS.W, borderTop: `3px solid ${CS.K}`, boxShadow: "0 -6px 0 rgba(13,13,13,0.08)", animation: "cs-sheet-up 0.34s cubic-bezier(0.22,1,0.36,1) both", paddingBottom: "env(safe-area-inset-bottom,0px)" }}>
           {activeCluster ? (
-            /* Level 2 — one tidy row: [← кластеры] · centred count + swipe hint
-               · [Лента →]. No redundant «Места рядом» title (the deck already
-               shows the venue), and the swipe hint lives here now, so the old
-               cramped second hint row is gone. */
+            /* Level 2 — content row only: count + «листай» hint on the left,
+               [Лента →] on the right. Back navigation lives in the breadcrumb
+               under the heading now (no «← кластеры» here). */
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "10px 14px" }}>
-              <button onClick={() => setSelCluster(null)} style={{ display: "inline-flex", alignItems: "center", flexShrink: 0, background: CS.W, border: `2px solid ${CS.K}`, padding: "6px 11px", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "0.03em", textTransform: "uppercase", color: CS.K, boxShadow: `2px 2px 0 ${CS.K}` }}>← кластеры</button>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, minWidth: 0 }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 2, minWidth: 0 }}>
                 <span style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 12, letterSpacing: "0.02em", color: CS.K, whiteSpace: "nowrap" }}><span style={{ color: CS.B }}>●</span> {RU_PLURAL(deckEvents.length)}</span>
-                <span style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, letterSpacing: "0.06em", color: "rgba(13,13,13,0.5)", textTransform: "uppercase", whiteSpace: "nowrap" }}>листай ← →</span>
+                <span style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, letterSpacing: "0.06em", color: "rgba(13,13,13,0.5)", textTransform: "uppercase", whiteSpace: "nowrap" }}>листай ← → между карточками</span>
               </div>
               <button onClick={onEnter} style={{ display: "inline-flex", alignItems: "center", flexShrink: 0, background: CS.K, border: `2px solid ${CS.K}`, padding: "6px 11px", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "0.03em", textTransform: "uppercase", color: "#fff", boxShadow: `2px 2px 0 ${CS.B}` }}>Лента →</button>
             </div>
           ) : (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "5px 14px 2px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "7px 14px 3px" }}>
+              {/* zone name lives in the breadcrumb now — the sheet just titles
+                  the list of places + the events count, and offers «Лента →» */}
               <div style={{ display: "flex", alignItems: "baseline", gap: 7, minWidth: 0 }}>
-                <span style={{ fontWeight: 900, fontSize: 14, letterSpacing: "-0.03em", lineHeight: 1, color: CS.K, textTransform: "uppercase", whiteSpace: "nowrap" }}>{ZONE_BY_ID[selZone].t}</span>
-                <span style={{ background: CS.B, color: "#fff", padding: "2px 5px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 8, letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{RU_PLURAL(deckEvents.length)}</span>
+                <span style={{ fontWeight: 900, fontSize: 14, letterSpacing: "-0.03em", lineHeight: 1, color: CS.K, textTransform: "uppercase", whiteSpace: "nowrap" }}>Места</span>
+                <span style={{ background: CS.B, color: "#fff", padding: "2px 6px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 8.5, letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{RU_PLURAL(deckEvents.length)}</span>
               </div>
-              {/* «← районы» removed — the «← Все районы» button under the
-                  heading now owns the back-to-districts action */}
               <button onClick={onEnter} style={{ display: "inline-flex", alignItems: "center", flexShrink: 0, background: CS.K, border: `2px solid ${CS.K}`, padding: "6px 11px", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "0.03em", textTransform: "uppercase", color: "#fff", boxShadow: `2px 2px 0 ${CS.B}` }}>Лента →</button>
             </div>
           )}
