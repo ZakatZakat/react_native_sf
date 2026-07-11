@@ -354,6 +354,19 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const evIdxRef = useRef(0); evIdxRef.current = evIdx
   const selZoneRef = useRef<string | null>(null); selZoneRef.current = selZone
   const selClusterRef = useRef<number | null>(null); selClusterRef.current = selCluster
+  // Reset drill-down + page SYNCHRONOUSLY when the district changes — during
+  // render, not in an effect. An effect fires AFTER the commit, so for one
+  // painted frame the sheet + map fans showed the PREVIOUS district's open
+  // cluster (or its non-zero page) before snapping back to page 0. That 1-frame
+  // swap was the "cards appear, then immediately change to another set" flicker.
+  // Adjusting state during render makes React restart the render before it
+  // paints, so the stale frame never shows. (Guarded by the ref → no loop.)
+  const prevSelZoneRef = useRef(selZone)
+  if (prevSelZoneRef.current !== selZone) {
+    prevSelZoneRef.current = selZone
+    if (selCluster !== null) setSelCluster(null)
+    if (selPage !== 0) setSelPage(0)
+  }
   // zone whose overview camera is already fit — so paging (selPage) doesn't
   // re-fly the camera each tap (that 800ms easeTo per page was the jank)
   const overviewFitRef = useRef<string | null>(null)
@@ -563,8 +576,9 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   }
   const placeZonesRef = useRef(placeZones); placeZonesRef.current = placeZones
 
-  // reset drill-down + carousel when the zone or cluster changes
-  useEffect(() => { setSelCluster(null); setSelPage(0) }, [selZone])
+  // (drill-down + page reset now happens synchronously during render, above —
+  // see prevSelZoneRef — so no stale frame paints on a district switch)
+  // reset the carousel index when the zone or cluster changes
   useEffect(() => { setEvIdx(0) }, [selZone, selCluster])
 
   // (re)place district bubbles when the feed data lands — covers the case where
