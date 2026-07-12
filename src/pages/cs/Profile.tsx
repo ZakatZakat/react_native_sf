@@ -17,19 +17,30 @@
 import { useNavigate } from "@tanstack/react-router"
 import {
   CsPage, CS, FONT_MONO, FONT_SANS, Mark, Mono, Monogram, PBARS, ScreenBG,
-  GoingProvider, GoingAgenda, EventModalProvider,
+  GoingProvider, GoingAgenda, EventModalProvider, useGoing,
 } from "./shared"
-import { useDerived, useJourneyState, SEED_PROFILE } from "./useJourney"
+import { useDerived, useJourneyState } from "./useJourney"
 
-/** Top 5 categories the user is into, ordered by scene size (catCounts). */
-function buildSpectrum(profile: Record<string, number>, catCounts: Record<string, number>) {
-  const liked = Object.keys(profile).filter((k) => profile[k] > 0)
-  const fallback = ["Современное искусство", "Музыка", "Кино", "Театр", "Литература"]
-  const pool = liked.length >= 3 ? liked : fallback
-  return pool
-    .map((cat) => ({ cat, n: catCounts[cat] || 10 }))
+/** Taste spectrum. When the user has added ≥2 categories of events, it's their
+ *  REAL taste (frequency of added events per category). Otherwise it falls back
+ *  to the city's biggest scenes (by how many events live in each), labelled
+ *  honestly — no fabricated per-user taste. */
+function buildSpectrum(going: { cat: string }[], catCounts: Record<string, number>) {
+  const freq: Record<string, number> = {}
+  for (const g of going) { const c = g.cat || "Событие"; freq[c] = (freq[c] || 0) + 1 }
+  const personalCats = Object.keys(freq)
+  if (personalCats.length >= 2) {
+    return {
+      personal: true,
+      items: Object.entries(freq).map(([cat, n]) => ({ cat, n })).sort((a, b) => b.n - a.n).slice(0, 5),
+    }
+  }
+  const top = Object.entries(catCounts)
+    .filter(([c]) => c && c !== "Событие")
+    .map(([cat, n]) => ({ cat, n }))
     .sort((a, b) => b.n - a.n)
     .slice(0, 5)
+  return { personal: false, items: top }
 }
 
 /** Outer wrapper provides the Going store (RSVP list) + the bottom-sheet
@@ -47,11 +58,12 @@ export default function CsProfile() {
 function ProfileInner() {
   const navigate = useNavigate()
   const { derived } = useDerived()
-  const { name, profile } = useJourneyState()
+  const { name } = useJourneyState()
+  const going = useGoing()
 
   const safeName = (name || "Гость").trim()
-  const effective = Object.keys(profile).length > 0 ? profile : SEED_PROFILE
-  const cats = buildSpectrum(effective, derived.catCounts)
+  const spectrum = buildSpectrum(going.list, derived.catCounts)
+  const cats = spectrum.items
   const total = cats.reduce((s, x) => s + x.n, 0) || 1
   const pct = (n: number) => Math.round((n / total) * 100)
   const segColor = (i: number) =>
@@ -60,8 +72,10 @@ function ProfileInner() {
   const parts = safeName.split(/\s+/)
   const first = parts[0] || "Гость"
   const last = parts.slice(1).join(" ")
-  const likedCount = Object.values(effective).reduce((s, n) => s + n, 0) || 6
-  const stats = { seen: 312, saved: 24, went: 14 }
+  // Real stats: afisha size (all upcoming events) + the user's added list.
+  const afishaCount = Object.values(derived.catCounts).reduce((s, n) => s + n, 0)
+  const addedCount = going.list.length
+  const remindCount = going.list.filter((e) => e.remind).length
 
   return (
     <CsPage>
@@ -100,7 +114,7 @@ function ProfileInner() {
             <div style={{ flex: 1, padding: "15px 15px 14px", minWidth: 0 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
                 <div style={{ fontFamily: FONT_MONO, fontSize: 8.5, color: CS.G55, letterSpacing: "0.14em", lineHeight: 1.5 }}>
-                  КАРТА<br />ЧИТАТЕЛЯ<br />ГОРОДА
+                  КАРТОЧКА<br />ПОЛЬЗОВАТЕЛЯ
                 </div>
                 <Monogram w={42} name={safeName} />
               </div>
@@ -114,7 +128,7 @@ function ProfileInner() {
                 </> : null}
               </div>
               <div style={{ fontFamily: FONT_MONO, fontSize: 10.5, color: CS.B, fontWeight: 700, marginTop: 8 }}>
-                {cats.length} интересов · {total} событий
+                {addedCount > 0 ? `${addedCount} добавлено` : "новая карта"} · {afishaCount} в афише
               </div>
               <div style={{ display: "flex", gap: 2, height: 22, alignItems: "stretch", marginTop: 12 }}>
                 {PBARS.map((w, j) => <span key={j} style={{ width: w, background: CS.K }} />)}
@@ -131,8 +145,8 @@ function ProfileInner() {
               toggling "Иду" in the modal updates this list live. */}
           <GoingAgenda />
 
-          {/* Spectrum bar */}
-          <Mark style={{ display: "block", marginTop: 22, marginBottom: 12 }}>Ты про</Mark>
+          {/* Spectrum bar — real taste (from added events) or the city's scenes */}
+          <Mark style={{ display: "block", marginTop: 22, marginBottom: 12 }}>{spectrum.personal ? "Ты про" : "Популярно в городе"}</Mark>
           <div style={{ display: "flex", height: 46, border: `2px solid ${CS.K}` }}>
             {cats.map((x, i) => (
               <div key={x.cat} style={{
@@ -153,14 +167,20 @@ function ProfileInner() {
             ))}
           </div>
 
-          {/* Hero stat */}
+          {/* Hero stat — real afisha size + the user's own added events */}
           <div style={{ marginTop: 24 }}>
             <div style={{ display: "flex", alignItems: "baseline", gap: 11 }}>
-              <span style={{ fontWeight: 900, fontSize: 54, letterSpacing: "-0.045em", lineHeight: 0.82 }}>{stats.seen}</span>
-              <span style={{ fontWeight: 800, fontSize: 13, color: CS.G55, lineHeight: 1.2 }}>событий<br />отсмотрено</span>
+              <span style={{ fontWeight: 900, fontSize: 54, letterSpacing: "-0.045em", lineHeight: 0.82 }}>{afishaCount}</span>
+              <span style={{ fontWeight: 800, fontSize: 13, color: CS.G55, lineHeight: 1.2 }}>событий<br />в афише</span>
             </div>
             <div style={{ marginTop: 14, fontWeight: 700, fontSize: 12.5, color: CS.G55, lineHeight: 1.55 }}>
-              <span style={{ color: CS.K, fontWeight: 900 }}>♥ {likedCount}</span> в избранном · <span style={{ color: CS.K, fontWeight: 900 }}>{stats.saved}</span> в закладках · <span style={{ color: CS.K, fontWeight: 900 }}>{stats.went}</span> посещено
+              {addedCount > 0 ? (
+                <>
+                  <span style={{ color: CS.K, fontWeight: 900 }}>{addedCount}</span> добавлено · <span style={{ color: CS.K, fontWeight: 900 }}>{remindCount}</span> с напоминанием
+                </>
+              ) : (
+                <>Пока ничего не добавлено — открой событие и жми «Добавить».</>
+              )}
             </div>
           </div>
         </div>
