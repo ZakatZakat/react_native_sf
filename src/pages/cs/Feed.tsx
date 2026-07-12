@@ -19,7 +19,7 @@
  *  Spread/Billboard/Combo) is removed per v3 spec.
  */
 
-import { useContext, useEffect, useMemo, useRef, useState } from "react"
+import { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { useNavigate, useSearch } from "@tanstack/react-router"
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
@@ -231,7 +231,7 @@ function GridCard({ ev, i }: { ev: Ev; i: number }) {
 /** Masonry mosaic card — rotated poster with overlay chips + caption. */
 /** Catalog card — one bordered component: framed poster (date badge) + a
  *  distinct footer block (meta · full title · venue · description). */
-function MosaicCard({ ev, i }: { ev: Ev; i: number }) {
+function MosaicCard({ ev, i, onImg }: { ev: Ev; i: number; onImg?: () => void }) {
   const open = useOpenEvent()
   // Slight scrapbook tilt + gentle idle float. Three nested layers so the
   // transforms compose instead of overriding each other: entrance (once) →
@@ -265,7 +265,7 @@ function MosaicCard({ ev, i }: { ev: Ev; i: number }) {
               card grows to fit it (maxHeight caps a runaway-tall poster).
               Its bottom edge is the divider; the date badge floats top-right. */}
           <div style={{ position: "relative", minHeight: 120, borderBottom: `2.5px solid ${SK.ink}`, background: "#E4E4E1", overflow: "hidden" }}>
-            {ev.p && <img src={ev.p} alt="" loading="lazy" style={{ width: "100%", height: "auto", maxHeight: 380, objectFit: "cover", display: "block" }} />}
+            {ev.p && <img src={ev.p} alt="" loading="lazy" onLoad={onImg} onError={onImg} style={{ width: "100%", height: "auto", maxHeight: 380, objectFit: "cover", display: "block" }} />}
             <span style={{ position: "absolute", top: 8, right: 8, background: SK.ink, color: SK.paper, fontWeight: 900, fontSize: 13, letterSpacing: "0.02em", lineHeight: 1, padding: "5px 8px" }}>{ev.d}</span>
           </div>
           {/* footer block */}
@@ -291,30 +291,29 @@ function MosaicCard({ ev, i }: { ev: Ev; i: number }) {
 }
 
 function MosaicGrid({ events }: { events: Ev[] }) {
-  // CSS multi-column = real masonry: the browser balances the two columns by
-  // height, so variable-aspect posters no longer leave one column short with a
-  // gap. `break-inside: avoid` on each card keeps it intact within a column.
+  // Height-aware 2-column masonry. Each card is measured and placed into the
+  // currently-SHORTER column (greedy) — so uneven poster heights don't leave a
+  // big empty gap the way CSS `column-count` did (its heuristic balance made a
+  // bad split when the filtered set was small/varied, ~200px of dead space).
+  // Re-runs as posters load and change card heights (rAF-debounced).
   //
-  // WINDOWING: render only the first `visible` cards, growing by STEP as a
-  // sentinel scrolls into view. Rendering all ~150 natural-aspect posters at
-  // once made the masonry re-balance on EVERY image load (a reflow storm =
-  // the "лента дико лагает" on entry). A small window caps the initial
-  // layout + image decodes to a handful.
-  // INITIAL kept small so the FIRST paint (which lands on the same frame as the
-  // 3D map being torn down on exit-to-Лента) renders only a handful of cards —
-  // that ~82ms mount long-task was the residual "подтормаживание". Grow by STEP.
-  const INITIAL = 10, STEP = 20
+  // WINDOWING: render only the first `visible` cards, growing by STEP near the
+  // bottom — rendering all ~150 posters at once was the entry-jank/reflow storm.
+  const INITIAL = 10, STEP = 20, GAP = 14, VGAP = 20
   const [visible, setVisible] = useState(INITIAL)
-  const gridRef = useRef<HTMLDivElement | null>(null)
-  useEffect(() => { setVisible(INITIAL) }, [events]) // reset on category/data change
+  const wrapRef = useRef<HTMLDivElement | null>(null)
+  const cardRefs = useRef<(HTMLDivElement | null)[]>([])
+  const rafRef = useRef(0)
+  const firstRef = useRef(false) // first layout of a set → place without animating
+  const [layout, setLayout] = useState<{ pos: { x: number; y: number; w: number }[]; h: number; anim: boolean }>({ pos: [], h: 0, anim: false })
+  useEffect(() => { setVisible(INITIAL); firstRef.current = false }, [events]) // reset on category/data change
   useEffect(() => {
     if (visible >= events.length) return
     // Walk UP from the grid to its real scroll container and grow the window
     // when the user nears the bottom. (There can be more than one `.sk-scroll`
-    // in the tree, so query-by-class grabs the wrong one; and an
-    // IntersectionObserver with the implicit viewport root doesn't fire inside
-    // this nested overflow:auto scroller. The ref-walk is what's reliable.)
-    let sc: HTMLElement | null = gridRef.current?.parentElement ?? null
+    // in the tree, so query-by-class grabs the wrong one; and a viewport-root
+    // IntersectionObserver won't fire inside this nested overflow:auto scroller.)
+    let sc: HTMLElement | null = wrapRef.current?.parentElement ?? null
     while (sc && !/(auto|scroll)/.test(getComputedStyle(sc).overflowY)) sc = sc.parentElement
     if (!sc) return
     const el = sc
@@ -328,9 +327,39 @@ function MosaicGrid({ events }: { events: Ev[] }) {
     return () => el.removeEventListener("scroll", onScroll)
   }, [visible, events.length])
   const shown = events.slice(0, visible)
+  const relayout = () => {
+    const wrap = wrapRef.current
+    if (!wrap) return
+    const colW = Math.floor(((wrap.clientWidth || 375) - GAP) / 2)
+    const colH = [0, 0]
+    const pos = shown.map((_, i) => {
+      const h = cardRefs.current[i]?.offsetHeight || 0
+      const c = colH[0] <= colH[1] ? 0 : 1
+      const p = { x: c * (colW + GAP), y: colH[c], w: colW }
+      colH[c] += h + VGAP
+      return p
+    })
+    setLayout({ pos, h: Math.max(0, Math.max(colH[0], colH[1]) - VGAP), anim: firstRef.current })
+    firstRef.current = true
+  }
+  // deps are the STABLE inputs (a number + the prop ref), NOT `shown` — `shown`
+  // is a fresh slice every render, so depending on it re-ran the effect on its
+  // own setLayout → infinite loop.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useLayoutEffect(relayout, [visible, events])
+  const scheduleRelayout = () => { cancelAnimationFrame(rafRef.current); rafRef.current = requestAnimationFrame(relayout) }
+  useEffect(() => () => cancelAnimationFrame(rafRef.current), [])
   return (
-    <div ref={gridRef} style={{ columnCount: 2, columnGap: 14 }}>
-      {shown.map((e, i) => <MosaicCard key={e.id} ev={e} i={i} />)}
+    <div ref={wrapRef} style={{ position: "relative", height: layout.h || undefined }}>
+      {shown.map((e, i) => (
+        <div
+          key={e.id}
+          ref={(el) => { cardRefs.current[i] = el }}
+          style={{ position: "absolute", left: 0, top: 0, width: layout.pos[i]?.w ?? "calc(50% - 7px)", transform: `translate(${layout.pos[i]?.x ?? 0}px, ${layout.pos[i]?.y ?? 0}px)`, transition: layout.anim ? "transform 0.22s cubic-bezier(0.22,1,0.36,1)" : "none" }}
+        >
+          <MosaicCard ev={e} i={i} onImg={scheduleRelayout} />
+        </div>
+      ))}
     </div>
   )
 }
