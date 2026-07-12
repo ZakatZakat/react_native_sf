@@ -300,10 +300,13 @@ function MosaicGrid({ events }: { events: Ev[] }) {
   // once made the masonry re-balance on EVERY image load (a reflow storm =
   // the "лента дико лагает" on entry). A small window caps the initial
   // layout + image decodes to a handful.
-  const STEP = 24
-  const [visible, setVisible] = useState(STEP)
+  // INITIAL kept small so the FIRST paint (which lands on the same frame as the
+  // 3D map being torn down on exit-to-Лента) renders only a handful of cards —
+  // that ~82ms mount long-task was the residual "подтормаживание". Grow by STEP.
+  const INITIAL = 10, STEP = 20
+  const [visible, setVisible] = useState(INITIAL)
   const gridRef = useRef<HTMLDivElement | null>(null)
-  useEffect(() => { setVisible(STEP) }, [events]) // reset on category/data change
+  useEffect(() => { setVisible(INITIAL) }, [events]) // reset on category/data change
   useEffect(() => {
     if (visible >= events.length) return
     // Walk UP from the grid to its real scroll container and grow the window
