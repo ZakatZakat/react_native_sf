@@ -104,7 +104,10 @@ export const FILTERS: Filter[] = [
 ]
 
 export function isImg(url: string): boolean {
-  return /\.(jpg|jpeg|png|webp|gif)$/i.test(url)
+  // Extension may be followed by a query string or fragment (CDN sizing params,
+  // cache-busters) — anchoring with `$` alone dropped such URLs, and with them
+  // the whole event (resolvePoster → null → filtered out of the feed).
+  return /\.(jpe?g|png|webp|gif|avif|bmp|heic|heif|svg)(?:[?#]|$)/i.test(url)
 }
 
 export function resolveMedia(media: string | undefined): string | null {

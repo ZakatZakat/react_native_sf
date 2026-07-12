@@ -626,13 +626,23 @@ function formatEventDesc(raw: string, ...heads: string[]): string {
   // strip trailing channel CTA / promo / links (NB: no \b — it doesn't match
   // after a Cyrillic letter in JS regex without the /u flag)
   s = s.replace(/\s*(?:Подписаться|Подпишись|Подписывайтесь|Подписка на канал)[\s\S]*$/i, "").trim()
-  s = s.replace(/\s*[|｜]\s*[^|｜]*(?:москв|подмосков|питер|петербург|афиш|канал|подпис|интересные\s+места|мест[аоуы])[^|｜]*$/i, "").trim()
+  // NB: bare «мест[аоуы]» was too greedy — it ate legit final segments like
+  // «| осталось 20 мест». Channel-name patterns («интересные места») stay, and
+  // «Места Москвы»-style tails are still caught by «москв».
+  s = s.replace(/\s*[|｜]\s*[^|｜]*(?:москв|подмосков|питер|петербург|афиш|канал|подпис|интересные\s+места)[^|｜]*$/i, "").trim()
   s = s.replace(/\s*(?:https?:\/\/|t\.me\/)\S*\s*$/i, "").trim()
   s = s.replace(/[\s|•·]+$/, "").trim()
   // labels → own line
   s = s.replace(new RegExp(`\\s+(${DESC_LABELS})\\s*[:：]`, "g"), "\n$1:")
-  // one sentence per line (break after . ! ? … when the next char starts a new clause)
-  s = s.replace(/([.!?…])\s+(?=[«"„(A-ZА-ЯЁ0-9])/g, "$1\n")
+  // one sentence per line (break after sentence-final punctuation when the next
+  // char starts a new clause). «!?…» never abbreviate, so they always break; the
+  // «.» case skips common Russian abbreviations (ул./д./г./им./см.) whose dot is
+  // NOT a sentence end — otherwise «ул. Правды» splits into two lines. JS \b is
+  // ASCII-only (unreliable next to Cyrillic), so the lookbehind spells out the
+  // preceding boundary explicitly. V8 supports variable-length lookbehind.
+  const ABBR = "ул|пер|просп|пр|пл|наб|бул|ш|стр|корп|кв|эт|оф|д|г|гор|обл|им|тел|руб|мин|макс|напр|см|т|е"
+  s = s.replace(/([!?…])\s+(?=[«"„(A-ZА-ЯЁ0-9])/g, "$1\n")
+  s = s.replace(new RegExp(`(?<!(?:^|[\\s(«"„])(?:${ABBR}))\\.\\s+(?=[«"„(A-ZА-ЯЁ0-9])`, "giu"), ".\n")
   const norm = (x: string) => x.toLowerCase().replace(/[^0-9a-zа-яё ]/gi, " ").replace(/\s+/g, " ").trim()
   const headNorms = heads.map(norm).filter((h) => h.length > 3)
   const noDate = (x: string) => x.replace(/^\s*\d{1,2}[.\/]\d{1,2}(?:[.\/]\d{2,4})?\s*[—–\-·]*\s*/, "")
@@ -650,8 +660,13 @@ function formatEventDesc(raw: string, ...heads: string[]): string {
 
 function EventSheet({ ev, onClose }: { ev: Ev | null; onClose: () => void }) {
   const [shown, setShown] = useState(false)
+  // Poster can 404 at runtime (media purged upstream) even though the event
+  // passed the has-image filter. Without this the black frame + overlays render
+  // as a stray sliver; on error we drop the whole poster block.
+  const [posterOk, setPosterOk] = useState(true)
   useEffect(() => {
     if (!ev) { setShown(false); return }
+    setPosterOk(true)
     const r = requestAnimationFrame(() => setShown(true))
     return () => cancelAnimationFrame(r)
   }, [ev])
@@ -703,18 +718,19 @@ function EventSheet({ ev, onClose }: { ev: Ev | null; onClose: () => void }) {
           {/* poster — the frame hugs the image's own aspect: landscape posters
               go full width, portrait ones shrink to a centred column capped at
               maxHeight. No forced crop (not squished) and no letterbox bars. */}
-          <div style={{ position: "relative", margin: "8px auto 0", width: "fit-content", maxWidth: "calc(100% - 28px)", border: `2.5px solid ${CS.K}`, overflow: "hidden", background: CS.K, lineHeight: 0 }}>
-            {ev.p && (
+          {ev.p && posterOk && (
+            <div style={{ position: "relative", margin: "8px auto 0", width: "fit-content", maxWidth: "calc(100% - 28px)", border: `2.5px solid ${CS.K}`, overflow: "hidden", background: CS.K, lineHeight: 0 }}>
               <img
                 src={ev.p} alt=""
+                onError={() => setPosterOk(false)}
                 style={{ display: "block", width: "auto", height: "auto", maxWidth: "100%", maxHeight: "40vh" }}
               />
-            )}
-            <div style={{ position: "absolute", top: 8, left: 8, background: CS.B, color: CS.W, padding: "4px 8px", border: `1.5px solid ${CS.K}`, fontWeight: 900, fontSize: 9, letterSpacing: "0.16em", textTransform: "uppercase" }}>{ev.c}</div>
-            <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, display: "flex", justifyContent: "space-between", padding: "6px 9px", background: CS.K, color: CS.W, fontFamily: FONT_MONO, fontSize: 9.5, letterSpacing: "0.06em" }}>
-              <span>{ev.d} · {ev.tm}</span><span>{ev.price}</span>
+              <div style={{ position: "absolute", top: 8, left: 8, background: CS.B, color: CS.W, padding: "4px 8px", border: `1.5px solid ${CS.K}`, fontWeight: 900, fontSize: 9, letterSpacing: "0.16em", textTransform: "uppercase" }}>{ev.c}</div>
+              <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, display: "flex", justifyContent: "space-between", padding: "6px 9px", background: CS.K, color: CS.W, fontFamily: FONT_MONO, fontSize: 9.5, letterSpacing: "0.06em" }}>
+                <span>{ev.d} · {ev.tm}</span><span>{ev.price}</span>
+              </div>
             </div>
-          </div>
+          )}
           {/* body — title + source + place block + description */}
           <div style={{ padding: "13px 14px 0" }}>
             <div style={{ fontWeight: 900, fontSize: 22, lineHeight: 0.96, letterSpacing: "-0.03em", textTransform: "uppercase", color: CS.K }}>{ev.t}</div>

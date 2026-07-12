@@ -76,6 +76,31 @@ export function cleanTitle(raw: string): string {
   return s || orig
 }
 
+/** Parse a curator `event_time` into an absolute instant.
+ *  Curator stores Moscow wall-clock, frequently WITHOUT a timezone suffix.
+ *  Plain `new Date("2026-07-10T18:00")` reads such a string in the *viewer's*
+ *  zone — our Spain-based reviewer (−1h) would then see every time shifted and
+ *  the sort/dedup keys drift with it. So: strings that already carry an offset
+ *  are trusted as-is; naive strings are pinned to +03:00. All formatting then
+ *  goes through `MSK_D`/`MSK_T` so the wall-clock shown is Moscow's, whoever
+ *  is looking. */
+export function parseEventTime(raw: string | null | undefined): Date | null {
+  if (!raw) return null
+  let s = raw.trim()
+  if (!s) return null
+  if (/(?:Z|[+-]\d{2}:?\d{2})$/.test(s)) {
+    const d = new Date(s)
+    return Number.isNaN(d.getTime()) ? null : d
+  }
+  s = s.replace(" ", "T")
+  if (!s.includes("T")) s += "T00:00:00" // date-only → midnight Moscow
+  const d = new Date(`${s}+03:00`)
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
+const MSK_D: Intl.DateTimeFormatOptions = { day: "2-digit", month: "2-digit", timeZone: "Europe/Moscow" }
+const MSK_T: Intl.DateTimeFormatOptions = { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Moscow" }
+
 export function toEv(e: FeedItem): Ev {
   // Category = the FIRST tag that's a known coarse interest. Blindly taking
   // tags[0] now surfaces a raw fine-tag slug (e.g. "haus-vecherinka") when a
@@ -83,13 +108,9 @@ export function toEv(e: FeedItem): Ev {
   const coarseKey = (e.tags ?? []).find((k) => INTEREST_BY_KEY[k])
   const primaryKey = coarseKey ?? (e.tags ?? [])[0] ?? "contemporary"
   const interest = coarseKey ? INTEREST_BY_KEY[coarseKey] : undefined
-  const dateObj = e.event_time ? new Date(e.event_time) : null
-  const d = dateObj
-    ? dateObj.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })
-    : "—"
-  const tm = dateObj
-    ? dateObj.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })
-    : "—"
+  const dateObj = parseEventTime(e.event_time)
+  const d = dateObj ? dateObj.toLocaleDateString("ru-RU", MSK_D) : "—"
+  const tm = dateObj ? dateObj.toLocaleTimeString("ru-RU", MSK_T) : "—"
   const channel = e.channel.replace(/^@/, "")
   return {
     id: e.id,
@@ -186,9 +207,9 @@ export function buildDerived(events: FeedItem[]): DerivedData {
     // Bucket by the DISPLAYED date+time — cross-posts sometimes carry the start
     // time stored differently (seconds / timezone), so an exact match on the raw
     // event_time misses them even though the user sees the same «10.07 · 18:00».
-    const td = e.event_time ? new Date(e.event_time) : null
-    const t = td && !Number.isNaN(td.getTime())
-      ? td.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" }) + " " + td.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })
+    const td = parseEventTime(e.event_time)
+    const t = td
+      ? td.toLocaleDateString("ru-RU", MSK_D) + " " + td.toLocaleTimeString("ru-RU", MSK_T)
       : ""
     // Exact keys: byte-identical poster or identical body at the same time.
     const exact: string[] = []

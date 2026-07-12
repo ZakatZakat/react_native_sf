@@ -21,8 +21,6 @@
 
 import { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { useNavigate, useSearch } from "@tanstack/react-router"
-import L from "leaflet"
-import "leaflet/dist/leaflet.css"
 import {
   CS, FONT_MONO, FONT_SANS, ScreenBG,
   NavCtx, ProfileBadge, BillboardProfileBadge,
@@ -117,13 +115,6 @@ function DiaryView({ feed }: { feed: Ev[] }) {
 
 // ── VARIANT 2 · Доска (mapcombo: Карта + Афиша + Мозаика) ───────────────
 
-/** Deterministic social-proof "идут N" count from the event id. */
-function going(ev: Ev, i: number): number {
-  let h = i * 53
-  for (const ch of ev.id) h = (h * 31 + ch.charCodeAt(0)) >>> 0
-  return (h % 380) + 64
-}
-
 /** Display label for the price chip. Real price wins; "вход свободный"
  *  etc. → "free". When there's no usable price we fall back to the start
  *  time, but only if curator actually gave one — otherwise null so the
@@ -154,18 +145,6 @@ function PriceTag({ ev, solid = false, style }: { ev: Ev; solid?: boolean; style
   const free = label === "free"
   return (
     <span style={{ display: "inline-block", background: free ? SK.blue : (solid ? SK.paper : "transparent"), color: free ? SK.paper : SK.ink, border: `1.5px solid ${free ? SK.blue : SK.ink}`, padding: "2px 6px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, letterSpacing: "0.04em", lineHeight: 1.1, whiteSpace: "nowrap", ...style }}>{free ? "FREE" : label}</span>
-  )
-}
-
-function GoingBar({ n, style }: { n: number; style?: React.CSSProperties }) {
-  const pct = Math.min(100, Math.round((n / 440) * 100))
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6, ...style }}>
-      <div style={{ flex: 1, height: 4, background: SK.ink12, position: "relative" }}>
-        <div style={{ position: "absolute", inset: 0, width: `${pct}%`, background: SK.blue }} />
-      </div>
-      <span style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 8.5, letterSpacing: "0.04em", color: SK.ink55, whiteSpace: "nowrap" }}>идут {n}</span>
-    </div>
   )
 }
 
@@ -219,25 +198,6 @@ function BoardLead({ ev }: { ev: Ev }) {
   )
 }
 
-/** Square grid card — poster + chips + title. */
-function GridCard({ ev, i }: { ev: Ev; i: number }) {
-  const open = useOpenEvent()
-  return (
-    <div onClick={() => open(ev)} style={{ cursor: "pointer", animation: `sk-refresh 0.5s cubic-bezier(0.22,1,0.36,1) ${(i * 0.05).toFixed(2)}s both` }}>
-      <Clip ev={ev} w="100%" h={132} rot={0} />
-      <div style={{ marginTop: 8 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
-          <CatChip c={ev.c} />
-          <PriceTag ev={ev} />
-        </div>
-        <div style={{ fontWeight: 900, fontSize: 13, letterSpacing: "-0.02em", lineHeight: 0.98, marginTop: 6, color: SK.ink, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{ev.t}</div>
-        <div style={{ fontFamily: FONT_MONO, fontSize: 8.5, letterSpacing: "0.04em", color: SK.ink55, marginTop: 4 }}>{ev.d} · {ev.tm}</div>
-      </div>
-    </div>
-  )
-}
-
-/** Masonry mosaic card — rotated poster with overlay chips + caption. */
 /** Catalog card — one bordered component: framed poster (date badge) + a
  *  distinct footer block (meta · full title · venue · description). */
 function MosaicCard({ ev, i, onImg }: { ev: Ev; i: number; onImg?: () => void }) {
@@ -377,135 +337,6 @@ function MosaicGrid({ events }: { events: Ev[] }) {
   )
 }
 
-// ── Real Moscow map (Leaflet + CARTO tiles) ─────────────────────────────
-
-/** Real Moscow venue coordinates (lat, lng). Curator events don't carry
- *  geo, so each event is pinned at one of these (cycled by index) — pins
- *  scatter across real Moscow venues for the montage. */
-const MOSCOW_GEO: [number, number][] = [
-  [55.7283, 37.6755], // Шарикоподшипниковская
-  [55.7360, 37.6190], // Дом музыки
-  [55.7297, 37.6017], // Парк Горького
-  [55.7409, 37.6110], // ГЭС-2
-  [55.8401, 37.4870], // Сев. Речной вокзал
-  [55.7700, 37.5980], // Театр.doc
-  [55.7416, 37.6090], // Стрелка
-  [55.7090, 37.6560], // ЗИЛ
-]
-
-function CsMap({ events, height = 236 }: { events: Ev[]; height?: number }) {
-  const boxRef = useRef<HTMLDivElement | null>(null)
-  const mapRef = useRef<L.Map | null>(null)
-  const layerRef = useRef<L.LayerGroup | null>(null)
-  const open = useOpenEvent()
-  const openRef = useRef(open)
-  openRef.current = open
-  const [cat, setCat] = useState("Все")
-  const [query, setQuery] = useState("")
-  const [ready, setReady] = useState(false)
-
-  const withGeo = useMemo(() => {
-    const list = events.filter((e) => e.p && !e.id.startsWith("__placeholder")).slice(0, 8)
-    // Prefer real geocoded coords; fall back to the Moscow venue pool
-    // (cycled) for events that haven't been geocoded yet.
-    return list.map((e, i) => ({ e, geo: e.geo ?? MOSCOW_GEO[i % MOSCOW_GEO.length] }))
-  }, [events])
-
-  const cats = useMemo(() => {
-    const seen: string[] = []
-    for (const { e } of withGeo) if (e.c !== "—" && !seen.includes(e.c)) seen.push(e.c)
-    return ["Все", ...seen]
-  }, [withGeo])
-
-  // Init the map once.
-  useEffect(() => {
-    if (!boxRef.current || mapRef.current) return
-    // scrollWheelZoom off — the map lives inside a vertically scrolling
-    // feed, so wheel-zoom would trap the page scroll. Zoom via the +/-
-    // buttons (added below) and pinch (touchZoom, on by default).
-    const map = L.map(boxRef.current, { center: [55.745, 37.62], zoom: 12, zoomControl: false, scrollWheelZoom: false, attributionControl: false })
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", { maxZoom: 19, subdomains: "abcd" }).addTo(map)
-    L.control.zoom({ position: "bottomright" }).addTo(map)
-    mapRef.current = map
-    layerRef.current = L.layerGroup().addTo(map)
-    setReady(true)
-    setTimeout(() => map.invalidateSize(), 150)
-    setTimeout(() => map.invalidateSize(), 600)
-    return () => { map.remove(); mapRef.current = null; layerRef.current = null }
-  }, [])
-
-  // Text matcher — search across title / venue / channel / category.
-  const matches = (e: Ev) => {
-    const q = query.trim().toLowerCase()
-    if (!q) return true
-    return `${e.t} ${e.v} ${e.ch} ${e.c}`.toLowerCase().includes(q)
-  }
-
-  // Render / re-render markers when data, filters, query, or readiness change.
-  useEffect(() => {
-    const map = mapRef.current, lyr = layerRef.current
-    if (!ready || !map || !lyr) return
-    lyr.clearLayers()
-    const pts: [number, number][] = []
-    for (const { e, geo } of withGeo) {
-      if (cat !== "Все" && e.c !== cat) continue
-      if (!matches(e)) continue
-      pts.push(geo)
-      const icon = L.divIcon({
-        className: "",
-        html: `<div class="cs-pin"><div class="cs-pin-card"><img src="${e.p}" alt=""/></div><div class="cs-pin-tip"></div></div>`,
-        iconSize: [50, 60], iconAnchor: [25, 60],
-      })
-      L.marker(geo, { icon }).addTo(lyr).on("click", () => openRef.current(e))
-    }
-    if (pts.length > 1) map.fitBounds(pts, { padding: [44, 44], maxZoom: 14, animate: true })
-    else if (pts.length === 1) map.setView(pts[0], 14, { animate: true })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [withGeo, cat, query, ready])
-
-  const visibleCount = withGeo.filter((p) => (cat === "Все" || p.e.c === cat) && matches(p.e)).length
-
-  return (
-    <div style={{ padding: "0 14px" }}>
-      {/* search bar — filters pins by title / venue / channel / category */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-        <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, border: `2px solid ${SK.ink}`, background: SK.paper, padding: "9px 12px", boxShadow: `3px 3px 0 ${SK.ink}` }}>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}><circle cx="6" cy="6" r="4.4" stroke={SK.ink} strokeWidth="2" /><line x1="9.4" y1="9.4" x2="13" y2="13" stroke={SK.ink} strokeWidth="2" strokeLinecap="round" /></svg>
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="искать место…"
-            style={{
-              flex: 1, minWidth: 0, border: "none", outline: "none", background: "transparent",
-              fontFamily: FONT_MONO, fontSize: 11, letterSpacing: "0.04em", color: SK.ink,
-            }}
-          />
-          {query && (
-            <button onClick={() => setQuery("")} aria-label="Очистить" style={{ flexShrink: 0, border: "none", background: "none", cursor: "pointer", padding: 0, fontFamily: FONT_SANS, fontWeight: 900, fontSize: 14, lineHeight: 1, color: SK.ink55 }}>✕</button>
-          )}
-        </div>
-        <button aria-label="Где я" onClick={() => mapRef.current?.setView([55.745, 37.62], 12)} style={{ flexShrink: 0, width: 42, border: `2px solid ${SK.ink}`, background: SK.blue, boxShadow: `3px 3px 0 ${SK.ink}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M14 2 L2 7 L7 9 L9 14 Z" fill="#fff" stroke="#fff" strokeWidth="1" strokeLinejoin="round" /></svg>
-        </button>
-      </div>
-      {/* category filter chips */}
-      <div className="sk-scroll" style={{ display: "flex", gap: 8, overflowX: "auto", marginBottom: 12, paddingBottom: 4 }}>
-        {cats.map((c) => {
-          const on = cat === c
-          return <button key={c} onClick={() => setCat(c)} style={{ flexShrink: 0, padding: "6px 12px", border: `2px solid ${SK.ink}`, background: on ? SK.ink : SK.paper, color: on ? SK.paper : SK.ink, fontFamily: FONT_SANS, fontWeight: 800, fontSize: 10.5, letterSpacing: "0.05em", textTransform: "uppercase", whiteSpace: "nowrap", cursor: "pointer" }}>{c}</button>
-        })}
-      </div>
-      {/* map canvas — isolate so Leaflet's internal high z-index panes
-          stay contained and never escape over the event sheet. */}
-      <div style={{ position: "relative", isolation: "isolate", width: "100%", height, border: `2.5px solid ${SK.ink}`, boxShadow: `4px 4px 0 ${SK.ink}`, overflow: "hidden", background: "#EAEDF0" }}>
-        <div ref={boxRef} style={{ position: "absolute", inset: 0 }} />
-        {!ready && <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 5 }}><Lbl size={10} style={{ letterSpacing: "0.2em" }}>загружаю карту…</Lbl></div>}
-        <div style={{ position: "absolute", left: 10, top: 10, zIndex: 500, background: SK.ink, color: SK.paper, padding: "4px 9px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9.5, letterSpacing: "0.08em", pointerEvents: "none" }}>{visibleCount} рядом · Москва</div>
-      </div>
-    </div>
-  )
-}
-
 function RefreshGlyph({ variant = "b", spin = 0 }: { variant?: string; spin?: number }) {
   const wrap = (children: React.ReactNode) => (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
@@ -541,7 +372,12 @@ function RefreshGlyph({ variant = "b", spin = 0 }: { variant?: string; spin?: nu
 function BoardSearch({ events, onClose }: { events: Ev[]; onClose: () => void }) {
   const open = useOpenEvent()
   const inputRef = useRef<HTMLInputElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
   const [q, setQ] = useState("")
+  // Windowed render — the board can hold hundreds of events; mounting every
+  // result row (each with an <img>) on open janks low-end phones. Show a page,
+  // grow it as the user scrolls.
+  const [shown, setShown] = useState(40)
   useEffect(() => { inputRef.current?.focus() }, [])
   const query = q.trim().toLowerCase()
   const results = useMemo(
@@ -550,6 +386,12 @@ function BoardSearch({ events, onClose }: { events: Ev[]; onClose: () => void })
       : events),
     [events, query],
   )
+  useEffect(() => { setShown(40); scrollRef.current?.scrollTo?.(0, 0) }, [query])
+  const onScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 700) setShown((s) => (s < results.length ? s + 40 : s))
+  }
+  const list = results.slice(0, shown)
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 9000, background: SK.paper, display: "flex", flexDirection: "column", fontFamily: FONT_SANS }}>
       {/* search bar + close */}
@@ -564,16 +406,16 @@ function BoardSearch({ events, onClose }: { events: Ev[]; onClose: () => void })
       {/* count */}
       <div style={{ flexShrink: 0, padding: "10px 15px 2px", fontFamily: FONT_MONO, fontSize: 9.5, letterSpacing: "0.12em", textTransform: "uppercase", color: SK.ink55 }}>{query ? "найдено" : "вся афиша"} · {results.length}</div>
       {/* results */}
-      <div className="sk-scroll" style={{ flex: 1, overflowY: "auto", padding: "6px 15px 24px" }}>
+      <div ref={scrollRef} onScroll={onScroll} className="sk-scroll" style={{ flex: 1, overflowY: "auto", padding: "6px 15px 24px" }}>
         {results.length === 0 && (
           <div style={{ padding: "44px 0", textAlign: "center", fontFamily: FONT_MONO, fontSize: 12, letterSpacing: "0.04em", color: SK.ink55 }}>ничего не нашлось</div>
         )}
-        {results.map((e) => {
+        {list.map((e) => {
           const venue = e.v && !e.v.startsWith("@") ? e.v : ""
           const date = [e.d, e.tm].filter((s) => s && s !== "—").join(" · ")
           const sub = [venue, e.ch].filter(Boolean).join(" · ")
           return (
-            <button key={e.id} onClick={() => open(e)} style={{ width: "100%", display: "flex", gap: 11, alignItems: "flex-start", padding: "10px 0", borderTop: "1px solid rgba(13,13,13,0.12)", background: "transparent", cursor: "pointer", textAlign: "left" }}>
+            <button key={e.id} onClick={() => { open(e); onClose() }} style={{ width: "100%", display: "flex", gap: 11, alignItems: "flex-start", padding: "10px 0", borderTop: "1px solid rgba(13,13,13,0.12)", background: "transparent", cursor: "pointer", textAlign: "left" }}>
               <div style={{ flexShrink: 0, width: 46, height: 58, border: `2px solid ${SK.ink}`, background: "#E4E4E1", overflow: "hidden" }}>{e.p && <img src={e.p} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}</div>
               <div style={{ flex: 1, minWidth: 0, paddingTop: 1 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -723,19 +565,20 @@ function BoardView({ feed, btn = "b", name = "Гость", onMap }: { feed: Ev[]
 
       {/* board body — выбор недели (hero) → каталог (filtered by category). The
           inline map was removed from the feed (the map lives in the intro). */}
-      <div key={`${nonce}-${cat}`}>
-        <div style={{ padding: "0 14px" }}>
-          <SectionLabel>выбор недели</SectionLabel>
-          {hero && <BoardLead ev={hero} />}
-          <SectionLabel>каталог</SectionLabel>
-          {catalog.length > 0 ? (
-            <MosaicGrid events={catalog} />
-          ) : (
-            <div style={{ fontFamily: FONT_MONO, fontSize: 11, color: SK.ink55, letterSpacing: "0.04em", padding: "10px 2px 4px" }}>
-              в категории «{cat.toLowerCase()}» пока пусто
-            </div>
-          )}
-        </div>
+      <div style={{ padding: "0 14px" }}>
+        {/* hero re-animates only on refresh (nonce → new heroIdx); a category
+            tap must not remount it. The catalog keys on the filter too, so its
+            stagger replays when the visible set changes. */}
+        <SectionLabel>выбор недели</SectionLabel>
+        {hero && <div key={nonce}><BoardLead ev={hero} /></div>}
+        <SectionLabel>каталог</SectionLabel>
+        {catalog.length > 0 ? (
+          <div key={`${nonce}-${cat}-${tag ?? ""}`}><MosaicGrid events={catalog} /></div>
+        ) : (
+          <div style={{ fontFamily: FONT_MONO, fontSize: 11, color: SK.ink55, letterSpacing: "0.04em", padding: "10px 2px 4px" }}>
+            {cat === "Все" ? "событий пока нет" : `в категории «${cat.toLowerCase()}» пока пусто`}
+          </div>
+        )}
       </div>
 
       {searchOpen && <BoardSearch events={E} onClose={() => setSearchOpen(false)} />}

@@ -85,7 +85,7 @@ function zoneBubbleEl(zone: Zone, evs: Ev[], onClick: (id: string) => void): HTM
   const single = fan.length === 1
   // a lone card sits upright and centred (no fan tilt/offset)
   const thumbs = fan.map((e, i) =>
-    `<span class="cs-zfan-card" style="--zr:${single ? 0 : rots[i] || 0}deg;--zz:${single ? 1 : i}">${e.p ? `<img src="${e.p}" alt=""/>` : ""}</span>`,
+    `<span class="cs-zfan-card" style="--zr:${single ? 0 : rots[i] || 0}deg;--zz:${single ? 1 : i}">${e.p ? `<img src="${esc(e.p)}" alt=""/>` : ""}</span>`,
   ).join("")
   el.className = "cs-zone"
   el.innerHTML =
@@ -153,7 +153,7 @@ function clusterFanEl(cl: Cluster, gi: number): HTMLElement {
   const single = fan.length === 1
   const rots = [-12, 0, 12]
   const thumbs = fan.map((e, i) =>
-    `<span class="cs-clu-card" style="--zr:${single ? 0 : (rots[i] || 0)}deg;--zz:${single ? 1 : i}">${e.p ? `<img src="${e.p}" alt="" data-eid="${esc(e.id)}"/>` : ""}</span>`,
+    `<span class="cs-clu-card" style="--zr:${single ? 0 : (rots[i] || 0)}deg;--zz:${single ? 1 : i}">${e.p ? `<img src="${esc(e.p)}" alt="" data-eid="${esc(e.id)}"/>` : ""}</span>`,
   ).join("")
   const { name } = clusterLabel(cl)
   const wrap = document.createElement("div")
@@ -197,7 +197,7 @@ function eventStackHTML(members: Ev[], i: number): string {
   const ghosts = n > 1 ? `<div class="cs-deck-ghost cs-dg2"></div><div class="cs-deck-ghost cs-dg1"></div>` : ""
   return ghosts +
     `<div class="cs-pola-card cs-deck-front">` +
-      `<div class="cs-pola-img">${e.p ? `<img src="${e.p}" alt="" data-eid="${esc(e.id)}"/>` : ""}</div>` +
+      `<div class="cs-pola-img">${e.p ? `<img src="${esc(e.p)}" alt="" data-eid="${esc(e.id)}"/>` : ""}</div>` +
       `<div class="cs-pola-body">` +
         `<div class="cs-pola-top"><span class="cs-pola-cat">${esc(e.c || "событие")}</span>${date ? `<span class="cs-pola-date">${esc(date)}</span>` : ""}</div>` +
         `<div class="cs-pola-title cs-deck-title">${esc(e.t || "")}</div>` +
@@ -209,7 +209,7 @@ function eventStackHTML(members: Ev[], i: number): string {
 /** The place card (left) — rebuilt ONLY when the venue changes. */
 function placeCardHTML(vi: VenueInfo): string {
   return `<div class="cs-deck-place">` +
-    (vi.img ? `<div class="cs-deck-place-img"><img class="cs-deck-place-bg" src="${vi.img}" alt=""/><img class="cs-deck-place-fg" src="${vi.img}" alt=""/></div>` : "") +
+    (vi.img ? `<div class="cs-deck-place-img"><img class="cs-deck-place-bg" src="${esc(vi.img)}" alt=""/><img class="cs-deck-place-fg" src="${esc(vi.img)}" alt=""/></div>` : "") +
     `<div class="cs-deck-place-body">` +
       `<div class="cs-deck-place-kind">место · ${esc(vi.kind)}</div>` +
       `<div class="cs-deck-place-name">${esc(vi.name)}</div>` +
@@ -600,10 +600,19 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         pitch: 52, bearing: -14, antialias: false, attributionControl: false,
       })
       map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "bottom-right")
-      map.on("error", () => setFailed(true))
+      // MapLibre fires `error` for transient, non-fatal things too — a single
+      // 404 tile, a rate-limited MapTiler request. Blanking the whole map (the
+      // grey fallback) on any of those is wrong; only a failure BEFORE the style
+      // loads is genuinely fatal. After load, log and keep the usable map.
+      let styleLoaded = false
+      map.on("error", (e) => {
+        if (!styleLoaded) setFailed(true)
+        else console.warn("[MapIntro] non-fatal map error:", (e as { error?: Error })?.error?.message || e)
+      })
       mapRef.current = map
       map.on("load", () => {
         if (!map) return
+        styleLoaded = true
         // v7 csbrand: фирменный стиль уже содержит 3D-дома (cs-building-3d) —
         // добавляем только кинематографичное небо + туман у горизонта.
         applyCinematicSky(map, false)
@@ -652,6 +661,11 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   useEffect(() => {
     const map = mapRef.current
     if (!map || !ready) return
+    // A deferred de-overlap pass is armed on the district-fit `moveend`. If the
+    // user pages / switches district before it fires, this effect re-runs and
+    // the stale one-shot would run deOverlap against a torn-down scatter set —
+    // track it and drop it in cleanup.
+    let pendingMoveend: (() => void) | null = null
     // clear previous scatter + building highlight
     scatterRef.current.forEach((m) => m.remove())
     scatterRef.current = []
@@ -693,7 +707,12 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       // Only the CURRENT PAGE's clusters draw — keeps a dense district (Центр)
       // uncluttered. The badge number (gi+1) stays GLOBAL so it matches the
       // numbered sheet list, and tapping still opens the right cluster.
-      const shown = clusters.map((cl, gi) => ({ cl, gi })).slice(selPage * PER_PAGE, selPage * PER_PAGE + PER_PAGE)
+      // Clamp the page — a stale selPage (district switched to one with fewer
+      // clusters before the reset effect runs) would slice past the end and draw
+      // an empty map. Mirrors the sheet's clamp below.
+      const pageCount = Math.max(1, Math.ceil(clusters.length / PER_PAGE))
+      const pg = Math.min(selPage, pageCount - 1)
+      const shown = clusters.map((cl, gi) => ({ cl, gi })).slice(pg * PER_PAGE, pg * PER_PAGE + PER_PAGE)
       shown.forEach(({ cl, gi }) => {
         const el = clusterFanEl(cl, gi)
         el.style.cursor = "pointer"
@@ -773,6 +792,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         // first entry into this district → fit the camera ONCE
         overviewFitRef.current = selZone
         map.easeTo({ center: [cLng, cLat], zoom, pitch: OVERVIEW_PITCH, bearing: -14, duration: 800, padding: { top: 250, bottom: 300, left: 20, right: 20 } })
+        pendingMoveend = deOverlap
         map.once("moveend", deOverlap)
       } else {
         // paging within the same district → NO camera move (that per-page 800ms
@@ -802,6 +822,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         map.easeTo({ center: [cl.ll[1], cl.ll[0]], zoom: 15, pitch: 52, bearing: -14, duration: 700 })
       }
     }
+    return () => { if (pendingMoveend) map.off("moveend", pendingMoveend) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selZone, selCluster, selPage, ready])
 
