@@ -862,7 +862,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
           const clusterName = activeCluster ? clusterLabel(activeCluster).name : ""
           const past = { display: "inline-flex", alignItems: "center", flexShrink: 0, background: CS.W, border: `2px solid ${CS.K}`, boxShadow: `2px 2px 0 ${CS.K}`, padding: "5px 9px", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "0.02em", textTransform: "uppercase" as const, color: CS.K }
           const now = { display: "inline-block", maxWidth: 176, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const, background: CS.K, color: "#fff", border: `2px solid ${CS.K}`, boxShadow: `2px 2px 0 ${CS.B}`, padding: "5px 9px", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "0.02em", textTransform: "uppercase" as const }
-          const sep = { fontSize: 13, color: CS.K, lineHeight: 1, margin: "0 3px" }
+          const sep = { fontSize: 18, color: CS.K, lineHeight: 1, margin: "0 4px" }
           return (
             <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 3 }}>
               <button onClick={() => setSelZone(null)} style={past}>Районы</button>
