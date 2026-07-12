@@ -276,6 +276,13 @@ function MosaicCard({ ev, i }: { ev: Ev; i: number }) {
             {body && (
               <div style={{ fontSize: 10.5, lineHeight: 1.34, color: SK.ink55, marginTop: 7, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{body}</div>
             )}
+            {ev.tags && ev.tags.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 8 }}>
+                {ev.tags.slice(0, 3).map((tg) => (
+                  <span key={tg} style={{ fontFamily: FONT_MONO, fontSize: 8.5, fontWeight: 700, letterSpacing: "0.02em", color: CS.B, background: "rgba(0,85,255,0.10)", border: "1px solid rgba(0,85,255,0.30)", padding: "2px 5px", whiteSpace: "nowrap" }}>{tg}</span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

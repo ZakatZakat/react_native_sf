@@ -36,6 +36,7 @@ export type FeedItem = {
   location: string | null
   price: string | null
   tags: string[]
+  tag_labels?: string[] // human labels for `tags`, confidence-ordered (for badges)
   filter_score: number
   created_at: string
   geo?: [number, number] | null

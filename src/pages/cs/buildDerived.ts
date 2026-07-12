@@ -18,6 +18,9 @@ import { INTERESTS, type Interest } from "../pipe/preferences"
 
 const INTEREST_BY_KEY: Record<string, Interest> =
   Object.fromEntries(INTERESTS.map((i) => [i.key, i]))
+// labels of the 12 coarse categories — used to keep them OUT of the fine-tag
+// badge row (the coarse one is already shown as the card's category `c`).
+const COARSE_LABELS: Set<string> = new Set(INTERESTS.map((i) => i.label))
 
 export type Ev = {
   id: string
@@ -37,6 +40,7 @@ export type Ev = {
   geo: [number, number] | null  // resolved [lat, lng] for the map, if geocoded
   venueKey: string  // gazetteer venue key (e.g. "ges2") for the place card, or ""
   ts: number | null // event start as epoch ms (for future-filtering / sorting), null if undated
+  tags?: string[]   // fine-grained tag labels for badges (excludes the coarse category `c`)
 }
 
 export type DerivedData = {
@@ -72,8 +76,12 @@ export function cleanTitle(raw: string): string {
 }
 
 export function toEv(e: FeedItem): Ev {
-  const primaryKey = (e.tags ?? [])[0] ?? "contemporary"
-  const interest = INTEREST_BY_KEY[primaryKey]
+  // Category = the FIRST tag that's a known coarse interest. Blindly taking
+  // tags[0] now surfaces a raw fine-tag slug (e.g. "haus-vecherinka") when a
+  // fine tag outranks the coarse one — fine keys aren't in INTERESTS.
+  const coarseKey = (e.tags ?? []).find((k) => INTEREST_BY_KEY[k])
+  const primaryKey = coarseKey ?? (e.tags ?? [])[0] ?? "contemporary"
+  const interest = coarseKey ? INTEREST_BY_KEY[coarseKey] : undefined
   const dateObj = e.event_time ? new Date(e.event_time) : null
   const d = dateObj
     ? dateObj.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })
@@ -89,7 +97,7 @@ export function toEv(e: FeedItem): Ev {
     v: e.location || `@${channel}`,
     d, tm,
     p: resolvePoster(e),
-    c: interest?.label ?? primaryKey,
+    c: interest?.label ?? "Событие",
     catKey: interest?.key ?? primaryKey,
     ch: `@${channel}`,
     desc: (e.description || "").trim() || "Описание появится ближе к дате. Следи за каналом события.",
@@ -99,6 +107,9 @@ export function toEv(e: FeedItem): Ev {
     geo: (Array.isArray(e.geo) && e.geo.length === 2) ? [e.geo[0], e.geo[1]] : null,
     venueKey: e.venue || "",
     ts: dateObj && !Number.isNaN(dateObj.getTime()) ? dateObj.getTime() : null,
+    // fine-grained tag labels for badges — drop the 12 coarse categories and the
+    // one already shown as `c`, so the badge row shows only the specific tags.
+    tags: (e.tag_labels ?? []).filter((l) => !COARSE_LABELS.has(l) && l !== (interest?.label ?? "")),
   }
 }
 
