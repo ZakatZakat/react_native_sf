@@ -143,10 +143,17 @@ export default function ColdOpenBar({ onDone }: { onDone: () => void }) {
 
   return (
     <div ref={rootRef} style={{ position: "absolute", inset: 0, zIndex: 400, overflow: "hidden", fontFamily: FONT_SANS, pointerEvents: exiting ? "none" : "auto" }}>
-      {/* white grid cover (= landing triptych) — slides up to reveal the card */}
+      {/* white grid cover (= landing triptych) — slides up to reveal the card.
+          The grid lives on an oversized inner layer per column that drifts
+          (cs-bg-drift — same cadence as ScreenBG) so it's alive while the lockup
+          assembles; the outer column stays the «venetian blind» exit carrier, and
+          the drift rides along as it slides out. Per-column bg-position keeps the
+          grid seamless across the three columns; inset:-28 hides drift edges. */}
       <div style={{ position: "absolute", inset: 0, display: "flex" }}>
         {[0, 1, 2].map((i) => (
-          <div key={i} style={{ flex: 1, height: "100%", background: CS.W, backgroundImage: gridImg, backgroundSize: "22px 22px", backgroundPosition: `${-i * (100 / 3)}vw 0px`, animation: exiting ? `${i % 2 === 0 ? "co5-colUp" : "co5-colDn"} 0.66s cubic-bezier(0.76,0,0.24,1) ${i * 0.05}s both` : "none" }} />
+          <div key={i} style={{ flex: 1, height: "100%", background: CS.W, position: "relative", overflow: "hidden", animation: exiting ? `${i % 2 === 0 ? "co5-colUp" : "co5-colDn"} 0.66s cubic-bezier(0.76,0,0.24,1) ${i * 0.05}s both` : "none" }}>
+            <div style={{ position: "absolute", inset: "-28px", backgroundImage: gridImg, backgroundSize: "22px 22px", backgroundPosition: `${-i * (100 / 3)}vw 0px`, animation: "cs-bg-drift 8s linear infinite" }} />
+          </div>
         ))}
       </div>
       {/* crop marks */}
