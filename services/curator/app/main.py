@@ -18,6 +18,7 @@ from app.routers import scheduler as scheduler_router
 from app.routers import sync as sync_router
 from app.routers import tags as tags_router
 from app.seed import INITIAL_TAGS
+from app.klursi_tags import KLURSI_TAGS
 from app.services.push import PushService, set_push_service
 from app.services.scheduler import CuratorScheduler, set_scheduler
 from app.services.tg_client import TelegramServiceClient
@@ -52,9 +53,11 @@ async def on_startup() -> None:
     app.state.engine = engine
     app.state.session_factory = session_factory
 
-    # Seed initial taxonomy (idempotent — uses ON CONFLICT)
+    # Seed initial taxonomy (idempotent — uses ON CONFLICT). INITIAL_TAGS = the
+    # 12 coarse categories; KLURSI_TAGS = 177 fine tags mined from the КЛЮРСИ
+    # corpus (артхаус, техно-рейв, нойз…). Both are keyword-classified.
     async with session_scope(session_factory) as s:
-        n_tags = await TagsRepository(s).upsert_many(INITIAL_TAGS)
+        n_tags = await TagsRepository(s).upsert_many(INITIAL_TAGS + KLURSI_TAGS)
     logger.info("seeded tags: %d", n_tags)
 
     app.state.tg_client = TelegramServiceClient(

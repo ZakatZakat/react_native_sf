@@ -117,17 +117,19 @@ class PersonalizedFeedRepository:
         # Bulk-fetch tags for these events
         ev_ids = [ev.id for ev, _ in rows]
         tags_by_event: dict[int, list[str]] = {eid: [] for eid in ev_ids}
+        tag_labels_by_event: dict[int, list[str]] = {eid: [] for eid in ev_ids}
         if ev_ids:
             tag_rows = (
                 await self.s.execute(
-                    select(EventTag.event_id, Tag.key)
+                    select(EventTag.event_id, Tag.key, Tag.label)
                     .join(Tag, Tag.id == EventTag.tag_id)
                     .where(EventTag.event_id.in_(ev_ids))
                     .order_by(EventTag.confidence.desc())
                 )
             ).all()
-            for eid, key in tag_rows:
+            for eid, key, label in tag_rows:
                 tags_by_event[eid].append(key)
+                tag_labels_by_event[eid].append(label)
 
         # Build feed payload (matches what frontend expects: EventCard-like)
         feed: list[dict] = []
@@ -146,6 +148,7 @@ class PersonalizedFeedRepository:
                 "location": ev.location_text,
                 "price": ev.price_text,
                 "tags": tags_by_event.get(ev.id, []),
+                "tag_labels": tag_labels_by_event.get(ev.id, []),
                 "filter_score": ev.filter_score,
                 "created_at": ev.created_at.isoformat(),
                 # Resolved coordinates (if geocoded) — [lat, lng] for the map.
