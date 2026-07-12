@@ -195,7 +195,16 @@ function BoardLead({ ev }: { ev: Ev }) {
           <Lbl size={8} style={{ letterSpacing: "0.2em" }}>выбор редакции</Lbl>
         </div>
         <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", minHeight: 0 }}>
-          <div style={{ fontWeight: 900, fontSize: 25, letterSpacing: "-0.03em", lineHeight: 0.96, color: SK.ink, textTransform: "uppercase", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{ev.t}</div>
+          {(() => {
+            // fit-to-length: the «выбор недели» title must read whole, not clip.
+            // Short titles stay big and bold; long ones step down so they fit —
+            // balanced line lengths, no mid-word «БЛАГОТВОРИТЕ…» cut.
+            const len = (ev.t || "").length
+            const fs = len <= 20 ? 27 : len <= 34 ? 22 : len <= 52 ? 18 : len <= 74 ? 15 : 13
+            return (
+              <div style={{ fontWeight: 900, fontSize: fs, letterSpacing: "-0.03em", lineHeight: 1.02, color: SK.ink, textTransform: "uppercase", overflowWrap: "break-word", textWrap: "balance", display: "-webkit-box", WebkitLineClamp: 6, WebkitBoxOrient: "vertical", overflow: "hidden" } as React.CSSProperties}>{ev.t}</div>
+            )
+          })()}
           {ev.sub && <div style={{ fontFamily: FONT_SANS, fontWeight: 600, fontSize: 11, color: SK.ink55, marginTop: 3 }}>{ev.sub}</div>}
         </div>
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8 }}>
