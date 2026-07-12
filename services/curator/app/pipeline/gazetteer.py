@@ -85,8 +85,9 @@ VENUES: tuple[Venue, ...] = (
           ("открытый клуб", "спиридоновка 9")),
     Venue("stradarium", 55.7700, 37.6810, ("@stradarium1",),
           ("страдариум",)),
-    # channel-only (нет надёжного текстового алиаса — геокодим по своему каналу)
-    Venue("random_culture", 55.7479, 37.5837, ("@random_culture",)),
+    # РанДом Культуры — Б. Николопесковский пер., 13 (м. Смоленская)
+    Venue("random_culture", 55.750955, 37.589662, ("@random_culture",),
+          ("рандом культуры", "большой николопесковский переулок 13", "николопесковский переулок 13")),
     Venue("mo_yeti", 55.7820, 37.7055, ("@mo_yeti",)),
     Venue("splyu", 55.7870, 37.4480, ("@splyuivizhuu",)),
     Venue("bestiarii", 55.7320, 37.6647, ("@ago_shvd_shtil_bestiarii",)),
@@ -206,7 +207,7 @@ VENUES: tuple[Venue, ...] = (
     Venue("f_bula_radio", 55.75722, 37.67444, (), ("fābula radio",)),
     Venue("kooperativ_chernyy", 55.75999, 37.65178, (), ("Кооператив Чёрный",)),
     Venue("madame_roche", 55.72828, 37.64675, (), ("Madame Roche",)),
-    Venue("teatr_truda", 55.79069, 37.61012, (), ("Театр труда", "труда",)),
+    Venue("teatr_truda", 55.79069, 37.61012, ("@teatrtruda_10",), ("Театр труда", "труда",)),
     Venue("park_iskusstv_muzeon", 55.73464, 37.60577, (), ("Музеон", "Парк искусств «Музеон»", "искусств «Музеон»",)),
     Venue("moskovskiy_soyuz_hudozhn", 55.76206, 37.62199, (), ("Московский Союз художников (МСХ)",)),
     Venue("substance_2_0", 55.73141, 37.60162, (), ("SUBSTANCE 2.0",)),
