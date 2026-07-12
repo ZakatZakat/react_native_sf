@@ -678,6 +678,9 @@ function EventSheet({ ev, onClose }: { ev: Ev | null; onClose: () => void }) {
         transition: "transform 0.30s cubic-bezier(0.22, 1, 0.36, 1)",
         boxShadow: "0 -18px 40px rgba(13,13,13,0.20)",
       }}>
+        {/* close — pinned to the sheet's top-right, so it stays put while the
+            body scrolls (it used to sit on the poster and scroll out of view) */}
+        <button onClick={close} aria-label="Закрыть" style={{ position: "absolute", top: 10, right: 12, zIndex: 6, width: 34, height: 34, background: CS.W, border: `2px solid ${CS.K}`, boxShadow: `2px 2px 0 ${CS.K}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, fontWeight: 900, lineHeight: 1, color: CS.K, padding: 0 }}>✕</button>
         {/* drag handle */}
         <div style={{ display: "flex", justifyContent: "center", padding: "8px 0 2px", flexShrink: 0 }}>
           <div style={{ width: 44, height: 4, background: CS.K }} />
@@ -694,7 +697,6 @@ function EventSheet({ ev, onClose }: { ev: Ev | null; onClose: () => void }) {
               />
             )}
             <div style={{ position: "absolute", top: 8, left: 8, background: CS.B, color: CS.W, padding: "4px 8px", border: `1.5px solid ${CS.K}`, fontWeight: 900, fontSize: 9, letterSpacing: "0.16em", textTransform: "uppercase" }}>{ev.c}</div>
-            <button onClick={close} aria-label="Закрыть" style={{ position: "absolute", top: 8, right: 8, width: 30, height: 30, background: CS.W, border: `1.5px solid ${CS.K}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 900, lineHeight: 1, color: CS.K, padding: 0 }}>✕</button>
             <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, display: "flex", justifyContent: "space-between", padding: "6px 9px", background: CS.K, color: CS.W, fontFamily: FONT_MONO, fontSize: 9.5, letterSpacing: "0.06em" }}>
               <span>{ev.d} · {ev.tm}</span><span>{ev.price}</span>
             </div>
