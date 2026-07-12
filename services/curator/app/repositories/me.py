@@ -21,6 +21,44 @@ from app.models import (
 )
 
 
+def build_feed_item(
+    ev: EventCurated, post: PostRaw,
+    tags: list[str], tag_labels: list[str], channel_handle: str = "",
+) -> dict:
+    """Single source of truth for the feed-item payload the frontend consumes
+    (feed cards, the map, and the «выбор недели» screen). Keep every producer
+    (`list_feed`, week pick) going through this so the shapes never drift."""
+    return {
+        "id": str(ev.id),
+        "channel": channel_handle,
+        "channel_id": post.channel_id,
+        "message_id": post.message_id,
+        "title": (post.text.split("\n", 1)[0][:200]) if post.text else "Событие",
+        "description": post.text,
+        "media_urls": post.media_urls or [],
+        "media_hash": post.media_hash,  # de-dupe key: identical poster across cross-posts
+        "event_time": ev.event_time.isoformat() if ev.event_time else None,
+        "event_time_end": ev.event_time_end.isoformat() if ev.event_time_end else None,
+        "location": ev.location_text,
+        "price": ev.price_text,
+        "tags": tags,
+        "tag_labels": tag_labels,
+        "filter_score": ev.filter_score,
+        "created_at": ev.created_at.isoformat(),
+        # Resolved coordinates (if geocoded) — [lat, lng] for the map.
+        "geo": (
+            [ev.location_meta["lat"], ev.location_meta["lng"]]
+            if isinstance(ev.location_meta, dict) and ev.location_meta.get("lat") is not None
+            else None
+        ),
+        # Gazetteer venue key (e.g. "ges2", "garage") for the place card.
+        "venue": (
+            ev.location_meta.get("venue")
+            if isinstance(ev.location_meta, dict) else None
+        ),
+    }
+
+
 class UserInterestsRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.s = session
@@ -132,37 +170,14 @@ class PersonalizedFeedRepository:
                 tag_labels_by_event[eid].append(label)
 
         # Build feed payload (matches what frontend expects: EventCard-like)
-        feed: list[dict] = []
-        for ev, post in rows:
-            feed.append({
-                "id": str(ev.id),
-                "channel": "",  # filled below from channel join
-                "channel_id": post.channel_id,
-                "message_id": post.message_id,
-                "title": (post.text.split("\n", 1)[0][:200]) if post.text else "Событие",
-                "description": post.text,
-                "media_urls": post.media_urls or [],
-                "media_hash": post.media_hash,  # de-dupe key: identical poster across cross-posts
-                "event_time": ev.event_time.isoformat() if ev.event_time else None,
-                "event_time_end": ev.event_time_end.isoformat() if ev.event_time_end else None,
-                "location": ev.location_text,
-                "price": ev.price_text,
-                "tags": tags_by_event.get(ev.id, []),
-                "tag_labels": tag_labels_by_event.get(ev.id, []),
-                "filter_score": ev.filter_score,
-                "created_at": ev.created_at.isoformat(),
-                # Resolved coordinates (if geocoded) — [lat, lng] for the map.
-                "geo": (
-                    [ev.location_meta["lat"], ev.location_meta["lng"]]
-                    if isinstance(ev.location_meta, dict) and ev.location_meta.get("lat") is not None
-                    else None
-                ),
-                # Gazetteer venue key (e.g. "ges2", "garage") for the place card.
-                "venue": (
-                    ev.location_meta.get("venue")
-                    if isinstance(ev.location_meta, dict) else None
-                ),
-            })
+        feed: list[dict] = [
+            build_feed_item(
+                ev, post,
+                tags_by_event.get(ev.id, []),
+                tag_labels_by_event.get(ev.id, []),
+            )
+            for ev, post in rows
+        ]
 
         # Resolve channel handles in a single query
         if feed:

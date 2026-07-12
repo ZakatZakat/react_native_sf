@@ -13,6 +13,7 @@ from app.auth import require_admin
 from app.db import session_scope
 from app.models import Channel, EventCurated, EventStatus, PostRaw
 from app.repositories.posts import ModerationRepository
+from app.repositories.week import WeekPickRepository
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -210,3 +211,51 @@ async def stats(
         "events_time": {"upcoming": upcoming, "past": past, "undated": undated, "review_upcoming": review_upcoming},
         "geo": {"approved_total": appr_total, "with_location": with_location, "geocoded": geocoded},
     }
+
+
+# ── «Выбор недели» — editorial hero pick for the Week digest ────────
+class WeekPickBody(BaseModel):
+    event_id: int
+
+
+@router.get("/week/candidates")
+async def week_candidates(
+    limit: int = Query(40, ge=1, le=120),
+    _admin: int = Depends(require_admin),
+    sf: async_sessionmaker[AsyncSession] = Depends(get_session_factory),
+) -> list[dict]:
+    """Shortlist of upcoming events (with a poster) ranked by filter_score."""
+    async with session_scope(sf) as s:
+        return await WeekPickRepository(s).list_candidates(limit)
+
+
+@router.get("/week/current")
+async def week_current(
+    _admin: int = Depends(require_admin),
+    sf: async_sessionmaker[AsyncSession] = Depends(get_session_factory),
+) -> dict | None:
+    async with session_scope(sf) as s:
+        return await WeekPickRepository(s).current_pick()
+
+
+@router.post("/week/pick")
+async def week_pick(
+    body: WeekPickBody,
+    admin_id: int = Depends(require_admin),
+    sf: async_sessionmaker[AsyncSession] = Depends(get_session_factory),
+) -> dict | None:
+    async with session_scope(sf) as s:
+        pick = await WeekPickRepository(s).set_pick(body.event_id, admin_id)
+    if pick is None:
+        raise HTTPException(404, "event not found / not eligible for week pick")
+    return pick
+
+
+@router.delete("/week/pick")
+async def week_unpick(
+    _admin: int = Depends(require_admin),
+    sf: async_sessionmaker[AsyncSession] = Depends(get_session_factory),
+) -> dict:
+    async with session_scope(sf) as s:
+        await WeekPickRepository(s).clear_pick()
+    return {"status": "ok"}

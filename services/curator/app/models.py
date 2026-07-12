@@ -7,13 +7,14 @@ Both services share the same Postgres but live in different schemas.
 from __future__ import annotations
 
 import enum
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Optional
 
 from sqlalchemy import (
     ARRAY,
     BigInteger,
     Boolean,
+    Date,
     DateTime,
     Enum,
     Float,
@@ -310,3 +311,29 @@ class PushLog(Base):
         nullable=False,
     )
     error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+
+# ────────────────────────────────────────────────────────────────────
+# Editorial «Выбор недели» — the manually chosen hero event for the Week
+# digest screen. One active pick per ISO week (upserted on week_start); older
+# rows stay as history. If none for the current week, the app falls back to the
+# auto top event, so the screen is never empty.
+# ────────────────────────────────────────────────────────────────────
+class WeekPick(Base):
+    __tablename__ = "week_picks"
+    __table_args__ = (
+        UniqueConstraint("week_start", name="uq_week_pick_week"),
+        Index("ix_week_picks_week", "week_start"),
+        {"schema": SCHEMA},
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    event_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey(f"{SCHEMA}.events_curated.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    week_start: Mapped[date] = mapped_column(Date, nullable=False)  # Monday of the ISO week
+    chosen_by: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)  # admin TG id
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), default=datetime.utcnow, nullable=False)

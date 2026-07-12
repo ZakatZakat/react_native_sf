@@ -175,4 +175,16 @@ export const Curator = {
     posts_raw: number
     events_by_status: Record<string, number>
   }>("/admin/stats", { auth: true }),
+
+  // Week digest — editorial «выбор недели» hero pick
+  getWeekPick: () => curatorFetch<FeedItem | null>("/me/week"),
+  adminWeekCandidates: (limit = 40) =>
+    curatorFetch<FeedItem[]>("/admin/week/candidates", { auth: true, query: { limit } }),
+  adminWeekCurrent: () => curatorFetch<FeedItem | null>("/admin/week/current", { auth: true }),
+  adminSetWeekPick: (eventId: number) =>
+    curatorFetch<FeedItem>("/admin/week/pick", {
+      auth: true, method: "POST", body: JSON.stringify({ event_id: eventId }),
+    }),
+  adminClearWeekPick: () =>
+    curatorFetch<{ status: string }>("/admin/week/pick", { auth: true, method: "DELETE" }),
 }

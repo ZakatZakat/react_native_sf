@@ -16,6 +16,7 @@ from app.repositories.me import (
     UserFeedbackRepository,
     UserInterestsRepository,
 )
+from app.repositories.week import WeekPickRepository
 
 router = APIRouter(prefix="/me", tags=["me"])
 
@@ -73,6 +74,17 @@ async def get_feed(
         return await PersonalizedFeedRepository(s).list_feed(
             user_id=user_id, limit=limit, offset=offset, tag_keys=explicit_tags,
         )
+
+
+# ── Week digest hero — editorial «выбор недели» ────────────────────
+@router.get("/week")
+async def get_week_pick(
+    sf: async_sessionmaker[AsyncSession] = Depends(get_session_factory),
+) -> dict | None:
+    """The manually chosen hero event for the Week screen, or null when the
+    editor hasn't picked one (the app then falls back to its auto top event)."""
+    async with session_scope(sf) as s:
+        return await WeekPickRepository(s).current_pick()
 
 
 # ── Feedback ───────────────────────────────────────────────────────
