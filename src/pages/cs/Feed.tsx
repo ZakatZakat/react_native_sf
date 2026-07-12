@@ -318,7 +318,11 @@ function MosaicGrid({ events }: { events: Ev[] }) {
     if (!sc) return
     const el = sc
     const onScroll = () => {
-      if (el.scrollTop + el.clientHeight >= el.scrollHeight - 1200) {
+      // grow well BEFORE the bottom (2400px ≈ 3 screens) so the shorter column's
+      // ragged gap is filled by new cards off-screen — otherwise you scroll into
+      // a masonry "dead end" (one column ends ~a card short → white gap). Only
+      // the true end of the list keeps a small ragged edge (masonry is like that).
+      if (el.scrollTop + el.clientHeight >= el.scrollHeight - 2400) {
         setVisible((v) => Math.min(v + STEP, events.length))
       }
     }
