@@ -102,6 +102,7 @@ const KEYFRAMES = `
   @keyframes co5-colUp   { 0% { transform: translateY(0); } 100% { transform: translateY(-104%); } }
   @keyframes co5-colDn   { 0% { transform: translateY(0); } 100% { transform: translateY(104%); } }
   @keyframes co5-gdrift  { 0% { background-position: 0 0; } 100% { background-position: 22px 22px; } }
+  @keyframes cs-bg-drift { from { transform: translate(0,0); } to { transform: translate(24px,24px); } }
   @keyframes co5-fade    { 0% { opacity: 1; } 100% { opacity: 0; } }
   @keyframes co5-cityOut { 0% { transform: translate(0,0); opacity: 1; } 100% { transform: translate(-138%,-46%) rotate(-3deg); opacity: 0; } }
   @keyframes co5-sigOut  { 0% { transform: translate(0,0); opacity: 1; } 100% { transform: translate(138%,46%) rotate(3deg); opacity: 0; } }
@@ -311,9 +312,19 @@ const THEME_PATTERN: Record<string, (col: string) => React.CSSProperties> = {
 }
 
 export function ScreenBG({ theme = "dots", dark = false, opacity }: { theme?: string; dark?: boolean; opacity?: number }) {
+  useCsKeyframes() // ensure the cs-bg-drift keyframe is present wherever the bg renders
   const col = dark ? "rgba(255,255,255,0.5)" : CS.G18
   const p = (THEME_PATTERN[theme] || THEME_PATTERN.dots)(col)
-  return <div style={{ position: "absolute", inset: 0, pointerEvents: "none", opacity: opacity != null ? opacity : (dark ? 0.3 : 0.55), ...p }} />
+  // Gentle drift, restored — the pattern had gone static everywhere but the
+  // Loading screen. Animated via TRANSFORM on an OVERSIZED inner layer (GPU-
+  // composited, no per-frame repaint, so it doesn't reintroduce the feed jank).
+  // The 24px slide is one tile of the grid (and two of the 12px dots), so the
+  // loop is seamless; the −28px overscan keeps the edges covered while it moves.
+  return (
+    <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", opacity: opacity != null ? opacity : (dark ? 0.3 : 0.55) }}>
+      <div style={{ position: "absolute", inset: "-28px", ...p, animation: "cs-bg-drift 8s linear infinite" }} />
+    </div>
+  )
 }
 
 // ── NavCtx — feed headers open the profile screen via this ───────────────
