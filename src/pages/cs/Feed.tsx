@@ -591,7 +591,6 @@ function BoardView({ feed, btn = "b", name = "Гость", onMap }: { feed: Ev[]
   const hero = E[heroIdx]
   const rest = E.filter((_, i) => i !== heroIdx)
   const refresh = () => { setNonce((n) => n + 1); setSweep((s) => s + 360) }
-  const total = E.reduce((s, e, i) => s + going(e, i), 0)
   // Category filter — applies ONLY to the «Каталог» grid; «выбор недели» stays.
   const [cat, setCat] = useState("Все")
   const [tag, setTag] = useState<string | null>(null) // second-tier fine tag
@@ -724,12 +723,6 @@ function BoardView({ feed, btn = "b", name = "Гость", onMap }: { feed: Ev[]
             </div>
           )}
         </div>
-      </div>
-
-      <div style={{ textAlign: "center", marginTop: 30 }}>
-        <span style={{ display: "inline-block", background: SK.ink, color: SK.paper, padding: "6px 12px" }}>
-          <Lbl color={SK.paper} size={9} style={{ letterSpacing: "0.18em" }}>{total.toLocaleString("ru")} идут · обновлено сейчас</Lbl>
-        </span>
       </div>
 
       {searchOpen && <BoardSearch events={E} onClose={() => setSearchOpen(false)} />}
