@@ -279,7 +279,7 @@ function MosaicCard({ ev, i }: { ev: Ev; i: number }) {
             {ev.tags && ev.tags.length > 0 && (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 8 }}>
                 {ev.tags.slice(0, 3).map((tg) => (
-                  <span key={tg} style={{ fontFamily: FONT_MONO, fontSize: 8.5, fontWeight: 700, letterSpacing: "0.02em", color: CS.B, background: "rgba(0,85,255,0.10)", border: "1px solid rgba(0,85,255,0.30)", padding: "2px 5px", whiteSpace: "nowrap" }}>{tg}</span>
+                  <span key={tg} style={{ fontFamily: FONT_SANS, fontSize: 8.5, fontWeight: 800, letterSpacing: "0.02em", textTransform: "uppercase", color: CS.B, background: "rgba(0,85,255,0.10)", border: "1px solid rgba(0,85,255,0.30)", padding: "2px 5px", whiteSpace: "nowrap" }}>{tg}</span>
                 ))}
               </div>
             )}
@@ -565,12 +565,23 @@ function BoardView({ feed, btn = "b", name = "Гость", onMap }: { feed: Ev[]
   const total = E.reduce((s, e, i) => s + going(e, i), 0)
   // Category filter — applies ONLY to the «Каталог» grid; «выбор недели» stays.
   const [cat, setCat] = useState("Все")
+  const [tag, setTag] = useState<string | null>(null) // second-tier fine tag
   const cats = useMemo(() => {
     const seen: string[] = []
     for (const e of E) if (e.c && e.c !== "—" && !seen.includes(e.c)) seen.push(e.c)
     return ["Все", ...seen]
   }, [E])
-  const catalog = cat === "Все" ? rest : rest.filter((e) => e.c === cat)
+  // events in the chosen category (before the fine-tag narrowing)
+  const inCat = cat === "Все" ? rest : rest.filter((e) => e.c === cat)
+  // second-row fine-tag chips — the tags that actually occur on this category's
+  // events, ranked by frequency, top 12. Data-driven, no bundled taxonomy.
+  const tagChips = useMemo(() => {
+    const freq = new Map<string, number>()
+    for (const e of inCat) for (const t of e.tags || []) freq.set(t, (freq.get(t) || 0) + 1)
+    return [...freq.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12).map(([t]) => t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [E, cat])
+  const catalog = tag ? inCat.filter((e) => e.tags?.includes(tag)) : inCat
 
   return (
     <div style={{ width: "100%", paddingBottom: 54 }}>
@@ -647,14 +658,27 @@ function BoardView({ feed, btn = "b", name = "Гость", onMap }: { feed: Ev[]
       </div>
 
       {/* category filter — chips filter the «Каталог» grid only (hero stays) */}
-      <div className="sk-scroll" style={{ display: "flex", gap: 8, overflowX: "auto", padding: "0 14px 4px", marginBottom: 14 }}>
+      <div className="sk-scroll" style={{ display: "flex", gap: 8, overflowX: "auto", padding: "0 14px 4px", marginBottom: tagChips.length > 0 ? 8 : 14 }}>
         {cats.map((c) => {
           const on = cat === c
           return (
-            <button key={c} onClick={() => setCat(c)} style={{ flexShrink: 0, padding: "6px 12px", border: `2px solid ${SK.ink}`, background: on ? SK.ink : SK.paper, color: on ? SK.paper : SK.ink, fontFamily: FONT_SANS, fontWeight: 800, fontSize: 10.5, letterSpacing: "0.05em", textTransform: "uppercase", whiteSpace: "nowrap", cursor: "pointer" }}>{c}</button>
+            <button key={c} onClick={() => { setCat(c); setTag(null) }} style={{ flexShrink: 0, padding: "6px 12px", border: `2px solid ${SK.ink}`, background: on ? SK.ink : SK.paper, color: on ? SK.paper : SK.ink, fontFamily: FONT_SANS, fontWeight: 800, fontSize: 10.5, letterSpacing: "0.05em", textTransform: "uppercase", whiteSpace: "nowrap", cursor: "pointer" }}>{c}</button>
           )
         })}
       </div>
+      {/* second tier — fine-tag chips for the selected category (blue = the new
+          tag layer). Tap to narrow, tap again to clear. Same grotesque as the
+          categories, just smaller + signal-blue. */}
+      {tagChips.length > 0 && (
+        <div className="sk-scroll" style={{ display: "flex", gap: 7, overflowX: "auto", padding: "0 14px 4px", marginBottom: 14 }}>
+          {tagChips.map((t) => {
+            const on = tag === t
+            return (
+              <button key={t} onClick={() => setTag(on ? null : t)} style={{ flexShrink: 0, padding: "5px 11px", border: `2px solid ${CS.B}`, background: on ? CS.B : SK.paper, color: on ? "#fff" : CS.B, fontFamily: FONT_SANS, fontWeight: 800, fontSize: 10, letterSpacing: "0.04em", textTransform: "uppercase", whiteSpace: "nowrap", cursor: "pointer" }}>{t}</button>
+            )
+          })}
+        </div>
+      )}
 
       {/* board body — выбор недели (hero) → каталог (filtered by category). The
           inline map was removed from the feed (the map lives in the intro). */}
