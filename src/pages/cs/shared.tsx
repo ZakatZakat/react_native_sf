@@ -6,7 +6,9 @@
  */
 
 import { createContext, useContext, useEffect, useRef, useState } from "react"
+import { useNavigate } from "@tanstack/react-router"
 import { haptics } from "../../lib/haptics"
+import { openTelegram, tgChannelUrl, tgPostUrl } from "../../lib/telegram"
 import { venueInfo } from "./venues"
 
 // ── Tokens ────────────────────────────────────────────────────────────────
@@ -523,7 +525,7 @@ const GO_KEY = "cs-going-v1"
  *  and the EventSheet without keeping the heavy `desc` text in storage. */
 export type GoingItem = {
   t: string; v: string; d: string; tm: string; ch: string; cat: string;
-  p: string | null; remind: boolean
+  p: string | null; remind: boolean; mid?: number | null
 }
 
 type GoingValue = {
@@ -560,7 +562,7 @@ export function GoingProvider({ children }: { children: React.ReactNode }) {
       ? cur.filter((e) => e.t !== ev.t)
       : [...cur, {
           t: ev.t, v: ev.v, d: ev.d, tm: ev.tm, ch: ev.ch,
-          cat: ("c" in ev ? ev.c : ev.cat), p: ev.p, remind: true,
+          cat: ("c" in ev ? ev.c : ev.cat), p: ev.p, remind: true, mid: ev.mid ?? null,
         }],
   )
   const setRemind = (ev: { t: string }, on: boolean) =>
@@ -658,6 +660,7 @@ function EventSheet({ ev, onClose }: { ev: Ev | null; onClose: () => void }) {
   // "Иду →" and "Я иду ✓" + reveal the reminder toggle when the event is
   // already in the list.
   const going = useGoing()
+  const navigate = useNavigate()
 
   if (!ev) return null
   const close = () => { setShown(false); setTimeout(onClose, 240) }
@@ -716,8 +719,30 @@ function EventSheet({ ev, onClose }: { ev: Ev | null; onClose: () => void }) {
           <div style={{ padding: "13px 14px 0" }}>
             <div style={{ fontWeight: 900, fontSize: 22, lineHeight: 0.96, letterSpacing: "-0.03em", textTransform: "uppercase", color: CS.K }}>{ev.t}</div>
             {ev.ch && ev.ch !== "@—" && (
-              <div style={{ marginTop: 7 }}>
-                <span style={{ fontFamily: FONT_MONO, fontSize: 10.5, color: CS.B, fontWeight: 700 }}>{ev.ch}</span>
+              <div style={{ marginTop: 9, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+                {/* handle → open the source channel in Telegram */}
+                <button
+                  onClick={() => openTelegram(tgChannelUrl(ev.ch))}
+                  style={{
+                    border: "none", background: "none", padding: 0, cursor: "pointer",
+                    fontFamily: FONT_MONO, fontSize: 10.5, color: CS.B, fontWeight: 700,
+                    textDecoration: "underline", textUnderlineOffset: 2,
+                  }}
+                >
+                  {ev.ch}
+                </button>
+                {/* → open the original post in Telegram (falls back to the channel) */}
+                <button
+                  onClick={() => openTelegram(tgPostUrl(ev.ch, ev.mid) ?? tgChannelUrl(ev.ch))}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 5,
+                    border: `2px solid ${CS.K}`, background: CS.K, color: CS.W, cursor: "pointer",
+                    fontFamily: FONT_SANS, fontWeight: 900, fontSize: 10, letterSpacing: "0.06em",
+                    textTransform: "uppercase", padding: "5px 9px", boxShadow: `2px 2px 0 ${CS.B}`,
+                  }}
+                >
+                  Открыть в Telegram <span style={{ fontSize: 12, lineHeight: 1 }}>↗</span>
+                </button>
               </div>
             )}
             {/* fine-grained tag badges (curator-classified) — the full set here */}
@@ -777,7 +802,13 @@ function EventSheet({ ev, onClose }: { ev: Ev | null; onClose: () => void }) {
           )}
           <div style={{ padding: "12px 14px 16px" }}>
             <button
-              onClick={() => { if (!isOn) haptics.success(); going.toggle(ev) }}
+              // Not added → add to the profile. Already added → the CTA is a
+              // link to the profile (the label promised «Профиль»); removal moved
+              // to the «убрать» link below, so this no longer toggles-off.
+              onClick={() => {
+                if (isOn) { close(); navigate({ to: "/cs/profile" }) }
+                else { haptics.success(); going.toggle(ev) }
+              }}
               style={{
                 width: "100%", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 14,
                 letterSpacing: "0.04em", textTransform: "uppercase",
@@ -789,8 +820,21 @@ function EventSheet({ ev, onClose }: { ev: Ev | null; onClose: () => void }) {
                 transition: "background 0.14s",
               }}
             >
-              {isOn ? <><span>Профиль</span><span style={{ fontSize: 16, lineHeight: 1 }}>✓</span></> : <><span>Добавить</span><span style={{ fontSize: 17, lineHeight: 1 }}>→</span></>}
+              {isOn ? <><span>Профиль</span><span style={{ fontSize: 17, lineHeight: 1 }}>→</span></> : <><span>Добавить</span><span style={{ fontSize: 17, lineHeight: 1 }}>→</span></>}
             </button>
+            {isOn && (
+              <button
+                onClick={() => going.toggle(ev)}
+                style={{
+                  display: "block", margin: "10px auto 0", padding: "2px 6px",
+                  border: "none", background: "none", cursor: "pointer",
+                  fontFamily: FONT_MONO, fontSize: 10, letterSpacing: "0.08em",
+                  textTransform: "uppercase", color: CS.G55, textDecoration: "underline",
+                }}
+              >
+                убрать из профиля
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -1013,7 +1057,7 @@ export function GoingAgenda() {
               id: ev.t,
               t: ev.t, v: ev.v, d: ev.d, tm: ev.tm,
               p: ev.p, c: ev.cat, catKey: "",
-              ch: ev.ch,
+              ch: ev.ch, mid: ev.mid ?? null,
               desc: "Открой канал для подробностей.",
               price: "—", venueKey: "", ts: null,
             }
