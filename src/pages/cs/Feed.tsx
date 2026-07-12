@@ -294,9 +294,40 @@ function MosaicGrid({ events }: { events: Ev[] }) {
   // CSS multi-column = real masonry: the browser balances the two columns by
   // height, so variable-aspect posters no longer leave one column short with a
   // gap. `break-inside: avoid` on each card keeps it intact within a column.
+  //
+  // WINDOWING: render only the first `visible` cards, growing by STEP as a
+  // sentinel scrolls into view. Rendering all ~150 natural-aspect posters at
+  // once made the masonry re-balance on EVERY image load (a reflow storm =
+  // the "лента дико лагает" on entry). A small window caps the initial
+  // layout + image decodes to a handful.
+  const STEP = 24
+  const [visible, setVisible] = useState(STEP)
+  const gridRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => { setVisible(STEP) }, [events]) // reset on category/data change
+  useEffect(() => {
+    if (visible >= events.length) return
+    // Walk UP from the grid to its real scroll container and grow the window
+    // when the user nears the bottom. (There can be more than one `.sk-scroll`
+    // in the tree, so query-by-class grabs the wrong one; and an
+    // IntersectionObserver with the implicit viewport root doesn't fire inside
+    // this nested overflow:auto scroller. The ref-walk is what's reliable.)
+    let sc: HTMLElement | null = gridRef.current?.parentElement ?? null
+    while (sc && !/(auto|scroll)/.test(getComputedStyle(sc).overflowY)) sc = sc.parentElement
+    if (!sc) return
+    const el = sc
+    const onScroll = () => {
+      if (el.scrollTop + el.clientHeight >= el.scrollHeight - 1200) {
+        setVisible((v) => Math.min(v + STEP, events.length))
+      }
+    }
+    el.addEventListener("scroll", onScroll, { passive: true })
+    onScroll() // in case the initial window already fits without scrolling
+    return () => el.removeEventListener("scroll", onScroll)
+  }, [visible, events.length])
+  const shown = events.slice(0, visible)
   return (
-    <div style={{ columnCount: 2, columnGap: 14 }}>
-      {events.map((e, i) => <MosaicCard key={e.id} ev={e} i={i} />)}
+    <div ref={gridRef} style={{ columnCount: 2, columnGap: 14 }}>
+      {shown.map((e, i) => <MosaicCard key={e.id} ev={e} i={i} />)}
     </div>
   )
 }
