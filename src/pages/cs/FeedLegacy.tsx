@@ -77,7 +77,7 @@ function VCover({ name, feed, onReset }: { name: string; feed: Ev[]; onReset: ()
               <div style={{ position: "absolute", top: 8, right: 8, zIndex: 3, background: CS.K, color: CS.W, padding: "5px 9px", fontFamily: FONT_MONO, fontSize: 10, letterSpacing: "0.06em" }}>{hero.d} · {hero.tm}</div>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 11px", background: CS.W, borderTop: `2px solid ${CS.K}`, borderBottom: `2px solid ${CS.K}`, fontFamily: FONT_MONO, fontSize: 9, color: CS.G55, letterSpacing: "0.06em" }}>
-              <span>{hero.ch}</span><span style={{ color: CS.B, fontWeight: 700 }}>{hero.c}</span>
+              <span style={{ color: CS.B, fontWeight: 700 }}>{hero.c}</span>
             </div>
             <div style={{ background: CS.K, color: CS.W, padding: "12px 13px 13px" }}>
               <div style={{ fontWeight: 900, fontSize: 25, lineHeight: 0.94, letterSpacing: "-0.04em", textTransform: "uppercase" }}>{hero.t}</div>
@@ -125,7 +125,7 @@ function ShelfCard({ ev }: { ev: Ev }) {
       <DuotonePoster src={ev.p} style={{ position: "absolute", inset: 0 }} />
       <div style={{ position: "absolute", top: 6, right: 6, zIndex: 3, background: CS.K, color: CS.W, padding: "3px 6px", fontFamily: FONT_MONO, fontSize: 9, letterSpacing: "0.06em" }}>{ev.d}</div>
       <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, background: CS.W, borderTop: `1.5px solid ${CS.K}`, padding: "8px 9px 9px" }}>
-        <div style={{ fontFamily: FONT_MONO, fontSize: 8.5, color: CS.G55, letterSpacing: "0.04em", marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ev.ch} · {ev.tm}</div>
+        <div style={{ fontFamily: FONT_MONO, fontSize: 8.5, color: CS.G55, letterSpacing: "0.04em", marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ev.tm}</div>
         <div style={{ fontWeight: 900, fontSize: 12, lineHeight: 1.05, letterSpacing: "-0.02em", textTransform: "uppercase", color: CS.K, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", minHeight: 24 }}>{ev.t}</div>
         <div style={{ fontWeight: 600, fontSize: 9.5, color: CS.G55, marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ev.v}</div>
       </div>
@@ -312,7 +312,7 @@ function VSpread({ name, feed, onReset }: { name: string; feed: Ev[]; onReset: (
             </div>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 9, paddingTop: 7, borderTop: `1.5px solid ${CS.K}` }}>
-            <Mono>{lead.ch} · {lead.v}</Mono><Mono color={CS.K} style={{ fontWeight: 700 }}>{lead.d} · {lead.tm}</Mono>
+            <Mono>{lead.v}</Mono><Mono color={CS.K} style={{ fontWeight: 700 }}>{lead.d} · {lead.tm}</Mono>
           </div>
           <div style={{ marginTop: 16, paddingBottom: 6, borderBottom: `2px solid ${CS.K}`, display: "flex", justifyContent: "space-between" }}>
             <Mark>Также на неделе</Mark><Mark color={CS.G55}>+{rest.length}</Mark>
@@ -363,7 +363,7 @@ function VBillboard({ name, feed, onReset }: { name: string; feed: Ev[]; onReset
             <div style={{ position: "absolute", top: 8, right: 8, background: CS.B, color: CS.W, padding: "5px 9px", fontFamily: FONT_MONO, fontSize: 10, letterSpacing: "0.06em" }}>{hero.d} · {hero.tm}</div>
             <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "16px 12px 14px", background: "linear-gradient(to top, rgba(0,0,0,0.92) 40%, transparent)" }}>
               <div style={{ fontWeight: 900, fontSize: 38, lineHeight: 0.82, letterSpacing: "-0.05em", textTransform: "uppercase", color: CS.W }}>{hero.t}</div>
-              <div style={{ fontFamily: FONT_MONO, fontSize: 10, color: "rgba(255,255,255,0.75)", marginTop: 9, letterSpacing: "0.04em" }}>{hero.ch} · {hero.v}</div>
+              <div style={{ fontFamily: FONT_MONO, fontSize: 10, color: "rgba(255,255,255,0.75)", marginTop: 9, letterSpacing: "0.04em" }}>{hero.v}</div>
             </div>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", margin: "14px 0 9px" }}>
@@ -446,7 +446,7 @@ function VCombo({ name, feed, shelves, superByCat, superVar, onReset }: { name: 
             </div>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 9, paddingTop: 7, borderTop: `1.5px solid ${CS.K}` }}>
-            <Mono>{lead.ch} · {lead.v}</Mono><Mono color={CS.K} style={{ fontWeight: 700 }}>{lead.d} · {lead.tm}</Mono>
+            <Mono>{lead.v}</Mono><Mono color={CS.K} style={{ fontWeight: 700 }}>{lead.d} · {lead.tm}</Mono>
           </div>
           <ComboSection n="02" title="По вкусу · по категориям" />
           {shelves.slice(0, 3).map((s, i) => (

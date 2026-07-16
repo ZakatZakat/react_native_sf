@@ -116,7 +116,7 @@ export function toEv(e: FeedItem): Ev {
     id: e.id,
     t: cleanTitle(e.title || "Событие"),
     sub: "",  // curator doesn't carry editorial subtitles yet — left empty by design
-    v: e.location || `@${channel}`,
+    v: e.location || "",  // no channel-handle fallback — we don't expose sources in the UI
     d, tm,
     p: resolvePoster(e),
     c: interest?.label ?? "Событие",

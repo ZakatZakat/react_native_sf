@@ -18,6 +18,7 @@ import { useMemo, useState } from "react"
 import { Box, Flex, Text } from "@chakra-ui/react"
 import { useCsKeyframes, CS, FONT_MONO, FONT_SANS } from "./shared"
 import { useDerived } from "./useJourney"
+import { weekMeta } from "./WeekDesigns"
 import { analytics } from "../../lib/analytics"
 import ColdOpenBar from "./ColdOpenBar"
 
@@ -25,9 +26,6 @@ const K = CS.K
 const W = CS.W
 const B = CS.B
 const G55 = CS.G55
-const G70 = CS.G70
-
-const ABOUT_TAGLINE = "Подборка событий MSC + SPB, которых нет в больших афишах. Раз в неделю."
 
 // ── Atoms ────────────────────────────────────────────────────────────────
 
@@ -69,22 +67,6 @@ function BluePoster({ src, style }: { src: string | null; style?: React.CSSPrope
         }}
       />
     </Box>
-  )
-}
-
-function Mark({ children, color = K }: { children: React.ReactNode; color?: string }) {
-  return (
-    <Text
-      as="span"
-      fontSize="9px"
-      fontWeight="900"
-      letterSpacing="0.22em"
-      textTransform="uppercase"
-      color={color}
-      style={{ fontFamily: FONT_MONO }}
-    >
-      {children}
-    </Text>
   )
 }
 
@@ -135,6 +117,7 @@ export default function CsLanding() {
   useCsKeyframes()
   const navigate = useNavigate()
   const { derived } = useDerived()
+  const wk = weekMeta()
 
   // v6 cold-open «Полоса» — plays once per session, the City/Signal lockup
   // settles into the bar card's banner. While it runs the card's own banner is
@@ -249,7 +232,7 @@ export default function CsLanding() {
                 То что<br />движется<br />в городе
               </Text>
               <Text as="div" fontWeight="900" fontSize="21px" lineHeight="0.9" letterSpacing="-0.03em" color={B} style={{ textAlign: "right", flexShrink: 0 }}>
-                WK<br />22
+                WK<br />{wk.n}
               </Text>
             </Flex>
 
@@ -274,7 +257,7 @@ export default function CsLanding() {
               <Flex style={{ gap: 2, flexShrink: 0 }}>
                 {[0, 1, 2].map((i) => <span key={i} style={{ width: 3, height: 18, background: K }} />)}
               </Flex>
-              <Text flex="1" fontWeight="600" fontSize="9.5px" lineHeight="1.4" color={G70}>{ABOUT_TAGLINE}</Text>
+              <Box flex="1" />
               <Box style={{ textAlign: "right", flexShrink: 0 }}>
                 <Text fontWeight="900" fontSize="20px" letterSpacing="-0.03em" color={B} lineHeight="1">142</Text>
                 <Text fontSize="8px" color={G55} style={{ fontFamily: FONT_MONO }}>событий</Text>
@@ -285,7 +268,7 @@ export default function CsLanding() {
         </Box>
       </Flex>
 
-      {/* sticky bottom CTA — «Войти в эту картинку» (Шаг 1 / 4) */}
+      {/* sticky bottom CTA — «Запустить» */}
       <Flex
         as="button"
         onClick={goNext}
@@ -295,12 +278,11 @@ export default function CsLanding() {
         bg={K} color={W}
         align="center" justify="space-between"
         cursor="pointer"
-        style={{ border: "none", padding: "14px 18px 18px", gap: 10, fontFamily: FONT_SANS, textAlign: "left" }}
+        style={{ border: "none", padding: "16px 18px 20px", gap: 10, fontFamily: FONT_SANS, textAlign: "left" }}
         _active={{ transform: "translateY(1px)" }}
       >
         <Box>
-          <Mark color="rgba(255,255,255,0.5)">Шаг 1 / 4</Mark>
-          <Text fontWeight="900" fontSize="18px" letterSpacing="-0.025em" textTransform="uppercase" mt="1.5">Войти в эту картинку</Text>
+          <Text fontWeight="900" fontSize="20px" letterSpacing="-0.025em" textTransform="uppercase">Запустить</Text>
         </Box>
         <Flex as="span" align="center" justify="center" style={{ fontSize: 26, fontWeight: 900, width: 40, height: 40, background: B, color: W, flexShrink: 0 }}>→</Flex>
       </Flex>

@@ -27,10 +27,12 @@ import {
   EventModalProvider, GoingProvider, useOpenEvent,
   // v3 scrapbook
   SK, EdgeCtx, EDGE_PRESETS,
-  Clip, Polaroid, Hand, Lbl, Scribble, Sparkle, Avatar, SkMark,
+  Clip, Polaroid, Hand, Lbl, Scribble, Sparkle, SkMark, stripHandles,
 } from "./shared"
 import type { Ev } from "./buildDerived"
+import { weekMeta } from "./WeekDesigns"
 import { useDerived, useJourneyState } from "./useJourney"
+import { analytics } from "../../lib/analytics"
 import CsFeedLegacy from "./FeedLegacy"
 import MapIntro from "./MapIntro"
 
@@ -53,26 +55,18 @@ function pad(feed: Ev[], n: number): Ev[] {
 
 function DiaryView({ feed }: { feed: Ev[] }) {
   const E = pad(feed, 8)
+  const wk = weekMeta()
   return (
     <div style={{ position: "relative", width: "100%", minHeight: 1180, paddingBottom: 60 }}>
       <div style={{ textAlign: "center", position: "relative", zIndex: 2 }}>
-        <Lbl size={9} style={{ letterSpacing: "0.3em" }}>пятница · 23 мая</Lbl>
+        <Lbl size={9} style={{ letterSpacing: "0.3em" }}>{wk.dates}</Lbl>
         <div style={{ fontWeight: 900, fontSize: 44, letterSpacing: "-0.045em", lineHeight: 0.9, marginTop: 5, color: SK.ink }}>Москва</div>
         <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", marginTop: 7 }}>
-          <Lbl color={SK.ink} size={10} style={{ fontWeight: 700, letterSpacing: "0.24em" }}>неделя 22</Lbl>
+          <Lbl color={SK.ink} size={10} style={{ fontWeight: 700, letterSpacing: "0.24em" }}>неделя {wk.n}</Lbl>
           <Scribble color={"#E0162B"} w={64} style={{ marginTop: 2 }} />
         </div>
         <Sparkle color={SK.blue} s={17} style={{ position: "absolute", top: 20, left: 60 }} />
         <Sparkle color={"#E0162B"} s={12} style={{ position: "absolute", top: 60, right: 56 }} />
-      </div>
-      <div style={{ position: "absolute", top: 120, right: 10, textAlign: "right", zIndex: 3 }}>
-        <Hand color={"#E0162B"} size={20} style={{ marginRight: 2 }}>кто ведёт</Hand>
-        {feed.slice(0, 3).map((ev, k) => (
-          <div key={ev.id + k} style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, marginTop: 4 }}>
-            <Avatar label={ev.ch.replace(/^@/, "").slice(0, 1).toUpperCase()} color={[SK.blue, "#E0162B", SK.blue][k]} s={18} />
-            <span style={{ fontFamily: FONT_MONO, fontSize: 9, color: SK.ink }}>{ev.ch}</span>
-          </div>
-        ))}
       </div>
 
       <Polaroid ev={E[0]} w={128} rot={-4} ar={1.12} caption="до утра" capColor={SK.blue} style={{ position: "absolute", left: 10, top: 186 }} />
@@ -107,7 +101,7 @@ function DiaryView({ feed }: { feed: Ev[] }) {
 
       <div style={{ position: "absolute", left: 0, right: 0, top: 1000, textAlign: "center" }}>
         <Scribble color={SK.ink35} w={110} />
-        <div><Lbl size={9} style={{ letterSpacing: "0.24em" }}>{feed.length} событий · москва · wk22</Lbl></div>
+        <div><Lbl size={9} style={{ letterSpacing: "0.24em" }}>{feed.length} событий · москва · wk{wk.n}</Lbl></div>
       </div>
     </div>
   )
@@ -190,7 +184,6 @@ function BoardLead({ ev }: { ev: Ev }) {
           <div style={{ fontFamily: FONT_MONO, fontSize: 9.5, letterSpacing: "0.04em", color: SK.ink, lineHeight: 1.5, minWidth: 0, overflow: "hidden" }}>{ev.v}<br />{ev.d} · {ev.tm}{ev.dur ? ` · ${ev.dur}` : ""}</div>
           <div style={{ display: "flex", alignItems: "center", gap: 7, flexShrink: 0 }}>
             <PriceTag ev={ev} />
-            <span style={{ fontFamily: FONT_MONO, fontSize: 9, color: SK.ink55, whiteSpace: "nowrap" }}>{ev.ch}</span>
           </div>
         </div>
       </div>
@@ -214,11 +207,11 @@ function MosaicCard({ ev, i, onImg }: { ev: Ev; i: number; onImg?: () => void })
   const venue = ev.v && !ev.v.startsWith("@") ? ev.v : ""
   const time = ev.tm && ev.tm !== "—" ? ev.tm : ""
   const price = ev.price && ev.price !== "—" ? ev.price : ""
-  const meta = [ev.ch, time, price].filter(Boolean).join(" · ")
+  const meta = [time, price].filter(Boolean).join(" · ")
   // description = the post body BELOW its first line (the first line is the
   // title, already shown in full above — don't repeat it).
   const nl = (ev.desc || "").indexOf("\n")
-  const body = nl >= 0 ? ev.desc.slice(nl + 1).replace(/\s+/g, " ").trim() : ""
+  const body = nl >= 0 ? stripHandles(ev.desc.slice(nl + 1).replace(/\s+/g, " ").trim()) : ""
   return (
     <div style={{ breakInside: "avoid", WebkitColumnBreakInside: "avoid", marginBottom: 20, animation: `sk-refresh 0.5s cubic-bezier(0.22,1,0.36,1) ${(Math.min(i, 12) * 0.06).toFixed(2)}s both` }}>
       <div style={{ animation: float ? `sk-float ${dur}s ease-in-out ${delay}s infinite` : undefined }}>
@@ -413,7 +406,7 @@ function BoardSearch({ events, onClose }: { events: Ev[]; onClose: () => void })
         {list.map((e) => {
           const venue = e.v && !e.v.startsWith("@") ? e.v : ""
           const date = [e.d, e.tm].filter((s) => s && s !== "—").join(" · ")
-          const sub = [venue, e.ch].filter(Boolean).join(" · ")
+          const sub = venue
           return (
             <button key={e.id} onClick={() => { open(e); onClose() }} style={{ width: "100%", display: "flex", gap: 11, alignItems: "flex-start", padding: "10px 0", borderTop: "1px solid rgba(13,13,13,0.12)", background: "transparent", cursor: "pointer", textAlign: "left" }}>
               <div style={{ flexShrink: 0, width: 46, height: 58, border: `2px solid ${SK.ink}`, background: "#E4E4E1", overflow: "hidden" }}>{e.p && <img src={e.p} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}</div>
@@ -433,8 +426,9 @@ function BoardSearch({ events, onClose }: { events: Ev[]; onClose: () => void })
   )
 }
 
-function BoardView({ feed, btn = "b", name = "Гость", onMap }: { feed: Ev[]; btn?: string; name?: string; onMap?: () => void }) {
+function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: { feed: Ev[]; searchFeed?: Ev[]; btn?: string; name?: string; onMap?: () => void }) {
   const nav = useContext(NavCtx)
+  const wk = weekMeta()
   const [nonce, setNonce] = useState(0)
   const [sweep, setSweep] = useState(0)
   const [searchOpen, setSearchOpen] = useState(false)
@@ -471,7 +465,7 @@ function BoardView({ feed, btn = "b", name = "Гость", onMap }: { feed: Ev[]
       {/* header — title block on the left, profile + refresh on the right */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "stretch", gap: 12, padding: "0 14px", marginBottom: 22 }}>
         <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "space-between", background: SK.paper, border: `2px solid ${SK.ink}`, padding: "11px 13px 12px", transform: "rotate(-1deg)", boxShadow: `3px 3px 0 ${SK.ink}` }}>
-          <Lbl size={10} style={{ letterSpacing: "0.3em" }}>доска недели · wk 22</Lbl>
+          <Lbl size={10} style={{ letterSpacing: "0.3em" }}>доска недели · wk {wk.n}</Lbl>
           <div style={{ fontWeight: 900, fontSize: 35, letterSpacing: "-0.045em", lineHeight: 0.9, marginTop: 4, color: SK.ink }}>Что в городе</div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
             <Lbl size={10}>{E.length} событий · москва</Lbl>
@@ -545,7 +539,7 @@ function BoardView({ feed, btn = "b", name = "Гость", onMap }: { feed: Ev[]
         {cats.map((c) => {
           const on = cat === c
           return (
-            <button key={c} onClick={() => { setCat(c); setTag(null) }} style={{ flexShrink: 0, padding: "6px 12px", border: `2px solid ${SK.ink}`, background: on ? SK.ink : SK.paper, color: on ? SK.paper : SK.ink, fontFamily: FONT_SANS, fontWeight: 800, fontSize: 10.5, letterSpacing: "0.05em", textTransform: "uppercase", whiteSpace: "nowrap", cursor: "pointer" }}>{c}</button>
+            <button key={c} onClick={() => { setCat(c); setTag(null); analytics.track("cs.feed.filter", { kind: "category", value: c }) }} style={{ flexShrink: 0, padding: "6px 12px", border: `2px solid ${SK.ink}`, background: on ? SK.ink : SK.paper, color: on ? SK.paper : SK.ink, fontFamily: FONT_SANS, fontWeight: 800, fontSize: 10.5, letterSpacing: "0.05em", textTransform: "uppercase", whiteSpace: "nowrap", cursor: "pointer" }}>{c}</button>
           )
         })}
       </div>
@@ -557,7 +551,7 @@ function BoardView({ feed, btn = "b", name = "Гость", onMap }: { feed: Ev[]
           {tagChips.map((t) => {
             const on = tag === t
             return (
-              <button key={t} onClick={() => setTag(on ? null : t)} style={{ flexShrink: 0, padding: "5px 11px", border: `2px solid ${CS.B}`, background: on ? CS.B : SK.paper, color: on ? "#fff" : CS.B, fontFamily: FONT_SANS, fontWeight: 800, fontSize: 10, letterSpacing: "0.04em", textTransform: "uppercase", whiteSpace: "nowrap", cursor: "pointer" }}>{t}</button>
+              <button key={t} onClick={() => { setTag(on ? null : t); if (!on) analytics.track("cs.feed.filter", { kind: "tag", value: t }) }} style={{ flexShrink: 0, padding: "5px 11px", border: `2px solid ${CS.B}`, background: on ? CS.B : SK.paper, color: on ? "#fff" : CS.B, fontFamily: FONT_SANS, fontWeight: 800, fontSize: 10, letterSpacing: "0.04em", textTransform: "uppercase", whiteSpace: "nowrap", cursor: "pointer" }}>{t}</button>
             )
           })}
         </div>
@@ -581,7 +575,7 @@ function BoardView({ feed, btn = "b", name = "Гость", onMap }: { feed: Ev[]
         )}
       </div>
 
-      {searchOpen && <BoardSearch events={E} onClose={() => setSearchOpen(false)} />}
+      {searchOpen && <BoardSearch events={searchFeed ?? E} onClose={() => setSearchOpen(false)} />}
     </div>
   )
 }
@@ -604,12 +598,6 @@ function JournalEntry({ ev, i }: { ev: Ev; i: number }) {
     }}>
       <div style={{ position: "relative", flexShrink: 0 }}>
         <Clip ev={ev} w={100} h={130} rot={rot} />
-        <div style={{
-          position: "absolute", bottom: -10,
-          [flip ? "left" : "right"]: -4,
-          fontFamily: FONT_MONO, fontSize: 8, letterSpacing: "0.08em",
-          color: SK.ink55, transform: `rotate(${flip ? 4 : -4}deg)`,
-        }}>{ev.ch}</div>
       </div>
       <div style={{ flex: 1, minWidth: 0, paddingTop: 6, textAlign: flip ? "right" : "left" }}>
         <div style={{ display: "inline-block" }}>
@@ -634,24 +622,14 @@ function JournalEntry({ ev, i }: { ev: Ev; i: number }) {
 
 function JournalView({ feed, name = "Гость" }: { feed: Ev[]; name?: string }) {
   const nav = useContext(NavCtx)
+  const wk = weekMeta()
   return (
     <div style={{ width: "100%", paddingBottom: 50 }}>
       <div style={{ padding: "0 18px" }}>
-        <Lbl size={9} style={{ letterSpacing: "0.3em" }}>пятница · 23 мая · wk 22</Lbl>
+        <Lbl size={9} style={{ letterSpacing: "0.3em" }}>{wk.dates} · wk {wk.n}</Lbl>
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginTop: 3 }}>
           <div style={{ fontWeight: 900, fontSize: 38, letterSpacing: "-0.045em", lineHeight: 0.86, color: SK.ink }}>Лента</div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-            <div style={{ display: "flex" }}>
-              {feed.slice(0, 3).map((ev, k) => (
-                <Avatar
-                  key={ev.id + k}
-                  label={ev.ch.replace(/^@/, "").slice(0, 1).toUpperCase()}
-                  color={[SK.blue, "#E0162B", SK.blue][k]}
-                  s={21}
-                  style={{ marginLeft: k ? -7 : 0 }}
-                />
-              ))}
-            </div>
             <ProfileBadge name={name} onClick={nav.openProfile} />
           </div>
         </div>
@@ -717,16 +695,19 @@ export default function CsFeed() {
   // All events (flattened from the category pool) — the map intro wants
   // every geocoded event, not just the 8 in the main feed.
   const allEvents = useMemo(() => Object.values(derived.pool).flat(), [derived])
-  // Доска catalog — every UPCOMING event (from the start of today), soonest
-  // first; undated events go last. Powers the «выбор недели» hero + full
-  // «Каталог» so the board shows everything ahead, not a truncated slice.
-  const boardCatalog = useMemo(() => {
+  // Every UPCOMING event (from the start of today), soonest first; undated last.
+  const upcoming = useMemo(() => {
     const cutoff = new Date(); cutoff.setHours(0, 0, 0, 0)
     const c = cutoff.getTime()
     return allEvents
-      .filter((e) => e.p && (e.ts == null || e.ts >= c))
+      .filter((e) => e.ts == null || e.ts >= c)
       .sort((a, b) => (a.ts ?? Infinity) - (b.ts ?? Infinity))
   }, [allEvents])
+  // Visual surfaces (board hero + poster mosaic + map) show only events WITH an
+  // afisha poster — imageless posts (often digests/news) render bare as cards.
+  // `upcoming` (with them) still feeds the search list so they stay findable.
+  const boardCatalog = useMemo(() => upcoming.filter((e) => e.p), [upcoming])
+  const mapEvents = useMemo(() => allEvents.filter((e) => e.p), [allEvents])
   const edge = EDGE_PRESETS[edgeKey] ?? EDGE_PRESETS.thin
 
   const navValue = useMemo(
@@ -749,7 +730,7 @@ export default function CsFeed() {
   let inner: React.ReactNode
   if (view === "diary") inner = <DiaryView feed={feed} />
   else if (view === "journal") inner = <JournalView feed={feed} name={safeName} />
-  else inner = <BoardView feed={boardCatalog} btn={btn} name={safeName} onMap={() => setShowIntro(true)} />
+  else inner = <BoardView feed={boardCatalog} searchFeed={upcoming} btn={btn} name={safeName} onMap={() => setShowIntro(true)} />
 
   return (
     <NavCtx.Provider value={navValue}>
@@ -779,7 +760,7 @@ export default function CsFeed() {
                 <div style={{ height: 46 }} />
                 {!(view === "board" && showIntro) && inner}
               </div>
-              {view === "board" && showIntro && <MapIntro events={allEvents} onEnter={dismissIntro} />}
+              {view === "board" && showIntro && <MapIntro events={mapEvents} onEnter={dismissIntro} />}
             </div>
           </EdgeCtx.Provider>
         </EventModalProvider>

@@ -63,6 +63,20 @@ export type EventName =
   | "cover_hero.shelf.scroll" | "cover_hero.event.click"
   // feed
   | "feed.view" | "feed.event.open"
+  // ── CitySignal journey (cs.*) ──────────────────────────────────
+  // onboarding
+  | "cs.landing.enter" | "cs.name.submit" | "cs.pass.continue"
+  | "cs.swipe.card.like" | "cs.swipe.card.skip" | "cs.swipe.deck.complete"
+  | "cs.summary.enter_feed"
+  // week digest (Семейство Сплит)
+  | "cs.week.view" | "cs.week.continue"
+  // feed board
+  | "cs.feed.filter"
+  // event card / sheet
+  | "cs.event.open" | "cs.event.going" | "cs.event.remind"
+  | "cs.event.tg_channel" | "cs.event.tg_post"
+  // editorial admin — «выбор недели»
+  | "cs.admin.week_pick" | "cs.admin.week_clear"
   // generic CTA
   | "cta.click"
   // network + perf + errors

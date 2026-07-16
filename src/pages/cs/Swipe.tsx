@@ -35,7 +35,7 @@ function SwipeCard({ ev, depth, isTop }: { ev: Ev; depth: number; isTop: boolean
         </div>
         <div style={{ padding: "12px 14px 14px", borderTop: `2px solid ${CS.K}` }}>
           <div style={{ fontFamily: FONT_MONO, fontSize: 9, color: CS.G55, letterSpacing: "0.06em", marginBottom: 5, display: "flex", justifyContent: "space-between" }}>
-            <span>{ev.ch}</span><span>пошёл бы?</span>
+            <span>пошёл бы?</span>
           </div>
           <div style={{ fontWeight: 900, fontSize: 18, lineHeight: 1, letterSpacing: "-0.03em", textTransform: "uppercase", color: CS.K, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{ev.t}</div>
           <div style={{ fontWeight: 600, fontSize: 11, color: CS.G55, marginTop: 6 }}>{ev.v}</div>

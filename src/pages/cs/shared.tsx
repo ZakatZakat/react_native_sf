@@ -9,6 +9,7 @@ import { createContext, useContext, useEffect, useRef, useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import { haptics } from "../../lib/haptics"
 import { openTelegram, tgChannelUrl, tgPostUrl } from "../../lib/telegram"
+import { analytics } from "../../lib/analytics"
 import { venueInfo } from "./venues"
 
 // ── Tokens ────────────────────────────────────────────────────────────────
@@ -486,8 +487,14 @@ export function useOpenEvent() { return useContext(EventModalCtx) }
 
 export function EventModalProvider({ children }: { children: React.ReactNode }) {
   const [active, setActive] = useState<Ev | null>(null)
+  const open: OpenEvent = (ev) => {
+    analytics.track("cs.event.open", {
+      event_id: ev.id, category: ev.c, venue: ev.venueKey || null, has_geo: !!ev.geo,
+    }, { data: ev.t.slice(0, 200) })
+    setActive(ev)
+  }
   return (
-    <EventModalCtx.Provider value={setActive}>
+    <EventModalCtx.Provider value={open}>
       {children}
       <EventSheet ev={active} onClose={() => setActive(null)} />
     </EventModalCtx.Provider>
@@ -557,16 +564,23 @@ export function GoingProvider({ children }: { children: React.ReactNode }) {
 
   const isGoing = (ev: { t: string }) => list.some((e) => e.t === ev.t)
 
-  const toggle = (ev: Ev | GoingItem) => setList((cur) =>
-    cur.some((e) => e.t === ev.t)
-      ? cur.filter((e) => e.t !== ev.t)
-      : [...cur, {
-          t: ev.t, v: ev.v, d: ev.d, tm: ev.tm, ch: ev.ch,
-          cat: ("c" in ev ? ev.c : ev.cat), p: ev.p, remind: true, mid: ev.mid ?? null,
-        }],
-  )
-  const setRemind = (ev: { t: string }, on: boolean) =>
+  const toggle = (ev: Ev | GoingItem) => {
+    analytics.track("cs.event.going", {
+      title: ev.t.slice(0, 120), on: !isGoing(ev), category: ("c" in ev ? ev.c : ev.cat),
+    })
+    setList((cur) =>
+      cur.some((e) => e.t === ev.t)
+        ? cur.filter((e) => e.t !== ev.t)
+        : [...cur, {
+            t: ev.t, v: ev.v, d: ev.d, tm: ev.tm, ch: ev.ch,
+            cat: ("c" in ev ? ev.c : ev.cat), p: ev.p, remind: true, mid: ev.mid ?? null,
+          }],
+    )
+  }
+  const setRemind = (ev: { t: string }, on: boolean) => {
+    analytics.track("cs.event.remind", { title: (ev.t || "").slice(0, 120), on })
     setList((cur) => cur.map((e) => e.t === ev.t ? { ...e, remind: on } : e))
+  }
 
   return (
     <GoingCtx.Provider value={{ list, isGoing, toggle, setRemind }}>
@@ -615,6 +629,13 @@ function shortAddress(addr: string): string {
   return s
 }
 
+/** Remove standalone Telegram @handles (source-channel mentions) from displayed
+ *  text — we don't expose our sources in the UI. Only whitespace/bracket-preceded
+ *  handles are stripped, so emails (name@mail.ru) stay intact. */
+export function stripHandles(s: string): string {
+  return (s || "").replace(/(^|[\s(«"„])@[a-zA-Z0-9_]{3,}/g, "$1").replace(/[ \t]{2,}/g, " ").trim()
+}
+
 /** Reflow a flat curator post body into readable lines: strip the channel
  *  promo tail, drop a leading title/venue repeat, put info labels on their own
  *  line, and break the run-on into one sentence per line. The source usually
@@ -631,6 +652,7 @@ function formatEventDesc(raw: string, ...heads: string[]): string {
   // «Места Москвы»-style tails are still caught by «москв».
   s = s.replace(/\s*[|｜]\s*[^|｜]*(?:москв|подмосков|питер|петербург|афиш|канал|подпис|интересные\s+места)[^|｜]*$/i, "").trim()
   s = s.replace(/\s*(?:https?:\/\/|t\.me\/)\S*\s*$/i, "").trim()
+  s = stripHandles(s)  // drop source-channel @mentions anywhere in the body
   s = s.replace(/[\s|•·]+$/, "").trim()
   // labels → own line
   s = s.replace(new RegExp(`\\s+(${DESC_LABELS})\\s*[:：]`, "g"), "\n$1:")
@@ -736,20 +758,10 @@ function EventSheet({ ev, onClose }: { ev: Ev | null; onClose: () => void }) {
             <div style={{ fontWeight: 900, fontSize: 22, lineHeight: 0.96, letterSpacing: "-0.03em", textTransform: "uppercase", color: CS.K }}>{ev.t}</div>
             {ev.ch && ev.ch !== "@—" && (
               <div style={{ marginTop: 9, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
-                {/* handle → open the source channel in Telegram */}
+                {/* → open the original post in Telegram (source channel handle is
+                    intentionally NOT shown — we don't advertise our sources) */}
                 <button
-                  onClick={() => openTelegram(tgChannelUrl(ev.ch))}
-                  style={{
-                    border: "none", background: "none", padding: 0, cursor: "pointer",
-                    fontFamily: FONT_MONO, fontSize: 10.5, color: CS.B, fontWeight: 700,
-                    textDecoration: "underline", textUnderlineOffset: 2,
-                  }}
-                >
-                  {ev.ch}
-                </button>
-                {/* → open the original post in Telegram (falls back to the channel) */}
-                <button
-                  onClick={() => openTelegram(tgPostUrl(ev.ch, ev.mid) ?? tgChannelUrl(ev.ch))}
+                  onClick={() => { analytics.track("cs.event.tg_post", { event_id: ev.id, channel: ev.ch, has_post: ev.mid != null }); openTelegram(tgPostUrl(ev.ch, ev.mid) ?? tgChannelUrl(ev.ch)) }}
                   style={{
                     display: "inline-flex", alignItems: "center", gap: 5,
                     border: `2px solid ${CS.K}`, background: CS.K, color: CS.W, cursor: "pointer",
@@ -919,7 +931,6 @@ export function Clip({
             <>
               <div style={{ position: "absolute", top: 5, right: 5, background: SK.ink, color: SK.paper, padding: "3px 5px", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 7.5, letterSpacing: "0.16em", lineHeight: 1, textTransform: "uppercase" }}>{ev.c}</div>
               <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, background: SK.paper, borderTop: `1.5px solid ${SK.ink}`, padding: "4px 6px", display: "flex", justifyContent: "space-between", alignItems: "center", fontFamily: FONT_MONO, fontSize: 7.5, letterSpacing: "0.03em", gap: 4 }}>
-                <span style={{ color: SK.ink55, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{ev.ch}</span>
                 <span style={{ color: SK.ink, fontWeight: 700, whiteSpace: "nowrap" }}>{ev.d}</span>
               </div>
             </>
@@ -969,8 +980,7 @@ export function Polaroid({
               <div style={{ position: "absolute", top: 5, right: 5, background: SK.ink, color: SK.paper, padding: "3px 5px", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 7.5, letterSpacing: "0.16em", lineHeight: 1, textTransform: "uppercase" }}>{ev.c}</div>
               <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, background: SK.paper, borderTop: `1.5px solid ${SK.ink}`, padding: "5px 7px", fontFamily: FONT_MONO, fontSize: 7.5, letterSpacing: "0.03em" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 4 }}>
-                  <span style={{ color: SK.ink55, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{ev.ch}</span>
-                  <span style={{ color: SK.ink, fontWeight: 700, whiteSpace: "nowrap" }}>{ev.d} · {ev.tm}</span>
+                    <span style={{ color: SK.ink, fontWeight: 700, whiteSpace: "nowrap" }}>{ev.d} · {ev.tm}</span>
                 </div>
               </div>
             </>

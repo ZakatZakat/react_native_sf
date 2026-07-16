@@ -18,6 +18,7 @@ import { SK, FONT_SANS } from "./shared"
 import { useDerived } from "./useJourney"
 import { toEv, type Ev } from "./buildDerived"
 import { Curator } from "../../lib/curator"
+import { analytics } from "../../lib/analytics"
 import { WeekDesign, WEEK_VARIANTS, weekMeta, type WeekVariant } from "./WeekDesigns"
 
 const AUTO_MS = 1700
@@ -53,23 +54,27 @@ export default function CsWeek() {
     ? `На этой неделе — ${derived.shelves.map((s) => s.cat.toLowerCase()).slice(0, 3).join(", ")} и не только. Редакция собрала, ради чего стоит выйти.`
     : "Свежая подборка городских событий. Редакция собрала, ради чего стоит выйти."
 
-  const go = useCallback(() => {
+  const go = useCallback((via: "tap" | "auto") => {
     if (doneRef.current) return
     doneRef.current = true
+    analytics.track("cs.week.continue", { variant, via })
     if (rootRef.current) rootRef.current.style.animation = "cs-week-wipe 0.55s cubic-bezier(0.5,0,0.2,1) forwards"
     setTimeout(() => navigate({ to: "/cs/feed" }), 480)
-  }, [navigate])
+  }, [navigate, variant])
+
+  // Log which of the 4 «Сплит» designs was shown, once per open.
+  useEffect(() => { analytics.track("cs.week.view", { variant }) }, [variant])
 
   useEffect(() => {
     if (dev) return
-    const t = setTimeout(go, AUTO_MS)
+    const t = setTimeout(() => go("auto"), AUTO_MS)
     return () => clearTimeout(t)
   }, [go, dev])
 
   return (
     <div
       ref={rootRef}
-      onClick={go}
+      onClick={() => go("tap")}
       style={{ position: "fixed", inset: 0, fontFamily: FONT_SANS, cursor: "pointer", background: SK.ink, overflow: "hidden", color: "#fff" }}
     >
       <WeekDesign variant={variant} hero={hero} trio={trio} wk={wk} lead={lead} eventsCount={eventsCount} still={dev} />

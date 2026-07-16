@@ -15,6 +15,7 @@ import { useDerived } from "./useJourney"
 import { toEv, resolvePoster, type Ev } from "./buildDerived"
 import { Curator } from "../../lib/curator"
 import type { FeedItem } from "../../lib/curator"
+import { analytics } from "../../lib/analytics"
 import { WeekDesign, WEEK_VARIANTS, WEEK_VARIANT_LABELS, weekMeta } from "./WeekDesigns"
 
 // A phone-accurate preview: render the design at full 375×812 then scale down,
@@ -89,13 +90,14 @@ export default function AdminWeek() {
     try {
       const updated = await Curator.adminSetWeekPick(Number(selected.id))
       setCurrent(updated)
+      analytics.track("cs.admin.week_pick", { event_id: selected.id })
     } catch { /* surfaced by the button staying enabled */ } finally {
       setSaving(false)
     }
   }
   const clear = async () => {
     setSaving(true)
-    try { await Curator.adminClearWeekPick(); setCurrent(null); setSelected(null) } catch { /* noop */ } finally { setSaving(false) }
+    try { await Curator.adminClearWeekPick(); setCurrent(null); setSelected(null); analytics.track("cs.admin.week_clear", {}) } catch { /* noop */ } finally { setSaving(false) }
   }
 
   const pageStyle: React.CSSProperties = { position: "fixed", inset: 0, overflowY: "auto", background: SK.paper, color: SK.ink, fontFamily: FONT_SANS, WebkitOverflowScrolling: "touch" }
