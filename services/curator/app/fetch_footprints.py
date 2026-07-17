@@ -87,15 +87,49 @@ def _field(line: str, name: str) -> str:
 
 
 def parse_venues_ts() -> dict:
+    """key -> {name,kind,blurb,address} from venues.ts.
+
+    Entries come in BOTH shapes — one-liners and multi-line blocks:
+        zorka: { name: "ZORKA", kind: "клуб", ... },
+        mo_yeti: {
+          name: "Бар МО[ТРИ]",
+          ...
+        },
+    A line-based `key: { name:` regex silently drops every multi-line entry (it
+    dropped 24, leaving them with no address, so the address search never ran for
+    them). Match the whole brace-block instead.
+    """
+    src = VENUES_TS.read_text(encoding="utf-8")
     out = {}
-    for line in VENUES_TS.read_text(encoding="utf-8").splitlines():
-        m = re.match(r'\s*([a-z0-9_]+):\s*\{\s*name:', line)
-        if not m:
-            continue
-        k = m.group(1)
-        out[k] = {"name": _field(line, "name"), "kind": _field(line, "kind"),
-                  "blurb": _field(line, "blurb"), "address": _field(line, "address")}
+    for m in re.finditer(r'^\s{2}([a-z0-9_]+):\s*\{', src, re.M):
+        # Walk to the entry's matching close brace, tracking depth and skipping
+        # braces inside strings. Line-shape regexes get this wrong: entries appear
+        # as one-liners, as blocks closed by a bare `},`, AND as blocks closed by
+        # `..., img: "..." },` on a field line.
+        depth, j, in_str, esc = 1, m.end(), False, False
+        while j < len(src) and depth:
+            ch = src[j]
+            if in_str:
+                if esc:
+                    esc = False
+                elif ch == "\\":
+                    esc = True
+                elif ch == '"':
+                    in_str = False
+            elif ch == '"':
+                in_str = True
+            elif ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+            j += 1
+        out[m.group(1)] = _venue_fields(src[m.end():j - 1])
     return out
+
+
+def _venue_fields(body: str) -> dict:
+    return {"name": _field(body, "name"), "kind": _field(body, "kind"),
+            "blurb": _field(body, "blurb"), "address": _field(body, "address")}
 
 
 def existing_footprint_keys() -> set:
