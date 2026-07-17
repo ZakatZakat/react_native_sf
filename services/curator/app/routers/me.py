@@ -17,6 +17,7 @@ from app.repositories.me import (
     UserInterestsRepository,
 )
 from app.repositories.landing import LandingPickRepository
+from app.repositories.ui_variants import UiVariantRepository
 from app.repositories.week import WeekPickRepository
 
 router = APIRouter(prefix="/me", tags=["me"])
@@ -119,3 +120,14 @@ async def post_feedback(
     async with session_scope(sf) as s:
         await UserFeedbackRepository(s).add(user_id, event_id, action)
     return {"status": "ok", "event_id": event_id, "action": action.value}
+
+
+@router.get("/ui")
+async def get_ui_variants(
+    sf: async_sessionmaker[AsyncSession] = Depends(get_session_factory),
+) -> dict:
+    """{component_key: variant} pinned by an editor. A key that is absent means
+    AUTO — the component keeps its own default. Public: the app needs it on every
+    open, and it carries no user data."""
+    async with session_scope(sf) as s:
+        return await UiVariantRepository(s).all()

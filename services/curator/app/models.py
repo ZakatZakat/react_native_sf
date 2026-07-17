@@ -361,3 +361,22 @@ class LandingPick(Base):
     )
     chosen_by: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)  # admin TG id
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), default=datetime.utcnow, nullable=False)
+
+# ────────────────────────────────────────────────────────────────────
+# UI-варианты компонентов — какой из нескольких вариантов вёрстки показывать.
+# Раньше вариант выбирался в коде (или случайно, как дизайн недели), и редактор
+# на него не влиял. Одна строка на компонент: key → variant. Отсутствие строки
+# (или variant="auto") = поведение по умолчанию, заданное самим компонентом.
+# ────────────────────────────────────────────────────────────────────
+class UiVariant(Base):
+    __tablename__ = "ui_variants"
+    __table_args__ = (
+        UniqueConstraint("key", name="uq_ui_variant_key"),
+        {"schema": SCHEMA},
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    key: Mapped[str] = mapped_column(String(64), nullable=False)      # "landing_posters", "week_design"
+    variant: Mapped[str] = mapped_column(String(64), nullable=False)  # "auto" | id варианта
+    chosen_by: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)  # admin TG id
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), default=datetime.utcnow, nullable=False)

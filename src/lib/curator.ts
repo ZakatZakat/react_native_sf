@@ -207,4 +207,13 @@ export const Curator = {
     curatorFetch<{ status: string }>("/admin/landing/pick", {
       auth: true, method: "DELETE", query: slot != null ? { slot } : undefined,
     }),
+
+  // UI-варианты компонентов — {component_key: variant}. Ключ отсутствует = "auto"
+  // (компонент оставляет своё поведение по умолчанию).
+  getUiVariants: () => curatorFetch<Record<string, string>>("/me/ui"),
+  adminGetUiVariants: () => curatorFetch<Record<string, string>>("/admin/ui", { auth: true }),
+  adminSetUiVariant: (key: string, variant: string) =>
+    curatorFetch<Record<string, string>>("/admin/ui", {
+      auth: true, method: "POST", body: JSON.stringify({ key, variant }),
+    }),
 }

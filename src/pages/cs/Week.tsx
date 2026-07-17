@@ -30,10 +30,23 @@ export default function CsWeek() {
   const rootRef = useRef<HTMLDivElement>(null)
   const doneRef = useRef(false)
 
-  // Random design per open. `?wk=split3` pins one (QA) and holds the screen.
+  // Design: the editor's pick wins (ui_variants.week_design, chosen in
+  // /cs/admin/week); "auto"/unset keeps the original random-per-open. `?wk=split3`
+  // still overrides everything for QA and holds the screen.
   const forced = (typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("wk") : null) as WeekVariant | null
   const dev = !!forced && WEEK_VARIANTS.includes(forced)
-  const [variant] = useState<WeekVariant>(() => (dev ? forced! : WEEK_VARIANTS[Math.floor(Math.random() * WEEK_VARIANTS.length)]))
+  const [variant, setVariant] = useState<WeekVariant>(() => (dev ? forced! : WEEK_VARIANTS[Math.floor(Math.random() * WEEK_VARIANTS.length)]))
+  useEffect(() => {
+    if (dev) return                       // QA override — don't let the pin move it
+    let live = true
+    Curator.getUiVariants()
+      .then((v) => {
+        const p = v?.week_design
+        if (live && p && (WEEK_VARIANTS as readonly string[]).includes(p)) setVariant(p as WeekVariant)
+      })
+      .catch(() => { /* keep the random one */ })
+    return () => { live = false }
+  }, [dev])
 
   // Editorial hero pick (GET /me/week). Null until fetched / if none set — the
   // screen then falls back to the auto top event. A missing endpoint (404) is

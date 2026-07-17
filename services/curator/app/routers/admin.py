@@ -13,6 +13,7 @@ from app.auth import require_admin
 from app.db import session_scope
 from app.models import Channel, EventCurated, EventStatus, PostRaw
 from app.repositories.landing import LandingPickRepository
+from app.repositories.ui_variants import UiVariantRepository
 from app.repositories.posts import ModerationRepository
 from app.repositories.week import WeekPickRepository
 
@@ -308,3 +309,30 @@ async def landing_unpick(
     async with session_scope(sf) as s:
         await LandingPickRepository(s).clear_pick(slot)
     return {"status": "ok"}
+
+
+class UiVariantBody(BaseModel):
+    key: str
+    variant: str
+
+
+@router.get("/ui")
+async def ui_variants(
+    _admin: int = Depends(require_admin),
+    sf: async_sessionmaker[AsyncSession] = Depends(get_session_factory),
+) -> dict:
+    async with session_scope(sf) as s:
+        return await UiVariantRepository(s).all()
+
+
+@router.post("/ui")
+async def ui_variant_set(
+    body: UiVariantBody,
+    admin_id: int = Depends(require_admin),
+    sf: async_sessionmaker[AsyncSession] = Depends(get_session_factory),
+) -> dict:
+    """Pin one component to a variant. variant="auto" restores its default.
+    The variant id is NOT validated here on purpose — the set of layouts lives in
+    the frontend, and a stale/unknown id degrades to the component's default."""
+    async with session_scope(sf) as s:
+        return await UiVariantRepository(s).set(body.key.strip(), body.variant.strip(), admin_id)
