@@ -3,10 +3,10 @@
    Swiss / ITS-influenced editorial system. Ink, paper, signal.
    ───────────────────────────────────────────────────────────── */
 
-/* Inter is the open-source stand-in for Helvetica Neue — match metrics +
-   weight 900 (Black). JetBrains Mono covers all monospace ticket / code blocks.
-   If a final build wants pure Helvetica Neue Bold/Black, swap below. */
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap");
+/* Inter (sans) + JetBrains Mono (mono) — оба self-hosted через @fontsource
+   (импорт в main.tsx, бандлится Vite с нашего домена). Никаких Google-CDN
+   @import здесь: в Telegram-webview на iOS CDN может залипнуть и уронить UI
+   в системный шрифт. */
 
 :root {
   /* ── Core palette ─────────────────────────────────────────── */

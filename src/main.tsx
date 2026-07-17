@@ -6,6 +6,18 @@ import { Provider } from "./components/ui/provider"
 import { router } from "./router"
 import { analytics } from "./lib/analytics"
 import { installGlobalTap } from "./lib/haptics"
+// Self-hosted fonts (family names 'Inter' / 'JetBrains Mono' — matching the
+// --cs-font-* tokens). Bundled by Vite from node_modules, served from our own
+// domain — no Google-CDN dependency that could stall/fail in the Telegram iOS
+// webview and drop the UI to Helvetica/SF. Only the weights actually used.
+import "@fontsource/inter/400.css"
+import "@fontsource/inter/500.css"
+import "@fontsource/inter/700.css"
+import "@fontsource/inter/800.css"
+import "@fontsource/inter/900.css"
+import "@fontsource/jetbrains-mono/400.css"
+import "@fontsource/jetbrains-mono/500.css"
+import "@fontsource/jetbrains-mono/700.css"
 import "./styles/cs-tokens.css"
 import "./index.css"
 

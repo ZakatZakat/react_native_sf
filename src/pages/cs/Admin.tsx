@@ -52,8 +52,9 @@ const LINE = "#ececec"
 const BAR = "#111111"
 const BAR_BG = "#f1f1f1"
 const ACCENT = "#0055FF"
-const MONO = "'JetBrains Mono', ui-monospace, monospace"
-const SANS = "'Inter', system-ui, -apple-system, sans-serif"
+// Через общие токены, а не свои стеки — чтобы админка не расходилась с приложением.
+const MONO = "var(--cs-font-mono)"
+const SANS = "var(--cs-font-sans)"
 
 /** Ссылки редакции обязаны тащить ?as_user дальше: в браузере без Telegram
  *  админ-эндпоинты авторизуются именно этим параметром, и переход без него

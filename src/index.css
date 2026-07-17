@@ -1,5 +1,7 @@
 :root {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  /* Единый дефолт — тот же токен, что у Chakra и у CS-экранов (Inter).
+     Раньше был system-ui, из-за чего любой элемент без явного шрифта уезжал в SF. */
+  font-family: var(--cs-font-sans, 'Inter', 'Helvetica Neue', system-ui, sans-serif);
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

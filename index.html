@@ -2,15 +2,12 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <!-- Warm the connection to MapTiler early so the intro-map prewarm (loading screen) fetches tiles/glyphs faster. -->
     <link rel="preconnect" href="https://api.maptiler.com" crossorigin />
-    <!-- Load the app fonts as early as possible (in <head>, not via CSS @import)
-         so the cold-open's wordmark renders in Inter from the first frame
-         instead of swapping from a system fallback mid-animation. -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
+    <!-- Fonts (Inter + JetBrains Mono) are self-hosted via @fontsource (imported
+         in main.tsx and bundled by Vite) — no Google-CDN links here, so the UI
+         never falls back to Helvetica/SF when the Telegram webview blocks the CDN. -->
+
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <!-- user-scalable=no + maximum-scale=1: pinch-zoom must drive the MapLibre
          map, NOT browser page-zoom (which scaled the whole UI — cards included —
