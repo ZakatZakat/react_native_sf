@@ -55,6 +55,37 @@ const ACCENT = "#0055FF"
 const MONO = "'JetBrains Mono', ui-monospace, monospace"
 const SANS = "'Inter', system-ui, -apple-system, sans-serif"
 
+/** Ссылки редакции обязаны тащить ?as_user дальше: в браузере без Telegram
+ *  админ-эндпоинты авторизуются именно этим параметром, и переход без него
+ *  упрётся в «Нет доступа». В самом Telegram параметра нет — там initData. */
+function withAsUser(path: string): string {
+  try {
+    const au = new URLSearchParams(window.location.search).get("as_user")
+    return au ? `${path}?as_user=${encodeURIComponent(au)}` : path
+  } catch {
+    return path
+  }
+}
+
+/** Строка-раздел в хабе: куда ведёт и что там делают. */
+function HubLink({ href, title, sub }: { href: string; title: string; sub: string }) {
+  return (
+    <a
+      href={href}
+      style={{
+        display: "flex", alignItems: "center", gap: 12, textDecoration: "none",
+        border: `1px solid ${LINE}`, borderRadius: 8, padding: "13px 14px", color: INK,
+      }}
+    >
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: "block", fontFamily: SANS, fontSize: 14.5, fontWeight: 600, letterSpacing: "-0.01em" }}>{title}</span>
+        <span style={{ display: "block", fontFamily: SANS, fontSize: 12.5, color: MUTE, marginTop: 2 }}>{sub}</span>
+      </span>
+      <span aria-hidden="true" style={{ flexShrink: 0, fontFamily: SANS, fontSize: 16, color: ACCENT }}>→</span>
+    </a>
+  )
+}
+
 type CuratorStats = {
   channels: { total: number; enabled: number }
   posts_raw: number
@@ -312,6 +343,26 @@ export default function CsAdmin() {
           >
             {loading ? "…" : "Обновить"}
           </button>
+        </div>
+
+        {/* Хаб редакции. Разделы жили по прямым URL, которые надо было помнить;
+            это единственная страница, откуда до них можно дойти кликом. Стоит
+            выше статистики намеренно: сюда заходят «поменять постер», а цифры
+            смотрят реже. */}
+        <div style={{ marginTop: 24, borderTop: `1px solid ${LINE}`, paddingTop: 20 }}>
+          <div style={{ fontFamily: MONO, fontSize: 11, letterSpacing: "0.1em", color: MUTE, textTransform: "uppercase" }}>Разделы редакции</div>
+          <div style={{ display: "grid", gap: 8, marginTop: 11 }}>
+            <HubLink
+              href={withAsUser("/cs/admin/week")}
+              title="Выбор недели"
+              sub="Постер дайджеста и раскладка — что увидят все"
+            />
+            <HubLink
+              href={withAsUser("/cs/admin/landing")}
+              title="Постеры лендинга"
+              sub="Четыре плаката в полосе на входном экране"
+            />
+          </div>
         </div>
 
         {err && (
