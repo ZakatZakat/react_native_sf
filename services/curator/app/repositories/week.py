@@ -4,6 +4,7 @@ exact same payload shape as the regular feed."""
 
 from __future__ import annotations
 
+import re
 from datetime import date, datetime, timedelta
 
 from sqlalchemy import delete, or_, select
@@ -18,6 +19,12 @@ def week_start(d: date | None = None) -> date:
     """Monday of the ISO week containing `d` (defaults to today, UTC)."""
     d = d or datetime.utcnow().date()
     return d - timedelta(days=d.weekday())
+
+
+def _norm_head(text: str) -> str:
+    """Normalised first line — the dedup fallback when a post has no media_hash."""
+    head = (text or "").strip().split("\n", 1)[0].lower()
+    return re.sub(r"[^0-9a-zа-яё]+", "", head)[:80]
 
 
 class WeekPickRepository:
@@ -94,7 +101,10 @@ class WeekPickRepository:
 
     async def list_candidates(self, limit: int = 40) -> list[dict]:
         """Upcoming approved Moscow events that HAVE a poster, ranked by
-        filter_score (quality signal) then soonest — the editor's shortlist."""
+        filter_score (quality signal) then soonest — the editor's shortlist.
+        Duplicates are collapsed: the same event gets reposted by one channel
+        and cross-posted by several, and every copy carries the same poster
+        sha256 + start time."""
         now = datetime.utcnow()
         q = (
             select(EventCurated, PostRaw)
@@ -102,10 +112,24 @@ class WeekPickRepository:
             .where(EventCurated.status == EventStatus.approved)
             .where(or_(EventCurated.event_time >= now, EventCurated.event_time.is_(None)))
             .order_by(EventCurated.filter_score.desc(), EventCurated.event_time.asc().nulls_last())
-            .limit(limit * 4)
+            # headroom: dedup below can drop a lot (one fest × 5 reposts)
+            .limit(limit * 8)
         )
         rows = (await self.s.execute(q)).all()
         # Keep only events with a usable poster (image suitability is the point),
         # filtered in Python to avoid JSON-array SQL portability quirks.
-        with_poster = [(ev, post) for ev, post in rows if post.media_urls][:limit]
-        return await self._items(with_poster)
+        with_poster = [(ev, post) for ev, post in rows if post.media_urls]
+        # Collapse copies. media_hash is the strong key (byte-identical poster);
+        # when it's missing fall back to the normalised first line. The ORDER BY
+        # above means the copy we keep is the best-scored one.
+        seen: set[tuple[str, object]] = set()
+        uniq: list[tuple[EventCurated, PostRaw]] = []
+        for ev, post in with_poster:
+            key = (post.media_hash or _norm_head(post.text), ev.event_time)
+            if key in seen:
+                continue
+            seen.add(key)
+            uniq.append((ev, post))
+            if len(uniq) >= limit:
+                break
+        return await self._items(uniq)
