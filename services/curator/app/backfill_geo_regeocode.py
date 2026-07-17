@@ -10,9 +10,11 @@ DB forever: the pipeline only geocodes on ingest. This sweep re-runs geocode() o
 every gazetteer-derived event and writes back whatever it now returns — including
 None, which clears the stale pin.
 
-Scope guard: touches ONLY rows whose location_meta carries a "venue" key, i.e. rows
-this gazetteer produced. Older agent/API rows (metro/street coords, no venue) are
-left alone — we can't reproduce them and must not wipe them.
+Scope guard: touches ONLY rows this gazetteer produced, i.e. location_meta.source in
+GAZETTEER_SOURCES. Do NOT gate on the presence of a "venue" key — the older
+agent geocoder sets one too (source="agent-geocode"/"agent-channel"/"agent", 576 rows
+in prod). Re-running geocode() over those would clear pins the gazetteer cannot
+reproduce and silently destroy data.
 
 Idempotent. Dry-run by default; --apply writes.
 
@@ -31,6 +33,11 @@ from app.config import Settings
 from app.db import create_engine, create_session_maker, session_scope
 from app.models import Channel, EventCurated, PostRaw
 from app.pipeline import gazetteer
+
+# Only these were written by gazetteer.geocode(), so only these can be safely
+# recomputed from it. Everything else (agent*) came from a one-off geocoder whose
+# output we cannot regenerate — clearing it would be data loss, not a fix.
+GAZETTEER_SOURCES = frozenset({"gazetteer", "gazetteer-channel"})
 
 
 async def main(apply: bool) -> None:
@@ -54,9 +61,11 @@ async def main(apply: bool) -> None:
 
         for ev, text, handle in rows:
             old = ev.location_meta or {}
+            if old.get("source") not in GAZETTEER_SOURCES:
+                continue  # legacy agent geo (it also carries a venue key) — never touch
             old_venue = old.get("venue")
             if not old_venue:
-                continue  # not ours (legacy agent/API geo) — never touch
+                continue
             scanned += 1
             geo = gazetteer.geocode(
                 text=text, location_text=ev.location_text, channel_handle=handle
