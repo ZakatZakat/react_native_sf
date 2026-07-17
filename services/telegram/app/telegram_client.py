@@ -13,7 +13,7 @@ from telethon import TelegramClient
 from telethon.errors import FloodWaitError
 from telethon.sessions import StringSession
 from telethon.tl.functions.channels import GetFullChannelRequest
-from telethon.tl.types import Message, MessageEntityTextUrl, MessageEntityMention
+from telethon.tl.types import Message, MessageEntityTextUrl, MessageEntityMention, PeerChannel
 
 from app.config import Settings
 
@@ -222,7 +222,16 @@ class TelegramService:
                     failed.append({**it, "reason": "bad message_id"})
                     continue
                 try:
-                    entity = await client.get_entity(channel)
+                    # Prefer the raw channel_id (it's already in the media filename):
+                    # PeerChannel resolves from the session's entity cache, while
+                    # get_entity(username) hits ResolveUsername — the method Telegram
+                    # flood-limits hardest (we ate a 4h wait doing it per item).
+                    raw_cid = it.get("channel_id")
+                    entity: Any
+                    if raw_cid:
+                        entity = PeerChannel(int(raw_cid))
+                    else:
+                        entity = await client.get_entity(channel)
                     msg = await client.get_messages(entity, ids=mid)
                     if isinstance(msg, list):
                         msg = msg[0] if msg else None

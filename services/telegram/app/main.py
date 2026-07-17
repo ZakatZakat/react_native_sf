@@ -84,6 +84,7 @@ async def ingest(body: IngestRequest, _: None = Depends(require_token)) -> dict:
 class RefetchItem(BaseModel):
     channel: str
     message_id: int
+    channel_id: int | None = None   # raw TG id from the media filename — avoids ResolveUsername
 
 
 class RefetchMediaRequest(BaseModel):
