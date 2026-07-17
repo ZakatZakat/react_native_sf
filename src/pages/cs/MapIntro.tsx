@@ -18,6 +18,7 @@ import { CS, FONT_SANS, FONT_MONO, useCsKeyframes, useOpenEvent } from "./shared
 import { CS_STYLE_LIGHT, applyCinematicSky } from "./csMapStyle"
 import { venueInfo, type VenueInfo } from "./venues"
 import { VENUE_FOOTPRINTS } from "./venueFootprints"
+import { weekMeta } from "./WeekDesigns"
 
 const MSK: [number, number] = [37.62, 55.745]
 
@@ -320,6 +321,7 @@ function footprintFeature(ring: [number, number][]): GeoJSON.Feature {
 
 export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: () => void }) {
   useCsKeyframes()
+  const wk = weekMeta()
   const openEvent = useOpenEvent()
   const openRef = useRef(openEvent); openRef.current = openEvent
 
@@ -859,7 +861,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         {headOpen ? (
           <div style={{ position: "relative", width: "100%", background: CS.W, border: `2.5px solid ${CS.K}`, boxShadow: `4px 4px 0 ${CS.K}`, padding: "12px 14px" }}>
             <button onClick={() => setHeadOpen(false)} aria-label="скрыть шапку" style={{ position: "absolute", top: 8, right: 8, width: 26, height: 26, border: `2px solid ${CS.K}`, background: CS.W, cursor: "pointer", fontSize: 13, fontWeight: 900, lineHeight: 1, color: CS.K, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
-            <div style={{ fontFamily: FONT_MONO, fontSize: 9, fontWeight: 700, letterSpacing: "0.24em", textTransform: "uppercase", color: "rgba(13,13,13,0.55)" }}>сначала — карта · WK 22</div>
+            <div style={{ fontFamily: FONT_MONO, fontSize: 9, fontWeight: 700, letterSpacing: "0.24em", textTransform: "uppercase", color: "rgba(13,13,13,0.55)" }}>сначала — карта · WK {wk.n}</div>
             <div style={{ fontFamily: FONT_SANS, fontWeight: 900, fontSize: 34, letterSpacing: "-0.045em", lineHeight: 0.9, color: CS.K, marginTop: 6 }}>Что рядом</div>
             <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap", marginTop: 11 }}>
               <span style={{ background: CS.B, color: "#fff", padding: "3px 9px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 10, letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{totalPlaced} событий · {zoneCount} районов</span>
