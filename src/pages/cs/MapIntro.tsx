@@ -885,15 +885,25 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
           const clusterName = activeCluster ? clusterLabel(activeCluster).name : ""
           const past = { display: "inline-flex", alignItems: "center", flexShrink: 0, background: CS.W, border: `2px solid ${CS.K}`, boxShadow: `2px 2px 0 ${CS.K}`, padding: "5px 9px", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "0.02em", textTransform: "uppercase" as const, color: CS.K }
           const now = { display: "inline-block", maxWidth: 176, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const, background: CS.K, color: "#fff", border: `2px solid ${CS.K}`, boxShadow: `2px 2px 0 ${CS.B}`, padding: "5px 9px", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "0.02em", textTransform: "uppercase" as const }
-          const sep = { fontSize: 18, color: CS.K, lineHeight: 1, margin: "0 4px" }
+          // Separator as SVG, not the «▸» glyph: the glyph renders thin and mushy,
+          // and unlike the crumbs (white fill + border) it sat as bare black on the
+          // busy map. Solid triangle + white halo (paintOrder: stroke draws the
+          // outline first, fill over it) so it reads at a glance, like the chips do.
+          const Sep = () => (
+            <svg width="11" height="14" viewBox="0 0 11 14" aria-hidden="true"
+                 style={{ display: "block", flexShrink: 0, margin: "0 1px" }}>
+              <path d="M1.5 1 L9.5 7 L1.5 13 Z" fill={CS.K} stroke={CS.W} strokeWidth="2.5"
+                    strokeLinejoin="round" paintOrder="stroke" />
+            </svg>
+          )
           return (
             <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 3 }}>
               <button onClick={() => setSelZone(null)} style={past}>Районы</button>
-              <span style={sep}>▸</span>
+              <Sep />
               {atCluster ? (
                 <>
                   <button onClick={() => setSelCluster(null)} style={past}>{zoneName}</button>
-                  <span style={sep}>▸</span>
+                  <Sep />
                   <span style={now}>{clusterName}</span>
                 </>
               ) : (
