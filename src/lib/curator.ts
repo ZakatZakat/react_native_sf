@@ -65,9 +65,15 @@ async function curatorFetch<T>(
   }
   if (auth) {
     const initData = readInitData()
-    if (!initData && DEV_USER_ID) {
-      // dev fallback
-      params.set("as_user", DEV_USER_ID)
+    if (!initData) {
+      // Browser fallback (curator must run with AUTH_DEV_MODE=true): send
+      // ?as_user=. An explicit ?as_user=<id> in the page URL wins — this is how
+      // an editor opens /cs/admin/week?as_user=<admin-id> in a plain desktop
+      // browser without Telegram. Otherwise fall back to the dev default.
+      let urlAsUser = ""
+      try { urlAsUser = new URLSearchParams(window.location.search).get("as_user") || "" } catch { /* noop */ }
+      const au = urlAsUser || DEV_USER_ID
+      if (au) params.set("as_user", au)
     }
   }
   const qs = params.toString() ? `?${params.toString()}` : ""
