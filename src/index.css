@@ -22,6 +22,33 @@ html.dark #root {
   background-color: #0a0a0a !important;
 }
 
+/* ── Телефонная рамка на широком экране ───────────────────────────
+   Экраны CS позиционируются position:fixed; inset:0 и рассчитаны на телефон,
+   поэтому на десктопе растягивались во всю ширину (тонкая полоса + пустота).
+   На телефоне (≤ порога) рамка не активна — всё как раньше, никакого transform,
+   чтобы не ловить баги fixed+100dvh в iOS-webview. Начиная с порога — колонка
+   телефонной ширины по центру; transform на .cs-frame делает fixed-детей
+   относительными самой рамки, а не вьюпорта. */
+.cs-frame {
+  min-height: 100dvh;
+}
+@media (min-width: 500px) {
+  html,
+  body,
+  #root {
+    background: #0d0d0d !important;
+    background-color: #0d0d0d !important;
+  }
+  .cs-frame {
+    width: 100%;
+    max-width: 460px;
+    margin: 0 auto;
+    overflow: hidden;
+    transform: translateZ(0);
+    box-shadow: 0 0 60px rgba(0, 0, 0, 0.55);
+  }
+}
+
 @keyframes tg-float-1 {
   0%,
   100% {

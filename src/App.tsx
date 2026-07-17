@@ -74,7 +74,6 @@ export default function App() {
     tg.expand?.()
   }, [tg])
 
-  const bg = "#FFFFFF"
   const fg = "#2D2A8C"
   const selectBg = "#FFFFFF"
   const selectBorder = "rgba(45,42,140,0.3)"
@@ -87,7 +86,9 @@ export default function App() {
   }, [location.pathname, location.search])
 
   return (
-    <Box minH="100dvh" bg={bg} color={fg}>
+    // bg transparent: на телефоне под рамкой белый #root, на широком экране —
+    // тёмный сурраунд из media-query в index.css (иначе белый Box перекрыл бы его).
+    <Box minH="100dvh" bg="transparent" color={fg}>
       {SHOW_DEV_NAV && (
         <Container maxW="container.md" py="4">
           <Flex align="center" gap="4">
@@ -126,9 +127,11 @@ export default function App() {
           </Flex>
         </Container>
       )}
-      <Container maxW="container.md" pb="8" px="0">
+      {/* Телефонная рамка: на широком экране — колонка телефонной ширины по
+          центру (см. .cs-frame в index.css), на телефоне — всё как есть. */}
+      <div className="cs-frame">
         <Outlet />
-      </Container>
+      </div>
     </Box>
   )
 }
