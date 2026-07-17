@@ -337,3 +337,27 @@ class WeekPick(Base):
     week_start: Mapped[date] = mapped_column(Date, nullable=False)  # Monday of the ISO week
     chosen_by: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)  # admin TG id
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), default=datetime.utcnow, nullable=False)
+
+
+# ────────────────────────────────────────────────────────────────────
+# Editorial landing posters — up to 4 manually chosen events whose posters
+# fill the landing thumbnail strip. One row per slot (0..3), upserted on slot.
+# If empty, the landing falls back to the auto triptych posters.
+# ────────────────────────────────────────────────────────────────────
+class LandingPick(Base):
+    __tablename__ = "landing_picks"
+    __table_args__ = (
+        UniqueConstraint("slot", name="uq_landing_pick_slot"),
+        {"schema": SCHEMA},
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    slot: Mapped[int] = mapped_column(Integer, nullable=False)  # 0..3
+    event_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey(f"{SCHEMA}.events_curated.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    chosen_by: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)  # admin TG id
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), default=datetime.utcnow, nullable=False)

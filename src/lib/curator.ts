@@ -193,4 +193,18 @@ export const Curator = {
     }),
   adminClearWeekPick: () =>
     curatorFetch<{ status: string }>("/admin/week/pick", { auth: true, method: "DELETE" }),
+
+  // Landing posters — up to 4 editor-chosen event posters for the strip
+  getLandingPicks: () => curatorFetch<FeedItem[]>("/me/landing"),
+  adminLandingCandidates: (limit = 40) =>
+    curatorFetch<FeedItem[]>("/admin/landing/candidates", { auth: true, query: { limit } }),
+  adminLandingCurrent: () => curatorFetch<FeedItem[]>("/admin/landing/current", { auth: true }),
+  adminSetLandingPick: (slot: number, eventId: number) =>
+    curatorFetch<FeedItem[]>("/admin/landing/pick", {
+      auth: true, method: "POST", body: JSON.stringify({ slot, event_id: eventId }),
+    }),
+  adminClearLandingPick: (slot?: number) =>
+    curatorFetch<{ status: string }>("/admin/landing/pick", {
+      auth: true, method: "DELETE", query: slot != null ? { slot } : undefined,
+    }),
 }

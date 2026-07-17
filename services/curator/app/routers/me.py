@@ -16,6 +16,7 @@ from app.repositories.me import (
     UserFeedbackRepository,
     UserInterestsRepository,
 )
+from app.repositories.landing import LandingPickRepository
 from app.repositories.week import WeekPickRepository
 
 router = APIRouter(prefix="/me", tags=["me"])
@@ -85,6 +86,18 @@ async def get_week_pick(
     editor hasn't picked one (the app then falls back to its auto top event)."""
     async with session_scope(sf) as s:
         return await WeekPickRepository(s).current_pick()
+
+
+# ── Landing posters — up to 4 editor-chosen event posters ──────────
+@router.get("/landing")
+async def get_landing_picks(
+    sf: async_sessionmaker[AsyncSession] = Depends(get_session_factory),
+) -> list[dict]:
+    """Editor-chosen posters for the landing strip (ordered by slot), or an
+    empty list when nothing is pinned (the app then falls back to the auto
+    triptych posters)."""
+    async with session_scope(sf) as s:
+        return await LandingPickRepository(s).current_picks()
 
 
 # ── Feedback ───────────────────────────────────────────────────────

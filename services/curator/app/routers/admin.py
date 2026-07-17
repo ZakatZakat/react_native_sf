@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 from app.auth import require_admin
 from app.db import session_scope
 from app.models import Channel, EventCurated, EventStatus, PostRaw
+from app.repositories.landing import LandingPickRepository
 from app.repositories.posts import ModerationRepository
 from app.repositories.week import WeekPickRepository
 
@@ -258,4 +259,52 @@ async def week_unpick(
 ) -> dict:
     async with session_scope(sf) as s:
         await WeekPickRepository(s).clear_pick()
+    return {"status": "ok"}
+
+
+# ── Landing posters — up to 4 manually chosen event posters ────────
+class LandingPickBody(BaseModel):
+    slot: int
+    event_id: int
+
+
+@router.get("/landing/candidates")
+async def landing_candidates(
+    limit: int = Query(40, ge=1, le=120),
+    _admin: int = Depends(require_admin),
+    sf: async_sessionmaker[AsyncSession] = Depends(get_session_factory),
+) -> list[dict]:
+    """Same shortlist as the week picker — upcoming events that HAVE a poster."""
+    async with session_scope(sf) as s:
+        return await LandingPickRepository(s).list_candidates(limit)
+
+
+@router.get("/landing/current")
+async def landing_current(
+    _admin: int = Depends(require_admin),
+    sf: async_sessionmaker[AsyncSession] = Depends(get_session_factory),
+) -> list[dict]:
+    async with session_scope(sf) as s:
+        return await LandingPickRepository(s).current_picks()
+
+
+@router.post("/landing/pick")
+async def landing_pick(
+    body: LandingPickBody,
+    admin_id: int = Depends(require_admin),
+    sf: async_sessionmaker[AsyncSession] = Depends(get_session_factory),
+) -> list[dict]:
+    async with session_scope(sf) as s:
+        return await LandingPickRepository(s).set_pick(body.slot, body.event_id, admin_id)
+
+
+@router.delete("/landing/pick")
+async def landing_unpick(
+    slot: int | None = Query(None, ge=0, le=3),
+    _admin: int = Depends(require_admin),
+    sf: async_sessionmaker[AsyncSession] = Depends(get_session_factory),
+) -> dict:
+    """Clear one slot (?slot=N) or all slots (no param)."""
+    async with session_scope(sf) as s:
+        await LandingPickRepository(s).clear_pick(slot)
     return {"status": "ok"}

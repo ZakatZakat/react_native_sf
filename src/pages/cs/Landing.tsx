@@ -14,11 +14,13 @@
  */
 
 import { useNavigate } from "@tanstack/react-router"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Box, Flex, Text } from "@chakra-ui/react"
 import { useCsKeyframes, CS, FONT_MONO, FONT_SANS } from "./shared"
 import { useDerived } from "./useJourney"
 import { weekMeta } from "./WeekDesigns"
+import { Curator } from "../../lib/curator"
+import { resolvePoster } from "./buildDerived"
 import { analytics } from "../../lib/analytics"
 import ColdOpenBar from "./ColdOpenBar"
 
@@ -156,6 +158,23 @@ export default function CsLanding() {
     while (out.length < 4) out.push(null)
     return out
   }, [base])
+  // Editor-chosen landing posters (GET /me/landing). When set, they replace the
+  // auto triptych in the strip; empty → keep the auto thumbs. Picked via
+  // /cs/admin/landing.
+  const [picked, setPicked] = useState<string[]>([])
+  useEffect(() => {
+    let live = true
+    Curator.getLandingPicks()
+      .then((items) => { if (live) setPicked((items || []).map((it) => resolvePoster(it)).filter((p): p is string => !!p)) })
+      .catch(() => { /* fall back to auto thumbs */ })
+    return () => { live = false }
+  }, [])
+  const strip = useMemo<(string | null)[]>(() => {
+    if (!picked.length) return thumbs
+    const out: (string | null)[] = picked.slice(0, 4)
+    while (out.length < 4) out.push(null)
+    return out
+  }, [picked, thumbs])
 
   const goNext = () => {
     analytics.track("cs.landing.enter", {})
@@ -239,7 +258,7 @@ export default function CsLanding() {
             {/* 4-poster thumbnail strip — posters shown WHOLE (contain, no crop);
                 a small inset + neutral mat frames the odd aspect ratios. */}
             <Box display="grid" mt="3" style={{ gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 7 }}>
-              {thumbs.map((p, i) => (
+              {strip.map((p, i) => (
                 <Box key={`${p ?? "none"}-${i}`} overflow="hidden" bg={CS.PAGE} style={{ aspectRatio: "3 / 4", border: `1.5px solid ${K}`, padding: 3, display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {p && (
                     <img
