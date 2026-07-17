@@ -8,11 +8,12 @@
  */
 
 import { useEffect, useMemo, useState } from "react"
-import { SK, FONT_SANS, FONT_MONO, POSTER_CELL_RATIO, POSTER_CELL_MAT } from "./shared"
+import { SK, FONT_SANS, FONT_MONO } from "./shared"
 import { toEv, resolvePoster, type Ev } from "./buildDerived"
 import { Curator } from "../../lib/curator"
 import type { FeedItem } from "../../lib/curator"
 import { weekMeta } from "./WeekDesigns"
+import { PosterRow } from "./PosterRow"
 
 const MAX = 4
 
@@ -93,21 +94,28 @@ export default function AdminLanding() {
         <div style={{ fontFamily: FONT_MONO, fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: SK.ink55, margin: "16px 0 9px" }}>
           как на лендинге · выбрано {chosen.length}/{MAX}
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 7 }}>
-          {Array.from({ length: MAX }).map((_, i) => {
-            const it = chosen[i]
-            const p = it ? toEv(it).p : null
-            return (
-              <div key={i} style={{ position: "relative", aspectRatio: POSTER_CELL_RATIO, border: `1.5px solid ${SK.ink}`, background: POSTER_CELL_MAT, padding: 3, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-                {p ? <img src={p} alt="" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", display: "block" }} />
-                   : <span style={{ fontFamily: FONT_MONO, fontSize: 9, letterSpacing: "0.08em", color: SK.ink55 }}>слот {i + 1}</span>}
-                {it && (
-                  <button onClick={() => toggle(it)} aria-label="убрать" style={{ position: "absolute", top: 3, right: 3, width: 20, height: 20, border: `1.5px solid ${SK.ink}`, background: SK.paper, cursor: "pointer", fontSize: 11, fontWeight: 900, lineHeight: 1, color: SK.ink, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>✕</button>
-                )}
-              </div>
-            )
-          })}
-        </div>
+        {/* Тот же PosterRow, что и на лендинге — превью не может с ним разойтись.
+            Пустых слотов нет: строка показывает ровно то, что выбрано. */}
+        {chosen.length > 0 ? (
+          <PosterRow
+            posters={chosen.map((it) => toEv(it).p)}
+            gap={6}
+            border={`1.5px solid ${SK.ink}`}
+            overlay={(i) => (
+              <button
+                onClick={() => toggle(chosen[i])}
+                aria-label="убрать"
+                style={{ position: "absolute", top: 3, right: 3, width: 20, height: 20, border: `1.5px solid ${SK.ink}`, background: SK.paper, cursor: "pointer", fontSize: 11, fontWeight: 900, lineHeight: 1, color: SK.ink, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
+              >
+                ✕
+              </button>
+            )}
+          />
+        ) : (
+          <div style={{ border: `1.5px dashed ${SK.ink55}`, padding: "22px 12px", textAlign: "center", fontFamily: FONT_MONO, fontSize: 10, letterSpacing: "0.08em", color: SK.ink55 }}>
+            ничего не выбрано — на лендинге будут авто-постеры
+          </div>
+        )}
 
         <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
           <button

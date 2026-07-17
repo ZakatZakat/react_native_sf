@@ -16,11 +16,12 @@
 import { useNavigate } from "@tanstack/react-router"
 import { useEffect, useMemo, useState } from "react"
 import { Box, Flex, Text } from "@chakra-ui/react"
-import { useCsKeyframes, CS, FONT_MONO, FONT_SANS, POSTER_CELL_RATIO, POSTER_CELL_MAT } from "./shared"
+import { useCsKeyframes, CS, FONT_MONO, FONT_SANS } from "./shared"
 import { useDerived } from "./useJourney"
 import { weekMeta } from "./WeekDesigns"
 import { Curator } from "../../lib/curator"
 import { resolvePoster } from "./buildDerived"
+import { PosterRow } from "./PosterRow"
 import { analytics } from "../../lib/analytics"
 import ColdOpenBar from "./ColdOpenBar"
 
@@ -255,21 +256,11 @@ export default function CsLanding() {
               </Text>
             </Flex>
 
-            {/* 4-poster thumbnail strip — posters shown WHOLE (contain, no crop);
-                a small inset + neutral mat frames the odd aspect ratios. */}
-            <Box display="grid" mt="3" style={{ gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 7 }}>
-              {strip.map((p, i) => (
-                <Box key={`${p ?? "none"}-${i}`} overflow="hidden" style={{ background: POSTER_CELL_MAT, aspectRatio: POSTER_CELL_RATIO, border: `1.5px solid ${K}`, padding: 3, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {p && (
-                    <img
-                      src={p}
-                      alt=""
-                      loading="lazy"
-                      style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", display: "block" }}
-                    />
-                  )}
-                </Box>
-              ))}
+            {/* Полоса плакатов: у каждого своя пропорция, поля нет (см. PosterRow).
+                Пустые слоты не рисуем — чёрная дыра вместо плаката хуже, чем
+                строка из трёх. */}
+            <Box mt="3">
+              <PosterRow posters={strip.filter((p): p is string => !!p)} gap={6} border={`1.5px solid ${K}`} />
             </Box>
 
             {/* footer — ▮▮▮ · tagline · «142 событий» */}
