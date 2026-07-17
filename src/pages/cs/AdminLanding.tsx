@@ -8,7 +8,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react"
-import { SK, FONT_SANS, FONT_MONO } from "./shared"
+import { SK, FONT_SANS, FONT_MONO, POSTER_CELL_RATIO, POSTER_CELL_MAT } from "./shared"
 import { toEv, resolvePoster, type Ev } from "./buildDerived"
 import { Curator } from "../../lib/curator"
 import type { FeedItem } from "../../lib/curator"
@@ -98,7 +98,7 @@ export default function AdminLanding() {
             const it = chosen[i]
             const p = it ? toEv(it).p : null
             return (
-              <div key={i} style={{ position: "relative", aspectRatio: "3 / 4", border: `1.5px solid ${SK.ink}`, background: "#e8e8e4", padding: 3, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+              <div key={i} style={{ position: "relative", aspectRatio: POSTER_CELL_RATIO, border: `1.5px solid ${SK.ink}`, background: POSTER_CELL_MAT, padding: 3, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
                 {p ? <img src={p} alt="" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", display: "block" }} />
                    : <span style={{ fontFamily: FONT_MONO, fontSize: 9, letterSpacing: "0.08em", color: SK.ink55 }}>слот {i + 1}</span>}
                 {it && (
