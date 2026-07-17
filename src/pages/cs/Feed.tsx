@@ -671,7 +671,7 @@ type FeedBtn = "a" | "b" | "c"
 export default function CsFeed() {
   const navigate = useNavigate()
   const { derived } = useDerived()
-  const { name } = useJourneyState()
+  const { displayName: name } = useJourneyState()
   const search = useSearch({ strict: false }) as Record<string, string | undefined>
 
   // Legacy editorial feed (pre-v3 Cover/Shelves/Magazine/...) is preserved

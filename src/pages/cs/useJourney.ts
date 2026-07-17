@@ -12,6 +12,7 @@
 import { useEffect, useState } from "react"
 import { Curator } from "../../lib/curator"
 import { analytics } from "../../lib/analytics"
+import { tgUserName } from "../../lib/telegram"
 import { buildDerived, EMPTY_DERIVED, type DerivedData } from "./buildDerived"
 
 const LS_NAME = "cs.journey.name"
@@ -110,6 +111,15 @@ function broadcast() {
 export function useJourneyState() {
   const [name, _setName] = useState<string>(() => readLS<string>(LS_NAME, ""))
   const [profile, _setProfile] = useState<Record<string, number>>(() => readLS<Record<string, number>>(LS_PROFILE, {}))
+  // The Telegram account's own name — what the UI should greet you by. The
+  // bridge can attach after first paint, so re-check once on mount.
+  const [tgName, _setTgName] = useState<string>(() => tgUserName())
+
+  useEffect(() => {
+    if (tgName) return
+    const t = setTimeout(() => _setTgName(tgUserName()), 400)
+    return () => clearTimeout(t)
+  }, [tgName])
 
   useEffect(() => {
     const sync = () => {
@@ -135,7 +145,11 @@ export function useJourneyState() {
     _setName(""); _setProfile({}); broadcast()
   }
 
-  return { name, setName, profile, setProfile, clear }
+  // Greet by the Telegram account name; the value typed on /cs/name is only a
+  // fallback (prod skips that step, so it's usually a stale leftover).
+  const displayName = tgName || name
+
+  return { name, displayName, setName, profile, setProfile, clear }
 }
 
 /** Seed profile used when the user opens a downstream step (summary/feed)

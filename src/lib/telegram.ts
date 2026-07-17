@@ -6,14 +6,27 @@
  * browser (dev / web) we fall back to opening the link in a new tab.
  */
 
+type TgUser = { first_name?: string; last_name?: string; username?: string }
+
 type TgWebApp = {
   openTelegramLink?: (url: string) => void
   openLink?: (url: string) => void
+  initDataUnsafe?: { user?: TgUser }
 }
 
 function webApp(): TgWebApp | undefined {
   if (typeof window === "undefined") return undefined
   return (window as unknown as { Telegram?: { WebApp?: TgWebApp } }).Telegram?.WebApp
+}
+
+/** The signed-in Telegram account's display name, or "" outside Telegram.
+ *  Prefer this over the name typed on /cs/name: prod skips that step, so the
+ *  stored value is usually a stale leftover from an old session. */
+export function tgUserName(): string {
+  const u = webApp()?.initDataUnsafe?.user
+  if (!u) return ""
+  const full = [u.first_name, u.last_name].filter(Boolean).join(" ").trim()
+  return full || (u.username || "").trim()
 }
 
 /** Bare channel username from a stored handle ("@garagemca", "garagemca", or a

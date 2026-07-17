@@ -58,7 +58,7 @@ export default function CsProfile() {
 function ProfileInner() {
   const navigate = useNavigate()
   const { derived } = useDerived()
-  const { name } = useJourneyState()
+  const { displayName: name } = useJourneyState()
   const going = useGoing()
 
   const safeName = (name || "Гость").trim()
