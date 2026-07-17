@@ -236,16 +236,17 @@ export default function CsLanding() {
               </Text>
             </Flex>
 
-            {/* 4-poster thumbnail strip */}
-            <Box display="grid" mt="3" style={{ gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 4 }}>
+            {/* 4-poster thumbnail strip — posters shown WHOLE (contain, no crop);
+                a small inset + neutral mat frames the odd aspect ratios. */}
+            <Box display="grid" mt="3" style={{ gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 7 }}>
               {thumbs.map((p, i) => (
-                <Box key={`${p ?? "none"}-${i}`} overflow="hidden" bg={CS.PAGE} style={{ aspectRatio: "3 / 4", border: `1.5px solid ${K}` }}>
+                <Box key={`${p ?? "none"}-${i}`} overflow="hidden" bg={CS.PAGE} style={{ aspectRatio: "3 / 4", border: `1.5px solid ${K}`, padding: 3, display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {p && (
                     <img
                       src={p}
                       alt=""
                       loading="lazy"
-                      style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                      style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", display: "block" }}
                     />
                   )}
                 </Box>
