@@ -380,3 +380,22 @@ class UiVariant(Base):
     variant: Mapped[str] = mapped_column(String(64), nullable=False)  # "auto" | id варианта
     chosen_by: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)  # admin TG id
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), default=datetime.utcnow, nullable=False)
+
+
+# ────────────────────────────────────────────────────────────────────
+# Пожелания / фидбэк — свободный текст от пользователя мини-аппа. Привязан к
+# Telegram user_id (+ имя для читаемости в БД), чтобы можно было найти, кто что
+# написал. Отдельно от user_feedback (там only like/hide/save по событиям).
+# ────────────────────────────────────────────────────────────────────
+class FeedbackNote(Base):
+    __tablename__ = "feedback_notes"
+    __table_args__ = (
+        Index("ix_feedback_notes_user", "user_id"),
+        {"schema": SCHEMA},
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)  # Telegram id
+    user_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)  # @username / имя, для удобства
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), default=datetime.utcnow, nullable=False)

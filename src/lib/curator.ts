@@ -129,6 +129,14 @@ export const Curator = {
       },
     }),
 
+  // Free-text feedback / пожелания — tied to the caller's Telegram id
+  sendFeedbackNote: (text: string, name?: string) =>
+    curatorFetch<{ status: string }>("/me/feedback-note", {
+      auth: true,
+      method: "POST",
+      body: JSON.stringify({ text, name }),
+    }),
+
   // Feedback
   feedback: (eventId: number | string, action: "like" | "hide" | "save" | "dismiss") =>
     curatorFetch(`/me/feedback/${eventId}`, {

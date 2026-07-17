@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 
 from app.auth import require_admin
 from app.db import session_scope
-from app.models import Channel, EventCurated, EventStatus, PostRaw
+from app.models import Channel, EventCurated, EventStatus, FeedbackNote, PostRaw
 from app.repositories.landing import LandingPickRepository
 from app.repositories.ui_variants import UiVariantRepository
 from app.repositories.posts import ModerationRepository
@@ -140,6 +140,32 @@ async def reject_event(
         except ValueError as e:
             raise HTTPException(404, str(e))
     return {"status": "rejected", "event_id": event_id, "reason": body.reason}
+
+
+# ── Пожелания / фидбэк пользователей ───────────────────────────────
+@router.get("/feedback-notes")
+async def feedback_notes(
+    user_id: int | None = Query(None, description="filter to one Telegram id"),
+    limit: int = Query(100, ge=1, le=500),
+    _admin: int = Depends(require_admin),
+    sf: async_sessionmaker[AsyncSession] = Depends(get_session_factory),
+) -> list[dict]:
+    """Newest-first free-text feedback. Pass ?user_id= to see one user's notes."""
+    async with session_scope(sf) as s:
+        q = select(FeedbackNote).order_by(FeedbackNote.created_at.desc()).limit(limit)
+        if user_id is not None:
+            q = q.where(FeedbackNote.user_id == user_id)
+        rows = (await s.execute(q)).scalars().all()
+        return [
+            {
+                "id": r.id,
+                "user_id": r.user_id,
+                "user_name": r.user_name,
+                "text": r.text,
+                "created_at": r.created_at.isoformat(),
+            }
+            for r in rows
+        ]
 
 
 # ── Stats ──────────────────────────────────────────────────────────

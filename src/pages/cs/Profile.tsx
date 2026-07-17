@@ -20,6 +20,7 @@ import {
   GoingProvider, GoingAgenda, EventModalProvider, useGoing,
 } from "./shared"
 import { useDerived, useJourneyState } from "./useJourney"
+import { FeedbackButton } from "./FeedbackModal"
 
 /** Taste spectrum. When the user has added ≥2 categories of events, it's their
  *  REAL taste (frequency of added events per category). Otherwise it falls back
@@ -186,7 +187,8 @@ function ProfileInner() {
         </div>
 
         {/* Footer */}
-        <div style={{ position: "relative", flexShrink: 0, padding: "12px 18px 18px", borderTop: `2px solid ${CS.K}`, background: CS.W }}>
+        <div style={{ position: "relative", flexShrink: 0, display: "flex", flexDirection: "column", gap: 10, padding: "12px 18px 18px", borderTop: `2px solid ${CS.K}`, background: CS.W }}>
+          <FeedbackButton />
           <button
             onClick={() => navigate({ to: "/cs/swipe" })}
             style={{

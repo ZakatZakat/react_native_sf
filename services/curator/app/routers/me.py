@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 
 from app.auth import current_user_id, optional_current_user_id
 from app.db import session_scope
-from app.models import FeedbackAction
+from app.models import FeedbackAction, FeedbackNote
 from app.repositories.me import (
     PersonalizedFeedRepository,
     UserFeedbackRepository,
@@ -99,6 +99,32 @@ async def get_landing_picks(
     triptych posters)."""
     async with session_scope(sf) as s:
         return await LandingPickRepository(s).current_picks()
+
+
+# ── Free-text feedback / пожелания ─────────────────────────────────
+class FeedbackNoteBody(BaseModel):
+    text: str
+    name: str | None = None  # @username / display name, stored for readability
+
+
+@router.post("/feedback-note")
+async def post_feedback_note(
+    body: FeedbackNoteBody,
+    user_id: int = Depends(current_user_id),
+    sf: async_sessionmaker[AsyncSession] = Depends(get_session_factory),
+) -> dict:
+    """Store a user's free-text wish/feedback, tied to their Telegram id so an
+    admin can find who wrote what (SELECT ... WHERE user_id = ...)."""
+    text = (body.text or "").strip()
+    if not text:
+        raise HTTPException(400, "empty feedback")
+    async with session_scope(sf) as s:
+        s.add(FeedbackNote(
+            user_id=user_id,
+            user_name=((body.name or "").strip()[:255] or None),
+            text=text[:4000],
+        ))
+    return {"status": "ok"}
 
 
 # ── Feedback ───────────────────────────────────────────────────────
