@@ -230,7 +230,9 @@ export default function CsLanding() {
             position="absolute"
             left={{ base: "12px", sm: "16px" }}
             right={{ base: "12px", sm: "16px" }}
-            top={{ base: "11%", sm: "12%" }}
+            // Поднято с 11%/12%: карточка выросла на ряд постеров (4 → два ряда) и
+            // низом почти упиралась в кнопку «Запустить» на невысоких экранах.
+            top={{ base: "6%", sm: "8%" }}
             bg={W}
             border={`3px solid ${K}`}
             zIndex={5}
