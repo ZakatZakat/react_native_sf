@@ -178,12 +178,69 @@ class TelegramService:
         channel_id = getattr(message.peer_id, "channel_id", None) or 0
         filename = f"{channel_id}_{message.id}{suffix}"
         dest = self.media_root / filename
-        if dest.exists():
+        # Treat an EMPTY file as "not cached". Telethon creates the destination
+        # up-front and streams into it, so a download that dies midway (FloodWait,
+        # timeout, media gone) leaves 0 bytes behind — and a bare exists() check
+        # would then serve that empty file forever and never retry.
+        if dest.exists() and dest.stat().st_size > 0:
             return [f"/media/{filename}"]
-        path = await client.download_media(message, file=str(dest))
-        if path:
-            return [f"/media/{Path(path).name}"]
-        return []
+        try:
+            path = await client.download_media(message, file=str(dest))
+        except Exception as e:
+            logger.warning("Media download failed %s: %s", filename, e)
+            path = None
+        # Drop empty/partial leftovers so the next poll retries instead of
+        # pinning the post to a broken image.
+        if not path or not dest.exists() or dest.stat().st_size == 0:
+            try:
+                if dest.exists():
+                    dest.unlink()
+            except OSError:
+                pass
+            return []
+        return [f"/media/{Path(path).name}"]
+
+    async def refetch_media(self, items: list[dict[str, Any]], pause: float = 0.4) -> dict[str, Any]:
+        """Re-download media for specific (channel, message_id) pairs.
+
+        Repairs posters that were left as 0-byte files by a download that died
+        midway: those are invisible to the app (served as 200 with an empty
+        body) and the poll loop never revisits old messages, so they need an
+        explicit nudge. Safe to re-run — `_collect_media` skips anything that is
+        already on disk with a non-zero size."""
+        self.media_root.mkdir(parents=True, exist_ok=True)
+        client = self._create_client()
+        await self._start_client(client)
+        repaired: list[dict[str, Any]] = []
+        failed: list[dict[str, Any]] = []
+        async with client:
+            for it in items:
+                channel = str(it.get("channel", "")).strip().lstrip("@")
+                try:
+                    mid = int(it.get("message_id"))
+                except (TypeError, ValueError):
+                    failed.append({**it, "reason": "bad message_id"})
+                    continue
+                try:
+                    entity = await client.get_entity(channel)
+                    msg = await client.get_messages(entity, ids=mid)
+                    if isinstance(msg, list):
+                        msg = msg[0] if msg else None
+                    if msg is None or not getattr(msg, "media", None):
+                        failed.append({"channel": channel, "message_id": mid, "reason": "message or media gone"})
+                        continue
+                    urls = await self._collect_media(client, msg)
+                    if urls:
+                        repaired.append({"channel": channel, "message_id": mid, "media": urls[0]})
+                    else:
+                        failed.append({"channel": channel, "message_id": mid, "reason": "download failed"})
+                except FloodWaitError as e:
+                    failed.append({"channel": channel, "message_id": mid, "reason": f"flood wait {e.seconds}s"})
+                    await asyncio.sleep(min(e.seconds, 30))
+                except Exception as e:
+                    failed.append({"channel": channel, "message_id": mid, "reason": str(e)[:140]})
+                await asyncio.sleep(pause)
+        return {"requested": len(items), "repaired": repaired, "failed": failed}
 
     def _message_to_payload(self, channel: str, message: Message, media_urls: list[str]) -> dict[str, Any]:
         published_at = (

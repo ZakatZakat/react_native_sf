@@ -81,6 +81,24 @@ async def ingest(body: IngestRequest, _: None = Depends(require_token)) -> dict:
     )
 
 
+class RefetchItem(BaseModel):
+    channel: str
+    message_id: int
+
+
+class RefetchMediaRequest(BaseModel):
+    items: list[RefetchItem]
+    pause: float = 0.4
+
+
+@app.post("/refetch-media")
+async def refetch_media(body: RefetchMediaRequest, _: None = Depends(require_token)) -> dict:
+    """Re-download media for given (channel, message_id) pairs — repairs posters
+    left as 0-byte files by a download that died midway. The poll loop only
+    walks new messages, so old broken ones need this explicit nudge."""
+    return await service.refetch_media([i.model_dump() for i in body.items], pause=body.pause)
+
+
 DEFAULT_EVENT_KEYWORDS = [
     "ивент", "встреча", "март", "апр", "мая", "июн", "июл", "сент", "октяб", "нояб", "дек",
     "swap", "маркет", "фестиваль", "концерт", "мастер-класс", "дата", "воскресенье", "суббот",
