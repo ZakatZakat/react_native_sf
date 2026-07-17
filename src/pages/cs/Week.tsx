@@ -21,7 +21,9 @@ import { Curator } from "../../lib/curator"
 import { analytics } from "../../lib/analytics"
 import { WeekDesign, WEEK_VARIANTS, weekMeta, type WeekVariant } from "./WeekDesigns"
 
-const AUTO_MS = 1700
+// Сколько держим экран «Неделя» до авто-перехода в ленту. Тап по экрану
+// переходит раньше; отдельной кнопки нет — экран сам открывается и закрывается.
+const AUTO_MS = 2700
 
 export default function CsWeek() {
   const navigate = useNavigate()

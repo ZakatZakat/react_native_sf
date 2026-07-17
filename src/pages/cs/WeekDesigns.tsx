@@ -48,12 +48,6 @@ function Kicker({ children, color }: { children: React.ReactNode; color?: string
   )
 }
 
-const ctaBlue: React.CSSProperties = {
-  width: "100%", padding: "15px 18px", border: "none", background: SK.blue, color: "#fff", cursor: "pointer",
-  fontFamily: FONT_SANS, fontWeight: 900, fontSize: 15, letterSpacing: "0.04em", textTransform: "uppercase",
-  display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 9,
-}
-
 export function WeekDesign({
   variant, hero, trio = [], wk, lead, eventsCount, still = false,
 }: {
@@ -81,7 +75,6 @@ export function WeekDesign({
           <div style={{ fontWeight: 900, fontSize: 84, lineHeight: 0.82, letterSpacing: "-0.05em", ...anim(0.16) }}>{wk.n}</div>
           <p style={{ fontSize: 13.5, lineHeight: 1.5, color: "rgba(255,255,255,0.85)", marginTop: 10, ...anim(0.24) }}>{lead}</p>
           <div style={{ flex: 1 }} />
-          <button style={{ ...ctaBlue, ...anim(0.34) }}>Открыть ленту →</button>
         </div>
       </div>
     )
@@ -118,8 +111,7 @@ export function WeekDesign({
         <div style={{ position: "absolute", inset: 0, padding: "30px 22px 22px", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
           <div style={anim(0.12)}><Kicker color={SK.blue}>CitySignal · неделя</Kicker></div>
           <div style={{ fontWeight: 900, fontSize: 92, lineHeight: 0.78, letterSpacing: "-0.06em", ...anim(0.18) }}>WK<br />{wk.n}</div>
-          <p style={{ fontSize: 13.5, lineHeight: 1.5, color: "rgba(255,255,255,0.85)", margin: "12px 0 16px", ...anim(0.26) }}>{lead}</p>
-          <button style={{ ...ctaBlue, ...anim(0.34) }}>Открыть ленту →</button>
+          <p style={{ fontSize: 13.5, lineHeight: 1.5, color: "rgba(255,255,255,0.85)", margin: "12px 0 0", ...anim(0.26) }}>{lead}</p>
         </div>
       </div>
     )
@@ -139,9 +131,6 @@ export function WeekDesign({
       <div style={{ position: "absolute", left: 0, right: 0, top: "50%", transform: "translateY(-50%)", background: SK.blue, color: "#fff", padding: "14px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", ...anim(0.2) }}>
         <span style={{ fontWeight: 900, fontSize: 30, letterSpacing: "-0.03em" }}>WEEK {wk.n}</span>
         <span style={{ fontFamily: FONT_MONO, fontSize: 10, letterSpacing: "0.08em", textAlign: "right" }}>{wk.dates}<br />{eventsCount} событий</span>
-      </div>
-      <div style={{ position: "absolute", left: 20, right: 20, bottom: 20, ...anim(0.32) }}>
-        <button style={{ ...ctaBlue }}>Открыть ленту →</button>
       </div>
     </div>
   )
