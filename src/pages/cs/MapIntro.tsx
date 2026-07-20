@@ -14,6 +14,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import maplibregl from "maplibre-gl"
 import "maplibre-gl/dist/maplibre-gl.css"
 import type { Ev } from "./buildDerived"
+import { resolveMedia } from "../pipe/shared"
 import { CS, FONT_SANS, FONT_MONO, useCsKeyframes, useOpenEvent } from "./shared"
 import { CS_STYLE_LIGHT, applyCinematicSky } from "./csMapStyle"
 import { venueInfo, type VenueInfo } from "./venues"
@@ -218,8 +219,11 @@ function eventStackHTML(members: Ev[], i: number): string {
 
 /** The place card (left) — rebuilt ONLY when the venue changes. */
 function placeCardHTML(vi: VenueInfo): string {
+  // Фото места — через resolveMedia (как постеры): добавляет медиа-базу, иначе
+  // сырой "/media/venues/..." резолвился в текущий origin и на dev 404-ил.
+  const img = resolveMedia(vi.img ?? undefined)
   return `<div class="cs-deck-place">` +
-    (vi.img ? `<div class="cs-deck-place-img"><img class="cs-deck-place-bg" src="${esc(vi.img)}" alt=""/><img class="cs-deck-place-fg" src="${esc(vi.img)}" alt=""/></div>` : "") +
+    (img ? `<div class="cs-deck-place-img"><img class="cs-deck-place-bg" src="${esc(img)}" alt=""/><img class="cs-deck-place-fg" src="${esc(img)}" alt=""/></div>` : "") +
     `<div class="cs-deck-place-body">` +
       `<div class="cs-deck-place-kind">место · ${esc(vi.kind)}</div>` +
       `<div class="cs-deck-place-name">${esc(vi.name)}</div>` +
@@ -383,45 +387,11 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   // ground point. Runs every map frame (via the `render` event) so it tracks
   // pan/zoom. Showing every card's line at once was a scary starburst when many
   // events share one building; one thin line for the card you're on is clean.
+  // Пунктирные выноски-стрелки от карточки к дому убраны по просьбе — ничего не
+  // рисуем. Здание и так подсвечено синим, отдельная стрелка избыточна.
   const drawLeaders = () => {
-    const map = mapRef.current, svg = leaderSvgRef.current
-    if (!map || !svg) return
-    const hide = () => {
-      const n = leaderNodesRef.current
-      if (n) { n.line.style.display = "none"; n.poly.style.display = "none" }
-    }
-    // No leader while the deck is hidden («Центрировать карту») — otherwise the
-    // dashed line keeps drawing from the invisible card to the building.
-    if (deckHiddenRef.current) return hide()
-    const ld = leadersRef.current[0]
-    if (!ld) return hide()
-    const a = map.project([ld.card[1], ld.card[0]])     // card anchor (bottom of card)
-    const b = map.project([ld.target[1], ld.target[0]]) // building ground point
-    const dx = b.x - a.x, dy = b.y - a.y
-    const len = Math.hypot(dx, dy)
-    if (len < 16) return hide() // card on its building
-    const ux = dx / len, uy = dy / len
-    const hx = b.x - ux * 8, hy = b.y - uy * 8 // arrowhead base, backed off the tip
-    const px = -uy, py = ux, w = 4
-    const f = (n: number) => n.toFixed(1)
-    // Build the two leader nodes ONCE, then only mutate their geometry attrs on
-    // each frame — reassigning svg.innerHTML re-parsed the SVG markup ~60×/sec
-    // during a Level-2 pan.
-    let nodes = leaderNodesRef.current
-    if (!nodes) {
-      const NS = "http://www.w3.org/2000/svg"
-      const line = document.createElementNS(NS, "line")
-      line.setAttribute("stroke", "#0D0D0D"); line.setAttribute("stroke-width", "1.75")
-      line.setAttribute("stroke-dasharray", "1 4"); line.setAttribute("stroke-linecap", "round")
-      const poly = document.createElementNS(NS, "polygon")
-      poly.setAttribute("fill", "#0D0D0D")
-      svg.appendChild(line); svg.appendChild(poly)
-      nodes = leaderNodesRef.current = { line, poly }
-    }
-    nodes.line.style.display = ""; nodes.poly.style.display = ""
-    nodes.line.setAttribute("x1", f(a.x)); nodes.line.setAttribute("y1", f(a.y))
-    nodes.line.setAttribute("x2", f(hx)); nodes.line.setAttribute("y2", f(hy))
-    nodes.poly.setAttribute("points", `${f(b.x)},${f(b.y)} ${f(hx + px * w)},${f(hy + py * w)} ${f(hx - px * w)},${f(hy - py * w)}`)
+    const n = leaderNodesRef.current
+    if (n) { n.line.style.display = "none"; n.poly.style.display = "none" }
   }
   const drawLeadersRef = useRef(drawLeaders); drawLeadersRef.current = drawLeaders
 
@@ -523,7 +493,13 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
     if (wrap.dataset.venue !== vk) {
       const slot = wrap.querySelector(".cs-deck-place-slot")
       const vi = venueInfo(vk)
-      if (slot) slot.innerHTML = vi ? placeCardHTML(vi) : ""
+      if (slot) {
+        slot.innerHTML = vi ? placeCardHTML(vi) : ""
+        // Если фото места 404-ит — прячем блок картинки целиком, без битой иконки.
+        const imgBox = slot.querySelector(".cs-deck-place-img") as HTMLElement | null
+        imgBox?.querySelectorAll("img").forEach((im) =>
+          im.addEventListener("error", () => { imgBox.style.display = "none" }))
+      }
       wrap.dataset.venue = vk
     }
     // Event card + counter — always update on paging.
