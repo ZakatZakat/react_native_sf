@@ -81,12 +81,12 @@ function zoneBubbleEl(zone: Zone, evs: Ev[], onClick: (id: string) => void): HTM
       `<div class="cs-zone-dot"></div>`
     return el // no click handler — empty districts are just labels
   }
-  const fan = evs.slice(0, 3)
+  const fan = evs.filter((e) => e.p).slice(0, 3) // только с постером — без пустых белых карточек
   const rots = [-14, 0, 14]
   const single = fan.length === 1
   // a lone card sits upright and centred (no fan tilt/offset)
   const thumbs = fan.map((e, i) =>
-    `<span class="cs-zfan-card" style="--zr:${single ? 0 : rots[i] || 0}deg;--zz:${single ? 1 : i}">${e.p ? `<img src="${esc(e.p)}" alt=""/>` : ""}</span>`,
+    `<span class="cs-zfan-card" style="--zr:${single ? 0 : rots[i] || 0}deg;--zz:${single ? 1 : i}"><img src="${esc(e.p as string)}" alt=""/></span>`,
   ).join("")
   el.className = "cs-zone"
   el.innerHTML =
@@ -94,8 +94,12 @@ function zoneBubbleEl(zone: Zone, evs: Ev[], onClick: (id: string) => void): HTM
     `<div class="cs-zone-bubble"><div class="cs-zfan">${thumbs}<span class="cs-zone-count">${evs.length}</span></div>` +
     `<div class="cs-zone-name">${zone.t}</div></div>` +
     `<div class="cs-zone-dot"></div>`
-  // a bubble poster that 404s → hide it in place (no global bad-image tracking)
-  el.querySelectorAll("img").forEach((im) => im.addEventListener("error", () => { (im as HTMLElement).style.display = "none" }))
+  // Постер, который 404-ит → прячем всю КАРТОЧКУ, а не только <img> (иначе
+  // остаётся белый span). Фильтр e.p выше убирает без-постерные, onError — битые URL.
+  el.querySelectorAll("img").forEach((im) => im.addEventListener("error", () => {
+    const card = (im.closest(".cs-zfan-card") as HTMLElement | null) ?? (im as HTMLElement)
+    card.style.display = "none"
+  }))
   el.addEventListener("click", (e) => { e.stopPropagation(); onClick(zone.id) })
   return el
 }
@@ -150,11 +154,11 @@ function clusterByProximity(evs: Ev[], radiusM = 250): Cluster[] {
  *  (matches the numbered list in the sheet) + the event count + a place label.
  *  A lone poster sits upright and centred (no fan tilt). */
 function clusterFanEl(cl: Cluster, gi: number): HTMLElement {
-  const fan = cl.members.slice(0, 3)
+  const fan = cl.members.filter((e) => e.p).slice(0, 3) // только с постером — без белых карточек
   const single = fan.length === 1
   const rots = [-12, 0, 12]
   const thumbs = fan.map((e, i) =>
-    `<span class="cs-clu-card" style="--zr:${single ? 0 : (rots[i] || 0)}deg;--zz:${single ? 1 : i}">${e.p ? `<img src="${esc(e.p)}" alt="" data-eid="${esc(e.id)}"/>` : ""}</span>`,
+    `<span class="cs-clu-card" style="--zr:${single ? 0 : (rots[i] || 0)}deg;--zz:${single ? 1 : i}"><img src="${esc(e.p as string)}" alt="" data-eid="${esc(e.id)}"/></span>`,
   ).join("")
   const { name } = clusterLabel(cl)
   const wrap = document.createElement("div")
@@ -165,6 +169,11 @@ function clusterFanEl(cl: Cluster, gi: number): HTMLElement {
     `<span class="cs-clu-num">${gi + 1}</span>` +
     `<span class="cs-clu-count">${cl.members.length}</span></div>` +
     `<div class="cs-clu-name">${esc(name)}</div></div>`
+  // Битый постер (404) → прячем всю карточку, а не только <img> (иначе белый span).
+  wrap.querySelectorAll("img").forEach((im) => im.addEventListener("error", () => {
+    const card = (im.closest(".cs-clu-card") as HTMLElement | null) ?? (im as HTMLElement)
+    card.style.display = "none"
+  }))
   return wrap
 }
 
