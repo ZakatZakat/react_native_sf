@@ -11,6 +11,7 @@ from app.pipeline.processor import PipelineProcessor
 from app.repositories.channels import ChannelsRepository
 from app.repositories.tags import TagsRepository
 from app.routers import admin as admin_router
+from app.routers import bot as bot_router
 from app.routers import channels as channels_router
 from app.routers import me as me_router
 from app.routers import push as push_router
@@ -42,6 +43,7 @@ app.include_router(tags_router.router)
 app.include_router(me_router.router)
 app.include_router(admin_router.router)
 app.include_router(push_router.router)
+app.include_router(bot_router.router)
 
 
 @app.on_event("startup")

@@ -35,6 +35,21 @@ class Settings(BaseSettings):
     telegram_bot_token: str = Field("", alias="TELEGRAM_BOT_TOKEN")
     auth_dev_mode: bool = Field(False, alias="AUTH_DEV_MODE")  # accept ?as_user=N for dev
 
+    # Публичный бот CitySignal — тот же, что владеет мини-аппом и подписывает
+    # init_data. Держим отдельный CS_BOT_TOKEN на случай выделенного бота под
+    # /start; по умолчанию — тот же TELEGRAM_BOT_TOKEN. cs_webapp_url — куда
+    # ведёт кнопка «Открыть» (web_app), cs_webhook_base — публичный префикс
+    # curator за reverse-proxy (…/curator), к нему setup_bot добавляет /tg/webhook.
+    cs_bot_token: str = Field("", alias="CS_BOT_TOKEN")
+    cs_webapp_url: str = Field("https://citysignal.digital-assistant.tech/", alias="CS_WEBAPP_URL")
+    cs_webhook_base: str = Field(
+        "https://citysignal.digital-assistant.tech/curator", alias="CS_WEBHOOK_BASE"
+    )
+
+    @property
+    def bot_token(self) -> str:
+        return self.cs_bot_token or self.telegram_bot_token
+
     # Comma-separated list of admin telegram_ids
     admin_user_ids_raw: str = Field("", alias="ADMIN_USER_IDS")
 
