@@ -90,7 +90,9 @@ async def _send(token: str, chat_id: int, text: str, reply_markup: dict | None =
 async def webhook(
     request: Request,
     x_telegram_bot_api_secret_token: str | None = Header(default=None),
-) -> Response | dict:
+) -> Response:
+    # Telegram'у важен только код ответа (200 = принято), тело не нужно —
+    # поэтому всюду возвращаем голый Response, без модели.
     settings = request.app.state.settings
     token = settings.bot_token
     # Бот не настроен — молча игнорируем (200), чтобы Telegram не ретраил.
@@ -102,16 +104,16 @@ async def webhook(
     try:
         update = await request.json()
     except Exception:  # noqa: BLE001
-        return {"ok": True}
+        return Response(status_code=200)
 
     msg = update.get("message") or update.get("edited_message")
     if not isinstance(msg, dict):
-        return {"ok": True}
+        return Response(status_code=200)
     text = (msg.get("text") or "").strip()
     chat = msg.get("chat") or {}
     chat_id = chat.get("id")
     if not chat_id or not text.startswith("/"):
-        return {"ok": True}
+        return Response(status_code=200)
 
     # /start@BotName и /start deep_link → берём первое слово без @suffix
     cmd = text.split(maxsplit=1)[0].split("@", 1)[0].lower()
@@ -121,4 +123,4 @@ async def webhook(
         await _send(token, chat_id, HELP, _keyboard(settings.cs_webapp_url))
     elif cmd == "/feedback":
         await _send(token, chat_id, FEEDBACK)
-    return {"ok": True}
+    return Response(status_code=200)
