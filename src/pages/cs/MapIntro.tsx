@@ -20,8 +20,23 @@ import { CS_STYLE_LIGHT, applyCinematicSky } from "./csMapStyle"
 import { venueInfo, type VenueInfo } from "./venues"
 import { VENUE_FOOTPRINTS } from "./venueFootprints"
 import { weekMeta } from "./WeekDesigns"
+import { INTERESTS } from "../pipe/preferences"
 
 const MSK: [number, number] = [37.62, 55.745]
+
+// Категория → символ (12 крупных интересов). Для строки фильтра над картой и
+// глифа доминирующей категории на кластерах.
+const CAT_SYM: Record<string, string> = Object.fromEntries(INTERESTS.map((i) => [i.key, i.symbol]))
+
+/** Доминирующая крупная категория набора событий (для глифа кластера). */
+function domCat(members: Ev[]): string | null {
+  const counts = new Map<string, number>()
+  members.forEach((e) => { if (CAT_SYM[e.catKey]) counts.set(e.catKey, (counts.get(e.catKey) ?? 0) + 1) })
+  let best: string | null = null
+  let bn = 0
+  counts.forEach((n, k) => { if (n > bn) { bn = n; best = k } })
+  return best
+}
 
 // `ll` = real district centre (events are assigned to their true nearest
 // district by this). `dll` = display position — pulled ≈45% toward central
@@ -162,6 +177,7 @@ function clusterFanEl(cl: Cluster, gi: number): HTMLElement {
     `<span class="cs-clu-card" style="--zr:${single ? 0 : (rots[i] || 0)}deg;--zz:${single ? 1 : i}"><img src="${esc(e.p as string)}" alt="" data-eid="${esc(e.id)}"/></span>`,
   ).join("")
   const { name } = clusterLabel(cl)
+  const dc = domCat(cl.members) // глиф доминирующей категории кластера
   const wrap = document.createElement("div")
   wrap.className = "cs-scatter-wrap"
   wrap.style.cssText = "display:flex;flex-direction:column;align-items:center;"
@@ -169,7 +185,7 @@ function clusterFanEl(cl: Cluster, gi: number): HTMLElement {
     `<div class="cs-clu${single ? " cs-clu-single" : ""}" style="--si:${gi}"><div class="cs-clu-fan">${thumbs}` +
     `<span class="cs-clu-num">${gi + 1}</span>` +
     `<span class="cs-clu-count">${cl.members.length}</span></div>` +
-    `<div class="cs-clu-name">${esc(name)}</div></div>`
+    `<div class="cs-clu-name">${dc ? `<span style="font-weight:900;margin-right:3px">${CAT_SYM[dc]}</span>` : ""}${esc(name)}</div></div>`
   // Битый постер (404) → прячем всю карточку, а не только <img> (иначе белый span).
   wrap.querySelectorAll("img").forEach((im) => im.addEventListener("error", () => {
     const card = (im.closest(".cs-clu-card") as HTMLElement | null) ?? (im as HTMLElement)
@@ -357,6 +373,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   // the explode effect re-ran and the dense «Центр» fans reshuffled/repositioned
   // for the first few seconds as posters streamed in («всё летает при открытии»).
   const [headOpen, setHeadOpen] = useState(true) // heading card collapse
+  const [catFilter, setCatFilter] = useState<string | null>(null) // фильтр карты по категории (null = все)
   const [deckHidden, setDeckHidden] = useState(false) // hide the deck to reveal the centred building
   const [selZone, setSelZone] = useState<string | null>(null)
   const [selCluster, setSelCluster] = useState<number | null>(null)
@@ -522,12 +539,22 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
     const m: Record<string, Ev[]> = {}
     ZONES.forEach((z) => (m[z.id] = []))
     events.forEach((e) => {
+      if (catFilter && e.catKey !== catFilter) return
       if (e.p && e.geo && inMoscow(e.geo[0], e.geo[1])) m[zoneOf(e.geo[0], e.geo[1])].push(e)
     })
     return m
-  }, [events])
+  }, [events, catFilter])
   const byZoneRef = useRef(byZone); byZoneRef.current = byZone
   const totalPlaced = useMemo(() => Object.values(byZone).reduce((a, b) => a + b.length, 0), [byZone])
+  // категории, реально присутствующие на карте (+счётчики) — для строки фильтра
+  const catChips = useMemo(() => {
+    const counts = new Map<string, number>()
+    events.forEach((e) => {
+      if (e.p && e.geo && inMoscow(e.geo[0], e.geo[1]) && CAT_SYM[e.catKey]) counts.set(e.catKey, (counts.get(e.catKey) ?? 0) + 1)
+    })
+    return INTERESTS.filter((i) => counts.has(i.key)).map((i) => ({ key: i.key, label: i.label, symbol: i.symbol, n: counts.get(i.key) as number }))
+  }, [events])
+  const mappableTotal = useMemo(() => events.filter((e) => e.p && e.geo && inMoscow(e.geo[0], e.geo[1])).length, [events])
   // sys-fan clusters per zone (real-proximity grouping)
   const clustersByZone = useMemo(() => {
     const m: Record<string, Cluster[]> = {}
@@ -538,6 +565,9 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const clustersRef = useRef(clustersByZone); clustersRef.current = clustersByZone
   const onZone = (id: string) => setSelZone((p) => (p === id ? null : id))
   const onZoneRef = useRef(onZone); onZoneRef.current = onZone
+  // выбрать категорию: сворачиваем открытый район и применяем фильтр (повторный
+  // тап по активной категории — сброс)
+  const pickCat = (key: string | null) => { setSelZone(null); setSelCluster(null); setCatFilter((p) => (p === key ? null : key)) }
 
   const zoneMlRef = useRef<maplibregl.Marker[]>([])
   /** (Re)place the district bubble markers. Runs on map load AND when the feed
@@ -550,8 +580,12 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
     zoneMlRef.current = []
     zoneMarkersRef.current = {}
     ZONES.forEach((z) => {
-      // render ALL districts — empty ones show a pulsing ghost + name
-      const el = zoneBubbleEl(z, byZoneRef.current[z.id], (id) => onZoneRef.current(id))
+      const evs = byZoneRef.current[z.id]
+      // Без фильтра — рендерим ВСЕ районы (пустые показывают «нет результатов»).
+      // При активном фильтре по категории пустые районы вообще не выводим —
+      // ни зоны, ни карточки «нет результатов».
+      if (catFilter && (!evs || evs.length === 0)) return
+      const el = zoneBubbleEl(z, evs, (id) => onZoneRef.current(id))
       zoneMarkersRef.current[z.id] = el
       const mk = new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([z.dll[1], z.dll[0]]).addTo(map)
       zoneMlRef.current.push(mk)
@@ -831,6 +865,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
 
   return (
     <div style={{ position: "absolute", inset: 0, zIndex: 50, background: "#E4E4E1", animation: "cs-mapintro-in 0.4s ease both", fontFamily: FONT_SANS }}>
+      <style>{`.cs-catbar::-webkit-scrollbar{display:none}`}</style>
       {!failed && <div ref={boxRef} style={{ position: "absolute", inset: 0, isolation: "isolate", background: "#E4E4E1" }} />}
       {failed && <div style={{ position: "absolute", inset: 0, background: "linear-gradient(160deg,#16213a,#0d0d0d)" }} />}
 
@@ -858,6 +893,19 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
             <span style={{ background: CS.B, color: "#fff", fontFamily: FONT_MONO, fontSize: 9, fontWeight: 700, padding: "1.5px 5px", letterSpacing: "0.02em" }}>{totalPlaced}</span>
             <span style={{ fontSize: 11, lineHeight: 1 }}>▾</span>
           </button>
+        )}
+        {!selZone && catChips.length > 0 && (
+          <div className="cs-catbar" style={{ display: "flex", gap: 6, width: "100%", overflowX: "auto", scrollbarWidth: "none", paddingBottom: 2 }}>
+            <button onClick={() => pickCat(null)} style={{ display: "inline-flex", alignItems: "center", gap: 5, flexShrink: 0, cursor: "pointer", padding: "5px 9px", border: `2px solid ${CS.K}`, background: catFilter === null ? CS.B : CS.W, color: catFilter === null ? "#fff" : CS.K, boxShadow: `2px 2px 0 ${CS.K}`, fontFamily: FONT_SANS, fontWeight: 900, fontSize: 12, letterSpacing: "-0.01em", whiteSpace: "nowrap" }}>
+              Все <span style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, opacity: 0.75 }}>{mappableTotal}</span>
+            </button>
+            {catChips.map((c) => (
+              <button key={c.key} onClick={() => pickCat(c.key)} style={{ display: "inline-flex", alignItems: "center", gap: 5, flexShrink: 0, cursor: "pointer", padding: "5px 9px", border: `2px solid ${CS.K}`, background: catFilter === c.key ? CS.B : CS.W, color: catFilter === c.key ? "#fff" : CS.K, boxShadow: `2px 2px 0 ${CS.K}`, fontFamily: FONT_SANS, fontWeight: 900, fontSize: 12, letterSpacing: "-0.01em", whiteSpace: "nowrap" }}>
+                <span style={{ fontSize: 13, lineHeight: 1 }}>{c.symbol}</span>{c.label}
+                <span style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, opacity: 0.75 }}>{c.n}</span>
+              </button>
+            ))}
+          </div>
         )}
         {selZone && (() => {
           // Breadcrumb: Районы › [зона] › [место]. Past crumbs are white/tappable
