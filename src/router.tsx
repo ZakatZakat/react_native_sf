@@ -1,5 +1,6 @@
 // src/router.tsx
 import { createRootRoute, createRouter, createRoute, redirect } from "@tanstack/react-router"
+import { introSeenThisWeek } from "./lib/intro"
 import App from "./App"
 import Landing from "./pages/Landing"
 import Landing2 from "./pages/Landing2"
@@ -56,7 +57,11 @@ const rootRoute = createRootRoute({
 const landingRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
-  beforeLoad: () => { throw redirect({ to: "/cs/landing" }) },
+  // Недельное интро (лендинг → загрузка → «Неделя») — раз в неделю на юзера.
+  // Уже видел на этой неделе → сразу в ленту; иначе играем интро с лендинга.
+  beforeLoad: () => {
+    throw redirect({ to: introSeenThisWeek() ? "/cs/feed" : "/cs/landing" })
+  },
 })
 const landingOldRoute = createRoute({ getParentRoute: () => rootRoute, path: "/landing-1", component: Landing })
 const landing2Route = createRoute({ getParentRoute: () => rootRoute, path: "/landing-2", component: Landing2 })

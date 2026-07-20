@@ -22,6 +22,7 @@ import { weekMeta } from "./WeekDesigns"
 import { Curator } from "../../lib/curator"
 import { resolvePoster } from "./buildDerived"
 import { PosterRow } from "./PosterRow"
+import { markIntroSeen } from "../../lib/intro"
 import { analytics } from "../../lib/analytics"
 import ColdOpenBar from "./ColdOpenBar"
 
@@ -133,6 +134,10 @@ export default function CsLanding() {
     try { sessionStorage.setItem("cs.coldopen.seen", "1") } catch { /* noop */ }
     setColdOpen(false)
   }
+
+  // Показ лендинга = недельное интро показано → повторные заходы в эту неделю
+  // с корня (/) уйдут сразу в ленту (см. router beforeLoad + lib/intro).
+  useEffect(() => { markIntroSeen() }, [])
 
   // Build 3 column strips of EXACTLY equal length — different rotations of
   // the same base so each column scrolls different content but the looping
