@@ -110,6 +110,39 @@ def looks_like_digest(text: str) -> bool:
     return False
 
 
+# ── Out-of-Moscow + non-event rejection ────────────────────────────
+# The app is a Moscow afisha. "Moscow" aggregators repost events that happen in
+# OTHER cities, and some posts are calls-for-applications / course enrolments —
+# they carry a date but aren't attendable events. Both are rejected outright
+# (score 0), like digests, so they never auto-approve.
+OTHER_CITY: Pattern[str] = re.compile(
+    r"(санкт[-\s]?петербург|\bспб\b|\bпитер|дзержинск|хотьково|завидово|"
+    r"тюмен[ьи]|\bомск|новосибирск|\bтомск|нижн\w*\s+новгород|екатеринбург|"
+    r"казан[ьи]|\bсочи\b|калининград|владивосток|краснодар|\bуф[аеы]\b|перм[ьи]|"
+    r"ростов[-\s]на[-\s]дону|воронеж|самар[аеы]|волгоград|ярославл|тверь\b)",
+    re.IGNORECASE,
+)
+MOSCOW_HINT: Pattern[str] = re.compile(r"москв|\bмск\b|подмосков", re.IGNORECASE)
+NON_EVENT: Pattern[str] = re.compile(
+    r"(при[её]м\w*\s+заяв|подать\s+заявк|заявк[иу]\s+принима|прием\w*\s+работ|"
+    r"набор\s+на\b[^.\n]{0,24}(?:курс|программ|обучени|резиденци|интенсив|мастерск|годичн)|"
+    r"открыт\w*\s+набор|арт[-\s]резиденц|open\s?call|опен[-\s]?колл|"
+    r"дедлайн\s+(?:приёма|подачи|заявок)|до\s+конца\s+приёма)",
+    re.IGNORECASE,
+)
+
+
+def looks_out_of_moscow(text: str) -> bool:
+    """A non-Moscow city is named AND Moscow is not — so the event itself is
+    elsewhere, not a touring artist merely mentioned alongside a Moscow venue."""
+    return bool(OTHER_CITY.search(text)) and not MOSCOW_HINT.search(text)
+
+
+def looks_like_non_event(text: str) -> bool:
+    """Application call / course enrolment — has a date but isn't attendable."""
+    return bool(NON_EVENT.search(text))
+
+
 @dataclass
 class DetectionHits:
     date: list[str] = field(default_factory=list)
@@ -146,6 +179,14 @@ def detect_event(text: str) -> DetectionResult:
     # single event.
     if looks_like_digest(text):
         return DetectionResult(0, ["digest"], DetectionHits())
+
+    # Not a Moscow event → reject (aggregators repost other cities' events).
+    if looks_out_of_moscow(text):
+        return DetectionResult(0, ["out_of_moscow"], DetectionHits())
+
+    # Application call / enrolment → reject (dated but not attendable).
+    if looks_like_non_event(text):
+        return DetectionResult(0, ["non_event"], DetectionHits())
 
     hits = DetectionHits()
     score = 0

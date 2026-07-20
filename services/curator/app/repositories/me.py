@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Sequence
 
-from sqlalchemy import delete, distinct, func, or_, select
+from sqlalchemy import String, delete, distinct, func, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -129,6 +129,9 @@ class PersonalizedFeedRepository:
             # by the city-detection pass (coords for geocoded, poster-vision for
             # the rest); unset/unknown defaults to moscow so nothing is lost.
             .where(func.coalesce(EventCurated.location_meta.op("->>")("region"), "moscow").notin_(["spb", "other"]))
+            # Usable poster required: an event with no image, or video-only media,
+            # renders as a blank card — keep it out of the feed/map entirely.
+            .where(func.cast(PostRaw.media_urls, String).ilike("%.jpg%"))
             .order_by(EventCurated.location_meta.isnot(None).desc(), EventCurated.event_time.asc().nulls_last())
         )
 
