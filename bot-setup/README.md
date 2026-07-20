@@ -21,18 +21,21 @@
 @BotFather → `/mybots` → выбрать бота → **Edit Bot → Edit Description Picture**
 → прикрепить `description-640x360.png`. Появится над блоком «Что умеет этот бот?».
 
-### 2. Задеплоить `/start` и прогнать setup_bot
+### 2. Положить токен бота в env и прогнать setup_bot
 
-На сервере (curator уже знает токен бота через `TELEGRAM_BOT_TOKEN`):
+Токена публичного бота на сервере нет (в корневом `.env` нет `TELEGRAM_BOT_TOKEN`;
+init_data сейчас держится на `AUTH_DEV_MODE`). Возьми токен в @BotFather
+(`/mybots` → API Token) и добавь его в `.env` как `CS_BOT_TOKEN` — это не трогает
+текущую auth-логику init_data, а webhook/setup_bot читают именно его:
 
 ```bash
 ssh root@45.144.52.40
-cd /root/react_native_sf && git pull --ff-only
+cd /root/react_native_sf
+echo 'CS_BOT_TOKEN=ТОКЕН_ОТ_BOTFATHER' >> .env      # секрет — только на сервере
+git pull --ff-only
 docker compose build curator && docker compose up -d curator
-# один раз: ставит webhook, команды, описание, кнопку меню
-docker compose exec curator python -m app.setup_bot
-# проверка
-docker compose exec curator python -m app.setup_bot --info
+docker compose exec -T curator python -m app.setup_bot          # ставит webhook, команды, описание, кнопку
+docker compose exec -T curator python -m app.setup_bot --info   # проверка
 ```
 
 После этого `/start` отвечает приветствием с кнопкой, а `/` показывает команды.
