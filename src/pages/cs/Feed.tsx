@@ -574,10 +574,11 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
           → второго ряда нет вообще (не тащим пустой уровень). */}
       {cat !== "Все" && tagChips.length > 0 && (
         <div key={cat} style={{ position: "relative", marginBottom: 14, animation: "sk-refresh 0.28s cubic-bezier(0.22,1,0.36,1) both" }}>
+          {/* сплошная синяя стрелка вверх — целит в выбранную категорию */}
           {beakX != null && (
-            <div style={{ position: "absolute", top: -6, left: beakX - 6, width: 12, height: 12, background: SK.paper, borderTop: `1.5px solid ${CS.B}`, borderLeft: `1.5px solid ${CS.B}`, transform: "rotate(45deg)", zIndex: 2 }} />
+            <div style={{ position: "absolute", top: 1, left: beakX - 7, width: 0, height: 0, borderLeft: "7px solid transparent", borderRight: "7px solid transparent", borderBottom: `8px solid ${CS.B}` }} />
           )}
-          <div style={{ background: "rgba(0,85,255,0.05)", borderTop: `1.5px solid ${CS.B}`, padding: "9px 0 7px" }}>
+          <div style={{ padding: "12px 0 0" }}>
             <div style={{ fontFamily: FONT_MONO, fontSize: 9, letterSpacing: "0.16em", color: SK.ink55, textTransform: "uppercase", padding: "0 14px" }}>уточнить · <span style={{ color: CS.B, fontWeight: 700 }}>{cat}</span></div>
             <div className="sk-scroll" style={{ display: "flex", gap: 7, overflowX: "auto", padding: "8px 14px 0" }}>
               {tagChips.map((t) => {
