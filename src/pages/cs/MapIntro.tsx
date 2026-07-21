@@ -897,11 +897,14 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
 
       {/* 2D/3D переключатель — обе кнопки видны, активный режим подсвечен синим. */}
       {!failed && ready && (
-        <div style={{
-          position: "absolute", top: "43%", right: 12, zIndex: 10, display: "flex", flexDirection: "column",
-          background: CS.W, border: `2px solid ${CS.K}`, borderRadius: 10, overflow: "hidden",
-          boxShadow: "2px 2px 0 rgba(13,13,13,0.22)",
-        }}>
+        <div style={{ position: "absolute", top: "43%", right: 12, zIndex: 10, display: "flex", flexDirection: "column", alignItems: "stretch", gap: 4 }}>
+          {/* «КАРТА» — обозначение, что 2D/3D переключает именно вид карты */}
+          <div style={{ background: CS.W, border: `2px solid ${CS.K}`, borderRadius: 8, padding: "2px 0", textAlign: "center", fontFamily: FONT_MONO, fontWeight: 800, fontSize: 8, letterSpacing: "0.16em", color: "rgba(13,13,13,0.7)", boxShadow: "2px 2px 0 rgba(13,13,13,0.22)" }}>КАРТА</div>
+          <div style={{
+            display: "flex", flexDirection: "column",
+            background: CS.W, border: `2px solid ${CS.K}`, borderRadius: 10, overflow: "hidden",
+            boxShadow: "2px 2px 0 rgba(13,13,13,0.22)",
+          }}>
           {([["2D", true], ["3D", false]] as [string, boolean][]).map(([label, isFlat], i) => {
             const active = flat === isFlat
             return (
@@ -918,6 +921,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
               >{label}</button>
             )
           })}
+          </div>
         </div>
       )}
 
