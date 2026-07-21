@@ -582,6 +582,8 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   // выбрать категорию: сворачиваем открытый район и применяем фильтр (повторный
   // тап по активной категории — сброс)
   const pickCat = (key: string | null) => { setSelZone(null); setSelCluster(null); setCatFilter((p) => (p === key ? null : key)) }
+  // Активная категория — для наглядного индикатора в шапке карты (null = «все»).
+  const activeCat = catFilter ? catChips.find((c) => c.key === catFilter) : null
 
   const zoneMlRef = useRef<maplibregl.Marker[]>([])
   /** (Re)place the district bubble markers. Runs on map load AND when the feed
@@ -922,7 +924,16 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
           <div style={{ position: "relative", width: "100%", background: CS.W, border: `2.5px solid ${CS.K}`, boxShadow: `4px 4px 0 ${CS.K}`, padding: "12px 14px" }}>
             <button onClick={() => setHeadOpen(false)} aria-label="скрыть шапку" style={{ position: "absolute", top: 8, right: 8, width: 26, height: 26, border: `2px solid ${CS.K}`, background: CS.W, cursor: "pointer", fontSize: 13, fontWeight: 900, lineHeight: 1, color: CS.K, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
             <div style={{ fontFamily: FONT_MONO, fontSize: 9, fontWeight: 700, letterSpacing: "0.24em", textTransform: "uppercase", color: "rgba(13,13,13,0.55)" }}>сначала — карта · WK {wk.n}</div>
-            <div style={{ fontFamily: FONT_SANS, fontWeight: 900, fontSize: 34, letterSpacing: "-0.045em", lineHeight: 0.9, color: CS.K, marginTop: 6 }}>Что рядом</div>
+            <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8, marginTop: 6, paddingRight: 30 }}>
+              <div style={{ fontFamily: FONT_SANS, fontWeight: 900, fontSize: 34, letterSpacing: "-0.045em", lineHeight: 0.9, color: CS.K, flexShrink: 0 }}>Что рядом</div>
+              {activeCat && (
+                <button onClick={() => pickCat(null)} aria-label="сбросить категорию" style={{ display: "inline-flex", alignItems: "center", gap: 5, minWidth: 0, maxWidth: "100%", background: CS.B, color: "#fff", border: `2px solid ${CS.K}`, boxShadow: `2px 2px 0 ${CS.K}`, padding: "4px 5px 4px 8px", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 12, letterSpacing: "-0.01em", textTransform: "uppercase", lineHeight: 1 }}>
+                  <span style={{ fontSize: 13, flexShrink: 0 }}>{activeCat.symbol}</span>
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{activeCat.label}</span>
+                  <span style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", width: 16, height: 16, marginLeft: 2, border: "1.5px solid rgba(255,255,255,0.75)", fontSize: 10, lineHeight: 1 }}>✕</span>
+                </button>
+              )}
+            </div>
             <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap", marginTop: 11 }}>
               <span style={{ background: CS.B, color: "#fff", padding: "3px 9px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 10, letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{totalPlaced} событий · {zoneCount} районов</span>
             </div>
