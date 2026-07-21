@@ -375,6 +375,20 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const [headOpen, setHeadOpen] = useState(true) // heading card collapse
   const [catFilter, setCatFilter] = useState<string | null>(null) // фильтр карты по категории (null = все)
   const [deckHidden, setDeckHidden] = useState(false) // hide the deck to reveal the centred building
+  // 2D/3D тумблер: плоский вид сверху без 3D-домов (fill-extrusion) ↔ кинематографичный 3D.
+  // flatRef читается в easeTo-переходах (Level 1/2), чтобы 2D-режим «прилипал» при навигации.
+  const [flat, setFlat] = useState(false)
+  const flatRef = useRef(false); flatRef.current = flat
+  const toggleFlat = () => {
+    const map = mapRef.current
+    const next = !flatRef.current
+    setFlat(next); flatRef.current = next
+    if (!map) return
+    for (const id of ["cs-building-3d", EVT_BLDG_LAYER]) {
+      if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", next ? "none" : "visible")
+    }
+    map.easeTo({ pitch: next ? 0 : 52, bearing: next ? 0 : -14, duration: 500 })
+  }
   const [selZone, setSelZone] = useState<string | null>(null)
   const [selCluster, setSelCluster] = useState<number | null>(null)
   const [selPage, setSelPage] = useState(0)  // page within the opened district (Level 1)
@@ -488,7 +502,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
             if (deckWrapRef.current) deckWrapRef.current.style.display = "none"
             setDeckHidden(true)
             deckHiddenRef.current = true; drawLeadersRef.current() // erase the leader now
-            map.easeTo({ center: [g[1], g[0]], zoom: 16.6, pitch: 52, bearing: -14, duration: 650 })
+            map.easeTo({ center: [g[1], g[0]], zoom: 16.6, pitch: flatRef.current ? 0 : 52, bearing: flatRef.current ? 0 : -14, duration: 650 })
           }
           return
         }
@@ -812,7 +826,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       if (overviewFitRef.current !== selZone) {
         // first entry into this district → fit the camera ONCE
         overviewFitRef.current = selZone
-        map.easeTo({ center: [cLng, cLat], zoom, pitch: OVERVIEW_PITCH, bearing: -14, duration: 800, padding: { top: 250, bottom: 300, left: 20, right: 20 } })
+        map.easeTo({ center: [cLng, cLat], zoom, pitch: flatRef.current ? 0 : OVERVIEW_PITCH, bearing: flatRef.current ? 0 : -14, duration: 800, padding: { top: 250, bottom: 300, left: 20, right: 20 } })
         pendingMoveend = deOverlap
         map.once("moveend", deOverlap)
       } else {
@@ -840,7 +854,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         // Mark venues immediately (deterministic — no need to wait for tiles),
         // then ease to the centroid at building-visible zoom.
         paintClusterRef.current(cl)
-        map.easeTo({ center: [cl.ll[1], cl.ll[0]], zoom: 15, pitch: 52, bearing: -14, duration: 700 })
+        map.easeTo({ center: [cl.ll[1], cl.ll[0]], zoom: 15, pitch: flatRef.current ? 0 : 52, bearing: flatRef.current ? 0 : -14, duration: 700 })
       }
     }
     return () => { if (pendingMoveend) map.off("moveend", pendingMoveend) }
@@ -868,6 +882,22 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       <style>{`.cs-catbar::-webkit-scrollbar{display:none}`}</style>
       {!failed && <div ref={boxRef} style={{ position: "absolute", inset: 0, isolation: "isolate", background: "#E4E4E1" }} />}
       {failed && <div style={{ position: "absolute", inset: 0, background: "linear-gradient(160deg,#16213a,#0d0d0d)" }} />}
+
+      {/* 2D/3D тумблер — плоский вид сверху без 3D-домов ↔ 3D. Метка = режим, в
+          который переключит тап. */}
+      {!failed && ready && (
+        <button
+          onClick={toggleFlat}
+          aria-label={flat ? "включить 3D-режим карты" : "включить плоский 2D-режим карты"}
+          style={{
+            position: "absolute", top: "43%", right: 12, zIndex: 10,
+            width: 44, height: 44, display: "inline-flex", alignItems: "center", justifyContent: "center",
+            background: CS.W, color: CS.K, border: `2px solid ${CS.K}`, borderRadius: 10,
+            boxShadow: "2px 2px 0 rgba(13,13,13,0.22)", cursor: "pointer",
+            fontFamily: FONT_MONO, fontWeight: 800, fontSize: 13, letterSpacing: "0.03em",
+          }}
+        >{flat ? "3D" : "2D"}</button>
+      )}
 
       {/* subtle scrims for legibility */}
       <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 150, background: "linear-gradient(rgba(13,13,13,0.18), rgba(13,13,13,0))", zIndex: 6, pointerEvents: "none" }} />
