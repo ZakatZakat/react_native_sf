@@ -580,11 +580,11 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
           )}
           <div style={{ padding: "12px 0 0" }}>
             <div style={{ fontFamily: FONT_MONO, fontSize: 9, letterSpacing: "0.16em", color: SK.ink55, textTransform: "uppercase", padding: "0 14px" }}>уточнить · <span style={{ color: CS.B, fontWeight: 700 }}>{cat}</span></div>
-            <div className="sk-scroll" style={{ display: "flex", gap: 7, overflowX: "auto", padding: "8px 14px 0" }}>
+            <div className="sk-scroll" style={{ display: "flex", gap: 9, overflowX: "auto", padding: "9px 14px 8px" }}>
               {tagChips.map((t) => {
                 const on = tag === t
                 return (
-                  <button key={t} onClick={() => { setTag(on ? null : t); if (!on) analytics.track("cs.feed.filter", { kind: "tag", value: t }) }} style={{ flexShrink: 0, padding: "5px 10px", border: `1.5px solid ${CS.B}`, background: on ? CS.B : SK.paper, color: on ? "#fff" : CS.B, fontFamily: FONT_SANS, fontWeight: 700, fontSize: 10, letterSpacing: "0.04em", textTransform: "uppercase", whiteSpace: "nowrap", cursor: "pointer" }}>{t}</button>
+                  <button key={t} onClick={() => { setTag(on ? null : t); if (!on) analytics.track("cs.feed.filter", { kind: "tag", value: t }) }} style={{ flexShrink: 0, padding: "6px 11px", border: `2px solid ${SK.ink}`, background: on ? CS.B : SK.paper, color: on ? "#fff" : CS.B, boxShadow: `2.5px 2.5px 0 ${on ? SK.ink : CS.B}`, fontFamily: FONT_SANS, fontWeight: 800, fontSize: 10, letterSpacing: "0.05em", textTransform: "uppercase", whiteSpace: "nowrap", cursor: "pointer" }}>{t}</button>
                 )
               })}
             </div>
