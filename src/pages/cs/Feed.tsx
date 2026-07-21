@@ -30,7 +30,12 @@ import {
   Clip, Polaroid, Hand, Lbl, Scribble, Sparkle, SkMark, stripHandles,
 } from "./shared"
 import type { Ev } from "./buildDerived"
+import { INTERESTS } from "../pipe/preferences"
 import { weekMeta } from "./WeekDesigns"
+
+// Метка крупной категории → её символ из таксономии (◤ ▶ ♪ ▦ …) — ведущий глиф
+// на чипах фильтра, чтобы категории читались и «фирменно», и быстрее.
+const CAT_SYM = new Map(INTERESTS.map((i) => [i.label, i.symbol]))
 import { useDerived, useJourneyState } from "./useJourney"
 import { analytics } from "../../lib/analytics"
 import CsFeedLegacy from "./FeedLegacy"
@@ -540,25 +545,34 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
       </div>
 
       {/* category filter — chips filter the «Каталог» grid only (hero stays) */}
-      <div className="sk-scroll" style={{ display: "flex", gap: 8, overflowX: "auto", padding: "0 14px 4px", marginBottom: tagChips.length > 0 ? 8 : 14 }}>
+      <div className="sk-scroll" style={{ display: "flex", gap: 8, overflowX: "auto", padding: "0 14px 4px", marginBottom: (cat !== "Все" && tagChips.length > 0) ? 0 : 14 }}>
         {cats.map((c) => {
           const on = cat === c
+          const sym = c !== "Все" ? CAT_SYM.get(c) : undefined
           return (
-            <button key={c} onClick={() => { setCat(c); setTag(null); analytics.track("cs.feed.filter", { kind: "category", value: c }) }} style={{ flexShrink: 0, padding: "6px 12px", border: `2px solid ${SK.ink}`, background: on ? SK.ink : SK.paper, color: on ? SK.paper : SK.ink, fontFamily: FONT_SANS, fontWeight: 800, fontSize: 10.5, letterSpacing: "0.05em", textTransform: "uppercase", whiteSpace: "nowrap", cursor: "pointer" }}>{c}</button>
+            <button key={c} onClick={() => { setCat(c); setTag(null); analytics.track("cs.feed.filter", { kind: "category", value: c }) }} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 12px", border: `2px solid ${SK.ink}`, background: on ? SK.ink : SK.paper, color: on ? SK.paper : SK.ink, fontFamily: FONT_SANS, fontWeight: 800, fontSize: 10.5, letterSpacing: "0.05em", textTransform: "uppercase", whiteSpace: "nowrap", cursor: "pointer" }}>
+              {sym && <span style={{ fontWeight: 400, fontSize: 12.5, lineHeight: 1 }}>{sym}</span>}{c}
+            </button>
           )
         })}
       </div>
-      {/* second tier — fine-tag chips for the selected category (blue = the new
-          tag layer). Tap to narrow, tap again to clear. Same grotesque as the
-          categories, just smaller + signal-blue. */}
-      {tagChips.length > 0 && (
-        <div className="sk-scroll" style={{ display: "flex", gap: 7, overflowX: "auto", padding: "0 14px 4px", marginBottom: 14 }}>
-          {tagChips.map((t) => {
-            const on = tag === t
-            return (
-              <button key={t} onClick={() => { setTag(on ? null : t); if (!on) analytics.track("cs.feed.filter", { kind: "tag", value: t }) }} style={{ flexShrink: 0, padding: "5px 11px", border: `2px solid ${CS.B}`, background: on ? CS.B : SK.paper, color: on ? "#fff" : CS.B, fontFamily: FONT_SANS, fontWeight: 800, fontSize: 10, letterSpacing: "0.04em", textTransform: "uppercase", whiteSpace: "nowrap", cursor: "pointer" }}>{t}</button>
-            )
-          })}
+      {/* Вариант 1 — подтеги раскрываются ИЗ-ПОД выбранной категории: «носик»-
+          треугольник + выезд, в лёгком синем лотке, мельче и тонким синим. «Все»
+          → второго ряда нет вообще (не тащим пустой уровень). */}
+      {cat !== "Все" && tagChips.length > 0 && (
+        <div key={cat} style={{ marginBottom: 14, animation: "sk-refresh 0.28s cubic-bezier(0.22,1,0.36,1) both" }}>
+          <div style={{ width: 12, height: 12, background: "rgba(0,85,255,0.06)", borderTop: `1.5px solid ${CS.B}`, borderLeft: `1.5px solid ${CS.B}`, transform: "rotate(45deg)", margin: "0 0 -7px 26px", position: "relative", zIndex: 1 }} />
+          <div style={{ background: "rgba(0,85,255,0.055)", borderTop: `1.5px solid ${CS.B}`, padding: "9px 0 7px" }}>
+            <div style={{ fontFamily: FONT_MONO, fontSize: 9, letterSpacing: "0.16em", color: SK.ink55, textTransform: "uppercase", padding: "0 14px" }}>уточнить · <span style={{ color: CS.B, fontWeight: 700 }}>{cat}</span></div>
+            <div className="sk-scroll" style={{ display: "flex", gap: 7, overflowX: "auto", padding: "8px 14px 0" }}>
+              {tagChips.map((t) => {
+                const on = tag === t
+                return (
+                  <button key={t} onClick={() => { setTag(on ? null : t); if (!on) analytics.track("cs.feed.filter", { kind: "tag", value: t }) }} style={{ flexShrink: 0, padding: "5px 10px", border: `1.5px solid ${CS.B}`, background: on ? CS.B : SK.paper, color: on ? "#fff" : CS.B, fontFamily: FONT_SANS, fontWeight: 700, fontSize: 10, letterSpacing: "0.04em", textTransform: "uppercase", whiteSpace: "nowrap", cursor: "pointer" }}>{t}</button>
+                )
+              })}
+            </div>
+          </div>
         </div>
       )}
 
