@@ -131,6 +131,10 @@ type Cluster = { ll: [number, number]; members: Ev[] }
 const RU_PLURAL = (n: number) =>
   `${n} ${n % 10 === 1 && n % 100 !== 11 ? "событие" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? "события" : "событий"}`
 
+// Склонение слова «категория» (число подставляется рядом в JSX).
+const CAT_WORD = (n: number) =>
+  n % 10 === 1 && n % 100 !== 11 ? "категория" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? "категории" : "категорий"
+
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] as string))
 
 function metersBetween(a: [number, number], b: [number, number]): number {
@@ -948,10 +952,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
                       <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{activeCats[0].label}</span>
                     </>
                   ) : (
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, overflow: "hidden" }}>
-                      {activeCats.slice(0, 6).map((c) => (<span key={c.key} style={{ fontSize: 14, flexShrink: 0 }}>{c.symbol}</span>))}
-                      {activeCats.length > 6 && <span style={{ fontFamily: FONT_MONO, fontSize: 10, flexShrink: 0 }}>+{activeCats.length - 6}</span>}
-                    </span>
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{activeCats.length} {CAT_WORD(activeCats.length)}</span>
                   )}
                   <span style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", width: 16, height: 16, marginLeft: 2, border: "1.5px solid rgba(255,255,255,0.75)", fontSize: 10, lineHeight: 1 }}>✕</span>
                 </button>
