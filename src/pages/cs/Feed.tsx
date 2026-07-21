@@ -584,7 +584,7 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
               {tagChips.map((t) => {
                 const on = tag === t
                 return (
-                  <button key={t} onClick={() => { setTag(on ? null : t); if (!on) analytics.track("cs.feed.filter", { kind: "tag", value: t }) }} style={{ flexShrink: 0, padding: "6px 11px", border: `2px solid ${SK.ink}`, background: on ? CS.B : SK.paper, color: on ? "#fff" : CS.B, boxShadow: `2.5px 2.5px 0 ${on ? SK.ink : CS.B}`, fontFamily: FONT_SANS, fontWeight: 800, fontSize: 10, letterSpacing: "0.05em", textTransform: "uppercase", whiteSpace: "nowrap", cursor: "pointer" }}>{t}</button>
+                  <button key={t} onClick={() => { setTag(on ? null : t); if (!on) analytics.track("cs.feed.filter", { kind: "tag", value: t }) }} style={{ flexShrink: 0, padding: "6px 11px", border: `2px solid ${SK.ink}`, background: on ? SK.ink : CS.B, color: "#fff", boxShadow: `2.5px 2.5px 0 ${on ? CS.B : SK.ink}`, fontFamily: FONT_SANS, fontWeight: 800, fontSize: 10, letterSpacing: "0.05em", textTransform: "uppercase", whiteSpace: "nowrap", cursor: "pointer" }}>{t}</button>
                 )
               })}
             </div>
