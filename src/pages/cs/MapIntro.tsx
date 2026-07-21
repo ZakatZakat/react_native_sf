@@ -373,7 +373,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   // the explode effect re-ran and the dense «Центр» fans reshuffled/repositioned
   // for the first few seconds as posters streamed in («всё летает при открытии»).
   const [headOpen, setHeadOpen] = useState(true) // heading card collapse
-  const [catFilter, setCatFilter] = useState<string | null>(null) // фильтр карты по категории (null = все)
+  const [catFilter, setCatFilter] = useState<Set<string>>(() => new Set()) // мульти-фильтр карты по категориям (пусто = все)
   const [deckHidden, setDeckHidden] = useState(false) // hide the deck to reveal the centred building
   // 2D/3D тумблер: плоский вид сверху без 3D-домов (fill-extrusion) ↔ кинематографичный 3D.
   // flatRef читается в easeTo-переходах (Level 1/2), чтобы 2D-режим «прилипал» при навигации.
@@ -553,7 +553,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
     const m: Record<string, Ev[]> = {}
     ZONES.forEach((z) => (m[z.id] = []))
     events.forEach((e) => {
-      if (catFilter && e.catKey !== catFilter) return
+      if (catFilter.size && !catFilter.has(e.catKey)) return
       if (e.p && e.geo && inMoscow(e.geo[0], e.geo[1])) m[zoneOf(e.geo[0], e.geo[1])].push(e)
     })
     return m
@@ -581,9 +581,19 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const onZoneRef = useRef(onZone); onZoneRef.current = onZone
   // выбрать категорию: сворачиваем открытый район и применяем фильтр (повторный
   // тап по активной категории — сброс)
-  const pickCat = (key: string | null) => { setSelZone(null); setSelCluster(null); setCatFilter((p) => (p === key ? null : key)) }
-  // Активная категория — для наглядного индикатора в шапке карты (null = «все»).
-  const activeCat = catFilter ? catChips.find((c) => c.key === catFilter) : null
+  // key === null → сбросить все; иначе тумблер категории в наборе (мульти-выбор).
+  const pickCat = (key: string | null) => {
+    setSelZone(null); setSelCluster(null)
+    if (key === null) { setCatFilter(new Set()); return }
+    setCatFilter((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+  // Активные категории — для наглядного индикатора в шапке карты (пусто = «все»).
+  const activeCats = catChips.filter((c) => catFilter.has(c.key))
 
   const zoneMlRef = useRef<maplibregl.Marker[]>([])
   /** (Re)place the district bubble markers. Runs on map load AND when the feed
@@ -600,7 +610,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       // Без фильтра — рендерим ВСЕ районы (пустые показывают «нет результатов»).
       // При активном фильтре по категории пустые районы вообще не выводим —
       // ни зоны, ни карточки «нет результатов».
-      if (catFilter && (!evs || evs.length === 0)) return
+      if (catFilter.size && (!evs || evs.length === 0)) return
       const el = zoneBubbleEl(z, evs, (id) => onZoneRef.current(id))
       zoneMarkersRef.current[z.id] = el
       const mk = new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([z.dll[1], z.dll[0]]).addTo(map)
@@ -926,10 +936,19 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
             <div style={{ fontFamily: FONT_MONO, fontSize: 9, fontWeight: 700, letterSpacing: "0.24em", textTransform: "uppercase", color: "rgba(13,13,13,0.55)" }}>сначала — карта · WK {wk.n}</div>
             <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8, marginTop: 6, paddingRight: 30 }}>
               <div style={{ fontFamily: FONT_SANS, fontWeight: 900, fontSize: 34, letterSpacing: "-0.045em", lineHeight: 0.9, color: CS.K, flexShrink: 0 }}>Что рядом</div>
-              {activeCat && (
-                <button onClick={() => pickCat(null)} aria-label="сбросить категорию" style={{ display: "inline-flex", alignItems: "center", gap: 5, minWidth: 0, maxWidth: "100%", background: CS.B, color: "#fff", border: `2px solid ${CS.K}`, boxShadow: `2px 2px 0 ${CS.K}`, padding: "4px 5px 4px 8px", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 12, letterSpacing: "-0.01em", textTransform: "uppercase", lineHeight: 1 }}>
-                  <span style={{ fontSize: 13, flexShrink: 0 }}>{activeCat.symbol}</span>
-                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{activeCat.label}</span>
+              {activeCats.length > 0 && (
+                <button onClick={() => pickCat(null)} aria-label="сбросить категории" style={{ display: "inline-flex", alignItems: "center", gap: 5, minWidth: 0, maxWidth: "100%", background: CS.B, color: "#fff", border: `2px solid ${CS.K}`, boxShadow: `2px 2px 0 ${CS.K}`, padding: "4px 5px 4px 8px", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 12, letterSpacing: "-0.01em", textTransform: "uppercase", lineHeight: 1 }}>
+                  {activeCats.length === 1 ? (
+                    <>
+                      <span style={{ fontSize: 13, flexShrink: 0 }}>{activeCats[0].symbol}</span>
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{activeCats[0].label}</span>
+                    </>
+                  ) : (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, overflow: "hidden" }}>
+                      {activeCats.slice(0, 6).map((c) => (<span key={c.key} style={{ fontSize: 14, flexShrink: 0 }}>{c.symbol}</span>))}
+                      {activeCats.length > 6 && <span style={{ fontFamily: FONT_MONO, fontSize: 10, flexShrink: 0 }}>+{activeCats.length - 6}</span>}
+                    </span>
+                  )}
                   <span style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", width: 16, height: 16, marginLeft: 2, border: "1.5px solid rgba(255,255,255,0.75)", fontSize: 10, lineHeight: 1 }}>✕</span>
                 </button>
               )}
@@ -947,11 +966,11 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         )}
         {!selZone && catChips.length > 0 && (
           <div className="cs-catbar" style={{ display: "flex", gap: 6, width: "100%", overflowX: "auto", scrollbarWidth: "none", paddingBottom: 2 }}>
-            <button onClick={() => pickCat(null)} style={{ display: "inline-flex", alignItems: "center", gap: 5, flexShrink: 0, cursor: "pointer", padding: "5px 9px", border: `2px solid ${CS.K}`, background: catFilter === null ? CS.B : CS.W, color: catFilter === null ? "#fff" : CS.K, boxShadow: `2px 2px 0 ${CS.K}`, fontFamily: FONT_SANS, fontWeight: 900, fontSize: 12, letterSpacing: "-0.01em", whiteSpace: "nowrap" }}>
+            <button onClick={() => pickCat(null)} style={{ display: "inline-flex", alignItems: "center", gap: 5, flexShrink: 0, cursor: "pointer", padding: "5px 9px", border: `2px solid ${CS.K}`, background: catFilter.size === 0 ? CS.B : CS.W, color: catFilter.size === 0 ? "#fff" : CS.K, boxShadow: `2px 2px 0 ${CS.K}`, fontFamily: FONT_SANS, fontWeight: 900, fontSize: 12, letterSpacing: "-0.01em", whiteSpace: "nowrap" }}>
               Все <span style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, opacity: 0.75 }}>{mappableTotal}</span>
             </button>
             {catChips.map((c) => (
-              <button key={c.key} onClick={() => pickCat(c.key)} style={{ display: "inline-flex", alignItems: "center", gap: 5, flexShrink: 0, cursor: "pointer", padding: "5px 9px", border: `2px solid ${CS.K}`, background: catFilter === c.key ? CS.B : CS.W, color: catFilter === c.key ? "#fff" : CS.K, boxShadow: `2px 2px 0 ${CS.K}`, fontFamily: FONT_SANS, fontWeight: 900, fontSize: 12, letterSpacing: "-0.01em", whiteSpace: "nowrap" }}>
+              <button key={c.key} onClick={() => pickCat(c.key)} style={{ display: "inline-flex", alignItems: "center", gap: 5, flexShrink: 0, cursor: "pointer", padding: "5px 9px", border: `2px solid ${CS.K}`, background: catFilter.has(c.key) ? CS.B : CS.W, color: catFilter.has(c.key) ? "#fff" : CS.K, boxShadow: `2px 2px 0 ${CS.K}`, fontFamily: FONT_SANS, fontWeight: 900, fontSize: 12, letterSpacing: "-0.01em", whiteSpace: "nowrap" }}>
                 <span style={{ fontSize: 13, lineHeight: 1 }}>{c.symbol}</span>{c.label}
                 <span style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, opacity: 0.75 }}>{c.n}</span>
               </button>
