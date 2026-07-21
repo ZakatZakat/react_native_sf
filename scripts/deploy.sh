@@ -31,10 +31,6 @@ SSH="ssh -o ConnectTimeout=15"
 SERVICES="app"
 TARGET="origin/master"
 FORCE=0
-# Прод собирается/поднимается с docker-compose.local.yml (там app/telegram/api/
-# curator/db). Дефолтный docker-compose.yml — легаси-топология без curator, им
-# собирать нельзя. Переопределяемо через DEPLOY_COMPOSE_FILE.
-COMPOSE_FILE="${DEPLOY_COMPOSE_FILE:-docker-compose.local.yml}"
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -105,13 +101,13 @@ if [ "$FORCE" -ne 1 ] && ! $SSH "$SERVER" "cd '$DIR' && git merge-base --is-ance
   exit 1
 fi
 
-grn "→ Деплою $SHORT (из master), сервис(ы)=$SERVICES, compose=$COMPOSE_FILE, как $WHO"
+grn "→ Деплою $SHORT (из master), сервис(ы)=$SERVICES, как $WHO"
 
 # 5. бокс → целевой коммит (untracked + .env целы)
 $SSH "$SERVER" "cd '$DIR' && git fetch -q origin && git reset --hard '$SHA' && git log -1 --format='  бокс теперь на %h  %s'"
 
 # 6. пересборка + рестарт сервисов
-$SSH "$SERVER" "cd '$DIR' && docker compose -f '$COMPOSE_FILE' build $SERVICES && docker compose -f '$COMPOSE_FILE' up -d $SERVICES" 2>&1 | tail -8
+$SSH "$SERVER" "cd '$DIR' && docker compose build $SERVICES && docker compose up -d $SERVICES" 2>&1 | tail -8
 
 # 7. проверка
 BOX_SHA="$($SSH "$SERVER" "cd '$DIR' && git rev-parse --short HEAD" 2>/dev/null || true)"
