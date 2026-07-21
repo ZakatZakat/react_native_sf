@@ -207,12 +207,17 @@ export function buildDerived(events: FeedItem[]): DerivedData {
   // time this catches festival promos whose captions AND posters all differ
   // («190 имён…», «финализированы лайнапы…», «OID × SILA SVETA…» → один Outline).
   const urlKey = (e: FeedItem): string => {
-    const urls = (e.description || "").match(/https?:\/\/[^\s)<>"'»]+/gi)
+    // Match bare domains too — posts routinely drop the protocol
+    // («🎫 → outlinefestival.org/2026»), so requiring https:// missed most links.
+    // Require a /path so plain «19.00»/prose can't masquerade as a URL.
+    const urls = (e.description || "").match(/(?:https?:\/\/)?[a-z0-9][a-z0-9.-]*\.[a-z]{2,}\/[^\s)<>"'»]+/gi)
     if (!urls) return ""
     for (const u of urls) {
-      const low = u.toLowerCase()
-      if (/(t\.me\/|telegram\.|instagram\.|vk\.(com|ru)|facebook\.)/.test(low)) continue
-      return low.replace(/^https?:\/\//, "").replace(/[?#].*$/, "").replace(/\/+$/, "")
+      const low = u.toLowerCase().replace(/^https?:\/\//, "")
+      // channel/social links differ per repost, image paths aren't event ids
+      if (/^(t\.me\/|telegram\.|instagram\.|vk\.(com|ru)\/|facebook\.|youtu|\S+\.jpe?g)/.test(low)) continue
+      const norm = low.replace(/[?#].*$/, "").replace(/\/+$/, "")
+      if (norm) return norm
     }
     return ""
   }
