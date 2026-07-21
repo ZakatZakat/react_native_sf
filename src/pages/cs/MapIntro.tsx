@@ -942,10 +942,10 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
           <div style={{ position: "relative", width: "100%", background: CS.W, border: `2.5px solid ${CS.K}`, boxShadow: `4px 4px 0 ${CS.K}`, padding: "12px 14px" }}>
             <button onClick={() => setHeadOpen(false)} aria-label="скрыть шапку" style={{ position: "absolute", top: 8, right: 8, width: 26, height: 26, border: `2px solid ${CS.K}`, background: CS.W, cursor: "pointer", fontSize: 13, fontWeight: 900, lineHeight: 1, color: CS.K, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
             <div style={{ fontFamily: FONT_MONO, fontSize: 9, fontWeight: 700, letterSpacing: "0.24em", textTransform: "uppercase", color: "rgba(13,13,13,0.55)" }}>сначала — карта · WK {wk.n}</div>
-            <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8, marginTop: 6, paddingRight: 30 }}>
+            <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8, marginTop: 6, paddingRight: 6 }}>
               <div style={{ fontFamily: FONT_SANS, fontWeight: 900, fontSize: 34, letterSpacing: "-0.045em", lineHeight: 0.9, color: CS.K, flexShrink: 0 }}>Что рядом</div>
               {activeCats.length > 0 && (
-                <button onClick={() => pickCat(null)} aria-label="сбросить категории" style={{ display: "inline-flex", alignItems: "center", gap: 5, minWidth: 0, maxWidth: "100%", background: CS.B, color: "#fff", border: `2px solid ${CS.K}`, boxShadow: `2px 2px 0 ${CS.K}`, padding: "4px 5px 4px 8px", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 12, letterSpacing: "-0.01em", textTransform: "uppercase", lineHeight: 1 }}>
+                <button onClick={() => pickCat(null)} aria-label="сбросить категории" style={{ display: "inline-flex", alignItems: "center", gap: 4, minWidth: 0, maxWidth: "100%", background: CS.B, color: "#fff", border: `2px solid ${CS.K}`, boxShadow: `2px 2px 0 ${CS.K}`, padding: "4px 5px 4px 7px", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "-0.02em", textTransform: "uppercase", lineHeight: 1 }}>
                   {activeCats.length === 1 ? (
                     <>
                       <span style={{ fontSize: 13, flexShrink: 0 }}>{activeCats[0].symbol}</span>
