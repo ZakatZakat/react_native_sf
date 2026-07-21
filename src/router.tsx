@@ -30,7 +30,6 @@ import PipeExampleOnlyBlue from "./pages/PipeExampleOnlyBlue"
 import PipeFeedOnlyBlue from "./pages/PipeFeedOnlyBlue"
 import CsLanding from "./pages/cs/Landing"
 import CsLoading from "./pages/cs/Loading"
-import CsName from "./pages/cs/Name"
 import CsWeek from "./pages/cs/Week"
 import CsPass from "./pages/cs/Pass"
 import CsSwipe from "./pages/cs/Swipe"
@@ -92,7 +91,6 @@ const pipeExampleOnlyBlueRoute = createRoute({ getParentRoute: () => rootRoute, 
 const pipeFeedOnlyBlueRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-feed-only-blue", component: PipeFeedOnlyBlue })
 const csLandingRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/landing", component: CsLanding })
 const csLoadingRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/loading", component: CsLoading })
-const csNameRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/name", component: CsName })
 const csWeekRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/week", component: CsWeek })
 const csPassRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/pass", component: CsPass })
 const csSwipeRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/swipe", component: CsSwipe })
@@ -137,7 +135,6 @@ const routeTree = rootRoute.addChildren([
   pipeFeedOnlyBlueRoute,
   csLandingRoute,
   csLoadingRoute,
-  csNameRoute,
   csWeekRoute,
   csPassRoute,
   csSwipeRoute,

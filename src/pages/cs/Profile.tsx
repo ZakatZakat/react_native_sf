@@ -6,7 +6,7 @@
  *  with percentages + hero stat ("312 событий отсмотрено").
  *
  *  Data wiring:
- *   - `name` from useJourneyState() (typed on /cs/name).
+ *   - `name` from useJourneyState() (Telegram account name; input step removed).
  *   - `profile` from useJourneyState() — falls back to SEED_PROFILE so
  *     opening /cs/profile straight from the dropdown still renders.
  *   - per-category counts come from useDerived().catCounts (real Curator

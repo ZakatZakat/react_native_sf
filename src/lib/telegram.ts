@@ -20,8 +20,8 @@ function webApp(): TgWebApp | undefined {
 }
 
 /** The signed-in Telegram account's display name, or "" outside Telegram.
- *  Prefer this over the name typed on /cs/name: prod skips that step, so the
- *  stored value is usually a stale leftover from an old session. */
+ *  This is the only source of the user's name now — the name-input step was
+ *  removed; any stored `name` is just a stale leftover from an old session. */
 export function tgUserName(): string {
   const u = webApp()?.initDataUnsafe?.user
   if (!u) return ""

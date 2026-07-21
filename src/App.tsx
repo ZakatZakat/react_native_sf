@@ -8,12 +8,11 @@ declare global {
 }
 
 const PIPE_ROUTES = [
-  // v3 short path: Landing → Loading → Name → Feed → Profile
+  // Short path: Landing → Loading → Feed → Profile
   { label: "01 · Лендинг",  to: "/cs/landing" },
   { label: "02 · Загрузка", to: "/cs/loading" },
-  { label: "03 · Имя",      to: "/cs/name" },
-  { label: "04 · Лента",    to: "/cs/feed" },
-  { label: "05 · Профиль",  to: "/cs/profile" },
+  { label: "03 · Лента",    to: "/cs/feed" },
+  { label: "04 · Профиль",  to: "/cs/profile" },
 ] as const
 
 const ALT_ROUTES = [

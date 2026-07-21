@@ -2,7 +2,7 @@
  * CitySignal · 02 · Загрузка.
  *
  *  Animated scan + progress + "CITYSIGNAL" wordmark on signal-blue.
- *  Auto-advances to /cs/name when the progress bar fills.
+ *  Auto-advances to /cs/week when the progress bar fills.
  */
 
 import { useEffect, useRef, useState } from "react"

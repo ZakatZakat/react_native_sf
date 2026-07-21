@@ -54,14 +54,13 @@ export type StepKey = "landing" | "loading" | "name" | "pass" | "swipe" | "summa
 
 export type StepKey2 = StepKey | "profile"
 
-/** Canonical v3 short path. Five steps; Pass / Swipe / Summary are kept
+/** Canonical short path. Four steps; Pass / Swipe / Summary are kept
  *  reachable via the dropdown's «Альтернативные Варианты» group. */
 export const STEPS: { key: StepKey2; n: string; title: string; path: string }[] = [
   { key: "landing",  n: "01", title: "Лендинг",  path: "/cs/landing" },
   { key: "loading",  n: "02", title: "Загрузка", path: "/cs/loading" },
-  { key: "name",     n: "03", title: "Имя",      path: "/cs/name" },
-  { key: "feed",     n: "04", title: "Лента",    path: "/cs/feed" },
-  { key: "profile",  n: "05", title: "Профиль",  path: "/cs/profile" },
+  { key: "feed",     n: "03", title: "Лента",    path: "/cs/feed" },
+  { key: "profile",  n: "04", title: "Профиль",  path: "/cs/profile" },
 ]
 
 export function nextStep(from: StepKey): StepKey | null {
@@ -532,7 +531,7 @@ const GO_KEY = "cs-going-v1"
 /** Slim subset of Ev kept in the store — enough to re-render the agenda
  *  and the EventSheet without keeping the heavy `desc` text in storage. */
 export type GoingItem = {
-  t: string; v: string; d: string; tm: string; ch: string; cat: string;
+  id?: string; t: string; v: string; d: string; tm: string; ch: string; cat: string;
   p: string | null; remind: boolean; mid?: number | null
 }
 
@@ -540,7 +539,7 @@ type GoingValue = {
   list: GoingItem[]
   isGoing: (ev: { t: string }) => boolean
   toggle: (ev: Ev | GoingItem) => void
-  setRemind: (ev: { t: string }, on: boolean) => void
+  setRemind: (ev: { t: string; id?: string }, on: boolean) => void
 }
 
 export const GoingCtx = createContext<GoingValue>({
@@ -567,19 +566,19 @@ export function GoingProvider({ children }: { children: React.ReactNode }) {
 
   const toggle = (ev: Ev | GoingItem) => {
     analytics.track("cs.event.going", {
-      title: ev.t.slice(0, 120), on: !isGoing(ev), category: ("c" in ev ? ev.c : ev.cat),
+      event_id: ev.id ?? null, title: ev.t.slice(0, 120), on: !isGoing(ev), category: ("c" in ev ? ev.c : ev.cat),
     })
     setList((cur) =>
       cur.some((e) => e.t === ev.t)
         ? cur.filter((e) => e.t !== ev.t)
         : [...cur, {
-            t: ev.t, v: ev.v, d: ev.d, tm: ev.tm, ch: ev.ch,
+            id: ev.id, t: ev.t, v: ev.v, d: ev.d, tm: ev.tm, ch: ev.ch,
             cat: ("c" in ev ? ev.c : ev.cat), p: ev.p, remind: true, mid: ev.mid ?? null,
           }],
     )
   }
-  const setRemind = (ev: { t: string }, on: boolean) => {
-    analytics.track("cs.event.remind", { title: (ev.t || "").slice(0, 120), on })
+  const setRemind = (ev: { t: string; id?: string }, on: boolean) => {
+    analytics.track("cs.event.remind", { event_id: ev.id ?? null, title: (ev.t || "").slice(0, 120), on })
     setList((cur) => cur.map((e) => e.t === ev.t ? { ...e, remind: on } : e))
   }
 

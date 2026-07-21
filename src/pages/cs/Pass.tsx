@@ -25,8 +25,7 @@ export default function CsPass() {
     <CsPage>
       <ScreenBG theme="dots" />
       <div style={{ position: "absolute", inset: 0, padding: "44px 22px 132px", display: "flex", flexDirection: "column" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <button onClick={() => navigate({ to: "/cs/name" })} style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}><Mono color={CS.B}>← Имя</Mono></button>
+        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center" }}>
           <Mono>Пропуск</Mono>
         </div>
         {/* City Pass — replaces the old knockout card.

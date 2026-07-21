@@ -145,8 +145,8 @@ export function useJourneyState() {
     _setName(""); _setProfile({}); broadcast()
   }
 
-  // Greet by the Telegram account name; the value typed on /cs/name is only a
-  // fallback (prod skips that step, so it's usually a stale leftover).
+  // Greet by the Telegram account name. The name-input step was removed, so
+  // `name` is now only a stale localStorage leftover kept as a last resort.
   const displayName = tgName || name
 
   return { name, displayName, setName, profile, setProfile, clear }

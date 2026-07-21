@@ -65,7 +65,7 @@ export type EventName =
   | "feed.view" | "feed.event.open"
   // ── CitySignal journey (cs.*) ──────────────────────────────────
   // onboarding
-  | "cs.landing.enter" | "cs.name.submit" | "cs.pass.continue"
+  | "cs.landing.enter" | "cs.pass.continue"
   | "cs.swipe.card.like" | "cs.swipe.card.skip" | "cs.swipe.deck.complete"
   | "cs.summary.enter_feed"
   // week digest (Семейство Сплит)
