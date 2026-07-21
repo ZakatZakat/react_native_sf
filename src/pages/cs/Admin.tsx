@@ -14,7 +14,18 @@ import { analytics, type AdminStats } from "../../lib/analytics"
 import { CURATOR_BASE } from "../../lib/curator"
 import { isImg, resolveMedia } from "../pipe/shared"
 
-const AS_USER = import.meta.env.VITE_DEV_USER_ID || "12345"
+// В браузере (без Telegram) админ-эндпоинты авторизуются параметром ?as_user из
+// URL — тем же id, которым открыта админка. VITE_DEV_USER_ID/12345 — лишь
+// фолбэк, и он НЕ в ADMIN_USER_IDS: без чтения ?as_user все админ-фетчи упирались
+// в 403 → списки и контент-стата приходили пустыми («Пусто.»).
+const AS_USER = (() => {
+  try {
+    return new URLSearchParams(window.location.search).get("as_user")
+      || import.meta.env.VITE_DEV_USER_ID || "12345"
+  } catch {
+    return import.meta.env.VITE_DEV_USER_ID || "12345"
+  }
+})()
 
 type AdminPost = {
   event_id: number
@@ -316,7 +327,7 @@ export default function CsAdmin() {
     setLoading(true); setErr(null)
     const [s, c] = await Promise.allSettled([
       analytics.fetchStats(),
-      fetch(`${CURATOR_BASE}/admin/stats?as_user=${import.meta.env.VITE_DEV_USER_ID || "12345"}`).then((r) => r.ok ? r.json() : Promise.reject(new Error(`curator ${r.status}`))),
+      fetch(`${CURATOR_BASE}/admin/stats?as_user=${AS_USER}`).then((r) => r.ok ? r.json() : Promise.reject(new Error(`curator ${r.status}`))),
     ])
     if (s.status === "fulfilled") setStats(s.value); else setErr(String(s.reason?.message ?? s.reason))
     if (c.status === "fulfilled") setContent(c.value as CuratorStats)
@@ -331,7 +342,7 @@ export default function CsAdmin() {
 
   return (
     <div style={{ minHeight: "100dvh", background: "#fff", fontFamily: SANS, color: INK }}>
-      <div style={{ maxWidth: 560, margin: "0 auto", padding: "40px 20px 56px" }}>
+      <div style={{ maxWidth: "min(1040px, 94vw)", margin: "0 auto", padding: "40px 24px 56px" }}>
         {/* header */}
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
           <div>
@@ -378,7 +389,7 @@ export default function CsAdmin() {
         {stats && (
           <>
             {/* stat grid — plain 2-col, hairline divided */}
-            <div style={{ marginTop: 22, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "22px 28px", borderTop: `1px solid ${LINE}`, paddingTop: 22 }}>
+            <div style={{ marginTop: 22, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "22px 28px", borderTop: `1px solid ${LINE}`, paddingTop: 22 }}>
               <Stat label="Пользователи (TG)" value={stats.users.total} sub={`24ч ${stats.users.d1} · 7д ${stats.users.d7}`} />
               <Stat label="Устройства" value={stats.users.devices} sub="вкл. веб" />
               <Stat label="Сессии · 24ч" value={stats.sessions_24h} />
@@ -416,7 +427,7 @@ export default function CsAdmin() {
         {content?.events_time && (
           <>
             <SectionTitle>События</SectionTitle>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "22px 28px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "22px 28px" }}>
               <Stat label="Будет (опубликовано)" value={content.events_time.upcoming} sub={content.events_time.undated ? `+ ${content.events_time.undated} без даты` : undefined} />
               <Stat label="Было (прошло)" value={content.events_time.past} />
               <Stat label="Ждут модерации" value={content.events_time.review_upcoming} sub="предстоящие" />
@@ -432,7 +443,7 @@ export default function CsAdmin() {
           return (
             <>
               <SectionTitle right="на карте">Геолокация</SectionTitle>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "22px 28px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "22px 28px" }}>
                 <Stat label="С указанием места" value={`${g.with_location}`} sub={`${locPct}% из ${g.approved_total} approved`} />
                 <Stat label="С координатами" value={g.geocoded} sub="точная отрисовка" />
               </div>
@@ -451,7 +462,7 @@ export default function CsAdmin() {
         {content && (
           <>
             <SectionTitle>Контент</SectionTitle>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "22px 28px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "22px 28px" }}>
               <Stat label="Каналы" value={content.channels.total} sub={`активных ${content.channels.enabled}`} />
               <Stat label="Сырые посты" value={content.posts_raw} />
             </div>
