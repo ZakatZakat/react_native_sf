@@ -886,7 +886,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       {/* 2D/3D переключатель — обе кнопки видны, активный режим подсвечен синим. */}
       {!failed && ready && (
         <div style={{
-          position: "absolute", top: "43%", right: 12, zIndex: 10, display: "flex",
+          position: "absolute", top: "43%", right: 12, zIndex: 10, display: "flex", flexDirection: "column",
           background: CS.W, border: `2px solid ${CS.K}`, borderRadius: 10, overflow: "hidden",
           boxShadow: "2px 2px 0 rgba(13,13,13,0.22)",
         }}>
@@ -898,8 +898,8 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
                 onClick={() => setFlatMode(isFlat)}
                 aria-pressed={active}
                 style={{
-                  padding: "9px 13px", border: "none", cursor: "pointer", lineHeight: 1,
-                  borderLeft: i === 1 ? `2px solid ${CS.K}` : "none",
+                  width: 40, padding: "8px 0", border: "none", cursor: "pointer", lineHeight: 1,
+                  borderTop: i === 1 ? `2px solid ${CS.K}` : "none",
                   background: active ? CS.B : "transparent", color: active ? CS.W : CS.K,
                   fontFamily: FONT_MONO, fontWeight: 800, fontSize: 12, letterSpacing: "0.04em",
                 }}
