@@ -195,6 +195,10 @@ function BoardLead({ ev }: { ev: Ev }) {
  *  distinct footer block (meta · full title · venue · description). */
 function MosaicCard({ ev, i, onImg }: { ev: Ev; i: number; onImg?: () => void }) {
   const open = useOpenEvent()
+  // Poster failed to load (0-byte/404/corrupt) — a mosaic card is poster-first,
+  // so drop the whole card rather than show a broken «?» tile. CSS columns reflow
+  // automatically; onImg re-packs any JS-measured layout.
+  const [broken, setBroken] = useState(false)
   // Slight scrapbook tilt + gentle idle float. Three nested layers so the
   // transforms compose instead of overriding each other: entrance (once) →
   // float (idle, infinite) → static rotate on the card itself. Float only on
@@ -212,6 +216,7 @@ function MosaicCard({ ev, i, onImg }: { ev: Ev; i: number; onImg?: () => void })
   // title, already shown in full above — don't repeat it).
   const nl = (ev.desc || "").indexOf("\n")
   const body = nl >= 0 ? stripHandles(ev.desc.slice(nl + 1).replace(/\s+/g, " ").trim()) : ""
+  if (broken) return null
   return (
     <div style={{ breakInside: "avoid", WebkitColumnBreakInside: "avoid", marginBottom: 20, animation: `sk-refresh 0.5s cubic-bezier(0.22,1,0.36,1) ${(Math.min(i, 12) * 0.06).toFixed(2)}s both` }}>
       <div style={{ animation: float ? `sk-float ${dur}s ease-in-out ${delay}s infinite` : undefined }}>
@@ -227,7 +232,7 @@ function MosaicCard({ ev, i, onImg }: { ev: Ev; i: number; onImg?: () => void })
               card grows to fit it (maxHeight caps a runaway-tall poster).
               Its bottom edge is the divider; the date badge floats top-right. */}
           <div style={{ position: "relative", minHeight: 120, borderBottom: `2.5px solid ${SK.ink}`, background: "#E4E4E1", overflow: "hidden" }}>
-            {ev.p && <img src={ev.p} alt="" loading="lazy" onLoad={onImg} onError={onImg} style={{ width: "100%", height: "auto", maxHeight: 380, objectFit: "cover", display: "block" }} />}
+            {ev.p && <img src={ev.p} alt="" loading="lazy" onLoad={onImg} onError={() => { setBroken(true); onImg?.() }} style={{ width: "100%", height: "auto", maxHeight: 380, objectFit: "cover", display: "block" }} />}
             <span style={{ position: "absolute", top: 8, right: 8, background: SK.ink, color: SK.paper, fontWeight: 900, fontSize: 13, letterSpacing: "0.02em", lineHeight: 1, padding: "5px 8px" }}>{ev.d}</span>
           </div>
           {/* footer block */}
