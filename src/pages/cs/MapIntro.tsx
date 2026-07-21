@@ -971,15 +971,20 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         )}
         {!selZone && catChips.length > 0 && (
           <div className="cs-catbar" style={{ display: "flex", gap: 6, width: "100%", overflowX: "auto", scrollbarWidth: "none", paddingBottom: 2 }}>
-            <button onClick={() => pickCat(null)} style={{ display: "inline-flex", alignItems: "center", gap: 5, flexShrink: 0, cursor: "pointer", padding: "5px 9px", border: `2px solid ${CS.K}`, background: catFilter.size === 0 ? CS.B : CS.W, color: catFilter.size === 0 ? "#fff" : CS.K, boxShadow: `2px 2px 0 ${CS.K}`, fontFamily: FONT_SANS, fontWeight: 900, fontSize: 12, letterSpacing: "-0.01em", whiteSpace: "nowrap" }}>
-              Все <span style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, opacity: 0.75 }}>{mappableTotal}</span>
+            {/* «Все» — сброс всех; активна, когда ничего не выбрано (без чекбокса) */}
+            <button onClick={() => pickCat(null)} style={{ display: "inline-flex", alignItems: "center", gap: 5, flexShrink: 0, cursor: "pointer", padding: "6px 10px", border: `1.5px solid ${CS.K}`, background: catFilter.size === 0 ? CS.K : CS.W, color: catFilter.size === 0 ? "#fff" : CS.K, fontFamily: FONT_SANS, fontWeight: 800, fontSize: 11, letterSpacing: "-0.01em", textTransform: "uppercase", whiteSpace: "nowrap" }}>
+              Все <span style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, opacity: catFilter.size === 0 ? 0.8 : 0.55 }}>{mappableTotal}</span>
             </button>
-            {catChips.map((c) => (
-              <button key={c.key} onClick={() => pickCat(c.key)} style={{ display: "inline-flex", alignItems: "center", gap: 5, flexShrink: 0, cursor: "pointer", padding: "5px 9px", border: `2px solid ${CS.K}`, background: catFilter.has(c.key) ? CS.B : CS.W, color: catFilter.has(c.key) ? "#fff" : CS.K, boxShadow: `2px 2px 0 ${CS.K}`, fontFamily: FONT_SANS, fontWeight: 900, fontSize: 12, letterSpacing: "-0.01em", whiteSpace: "nowrap" }}>
-                <span style={{ fontSize: 13, lineHeight: 1 }}>{c.symbol}</span>{c.label}
-                <span style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, opacity: 0.75 }}>{c.n}</span>
-              </button>
-            ))}
+            {catChips.map((c) => {
+              const on = catFilter.has(c.key)
+              return (
+                <button key={c.key} onClick={() => pickCat(c.key)} aria-pressed={on} style={{ display: "inline-flex", alignItems: "center", gap: 6, flexShrink: 0, cursor: "pointer", padding: "6px 9px 6px 6px", border: `1.5px solid ${on ? CS.B : CS.K}`, background: CS.W, color: CS.K, fontFamily: FONT_SANS, fontWeight: 800, fontSize: 11, letterSpacing: "-0.01em", textTransform: "uppercase", whiteSpace: "nowrap" }}>
+                  <span style={{ width: 15, height: 15, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", border: `2px solid ${on ? CS.B : CS.K}`, background: on ? CS.B : "transparent", color: "#fff", fontSize: 10, lineHeight: 1 }}>{on ? "✓" : ""}</span>
+                  {c.label}
+                  <span style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, color: "rgba(13,13,13,0.55)" }}>{c.n}</span>
+                </button>
+              )
+            })}
           </div>
         )}
         {selZone && (() => {
