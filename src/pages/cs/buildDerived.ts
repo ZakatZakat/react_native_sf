@@ -201,6 +201,21 @@ export function buildDerived(events: FeedItem[]): DerivedData {
   // («10 июля» → 0) loses to a real name («MAGIC TRIBE x TRIANGLE…» → 5), so the
   // better-titled copy of a cross-post is the one we keep.
   const titleScore = (e: FeedItem) => tokenize(e.title).length
+  // Canonical event URL from the body — the ticket/info page (outlinefestival.org,
+  // timepad, qtickets…). Cross-posts of the SAME event carry the SAME such link;
+  // t.me / соцсети differ per repost, so they're skipped. Combined with the start
+  // time this catches festival promos whose captions AND posters all differ
+  // («190 имён…», «финализированы лайнапы…», «OID × SILA SVETA…» → один Outline).
+  const urlKey = (e: FeedItem): string => {
+    const urls = (e.description || "").match(/https?:\/\/[^\s)<>"'»]+/gi)
+    if (!urls) return ""
+    for (const u of urls) {
+      const low = u.toLowerCase()
+      if (/(t\.me\/|telegram\.|instagram\.|vk\.(com|ru)|facebook\.)/.test(low)) continue
+      return low.replace(/^https?:\/\//, "").replace(/[?#].*$/, "").replace(/\/+$/, "")
+    }
+    return ""
+  }
   const kept: FeedItem[] = []
   const exactToIdx = new Map<string, number>() // exact key → index in `kept`
   const nameBuckets = new Map<string, { nm: Set<string>; idx: number }[]>() // display time → name-sets
@@ -215,6 +230,7 @@ export function buildDerived(events: FeedItem[]): DerivedData {
     // Exact keys: byte-identical poster or identical body at the same time.
     const exact: string[] = []
     if (e.media_hash) exact.push(`img:${e.media_hash}|${t}`)
+    if (t) { const u = urlKey(e); if (u) exact.push(`url:${u}|${t}`) }
     const body = (e.description || "").trim().toLowerCase().replace(/\s+/g, " ")
     if (body) exact.push(`txt:${body}|${t}`)
     // Fuzzy name key: same start time + heavy name-word overlap. Catches re-worded
