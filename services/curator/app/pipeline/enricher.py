@@ -48,6 +48,30 @@ def _build_dt(date_snippet: str | None, time_snippet: str | None, base: datetime
     return _parse_dt(composed, base=base)
 
 
+def _correct_year_rollover(dt: datetime | None, base: datetime) -> datetime | None:
+    """Undo dateparser's year-rollover for bare (yearless) dates.
+
+    `_parse_dt` uses PREFER_DATES_FROM='future', so a yearless date that already
+    passed («4 июня» parsed in July) is rolled to NEXT year — the stale event then
+    reads as ~a year away and never expires from the feed's `event_time >= now`
+    gate. A real event is essentially never announced ~a year ahead with a
+    yearless date, so if the parse lands >300 days after the post, treat it as
+    that rollover and pull it back a year: the true (past) date then fails the
+    feed gate and drops out, instead of masquerading as next year."""
+    if dt is None:
+        return None
+    # Absurdly far future (>~2 years) = a stray number misparsed as a year
+    # («2123» from "33 удовольствия"), not a real date → drop it entirely.
+    if (dt - base).days > 730:
+        return None
+    if (dt - base).days > 300:
+        try:
+            return dt.replace(year=dt.year - 1)
+        except ValueError:
+            return dt  # Feb 29 → no such day previous year; leave as parsed
+    return dt
+
+
 def enrich_event(
     text: str,
     hits: DetectionHits,
@@ -72,6 +96,11 @@ def enrich_event(
         _build_dt(date_snippet, end_time_snippet, base=published_at)
         if end_time_snippet else None
     )
+    # Undo bare-date year-rollover (see _correct_year_rollover) so stale past
+    # dates don't resurface as next-year events.
+    base_dt = published_at or datetime.utcnow()
+    event_time = _correct_year_rollover(event_time, base_dt)
+    event_time_end = _correct_year_rollover(event_time_end, base_dt)
 
     # ── Location ──
     location_text: str | None = None

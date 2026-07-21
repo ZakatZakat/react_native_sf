@@ -279,6 +279,16 @@ def _validate_aliases() -> None:
 _validate_aliases()
 
 
+# A venue name inside a person's bio/affiliation ("преподаватель школ … ММОМА",
+# "выпускник …", "резидент …") is a MENTION, not the event's location. If one of
+# these cues sits just before an alias, skip that match — otherwise a passing
+# museum reference in a lecturer's bio mis-pins the whole event onto it.
+ATTRIBUTION_CUES: tuple[str, ...] = (
+    "преподавател", "выпускник", "выпускниц", "резидент",
+    "основател", "сотрудник", "куратор школ",
+)
+
+
 def geocode(
     *,
     text: Optional[str],
@@ -296,8 +306,15 @@ def geocode(
         padded = f" {hay} "
         for v in VENUES:
             for a in v.norm_aliases:
-                if a and f" {a} " in padded:
-                    return {"lat": v.lat, "lng": v.lng, "source": "gazetteer", "venue": v.key}
+                if not a:
+                    continue
+                pos = padded.find(f" {a} ")
+                if pos == -1:
+                    continue
+                # Skip when the alias sits in a bio/affiliation, not as a venue.
+                if any(cue in padded[max(0, pos - 60):pos] for cue in ATTRIBUTION_CUES):
+                    continue
+                return {"lat": v.lat, "lng": v.lng, "source": "gazetteer", "venue": v.key}
 
     # 2) channel default — a venue channel posts about its own building
     if channel_handle:
