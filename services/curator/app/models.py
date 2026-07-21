@@ -110,6 +110,9 @@ class EventCurated(Base):
     location_meta: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON, nullable=True)
     price_text: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     price_kopecks: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    # Human-readable event name, curated (Claude/editor). Falls back to the post's
+    # cleaned first line when null. See build_feed_item + POST /admin/event-titles.
+    title: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
 
     # Filter result
     filter_score: Mapped[int] = mapped_column(Integer, default=0, nullable=False)

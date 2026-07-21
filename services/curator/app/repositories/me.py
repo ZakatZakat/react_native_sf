@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from typing import Sequence
 
@@ -21,6 +22,22 @@ from app.models import (
 )
 
 
+_LEAD_JUNK = re.compile(r"^[\W_]+", re.UNICODE)  # ведущие эмодзи/символы/пробелы
+
+
+def derive_title(text: str | None) -> str:
+    """Fallback-заголовок из текста, когда кураторского нет: первая строка с реальным
+    словом, очищенная от ведущих эмодзи/символов. Ловит частый случай, когда 1-я
+    строка декоративная («🇮🇷 х 🗣»), а название — на следующей."""
+    if not text:
+        return "Событие"
+    for raw in text.split("\n")[:4]:
+        line = _LEAD_JUNK.sub("", raw).strip()
+        if re.search(r"[^\W\d_]{3,}", line):  # есть слово из ≥3 букв
+            return line[:200]
+    return (text.split("\n", 1)[0][:200]).strip() or "Событие"
+
+
 def build_feed_item(
     ev: EventCurated, post: PostRaw,
     tags: list[str], tag_labels: list[str], channel_handle: str = "",
@@ -33,7 +50,7 @@ def build_feed_item(
         "channel": channel_handle,
         "channel_id": post.channel_id,
         "message_id": post.message_id,
-        "title": (post.text.split("\n", 1)[0][:200]) if post.text else "Событие",
+        "title": (ev.title.strip() if ev.title and ev.title.strip() else derive_title(post.text)),
         "description": post.text,
         "media_urls": post.media_urls or [],
         "media_hash": post.media_hash,  # de-dupe key: identical poster across cross-posts

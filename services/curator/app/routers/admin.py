@@ -362,3 +362,38 @@ async def ui_variant_set(
     the frontend, and a stale/unknown id degrades to the component's default."""
     async with session_scope(sf) as s:
         return await UiVariantRepository(s).set(body.key.strip(), body.variant.strip(), admin_id)
+
+
+# ── Кураторские названия событий (Claude/редактор) ─────────────────────
+class TitleItem(BaseModel):
+    event_id: int
+    title: str
+
+
+class EventTitlesBody(BaseModel):
+    titles: list[TitleItem]
+
+
+@router.post("/event-titles")
+async def set_event_titles(
+    body: EventTitlesBody,
+    _admin: int = Depends(require_admin),
+    sf: async_sessionmaker[AsyncSession] = Depends(get_session_factory),
+) -> dict:
+    """Проставить человекочитаемые названия событиям (events_curated.title).
+    Пустой title → сбрасывает в NULL (feed вернётся к derive_title из текста)."""
+    from sqlalchemy import update
+
+    updated = 0
+    missing: list[int] = []
+    async with session_scope(sf) as s:
+        for it in body.titles:
+            title = (it.title or "").strip()[:300]
+            res = await s.execute(
+                update(EventCurated).where(EventCurated.id == it.event_id).values(title=title or None)
+            )
+            if res.rowcount:
+                updated += res.rowcount
+            else:
+                missing.append(it.event_id)
+    return {"updated": updated, "missing": missing}
