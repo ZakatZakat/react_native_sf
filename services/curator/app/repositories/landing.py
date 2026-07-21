@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.models import EventCurated, LandingPick, PostRaw
@@ -21,12 +21,16 @@ class LandingPickRepository(WeekPickRepository):
 
     async def current_picks(self) -> list[dict]:
         """The chosen events ordered by slot (0..3). Skips picks whose event
-        was deleted (FK cascade already removes those rows)."""
+        was deleted (FK cascade already removes those rows) AND picks whose
+        event has already passed — the media cleanup sweeps a past event's
+        poster, so it would render as a broken «?» card on the landing strip."""
+        now = datetime.utcnow()
         rows = (
             await self.s.execute(
                 select(EventCurated, PostRaw, LandingPick.slot)
                 .join(LandingPick, LandingPick.event_id == EventCurated.id)
                 .join(PostRaw, PostRaw.id == EventCurated.post_id)
+                .where(or_(EventCurated.event_time >= now, EventCurated.event_time.is_(None)))
                 .order_by(LandingPick.slot.asc())
             )
         ).all()

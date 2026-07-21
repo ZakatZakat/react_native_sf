@@ -66,15 +66,17 @@ class WeekPickRepository:
     async def current_pick(self) -> dict | None:
         """The active week pick as a feed item, or None (→ app auto-fallback).
 
-        Newest pick wins; a pick self-expires once its event has ended (guards
-        against a stale carry-over lingering if the editor forgets to re-pick)."""
+        Newest pick wins; a pick self-expires the moment its event has ended
+        (guards against a stale carry-over lingering if the editor forgets to
+        re-pick). No grace day: a past event's poster is swept by the media
+        cleanup, so a lingering past pick would show as a broken «?» hero."""
         now = datetime.utcnow()
         q = (
             select(EventCurated, PostRaw)
             .join(WeekPick, WeekPick.event_id == EventCurated.id)
             .join(PostRaw, PostRaw.id == EventCurated.post_id)
             .where(EventCurated.status == EventStatus.approved)
-            .where(or_(EventCurated.event_time >= now - timedelta(days=1), EventCurated.event_time.is_(None)))
+            .where(or_(EventCurated.event_time >= now, EventCurated.event_time.is_(None)))
             .order_by(WeekPick.week_start.desc(), WeekPick.created_at.desc())
             .limit(1)
         )
