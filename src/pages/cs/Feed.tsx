@@ -469,6 +469,19 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [E, cat])
   const catalog = tag ? inCat.filter((e) => e.tags?.includes(tag)) : inCat
+  // «Носик» подтег-лотка целится в ВЫБРАННУЮ категорию: меряем её позицию в
+  // (скроллящемся) ряду и двигаем треугольник под неё; прячем, если она уехала.
+  const catRowRef = useRef<HTMLDivElement | null>(null)
+  const [beakX, setBeakX] = useState<number | null>(null)
+  const measureBeak = () => {
+    const row = catRowRef.current
+    const btn = row?.querySelector('[data-active="1"]') as HTMLElement | null
+    if (!row || !btn) { setBeakX(null); return }
+    const bx = btn.getBoundingClientRect(), rx = row.getBoundingClientRect()
+    const x = bx.left - rx.left + bx.width / 2
+    setBeakX(x < 10 || x > rx.width - 10 ? null : x) // за краем ряда — прячем
+  }
+  useLayoutEffect(() => { measureBeak() /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [cat, tagChips.length])
 
   return (
     <div style={{ width: "100%", paddingBottom: 54 }}>
@@ -545,12 +558,12 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
       </div>
 
       {/* category filter — chips filter the «Каталог» grid only (hero stays) */}
-      <div className="sk-scroll" style={{ display: "flex", gap: 8, overflowX: "auto", padding: "0 14px 4px", marginBottom: (cat !== "Все" && tagChips.length > 0) ? 0 : 14 }}>
+      <div ref={catRowRef} onScroll={measureBeak} className="sk-scroll" style={{ display: "flex", gap: 8, overflowX: "auto", padding: "0 14px 4px", marginBottom: (cat !== "Все" && tagChips.length > 0) ? 0 : 14 }}>
         {cats.map((c) => {
           const on = cat === c
           const sym = c !== "Все" ? CAT_SYM.get(c) : undefined
           return (
-            <button key={c} onClick={() => { setCat(c); setTag(null); analytics.track("cs.feed.filter", { kind: "category", value: c }) }} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 12px", border: `2px solid ${SK.ink}`, background: on ? SK.ink : SK.paper, color: on ? SK.paper : SK.ink, fontFamily: FONT_SANS, fontWeight: 800, fontSize: 10.5, letterSpacing: "0.05em", textTransform: "uppercase", whiteSpace: "nowrap", cursor: "pointer" }}>
+            <button key={c} data-active={on ? "1" : undefined} onClick={() => { setCat(c); setTag(null); analytics.track("cs.feed.filter", { kind: "category", value: c }) }} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 12px", border: `2px solid ${SK.ink}`, background: on ? SK.ink : SK.paper, color: on ? SK.paper : SK.ink, fontFamily: FONT_SANS, fontWeight: 800, fontSize: 10.5, letterSpacing: "0.05em", textTransform: "uppercase", whiteSpace: "nowrap", cursor: "pointer" }}>
               {sym && <span style={{ fontWeight: 400, fontSize: 12.5, lineHeight: 1 }}>{sym}</span>}{c}
             </button>
           )
@@ -560,9 +573,11 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
           треугольник + выезд, в лёгком синем лотке, мельче и тонким синим. «Все»
           → второго ряда нет вообще (не тащим пустой уровень). */}
       {cat !== "Все" && tagChips.length > 0 && (
-        <div key={cat} style={{ marginBottom: 14, animation: "sk-refresh 0.28s cubic-bezier(0.22,1,0.36,1) both" }}>
-          <div style={{ width: 12, height: 12, background: "rgba(0,85,255,0.06)", borderTop: `1.5px solid ${CS.B}`, borderLeft: `1.5px solid ${CS.B}`, transform: "rotate(45deg)", margin: "0 0 -7px 26px", position: "relative", zIndex: 1 }} />
-          <div style={{ background: "rgba(0,85,255,0.055)", borderTop: `1.5px solid ${CS.B}`, padding: "9px 0 7px" }}>
+        <div key={cat} style={{ position: "relative", marginBottom: 14, animation: "sk-refresh 0.28s cubic-bezier(0.22,1,0.36,1) both" }}>
+          {beakX != null && (
+            <div style={{ position: "absolute", top: -6, left: beakX - 6, width: 12, height: 12, background: SK.paper, borderTop: `1.5px solid ${CS.B}`, borderLeft: `1.5px solid ${CS.B}`, transform: "rotate(45deg)", zIndex: 2 }} />
+          )}
+          <div style={{ background: "rgba(0,85,255,0.05)", borderTop: `1.5px solid ${CS.B}`, padding: "9px 0 7px" }}>
             <div style={{ fontFamily: FONT_MONO, fontSize: 9, letterSpacing: "0.16em", color: SK.ink55, textTransform: "uppercase", padding: "0 14px" }}>уточнить · <span style={{ color: CS.B, fontWeight: 700 }}>{cat}</span></div>
             <div className="sk-scroll" style={{ display: "flex", gap: 7, overflowX: "auto", padding: "8px 14px 0" }}>
               {tagChips.map((t) => {
