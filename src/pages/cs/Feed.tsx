@@ -155,7 +155,7 @@ function SectionLabel({ children, style }: { children: React.ReactNode; style?: 
 function BoardLead({ ev }: { ev: Ev }) {
   const open = useOpenEvent()
   return (
-    <div onClick={() => open(ev)} style={{ display: "flex", alignItems: "stretch", gap: 12, background: SK.paper, border: `2px solid ${SK.ink}`, boxShadow: `4px 4px 0 ${SK.ink}`, padding: 8, cursor: "pointer", animation: "sk-refresh 0.5s cubic-bezier(0.22,1,0.36,1) both" }}>
+    <div onClick={() => open(ev)} style={{ display: "flex", alignItems: "stretch", gap: 12, background: SK.paper, border: `2px solid ${SK.ink}`, borderRadius: 16, boxShadow: `4px 4px 0 ${SK.ink}`, padding: 8, cursor: "pointer", animation: "sk-refresh 0.5s cubic-bezier(0.22,1,0.36,1) both" }}>
       {/* poster shown whole at its own aspect (no crop) — fits within a box,
           so a wide poster stays short and the card grows for a tall one.
           alignSelf center keeps it undistorted while the card stretches. */}
@@ -224,7 +224,7 @@ function MosaicCard({ ev, i, onImg }: { ev: Ev; i: number; onImg?: () => void })
           onClick={() => open(ev)}
           style={{
             transform: `rotate(${rot}deg)`,
-            background: SK.paper, border: `2.5px solid ${SK.ink}`,
+            background: SK.paper, border: `2.5px solid ${SK.ink}`, borderRadius: 16,
             boxShadow: `3px 4px 0 ${SK.ink}`, overflow: "hidden", cursor: "pointer",
           }}
         >
