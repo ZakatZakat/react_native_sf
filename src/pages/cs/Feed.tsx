@@ -762,7 +762,7 @@ export default function CsFeed() {
                   instant the map opens. Unmounting also kills the flash-through
                   the old visibility:hidden guarded against (nothing to flash). */}
               <div className="sk-scroll" key={view} style={{ position: "absolute", inset: 0, overflowY: "auto", overflowX: "hidden" }}>
-                <div style={{ height: 46 }} />
+                <div style={{ height: "calc(env(safe-area-inset-top, 0px) + 10px)" }} />
                 {!(view === "board" && showIntro) && inner}
               </div>
               {view === "board" && showIntro && <MapIntro events={mapEvents} onEnter={dismissIntro} />}
