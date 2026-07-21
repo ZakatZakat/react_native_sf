@@ -379,9 +379,9 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   // flatRef читается в easeTo-переходах (Level 1/2), чтобы 2D-режим «прилипал» при навигации.
   const [flat, setFlat] = useState(false)
   const flatRef = useRef(false); flatRef.current = flat
-  const toggleFlat = () => {
+  const setFlatMode = (next: boolean) => {
+    if (next === flatRef.current) return // уже в этом режиме — не дёргаем камеру
     const map = mapRef.current
-    const next = !flatRef.current
     setFlat(next); flatRef.current = next
     if (!map) return
     for (const id of ["cs-building-3d", EVT_BLDG_LAYER]) {
@@ -883,20 +883,30 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       {!failed && <div ref={boxRef} style={{ position: "absolute", inset: 0, isolation: "isolate", background: "#E4E4E1" }} />}
       {failed && <div style={{ position: "absolute", inset: 0, background: "linear-gradient(160deg,#16213a,#0d0d0d)" }} />}
 
-      {/* 2D/3D тумблер — плоский вид сверху без 3D-домов ↔ 3D. Метка = режим, в
-          который переключит тап. */}
+      {/* 2D/3D переключатель — обе кнопки видны, активный режим подсвечен синим. */}
       {!failed && ready && (
-        <button
-          onClick={toggleFlat}
-          aria-label={flat ? "включить 3D-режим карты" : "включить плоский 2D-режим карты"}
-          style={{
-            position: "absolute", top: "43%", right: 12, zIndex: 10,
-            width: 44, height: 44, display: "inline-flex", alignItems: "center", justifyContent: "center",
-            background: CS.W, color: CS.K, border: `2px solid ${CS.K}`, borderRadius: 10,
-            boxShadow: "2px 2px 0 rgba(13,13,13,0.22)", cursor: "pointer",
-            fontFamily: FONT_MONO, fontWeight: 800, fontSize: 13, letterSpacing: "0.03em",
-          }}
-        >{flat ? "3D" : "2D"}</button>
+        <div style={{
+          position: "absolute", top: "43%", right: 12, zIndex: 10, display: "flex",
+          background: CS.W, border: `2px solid ${CS.K}`, borderRadius: 10, overflow: "hidden",
+          boxShadow: "2px 2px 0 rgba(13,13,13,0.22)",
+        }}>
+          {([["2D", true], ["3D", false]] as [string, boolean][]).map(([label, isFlat], i) => {
+            const active = flat === isFlat
+            return (
+              <button
+                key={label}
+                onClick={() => setFlatMode(isFlat)}
+                aria-pressed={active}
+                style={{
+                  padding: "9px 13px", border: "none", cursor: "pointer", lineHeight: 1,
+                  borderLeft: i === 1 ? `2px solid ${CS.K}` : "none",
+                  background: active ? CS.B : "transparent", color: active ? CS.W : CS.K,
+                  fontFamily: FONT_MONO, fontWeight: 800, fontSize: 12, letterSpacing: "0.04em",
+                }}
+              >{label}</button>
+            )
+          })}
+        </div>
       )}
 
       {/* subtle scrims for legibility */}
