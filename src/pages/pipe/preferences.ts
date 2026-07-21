@@ -125,6 +125,18 @@ export const INTERESTS: Interest[] = [
       "серия встреч", "куратор расскажет", "поговорят",
     ],
   },
+  {
+    // Games + community gatherings + markets — social events without an arts home.
+    key: "community",
+    label: "Игры и сообщество",
+    symbol: "▦",
+    keywords: [
+      "настольн", "настолк", "мафия", "ролев", "квиз", "квест", "игротек",
+      "board game", "нетворкинг", "networking", "спид-дейтинг",
+      "разговорн клуб", "разговорный клуб", "сходка",
+      "маркет", "барахолк", "фримаркет", "блошин", "своп ",
+    ],
+  },
 ]
 
 function readJSON<T>(key: string, fallback: T): T {

@@ -92,4 +92,17 @@ INITIAL_TAGS: list[dict] = [
             "семинар", "мастер-класс", "воркшоп", "workshop", "медиаци", "конференц",
         ],
     },
+    {
+        # Games + community gatherings + markets — social events with no arts
+        # home among the 11 arts coarse (мафия, настолки, квизы, нетворкинг,
+        # разговорные клубы, спид-дейтинг, маркеты/свопы). Kept keywords narrow
+        # so they don't bleed into arts events.
+        "key": "community", "label": "Игры и сообщество", "symbol": "▦", "sort_order": 13,
+        "keywords": [
+            "настольн", "настолк", "мафия", "ролев", "квиз", "квест", "игротек",
+            "board game", "нетворкинг", "networking", "спид-дейтинг",
+            "разговорн клуб", "разговорный клуб", "сходка",
+            "маркет", "барахолк", "фримаркет", "блошин", "своп ",
+        ],
+    },
 ]
