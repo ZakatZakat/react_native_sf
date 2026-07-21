@@ -221,6 +221,17 @@ export function buildDerived(events: FeedItem[]): DerivedData {
     }
     return ""
   }
+  // Quoted event name («Во дворе», «ОВОЩИ», «Зал ожидания») — a strong same-event
+  // signal cross-posts share even when captions and posters differ. The title-token
+  // overlap is unreliable here: a short quoted title («Во дворе» → 3 tokens) pulls in
+  // the body, a longer one doesn't, and the two token sets then diverge below the 0.8
+  // threshold though they're the same event. First «…» in the title (fallback: body
+  // head); ≥5 chars so «Лето»/«Ночь»-type generics can't merge unrelated events.
+  const quoteKey = (e: FeedItem): string => {
+    const src = `${e.title || ""} ${(e.description || "").slice(0, 60)}`
+    const m = src.match(/«([^»]{5,80})»/) || src.match(/"([^"]{5,80})"/)
+    return m ? m[1].toLowerCase().replace(/\s+/g, " ").trim() : ""
+  }
   const kept: FeedItem[] = []
   const exactToIdx = new Map<string, number>() // exact key → index in `kept`
   const nameBuckets = new Map<string, { nm: Set<string>; idx: number }[]>() // display time → name-sets
@@ -236,6 +247,7 @@ export function buildDerived(events: FeedItem[]): DerivedData {
     const exact: string[] = []
     if (e.media_hash) exact.push(`img:${e.media_hash}|${t}`)
     if (t) { const u = urlKey(e); if (u) exact.push(`url:${u}|${t}`) }
+    if (t) { const q = quoteKey(e); if (q) exact.push(`name:${q}|${t}`) }
     const body = (e.description || "").trim().toLowerCase().replace(/\s+/g, " ")
     if (body) exact.push(`txt:${body}|${t}`)
     // Fuzzy name key: same start time + heavy name-word overlap. Catches re-worded
