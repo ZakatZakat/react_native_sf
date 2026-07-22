@@ -448,9 +448,12 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
   const E = useMemo(() => feed.filter((e) => e && !e.id.startsWith("__placeholder")), [feed])
   // «Выбор недели» hero rotates through the soonest few on each refresh; the
   // catalog below always shows the rest of what's ahead.
-  const heroIdx = E.length ? nonce % Math.min(E.length, 6) : 0
-  const hero = E[heroIdx]
-  const rest = E.filter((_, i) => i !== heroIdx)
+  // Герой «выбор редакции» — только из ещё НЕ начавшихся событий (или без даты):
+  // прошедшее сегодня (напр. мастер-класс в 15:00 в 18:00) наверху не показываем.
+  const heroPool = E.filter((e) => e.ts == null || e.ts >= Date.now())
+  const hPool = heroPool.length ? heroPool : E
+  const hero = hPool.length ? hPool[nonce % Math.min(hPool.length, 6)] : undefined
+  const rest = E.filter((e) => e !== hero)
   const refresh = () => { setNonce((n) => n + 1); setSweep((s) => s + 360) }
   // Category filter — applies ONLY to the «Каталог» grid; «выбор недели» stays.
   const [cat, setCat] = useState("Все")
@@ -736,9 +739,15 @@ export default function CsFeed() {
   const upcoming = useMemo(() => {
     const cutoff = new Date(); cutoff.setHours(0, 0, 0, 0)
     const c = cutoff.getTime()
+    const now = Date.now()
     return allEvents
-      .filter((e) => e.ts == null || e.ts >= c)
-      .sort((a, b) => (a.ts ?? Infinity) - (b.ts ?? Infinity))
+      .filter((e) => e.ts == null || e.ts >= c) // сегодняшние остаются (findable)
+      .sort((a, b) => {
+        // прошедшие сегодня тонут ПОД ещё-предстоящими (asc клал их наверх)
+        const ap = a.ts != null && a.ts < now, bp = b.ts != null && b.ts < now
+        if (ap !== bp) return ap ? 1 : -1
+        return (a.ts ?? Infinity) - (b.ts ?? Infinity)
+      })
   }, [allEvents])
   // Visual surfaces (board hero + poster mosaic + map) show only events WITH an
   // afisha poster — imageless posts (often digests/news) render bare as cards.
