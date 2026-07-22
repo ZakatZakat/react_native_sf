@@ -62,14 +62,17 @@ analytics.init()
 // Light haptic tap on every button/link across the app (no-op outside TG).
 installGlobalTap()
 if (typeof window !== "undefined") {
-  const tg = (window as unknown as { Telegram?: { WebApp?: { initDataUnsafe?: { user?: { id?: number; language_code?: string } }; colorScheme?: string } } }).Telegram?.WebApp
+  const tg = (window as unknown as { Telegram?: { WebApp?: { initDataUnsafe?: { user?: { id?: number; language_code?: string; username?: string; first_name?: string } }; colorScheme?: string } } }).Telegram?.WebApp
   if (tg?.initDataUnsafe?.user?.id) {
+    const u = tg.initDataUnsafe.user
     analytics.identify({
-      user_id: String(tg.initDataUnsafe.user.id),
+      user_id: String(u.id),
       tg: {
-        id: tg.initDataUnsafe.user.id,
-        lang: tg.initDataUnsafe.user.language_code,
+        id: u.id,
+        lang: u.language_code,
         theme: tg.colorScheme,
+        username: u.username,
+        first_name: u.first_name,
       },
     })
   }

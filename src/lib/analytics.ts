@@ -97,7 +97,7 @@ type QueuedEvent = {
 
 type Identity = {
   user_id: string | null
-  tg?: { id?: number; lang?: string; theme?: string }
+  tg?: { id?: number; lang?: string; theme?: string; username?: string; first_name?: string }
 }
 
 // ────────────────────────────────────────────────────────────────
