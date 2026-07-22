@@ -180,10 +180,19 @@ export default function CsWebFeed() {
     for (const e of mainE) if (e.c && e.c !== "—" && !seen.includes(e.c)) seen.push(e.c)
     return ["Все", ...seen]
   }, [mainE])
-  const [cat, setCat] = useState("Все")
+  const [cat, setCat] = useState("Все")        // 1-й уровень — крупная категория
+  const [tag, setTag] = useState<string | null>(null) // 2-й уровень — подтег
   const [q, setQ] = useState("")
+  // события выбранной категории (до сужения подтегом)
+  const inCat = useMemo(() => (cat === "Все" ? rest : rest.filter((e) => e.c === cat)), [rest, cat])
+  // подтеги 2-го уровня — те, что реально встречаются в этой категории, по частоте
+  const tagChips = useMemo(() => {
+    const freq = new Map<string, number>()
+    for (const e of inCat) for (const t of e.tags || []) freq.set(t, (freq.get(t) || 0) + 1)
+    return [...freq.entries()].sort((a, b) => b[1] - a[1]).slice(0, 16).map(([t]) => t)
+  }, [inCat])
   const catalog = useMemo(() => {
-    let list = cat === "Все" ? rest : rest.filter((e) => e.c === cat)
+    let list = tag ? inCat.filter((e) => e.tags?.includes(tag)) : inCat
     const query = q.trim().toLowerCase()
     if (query) list = list.filter((e) => `${e.t} ${e.v} ${e.ch} ${e.c}`.toLowerCase().includes(query))
     // жёсткие барьеры — в конец (как в мобиле)
@@ -191,7 +200,7 @@ export default function CsWebFeed() {
       const ha = HARD_ACCESS.has(a.access), hb = HARD_ACCESS.has(b.access)
       return ha === hb ? 0 : ha ? 1 : -1
     })
-  }, [rest, cat, q])
+  }, [inCat, tag, q])
 
   const ready = allEvents.length > 0
 
@@ -223,12 +232,26 @@ export default function CsWebFeed() {
                   const on = cat === c
                   const sym = c !== "Все" ? CAT_SYM.get(c) : undefined
                   return (
-                    <button key={c} onClick={() => setCat(c)} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "9px 16px", border: `2px solid ${SK.ink}`, background: on ? SK.ink : SK.paper, color: on ? SK.paper : SK.ink, fontFamily: FONT_SANS, fontWeight: 800, fontSize: 13, letterSpacing: "0.05em", textTransform: "uppercase", cursor: "pointer", boxShadow: on ? `3px 3px 0 ${CS.B}` : "none" }}>
+                    <button key={c} onClick={() => { setCat(c); setTag(null) }} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "9px 16px", border: `2px solid ${SK.ink}`, background: on ? SK.ink : SK.paper, color: on ? SK.paper : SK.ink, fontFamily: FONT_SANS, fontWeight: 800, fontSize: 13, letterSpacing: "0.05em", textTransform: "uppercase", cursor: "pointer", boxShadow: on ? `3px 3px 0 ${CS.B}` : "none" }}>
                       {sym && <span style={{ fontWeight: 400, fontSize: 15, lineHeight: 1 }}>{sym}</span>}{c}
                     </button>
                   )
                 })}
               </div>
+
+              {/* 2-й уровень — подтеги выбранной категории (появляется, только когда
+                  категория выбрана и подтеги есть) */}
+              {cat !== "Все" && tagChips.length > 0 && (
+                <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 10, marginTop: 14 }}>
+                  <span style={{ fontFamily: FONT_MONO, fontSize: 12, letterSpacing: "0.14em", textTransform: "uppercase", color: SK.ink55 }}>уточнить · <span style={{ color: CS.B, fontWeight: 700 }}>{cat}</span></span>
+                  {tagChips.map((t) => {
+                    const on = tag === t
+                    return (
+                      <button key={t} onClick={() => setTag(on ? null : t)} style={{ padding: "8px 14px", border: `2px solid ${SK.ink}`, background: on ? SK.ink : CS.B, color: "#fff", boxShadow: `3px 3px 0 ${on ? CS.B : SK.ink}`, fontFamily: FONT_SANS, fontWeight: 800, fontSize: 12, letterSpacing: "0.05em", textTransform: "uppercase", cursor: "pointer" }}>{t}</button>
+                    )
+                  })}
+                </div>
+              )}
 
               {!ready ? (
                 <div style={{ fontFamily: FONT_MONO, fontSize: 14, color: SK.ink55, letterSpacing: "0.04em", padding: "80px 0", textAlign: "center" }}>загружаем афишу…</div>
