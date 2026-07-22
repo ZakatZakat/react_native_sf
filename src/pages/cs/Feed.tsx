@@ -72,8 +72,7 @@ function accessSquare(access: string): string {
 }
 
 /** Блок-штамп: рамка + смещённая тень + цветной квадрат + подпись капсом.
- *  Углы скруглены под язык карточек (radius 16 + жёсткая тень), иначе острая
- *  плашка внутри мягкой карточки «резчит». */
+ *  Углы прямые (квадратный вид) — по вкусу. */
 function StampBadge({ label, square, style }: { label: string; square: string; style?: React.CSSProperties }) {
   return (
     <span style={{
@@ -81,9 +80,9 @@ function StampBadge({ label, square, style }: { label: string; square: string; s
       fontFamily: FONT_SANS, fontWeight: 800, fontSize: 9.5, letterSpacing: "0.05em",
       textTransform: "uppercase", lineHeight: 1, padding: "4px 8px 4px 5px",
       background: SK.paper, color: SK.ink, border: `2px solid ${SK.ink}`,
-      borderRadius: 6, boxShadow: `2px 2px 0 ${SK.ink}`, ...style,
+      boxShadow: `2px 2px 0 ${SK.ink}`, ...style,
     }}>
-      <span style={{ width: 9, height: 9, flex: "0 0 auto", background: square, borderRadius: 2 }} />
+      <span style={{ width: 10, height: 10, flex: "0 0 auto", background: square }} />
       {label}
     </span>
   )
