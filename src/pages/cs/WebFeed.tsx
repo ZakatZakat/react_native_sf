@@ -1,0 +1,272 @@
+/**
+ * CitySignal · веб-версия ленты (не Telegram).
+ *
+ *  Заготовка десктоп-ленты: тот же контент и дизайн, что в мини-аппе, но
+ *  крупнее и шире — многоколоночная masonry вместо мобильных 2 колонок,
+ *  увеличенный герой и типографика. Карты нет: пользователь сразу в ленте.
+ *
+ *  Переиспользует данные (useDerived), токены/шрифты (CS/SK) и общую модалку
+ *  события (EventModalProvider/useOpenEvent). Логика доступности/тиров уже в
+ *  Ev (buildDerived) — здесь только рендер в веб-масштабе.
+ *
+ *  Роут: /web
+ */
+
+import { useMemo, useState } from "react"
+import { useNavigate } from "@tanstack/react-router"
+import {
+  CS, SK, FONT_SANS, FONT_MONO, ScreenBG,
+  NavCtx, EventModalProvider, GoingProvider, useOpenEvent,
+} from "./shared"
+import type { Ev } from "./buildDerived"
+import { INTERESTS } from "../pipe/preferences"
+import { useDerived } from "./useJourney"
+
+const CAT_SYM = new Map(INTERESTS.map((i) => [i.label, i.symbol]))
+
+// ── Доступность (тот же смысл, что в мобильной ленте, крупнее) ──────────
+const ACCESS_LABEL: Record<string, string> = {
+  free: "свободно",
+  registration: "нужна регистрация",
+  registration_closed: "регистрация закрыта",
+  ticket: "по билетам",
+  signup: "по записи",
+  accreditation: "аккредитация",
+  sold_out: "мест нет",
+}
+const HARD_ACCESS = new Set(["registration_closed", "sold_out"])
+const RED = "#E0162B"
+const accessSquare = (a: string): string => (a === "free" ? CS.B : HARD_ACCESS.has(a) ? RED : SK.ink)
+
+/** Бейдж-штамп (веб-масштаб): белый блок, квадрат-индикатор, прямые углы. */
+function Stamp({ label, square }: { label: string; square: string }) {
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", gap: 7, whiteSpace: "nowrap",
+      fontFamily: FONT_SANS, fontWeight: 800, fontSize: 12, letterSpacing: "0.05em",
+      textTransform: "uppercase", lineHeight: 1, padding: "6px 11px 6px 7px",
+      background: SK.paper, color: SK.ink, border: `2px solid ${SK.ink}`, boxShadow: `3px 3px 0 ${SK.ink}`,
+    }}>
+      <span style={{ width: 13, height: 13, flex: "0 0 auto", background: square }} />
+      {label}
+    </span>
+  )
+}
+
+function badges(ev: Ev): React.ReactNode[] {
+  const out: React.ReactNode[] = []
+  if (ACCESS_LABEL[ev.access]) out.push(<Stamp key="a" label={ACCESS_LABEL[ev.access]} square={accessSquare(ev.access)} />)
+  if (ev.age) out.push(<Stamp key="g" label={ev.age} square={SK.ink} />)
+  return out
+}
+
+// Скоринг героя «выбор редакции» — как в мобильной ленте (доступнее = выше).
+function heroScore(e: Ev): number {
+  let s = e.friction
+  if (e.ts == null) s += 1.5
+  if (!e.v || e.v.startsWith("@")) s += 1
+  if (e.geo) s -= 0.5
+  return s
+}
+
+// ── Карточка каталога (крупная) ─────────────────────────────────────────
+function WebCard({ ev }: { ev: Ev }) {
+  const open = useOpenEvent()
+  const [broken, setBroken] = useState(false)
+  if (broken) return null
+  const venue = ev.v && !ev.v.startsWith("@") ? ev.v : ""
+  const time = ev.tm && ev.tm !== "—" ? ev.tm : ""
+  const price = ev.price && ev.price !== "—" && !/свобод|беспл|free/i.test(ev.price) ? ev.price : ""
+  const meta = [time, price].filter(Boolean).join(" · ")
+  const nl = (ev.desc || "").indexOf("\n")
+  const body = nl >= 0 ? ev.desc.slice(nl + 1).replace(/\s+/g, " ").trim() : ""
+  const bd = badges(ev)
+  return (
+    <div style={{ breakInside: "avoid", WebkitColumnBreakInside: "avoid", marginBottom: 24 }}>
+      <div onClick={() => open(ev)} style={{ background: SK.paper, border: `2.5px solid ${SK.ink}`, boxShadow: `4px 5px 0 ${SK.ink}`, overflow: "hidden", cursor: "pointer" }}>
+        <div style={{ position: "relative", borderBottom: `2.5px solid ${SK.ink}`, background: "#E4E4E1", lineHeight: 0 }}>
+          {ev.p && <img src={ev.p} alt="" onError={() => setBroken(true)} style={{ width: "100%", height: "auto", maxHeight: 540, objectFit: "cover", display: "block" }} />}
+          <span style={{ position: "absolute", top: 11, right: 11, background: SK.ink, color: SK.paper, fontWeight: 900, fontSize: 16, letterSpacing: "0.02em", padding: "6px 10px" }}>{ev.d}</span>
+        </div>
+        <div style={{ padding: "14px 16px 17px" }}>
+          <div style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 12.5, letterSpacing: "0.03em", color: SK.ink55, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{meta}</div>
+          {bd.length > 0 && <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>{bd}</div>}
+          <div style={{ fontWeight: 900, fontSize: 22, letterSpacing: "-0.015em", lineHeight: 1.07, marginTop: 12, textTransform: "uppercase", color: SK.ink, overflowWrap: "anywhere", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" } as React.CSSProperties}>{ev.t}</div>
+          {venue && <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.3, color: SK.ink55, marginTop: 8 }}>{venue}</div>}
+          {body && <div style={{ fontSize: 13.5, lineHeight: 1.42, color: SK.ink55, marginTop: 10, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" } as React.CSSProperties}>{body}</div>}
+          {ev.tags && ev.tags.length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12 }}>
+              {ev.tags.slice(0, 4).map((tg) => (
+                <span key={tg} style={{ fontFamily: FONT_SANS, fontSize: 11, fontWeight: 800, letterSpacing: "0.02em", textTransform: "uppercase", color: CS.B, background: "rgba(0,85,255,0.10)", border: "1px solid rgba(0,85,255,0.30)", padding: "3px 7px" }}>{tg}</span>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Герой «выбор редакции» (крупный) ───────────────────────────────────
+function WebHero({ ev }: { ev: Ev }) {
+  const open = useOpenEvent()
+  const bd = badges(ev)
+  const len = (ev.t || "").length
+  const fs = len <= 22 ? 46 : len <= 38 ? 38 : len <= 58 ? 30 : len <= 84 ? 24 : 20
+  return (
+    <div onClick={() => open(ev)} style={{ display: "flex", gap: 26, alignItems: "stretch", background: SK.paper, border: `2.5px solid ${SK.ink}`, boxShadow: `6px 6px 0 ${SK.ink}`, padding: 16, cursor: "pointer" }}>
+      {ev.p && <img src={ev.p} alt="" style={{ flexShrink: 0, alignSelf: "center", maxWidth: 360, maxHeight: 420, width: "auto", height: "auto", border: `2px solid ${SK.ink}` }} />}
+      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <span style={{ background: SK.ink, color: SK.paper, fontFamily: FONT_SANS, fontWeight: 900, fontSize: 12, letterSpacing: "0.14em", textTransform: "uppercase", padding: "5px 11px" }}>{ev.c}</span>
+          <span style={{ fontFamily: FONT_MONO, fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", color: SK.ink55 }}>выбор редакции</span>
+        </div>
+        <div style={{ fontWeight: 900, fontSize: fs, letterSpacing: "-0.02em", lineHeight: 1.02, textTransform: "uppercase", color: SK.ink, overflowWrap: "break-word" }}>{ev.t}</div>
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 18, flexWrap: "wrap" }}>
+          <div style={{ fontFamily: FONT_MONO, fontSize: 13, letterSpacing: "0.03em", color: SK.ink, lineHeight: 1.6 }}>{ev.v}<br />{ev.d} · {ev.tm}</div>
+          {bd.length > 0 && <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>{bd}</div>}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function SectionRule({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "36px 0 18px" }}>
+      <span style={{ fontFamily: FONT_MONO, fontSize: 12, letterSpacing: "0.24em", textTransform: "uppercase", color: SK.ink55 }}>{children}</span>
+      <div style={{ flex: 1, height: 2, background: SK.ink }} />
+    </div>
+  )
+}
+
+// ── Страница ────────────────────────────────────────────────────────────
+export default function CsWebFeed() {
+  const navigate = useNavigate()
+  const { derived } = useDerived()
+  const navValue = useMemo(() => ({ openProfile: () => navigate({ to: "/cs/profile" }) }), [navigate])
+
+  const allEvents = useMemo(() => Object.values(derived.pool).flat(), [derived])
+  // Предстоящее (с начала сегодня), прошедшее-сегодня тонет вниз — как в мобиле.
+  const upcoming = useMemo(() => {
+    const cutoff = new Date(); cutoff.setHours(0, 0, 0, 0)
+    const c = cutoff.getTime(), now = Date.now()
+    return allEvents
+      .filter((e) => e.ts == null || e.ts >= c)
+      .sort((a, b) => {
+        const ap = a.ts != null && a.ts < now, bp = b.ts != null && b.ts < now
+        if (ap !== bp) return ap ? 1 : -1
+        return (a.ts ?? Infinity) - (b.ts ?? Infinity)
+      })
+  }, [allEvents])
+  const withPoster = useMemo(() => upcoming.filter((e) => e.p), [upcoming])
+  const mainE = useMemo(() => withPoster.filter((e) => e.tier !== "insider"), [withPoster])
+  const insiderE = useMemo(() => withPoster.filter((e) => e.tier === "insider"), [withPoster])
+
+  const heroPool = useMemo(() => {
+    const now = Date.now()
+    const up = mainE.filter((e) => e.ts == null || e.ts >= now)
+    const base = up.length ? up : mainE
+    return [...base].sort((a, b) => {
+      const s = heroScore(a) - heroScore(b)
+      return s !== 0 ? s : (a.ts ?? Infinity) - (b.ts ?? Infinity)
+    })
+  }, [mainE])
+  const hero = heroPool[0]
+  const rest = useMemo(() => mainE.filter((e) => e !== hero), [mainE, hero])
+
+  const cats = useMemo(() => {
+    const seen: string[] = []
+    for (const e of mainE) if (e.c && e.c !== "—" && !seen.includes(e.c)) seen.push(e.c)
+    return ["Все", ...seen]
+  }, [mainE])
+  const [cat, setCat] = useState("Все")
+  const [q, setQ] = useState("")
+  const catalog = useMemo(() => {
+    let list = cat === "Все" ? rest : rest.filter((e) => e.c === cat)
+    const query = q.trim().toLowerCase()
+    if (query) list = list.filter((e) => `${e.t} ${e.v} ${e.ch} ${e.c}`.toLowerCase().includes(query))
+    // жёсткие барьеры — в конец (как в мобиле)
+    return [...list].sort((a, b) => {
+      const ha = HARD_ACCESS.has(a.access), hb = HARD_ACCESS.has(b.access)
+      return ha === hb ? 0 : ha ? 1 : -1
+    })
+  }, [rest, cat, q])
+
+  const ready = allEvents.length > 0
+
+  return (
+    <NavCtx.Provider value={navValue}>
+      <GoingProvider>
+        <EventModalProvider>
+          <div style={{ position: "relative", minHeight: "100vh", background: CS.W, color: SK.ink, fontFamily: FONT_SANS }}>
+            <ScreenBG theme="grid" opacity={0.5} />
+            <div style={{ position: "relative", maxWidth: 1360, margin: "0 auto", padding: "40px 32px 90px" }}>
+
+              {/* header */}
+              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}>
+                <div style={{ background: SK.paper, border: `2.5px solid ${SK.ink}`, boxShadow: `5px 5px 0 ${SK.ink}`, padding: "16px 22px 18px" }}>
+                  <div style={{ fontFamily: FONT_MONO, fontSize: 12, letterSpacing: "0.3em", textTransform: "uppercase", color: SK.ink55 }}>афиша · москва</div>
+                  <div style={{ fontWeight: 900, fontSize: 54, letterSpacing: "-0.045em", lineHeight: 0.92, marginTop: 6 }}>Что в городе</div>
+                  <div style={{ fontFamily: FONT_MONO, fontSize: 13, letterSpacing: "0.06em", marginTop: 8, color: SK.ink }}>{mainE.length} событий впереди</div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, border: `2px solid ${SK.ink}`, background: SK.paper, boxShadow: `3px 3px 0 ${CS.B}`, padding: "12px 16px", minWidth: 280 }}>
+                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="7.5" cy="7.5" r="5.3" stroke={SK.ink} strokeWidth="2.2" /><line x1="11.5" y1="11.5" x2="16" y2="16" stroke={SK.ink} strokeWidth="2.2" strokeLinecap="round" /></svg>
+                  <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="поиск по афише…" style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontFamily: FONT_MONO, fontSize: 14, letterSpacing: "0.02em", color: SK.ink }} />
+                  {q && <button onClick={() => setQ("")} aria-label="Очистить" style={{ border: "none", background: "none", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 16, color: SK.ink55 }}>✕</button>}
+                </div>
+              </div>
+
+              {/* category filter */}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 26 }}>
+                {cats.map((c) => {
+                  const on = cat === c
+                  const sym = c !== "Все" ? CAT_SYM.get(c) : undefined
+                  return (
+                    <button key={c} onClick={() => setCat(c)} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "9px 16px", border: `2px solid ${SK.ink}`, background: on ? SK.ink : SK.paper, color: on ? SK.paper : SK.ink, fontFamily: FONT_SANS, fontWeight: 800, fontSize: 13, letterSpacing: "0.05em", textTransform: "uppercase", cursor: "pointer", boxShadow: on ? `3px 3px 0 ${CS.B}` : "none" }}>
+                      {sym && <span style={{ fontWeight: 400, fontSize: 15, lineHeight: 1 }}>{sym}</span>}{c}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {!ready ? (
+                <div style={{ fontFamily: FONT_MONO, fontSize: 14, color: SK.ink55, letterSpacing: "0.04em", padding: "80px 0", textAlign: "center" }}>загружаем афишу…</div>
+              ) : (
+                <>
+                  {/* hero — только когда не ищем/не фильтруем, как «выбор редакции» */}
+                  {cat === "Все" && !q.trim() && hero && (
+                    <>
+                      <SectionRule>выбор редакции</SectionRule>
+                      <WebHero ev={hero} />
+                    </>
+                  )}
+
+                  <SectionRule>{cat === "Все" ? "каталог" : cat.toLowerCase()}{q.trim() ? ` · поиск «${q.trim()}»` : ""}</SectionRule>
+                  {catalog.length > 0 ? (
+                    <div style={{ columnWidth: 300, columnGap: 22 }}>
+                      {catalog.map((ev) => <WebCard key={ev.id} ev={ev} />)}
+                    </div>
+                  ) : (
+                    <div style={{ fontFamily: FONT_MONO, fontSize: 14, color: SK.ink55, letterSpacing: "0.04em", padding: "40px 0" }}>ничего не нашлось</div>
+                  )}
+
+                  {/* «для знатока» */}
+                  {cat === "Все" && !q.trim() && insiderE.length > 0 && (
+                    <>
+                      <SectionRule>для знатока · по секрету</SectionRule>
+                      <div style={{ columnWidth: 300, columnGap: 22 }}>
+                        {insiderE.map((ev) => <WebCard key={ev.id} ev={ev} />)}
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+
+            </div>
+          </div>
+        </EventModalProvider>
+      </GoingProvider>
+    </NavCtx.Provider>
+  )
+}

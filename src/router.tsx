@@ -35,6 +35,7 @@ import CsPass from "./pages/cs/Pass"
 import CsSwipe from "./pages/cs/Swipe"
 import CsSummary from "./pages/cs/Summary"
 import CsFeed from "./pages/cs/Feed"
+import CsWebFeed from "./pages/cs/WebFeed"
 import CsProfile from "./pages/cs/Profile"
 import CsAdmin from "./pages/cs/Admin"
 import CsAdminWeek from "./pages/cs/AdminWeek"
@@ -96,6 +97,7 @@ const csPassRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/pa
 const csSwipeRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/swipe", component: CsSwipe })
 const csSummaryRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/summary", component: CsSummary })
 const csFeedRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/feed", component: CsFeed })
+const csWebRoute = createRoute({ getParentRoute: () => rootRoute, path: "/web", component: CsWebFeed })
 const csProfileRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/profile", component: CsProfile })
 const csAdminRoute = createRoute({ getParentRoute: () => rootRoute, path: "/admin", component: CsAdmin })
 const csAdminWeekRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/admin/week", component: CsAdminWeek })
@@ -140,6 +142,7 @@ const routeTree = rootRoute.addChildren([
   csSwipeRoute,
   csSummaryRoute,
   csFeedRoute,
+  csWebRoute,
   csProfileRoute,
   csAdminRoute,
   csAdminWeekRoute,
