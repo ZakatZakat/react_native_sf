@@ -777,7 +777,7 @@ function EventSheet({ ev, onClose }: { ev: Ev | null; onClose: () => void }) {
             {ev.tags && ev.tags.length > 0 && (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 10 }}>
                 {ev.tags.map((tg) => (
-                  <span key={tg} style={{ fontFamily: FONT_SANS, fontSize: 10, fontWeight: 800, letterSpacing: "0.02em", textTransform: "uppercase", color: CS.B, background: "rgba(0,85,255,0.10)", border: `1px solid rgba(0,85,255,0.30)`, padding: "3px 7px", whiteSpace: "nowrap" }}>{tg}</span>
+                  <span key={tg} style={{ fontFamily: FONT_SANS, fontSize: 10, fontWeight: 800, letterSpacing: "0.03em", textTransform: "uppercase", color: "#fff", background: CS.B, border: `2px solid ${CS.K}`, boxShadow: `2px 2px 0 ${CS.K}`, padding: "4px 8px", whiteSpace: "nowrap" }}>{tg}</span>
                 ))}
               </div>
             )}

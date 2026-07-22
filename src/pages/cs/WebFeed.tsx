@@ -96,7 +96,7 @@ function WebCard({ ev }: { ev: Ev }) {
           {ev.tags && ev.tags.length > 0 && (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12 }}>
               {ev.tags.slice(0, 4).map((tg) => (
-                <span key={tg} style={{ fontFamily: FONT_SANS, fontSize: 11, fontWeight: 800, letterSpacing: "0.02em", textTransform: "uppercase", color: CS.B, background: "rgba(0,85,255,0.10)", border: "1px solid rgba(0,85,255,0.30)", padding: "3px 7px" }}>{tg}</span>
+                <span key={tg} style={{ fontFamily: FONT_SANS, fontSize: 11, fontWeight: 800, letterSpacing: "0.03em", textTransform: "uppercase", color: "#fff", background: CS.B, border: `2px solid ${SK.ink}`, boxShadow: `2px 2px 0 ${SK.ink}`, padding: "4px 9px" }}>{tg}</span>
               ))}
             </div>
           )}
