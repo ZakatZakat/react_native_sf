@@ -925,7 +925,7 @@ export function Clip({
       >
         <div style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden" }}>
           {ev?.p && (
-            <img src={ev.p} alt="" draggable={false} loading="lazy" style={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }} />
+            <img src={ev.p} alt="" draggable={false} style={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }} />
           )}
           {card && ev && (
             <>
@@ -973,7 +973,7 @@ export function Polaroid({
       >
         <div style={{ position: "relative", width: "100%", height: ph, overflow: "hidden", background: "#0b1d52", borderBottom: card ? "none" : `1px solid ${SK.ink}` }}>
           {ev?.p && (
-            <img src={ev.p} alt="" draggable={false} loading="lazy" style={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }} />
+            <img src={ev.p} alt="" draggable={false} style={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }} />
           )}
           {card && ev && (
             <>

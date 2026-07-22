@@ -44,7 +44,6 @@ function BluePoster({ src, style }: { src: string | null; style?: React.CSSPrope
         <img
           src={src}
           alt=""
-          loading="lazy"
           style={{
             position: "absolute", inset: 0,
             width: "100%", height: "100%",

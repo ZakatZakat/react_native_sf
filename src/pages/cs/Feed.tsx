@@ -286,7 +286,11 @@ function MosaicCard({ ev, i, onImg }: { ev: Ev; i: number; onImg?: () => void })
               floor and leaves an empty grey band below it. The card's bottom
               edge is the divider; the date badge floats top-right. */}
           <div style={{ position: "relative", borderBottom: `2.5px solid ${SK.ink}`, background: "#E4E4E1", overflow: "hidden", lineHeight: 0 }}>
-            {ev.p && <img src={ev.p} alt="" loading="lazy" onLoad={onImg} onError={() => { setBroken(true); onImg?.() }} style={{ width: "100%", height: "auto", maxHeight: 380, objectFit: "cover", display: "block" }} />}
+            {/* NB: без loading="lazy" — нативный lazy для картинок во вложенном
+                overflow:auto-скроллере не срабатывает в WebKit/iOS (Telegram),
+                постеры остаются пустыми. Число картинок в DOM и так ограничено
+                виндовингом MosaicGrid, поэтому грузим сразу. */}
+            {ev.p && <img src={ev.p} alt="" onLoad={onImg} onError={() => { setBroken(true); onImg?.() }} style={{ width: "100%", height: "auto", maxHeight: 380, objectFit: "cover", display: "block" }} />}
             <span style={{ position: "absolute", top: 8, right: 8, background: SK.ink, color: SK.paper, fontWeight: 900, fontSize: 13, letterSpacing: "0.02em", lineHeight: 1, padding: "5px 8px" }}>{ev.d}</span>
           </div>
           {/* footer block */}
@@ -474,7 +478,7 @@ function BoardSearch({ events, onClose }: { events: Ev[]; onClose: () => void })
           const sub = venue
           return (
             <button key={e.id} onClick={() => { open(e); onClose() }} style={{ width: "100%", display: "flex", gap: 11, alignItems: "flex-start", padding: "10px 0", borderTop: "1px solid rgba(13,13,13,0.12)", background: "transparent", cursor: "pointer", textAlign: "left" }}>
-              <div style={{ flexShrink: 0, width: 46, height: 58, border: `2px solid ${SK.ink}`, background: "#E4E4E1", overflow: "hidden" }}>{e.p && <img src={e.p} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}</div>
+              <div style={{ flexShrink: 0, width: 46, height: 58, border: `2px solid ${SK.ink}`, background: "#E4E4E1", overflow: "hidden" }}>{e.p && <img src={e.p} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}</div>
               <div style={{ flex: 1, minWidth: 0, paddingTop: 1 }}>
                 <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
                   <span style={{ background: SK.blue, color: "#fff", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 7.5, letterSpacing: "0.06em", textTransform: "uppercase", padding: "2px 5px", whiteSpace: "nowrap" }}>{e.c}</span>
@@ -519,7 +523,7 @@ function InsiderStrip({ events }: { events: Ev[] }) {
         {events.map((ev) => (
           <div key={ev.id} onClick={() => open(ev)} style={{ flexShrink: 0, width: 150, cursor: "pointer", background: SK.paper, border: `2px solid ${SK.ink}`, borderRadius: 12, overflow: "hidden", boxShadow: `3px 3px 0 ${SK.ink}` }}>
             <div style={{ position: "relative", background: "#E4E4E1", borderBottom: `2px solid ${SK.ink}`, lineHeight: 0 }}>
-              {ev.p && <img src={ev.p} alt="" loading="lazy" style={{ width: "100%", height: 96, objectFit: "cover", display: "block" }} />}
+              {ev.p && <img src={ev.p} alt="" style={{ width: "100%", height: 96, objectFit: "cover", display: "block" }} />}
               <span style={{ position: "absolute", top: 6, left: 6, background: SK.ink, color: SK.paper, fontFamily: FONT_MONO, fontWeight: 700, fontSize: 8, letterSpacing: "0.1em", textTransform: "uppercase", padding: "2px 5px" }}>инсайд</span>
             </div>
             <div style={{ padding: "8px 9px 10px" }}>

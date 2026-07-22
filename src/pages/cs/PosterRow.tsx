@@ -87,7 +87,6 @@ export function PosterRow({
               <img
                 src={p}
                 alt=""
-                loading="lazy"
                 onLoad={(e) => {
                   const el = e.currentTarget
                   if (!el.naturalWidth || !el.naturalHeight) return
