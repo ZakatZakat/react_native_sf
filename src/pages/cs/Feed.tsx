@@ -234,9 +234,11 @@ function MosaicCard({ ev, i, onImg }: { ev: Ev; i: number; onImg?: () => void })
           }}
         >
           {/* poster — natural aspect so the whole image shows uncropped; the
-              card grows to fit it (maxHeight caps a runaway-tall poster).
-              Its bottom edge is the divider; the date badge floats top-right. */}
-          <div style={{ position: "relative", minHeight: 120, borderBottom: `2.5px solid ${SK.ink}`, background: "#E4E4E1", overflow: "hidden" }}>
+              card hugs it (maxHeight caps a runaway-tall poster). No min-height
+              floor — otherwise a wide (16:9) poster renders shorter than the
+              floor and leaves an empty grey band below it. The card's bottom
+              edge is the divider; the date badge floats top-right. */}
+          <div style={{ position: "relative", borderBottom: `2.5px solid ${SK.ink}`, background: "#E4E4E1", overflow: "hidden", lineHeight: 0 }}>
             {ev.p && <img src={ev.p} alt="" loading="lazy" onLoad={onImg} onError={() => { setBroken(true); onImg?.() }} style={{ width: "100%", height: "auto", maxHeight: 380, objectFit: "cover", display: "block" }} />}
             <span style={{ position: "absolute", top: 8, right: 8, background: SK.ink, color: SK.paper, fontWeight: 900, fontSize: 13, letterSpacing: "0.02em", lineHeight: 1, padding: "5px 8px" }}>{ev.d}</span>
           </div>
