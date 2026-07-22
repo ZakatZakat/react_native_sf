@@ -129,7 +129,7 @@ export default function App() {
       {/* Телефонная рамка: на широком экране — колонка телефонной ширины по
           центру (см. .cs-frame в index.css), на телефоне — всё как есть.
           Веб-версия (/web) рамку не берёт — идёт во всю ширину экрана. */}
-      <div className={location.pathname === "/web" ? undefined : "cs-frame"}>
+      <div className={location.pathname.startsWith("/web") ? undefined : "cs-frame"}>
         <Outlet />
       </div>
     </Box>
