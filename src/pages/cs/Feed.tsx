@@ -209,7 +209,7 @@ function SectionLabel({ children, style }: { children: React.ReactNode; style?: 
 function BoardLead({ ev }: { ev: Ev }) {
   const open = useOpenEvent()
   return (
-    <div onClick={() => open(ev)} style={{ display: "flex", alignItems: "stretch", gap: 12, background: SK.paper, border: `2px solid ${SK.ink}`, borderRadius: 16, boxShadow: `4px 4px 0 ${SK.ink}`, padding: 8, cursor: "pointer", animation: "sk-refresh 0.5s cubic-bezier(0.22,1,0.36,1) both" }}>
+    <div onClick={() => open(ev)} style={{ display: "flex", alignItems: "stretch", gap: 12, background: SK.paper, border: `2px solid ${SK.ink}`, boxShadow: `4px 4px 0 ${SK.ink}`, padding: 8, cursor: "pointer", animation: "sk-refresh 0.5s cubic-bezier(0.22,1,0.36,1) both" }}>
       {/* poster shown whole at its own aspect (no crop) — fits within a box,
           so a wide poster stays short and the card grows for a tall one.
           alignSelf center keeps it undistorted while the card stretches. */}
@@ -280,7 +280,7 @@ function MosaicCard({ ev, i, onImg }: { ev: Ev; i: number; onImg?: () => void })
         <div
           onClick={() => open(ev)}
           style={{
-            background: SK.paper, border: `2.5px solid ${SK.ink}`, borderRadius: 16,
+            background: SK.paper, border: `2.5px solid ${SK.ink}`,
             boxShadow: `3px 4px 0 ${SK.ink}`, overflow: "hidden", cursor: "pointer",
           }}
         >
@@ -525,7 +525,7 @@ function InsiderStrip({ events }: { events: Ev[] }) {
       </div>
       <div className="sk-scroll" style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 6 }}>
         {events.map((ev) => (
-          <div key={ev.id} onClick={() => open(ev)} style={{ flexShrink: 0, width: 150, cursor: "pointer", background: SK.paper, border: `2px solid ${SK.ink}`, borderRadius: 12, overflow: "hidden", boxShadow: `3px 3px 0 ${SK.ink}` }}>
+          <div key={ev.id} onClick={() => open(ev)} style={{ flexShrink: 0, width: 150, cursor: "pointer", background: SK.paper, border: `2px solid ${SK.ink}`, overflow: "hidden", boxShadow: `3px 3px 0 ${SK.ink}` }}>
             <div style={{ position: "relative", background: "#E4E4E1", borderBottom: `2px solid ${SK.ink}`, lineHeight: 0 }}>
               {ev.p && <img src={ev.p} alt="" style={{ width: "100%", height: 96, objectFit: "cover", display: "block" }} />}
               <span style={{ position: "absolute", top: 6, left: 6, background: SK.ink, color: SK.paper, fontFamily: FONT_MONO, fontWeight: 700, fontSize: 8, letterSpacing: "0.1em", textTransform: "uppercase", padding: "2px 5px" }}>инсайд</span>
