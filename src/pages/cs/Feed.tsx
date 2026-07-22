@@ -49,10 +49,11 @@ const FALLBACK: Ev = {
 }
 
 // ── Доступность как первоклассный сигнал (фидбек #3) ─────────────────────
-// Бейдж «барьера входа»: неопытный сразу видит, на что можно просто прийти, а
-// куда — нужна регистрация / билет / уже поздно. «Свободный вход» бейджем не
-// показываем — отсутствие барьера и так читается (+ есть FREE-чип цены).
+// Бейдж-«штамп» (вариант B): белый блок с жирной рамкой + смещённой тенью и
+// ведущим цветным квадратом-индикатором. Цвет квадрата = барьер входа: синий —
+// «просто приходи», красный — «уже не попасть», чёрный — «нужно действие».
 const ACCESS_LABEL: Record<string, string> = {
+  free: "свободно",
   registration: "нужна регистрация",
   registration_closed: "регистрация закрыта",
   ticket: "по билетам",
@@ -60,36 +61,43 @@ const ACCESS_LABEL: Record<string, string> = {
   accreditation: "аккредитация",
   sold_out: "мест нет",
 }
-// «Жёсткие» барьеры (уже не попасть) — красный стоп-бейдж; мягкие — контур.
+// «Жёсткие» барьеры (уже не попасть) — красный квадрат (и тонут в конец каталога).
 const HARD_ACCESS = new Set(["registration_closed", "sold_out"])
 const RED = "#E0162B"
+// Цвет квадрата-индикатора: свободно → синий, жёсткий барьер → красный, иначе чёрный.
+function accessSquare(access: string): string {
+  if (access === "free") return CS.B
+  if (HARD_ACCESS.has(access)) return RED
+  return SK.ink
+}
 
-/** Бейдж барьера входа. Ничего не рендерит для «свободно»/без сигнала. */
-function AccessTag({ ev, style }: { ev: Ev; style?: React.CSSProperties }) {
-  const label = ACCESS_LABEL[ev.access]
-  if (!label) return null
-  const hard = HARD_ACCESS.has(ev.access)
+/** Блок-штамп: жёлтая рамка + тень + цветной квадрат + подпись капсом. */
+function StampBadge({ label, square, style }: { label: string; square: string; style?: React.CSSProperties }) {
   return (
     <span style={{
-      display: "inline-block", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 8.5,
-      letterSpacing: "0.04em", lineHeight: 1.1, whiteSpace: "nowrap", padding: "2px 6px",
-      textTransform: "uppercase",
-      background: hard ? RED : "transparent", color: hard ? "#fff" : SK.ink,
-      border: `1.5px solid ${hard ? RED : SK.ink}`, ...style,
-    }}>{label}</span>
+      display: "inline-flex", alignItems: "center", gap: 5, whiteSpace: "nowrap",
+      fontFamily: FONT_SANS, fontWeight: 800, fontSize: 9.5, letterSpacing: "0.05em",
+      textTransform: "uppercase", lineHeight: 1, padding: "4px 8px 4px 5px",
+      background: SK.paper, color: SK.ink, border: `2px solid ${SK.ink}`,
+      boxShadow: `2px 2px 0 ${SK.ink}`, ...style,
+    }}>
+      <span style={{ width: 10, height: 10, flex: "0 0 auto", background: square }} />
+      {label}
+    </span>
   )
 }
 
-/** Возрастной ценз «18+» — маленький тёмный чип. */
+/** Бейдж доступа. Рендерит «свободно» и все барьеры; пусто — без сигнала. */
+function AccessTag({ ev, style }: { ev: Ev; style?: React.CSSProperties }) {
+  const label = ACCESS_LABEL[ev.access]
+  if (!label) return null
+  return <StampBadge label={label} square={accessSquare(ev.access)} style={style} />
+}
+
+/** Возрастной ценз «18+» — тот же штамп с чёрным квадратом. */
 function AgeTag({ ev, style }: { ev: Ev; style?: React.CSSProperties }) {
   if (!ev.age) return null
-  return (
-    <span style={{
-      display: "inline-block", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 8.5,
-      letterSpacing: "0.02em", lineHeight: 1.1, whiteSpace: "nowrap", padding: "2px 5px",
-      background: SK.ink, color: SK.paper, ...style,
-    }}>{ev.age}</span>
-  )
+  return <StampBadge label={ev.age} square={SK.ink} style={style} />
 }
 
 /** Pick N events from the feed; pad with positionally-unique placeholders
@@ -159,17 +167,12 @@ function DiaryView({ feed }: { feed: Ev[] }) {
 
 // ── VARIANT 2 · Доска (mapcombo: Карта + Афиша + Мозаика) ───────────────
 
-/** Display label for the price chip. Real price wins; "вход свободный"
- *  etc. → "free". When there's no usable price we fall back to the start
- *  time, but only if curator actually gave one — otherwise null so the
- *  chip is hidden (no empty white tag). */
+/** Display label for the price chip — only a real monetary price now. «Свободно»
+ *  is carried by the access badge, and the start time already shows in the meta
+ *  line, so the chip no longer doubles them (null → hidden, no empty tag). */
 function priceLabel(ev: Ev): string | null {
   const p = (ev.price || "").trim()
-  if (p && p !== "—") {
-    if (/свобод|беспл|free/i.test(p)) return "free"
-    if (p.length <= 12) return p
-  }
-  if (ev.tm && ev.tm !== "—") return ev.tm
+  if (p && p !== "—" && !/свобод|беспл|free/i.test(p) && p.length <= 12) return p
   return null
 }
 
@@ -262,7 +265,9 @@ function MosaicCard({ ev, i, onImg }: { ev: Ev; i: number; onImg?: () => void })
   // venue / subtitle only if it's a real place (not a bare @channel handle)
   const venue = ev.v && !ev.v.startsWith("@") ? ev.v : ""
   const time = ev.tm && ev.tm !== "—" ? ev.tm : ""
-  const price = ev.price && ev.price !== "—" ? ev.price : ""
+  // «Свободный вход» уносим из меты — его показывает синий бейдж «свободно»,
+  // чтобы не дублировать; в мете остаётся время + реальная цена (₽).
+  const price = ev.price && ev.price !== "—" && !/свобод|беспл|free/i.test(ev.price) ? ev.price : ""
   const meta = [time, price].filter(Boolean).join(" · ")
   // description = the post body BELOW its first line (the first line is the
   // title, already shown in full above — don't repeat it).
