@@ -255,10 +255,9 @@ function MosaicCard({ ev, i, onImg }: { ev: Ev; i: number; onImg?: () => void })
   // so drop the whole card rather than show a broken «?» tile. CSS columns reflow
   // automatically; onImg re-packs any JS-measured layout.
   const [broken, setBroken] = useState(false)
-  // Slight scrapbook tilt + gentle idle float. Three nested layers so the
-  // transforms compose instead of overriding each other: entrance (once) →
-  // float (idle, infinite) → static rotate on the card itself. Float only on
-  // the first cards — hundreds of infinite anims would tax mobile.
+  // Карточки держим ПРЯМО (без scrapbook-наклона) — квадратный бейдж на
+  // наклонённой карточке читался «косо/резко». Оставляем только мягкий
+  // вертикальный float (без вращения). `rot` — лишь для разброса тайминга float.
   const rot = [-2.5, 2, -1.5, 2.5][i % 4]
   const dur = (4.6 + (Math.abs(rot) % 3) * 0.7).toFixed(2)
   const delay = ((Math.abs(Math.round(rot * 7)) % 20) / 10).toFixed(2)
@@ -281,7 +280,6 @@ function MosaicCard({ ev, i, onImg }: { ev: Ev; i: number; onImg?: () => void })
         <div
           onClick={() => open(ev)}
           style={{
-            transform: `rotate(${rot}deg)`,
             background: SK.paper, border: `2.5px solid ${SK.ink}`, borderRadius: 16,
             boxShadow: `3px 4px 0 ${SK.ink}`, overflow: "hidden", cursor: "pointer",
           }}
