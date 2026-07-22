@@ -138,9 +138,7 @@ NON_EVENT: Pattern[str] = re.compile(
 # события, на них нельзя прийти. Отсекаем, если есть broadcast-маркер И в тексте
 # нет физического места (у настоящей вечеринки «ВТРНК Radio Show» есть бар+адрес).
 BROADCAST: Pattern[str] = re.compile(
-    r"(vtrnk\.online|^\s*втрнк\s+radio\b|\bна\s+радио\b|в\s+прямом\s+эфире|"
-    r"радиоэфир|сери[яию]\s+эфиров|онлайн[-\s]?трансляц|прямая\s+трансляц|"
-    r"выпуск\s+(?:программы|подкаста|эфира)|\bподкаст)",
+    r"(vtrnk\.online|^\s*втрнк\s+radio\b|\bрадиошоу\b|\bradioshow\b)",
     re.IGNORECASE | re.MULTILINE,
 )
 
