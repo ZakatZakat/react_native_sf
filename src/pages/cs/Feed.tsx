@@ -45,6 +45,51 @@ const FALLBACK: Ev = {
   id: "—", t: "—", sub: "", v: "—", d: "—", tm: "—",
   p: null, c: "—", catKey: "", ch: "@—",
   desc: "", price: "—", note: "", venueKey: "", ts: null,
+  access: "", age: "", tier: "", friction: 1,
+}
+
+// ── Доступность как первоклассный сигнал (фидбек #3) ─────────────────────
+// Бейдж «барьера входа»: неопытный сразу видит, на что можно просто прийти, а
+// куда — нужна регистрация / билет / уже поздно. «Свободный вход» бейджем не
+// показываем — отсутствие барьера и так читается (+ есть FREE-чип цены).
+const ACCESS_LABEL: Record<string, string> = {
+  registration: "нужна регистрация",
+  registration_closed: "регистрация закрыта",
+  ticket: "по билетам",
+  signup: "по записи",
+  accreditation: "аккредитация",
+  sold_out: "мест нет",
+}
+// «Жёсткие» барьеры (уже не попасть) — красный стоп-бейдж; мягкие — контур.
+const HARD_ACCESS = new Set(["registration_closed", "sold_out"])
+const RED = "#E0162B"
+
+/** Бейдж барьера входа. Ничего не рендерит для «свободно»/без сигнала. */
+function AccessTag({ ev, style }: { ev: Ev; style?: React.CSSProperties }) {
+  const label = ACCESS_LABEL[ev.access]
+  if (!label) return null
+  const hard = HARD_ACCESS.has(ev.access)
+  return (
+    <span style={{
+      display: "inline-block", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 8.5,
+      letterSpacing: "0.04em", lineHeight: 1.1, whiteSpace: "nowrap", padding: "2px 6px",
+      textTransform: "uppercase",
+      background: hard ? RED : "transparent", color: hard ? "#fff" : SK.ink,
+      border: `1.5px solid ${hard ? RED : SK.ink}`, ...style,
+    }}>{label}</span>
+  )
+}
+
+/** Возрастной ценз «18+» — маленький тёмный чип. */
+function AgeTag({ ev, style }: { ev: Ev; style?: React.CSSProperties }) {
+  if (!ev.age) return null
+  return (
+    <span style={{
+      display: "inline-block", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 8.5,
+      letterSpacing: "0.02em", lineHeight: 1.1, whiteSpace: "nowrap", padding: "2px 5px",
+      background: SK.ink, color: SK.paper, ...style,
+    }}>{ev.age}</span>
+  )
 }
 
 /** Pick N events from the feed; pad with positionally-unique placeholders
@@ -187,7 +232,9 @@ function BoardLead({ ev }: { ev: Ev }) {
         </div>
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8 }}>
           <div style={{ fontFamily: FONT_MONO, fontSize: 9.5, letterSpacing: "0.04em", color: SK.ink, lineHeight: 1.5, minWidth: 0, overflow: "hidden" }}>{ev.v}<br />{ev.d} · {ev.tm}{ev.dur ? ` · ${ev.dur}` : ""}</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 7, flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end", gap: 6, flexShrink: 0, maxWidth: "58%" }}>
+            <AccessTag ev={ev} />
+            <AgeTag ev={ev} />
             <PriceTag ev={ev} />
           </div>
         </div>
@@ -245,6 +292,12 @@ function MosaicCard({ ev, i, onImg }: { ev: Ev; i: number; onImg?: () => void })
           {/* footer block */}
           <div style={{ padding: "9px 11px 11px" }}>
             <div style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9.5, letterSpacing: "0.03em", color: SK.ink55, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{meta}</div>
+            {(ACCESS_LABEL[ev.access] || ev.age) && (
+              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 5, marginTop: 7 }}>
+                <AccessTag ev={ev} />
+                <AgeTag ev={ev} />
+              </div>
+            )}
             <div style={{ fontWeight: 900, fontSize: 17, letterSpacing: "-0.015em", lineHeight: 1.06, color: SK.ink, marginTop: 6, textTransform: "uppercase", overflowWrap: "anywhere", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{ev.t}</div>
             {venue && <div style={{ fontWeight: 700, fontSize: 11, lineHeight: 1.25, color: SK.ink55, marginTop: 5 }}>{venue}</div>}
             {body && (
@@ -423,9 +476,11 @@ function BoardSearch({ events, onClose }: { events: Ev[]; onClose: () => void })
             <button key={e.id} onClick={() => { open(e); onClose() }} style={{ width: "100%", display: "flex", gap: 11, alignItems: "flex-start", padding: "10px 0", borderTop: "1px solid rgba(13,13,13,0.12)", background: "transparent", cursor: "pointer", textAlign: "left" }}>
               <div style={{ flexShrink: 0, width: 46, height: 58, border: `2px solid ${SK.ink}`, background: "#E4E4E1", overflow: "hidden" }}>{e.p && <img src={e.p} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}</div>
               <div style={{ flex: 1, minWidth: 0, paddingTop: 1 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
                   <span style={{ background: SK.blue, color: "#fff", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 7.5, letterSpacing: "0.06em", textTransform: "uppercase", padding: "2px 5px", whiteSpace: "nowrap" }}>{e.c}</span>
                   {date && <span style={{ fontFamily: FONT_MONO, fontSize: 9, color: SK.ink55, whiteSpace: "nowrap" }}>{date}</span>}
+                  <AccessTag ev={e} />
+                  <AgeTag ev={e} />
                 </div>
                 <div style={{ fontWeight: 900, fontSize: 13.5, lineHeight: 1.1, letterSpacing: "-0.01em", textTransform: "uppercase", color: SK.ink, marginTop: 5, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{e.t}</div>
                 {sub && <div style={{ fontFamily: FONT_MONO, fontSize: 9.5, color: SK.ink55, marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</div>}
@@ -433,6 +488,47 @@ function BoardSearch({ events, onClose }: { events: Ev[]; onClose: () => void })
             </button>
           )
         })}
+      </div>
+    </div>
+  )
+}
+
+// Скоринг героя «выбор редакции» (фидбек #4): наверх — предстоящее + доступное
+// (free / без регистрации) + с конкретным местом. Меньше = лучше.
+function heroScore(e: Ev): number {
+  let s = e.friction                       // 0 (свободно) … 7 (sold out)
+  if (e.ts == null) s += 1.5               // без даты — «приходи сейчас» слабее
+  if (!e.v || e.v.startsWith("@")) s += 1  // нет конкретной площадки
+  if (e.geo) s -= 0.5                       // геокодированное — точно есть куда идти
+  return s
+}
+
+/** Полка «для знатока» (фидбек #5) — курируемый вниз хвост: закрытые/пресс/VIP-
+ *  показы и анонсы закрытий. Не в герой и не в общий каталог — отдельной лентой
+ *  в конце, чтобы редкий формат не выкидывать, но и не путать неопытного. */
+function InsiderStrip({ events }: { events: Ev[] }) {
+  const open = useOpenEvent()
+  if (!events.length) return null
+  return (
+    <div style={{ marginTop: 10 }}>
+      <SectionLabel>для знатока · по секрету</SectionLabel>
+      <div style={{ fontFamily: FONT_MONO, fontSize: 9.5, letterSpacing: "0.04em", color: SK.ink55, lineHeight: 1.45, margin: "-6px 0 12px" }}>
+        Закрытые показы, пресс-события и редкие форматы — не для всех, но вдруг твоё.
+      </div>
+      <div className="sk-scroll" style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 6 }}>
+        {events.map((ev) => (
+          <div key={ev.id} onClick={() => open(ev)} style={{ flexShrink: 0, width: 150, cursor: "pointer", background: SK.paper, border: `2px solid ${SK.ink}`, borderRadius: 12, overflow: "hidden", boxShadow: `3px 3px 0 ${SK.ink}` }}>
+            <div style={{ position: "relative", background: "#E4E4E1", borderBottom: `2px solid ${SK.ink}`, lineHeight: 0 }}>
+              {ev.p && <img src={ev.p} alt="" loading="lazy" style={{ width: "100%", height: 96, objectFit: "cover", display: "block" }} />}
+              <span style={{ position: "absolute", top: 6, left: 6, background: SK.ink, color: SK.paper, fontFamily: FONT_MONO, fontWeight: 700, fontSize: 8, letterSpacing: "0.1em", textTransform: "uppercase", padding: "2px 5px" }}>инсайд</span>
+            </div>
+            <div style={{ padding: "8px 9px 10px" }}>
+              <div style={{ fontFamily: FONT_MONO, fontSize: 8.5, color: SK.ink55, letterSpacing: "0.03em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{[ev.d, ev.tm].filter((s) => s && s !== "—").join(" · ") || "—"}</div>
+              <div style={{ fontWeight: 900, fontSize: 12, lineHeight: 1.08, letterSpacing: "-0.01em", textTransform: "uppercase", color: SK.ink, marginTop: 5, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" } as React.CSSProperties}>{ev.t}</div>
+              {ACCESS_LABEL[ev.access] && <div style={{ marginTop: 7 }}><AccessTag ev={ev} /></div>}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -446,23 +542,35 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
   const [searchOpen, setSearchOpen] = useState(false)
   // Full upcoming catalog (already future-filtered + chronological upstream).
   const E = useMemo(() => feed.filter((e) => e && !e.id.startsWith("__placeholder")), [feed])
-  // «Выбор недели» hero rotates through the soonest few on each refresh; the
-  // catalog below always shows the rest of what's ahead.
-  // Герой «выбор редакции» — только из ещё НЕ начавшихся событий (или без даты):
-  // прошедшее сегодня (напр. мастер-класс в 15:00 в 18:00) наверху не показываем.
-  const heroPool = E.filter((e) => e.ts == null || e.ts >= Date.now())
-  const hPool = heroPool.length ? heroPool : E
-  const hero = hPool.length ? hPool[nonce % Math.min(hPool.length, 6)] : undefined
-  const rest = E.filter((e) => e !== hero)
+  // «Для знатока» (фидбек #5) — инсайд-контент (закрытые/пресс/VIP-показы, анонсы
+  // закрытий) уводим из героя и общего каталога в отдельную полку внизу.
+  const mainE = useMemo(() => E.filter((e) => e.tier !== "insider"), [E])
+  const insiderE = useMemo(() => E.filter((e) => e.tier === "insider"), [E])
+  // Герой «выбор редакции» (фидбек #4): из ещё НЕ начавшихся событий, ранжированных
+  // по доступности (свободно / без регистрации / есть место+дата → выше). Крутим
+  // топ-6 по refresh. Прошедшее сегодня (мастер-класс в 15:00, а сейчас 18:00) —
+  // в шапку не берём.
+  const heroPool = useMemo(() => {
+    const now = Date.now()
+    const up = mainE.filter((e) => e.ts == null || e.ts >= now)
+    const base = up.length ? up : mainE
+    return [...base].sort((a, b) => {
+      const sa = heroScore(a), sb = heroScore(b)
+      if (sa !== sb) return sa - sb
+      return (a.ts ?? Infinity) - (b.ts ?? Infinity) // при равной доступности — раньше
+    })
+  }, [mainE])
+  const hero = heroPool.length ? heroPool[nonce % Math.min(heroPool.length, 6)] : undefined
+  const rest = mainE.filter((e) => e !== hero)
   const refresh = () => { setNonce((n) => n + 1); setSweep((s) => s + 360) }
   // Category filter — applies ONLY to the «Каталог» grid; «выбор недели» stays.
   const [cat, setCat] = useState("Все")
   const [tag, setTag] = useState<string | null>(null) // second-tier fine tag
   const cats = useMemo(() => {
     const seen: string[] = []
-    for (const e of E) if (e.c && e.c !== "—" && !seen.includes(e.c)) seen.push(e.c)
+    for (const e of mainE) if (e.c && e.c !== "—" && !seen.includes(e.c)) seen.push(e.c)
     return ["Все", ...seen]
-  }, [E])
+  }, [mainE])
   // events in the chosen category (before the fine-tag narrowing)
   const inCat = cat === "Все" ? rest : rest.filter((e) => e.c === cat)
   // second-row fine-tag chips — the tags that actually occur on this category's
@@ -473,7 +581,13 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
     return [...freq.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12).map(([t]) => t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [E, cat])
-  const catalog = tag ? inCat.filter((e) => e.tags?.includes(tag)) : inCat
+  const filtered = tag ? inCat.filter((e) => e.tags?.includes(tag)) : inCat
+  // Ранжирование по трению (фидбек #3): жёсткие барьеры (рега закрыта / sold out)
+  // тонут в конец каталога; остальное сохраняет хронологический порядок (stable sort).
+  const catalog = [...filtered].sort((a, b) => {
+    const ha = HARD_ACCESS.has(a.access), hb = HARD_ACCESS.has(b.access)
+    return ha === hb ? 0 : ha ? 1 : -1
+  })
   // «Носик» подтег-лотка целится в ВЫБРАННУЮ категорию: меряем её позицию в
   // (скроллящемся) ряду и двигаем треугольник под неё; прячем, если она уехала.
   const catRowRef = useRef<HTMLDivElement | null>(null)
@@ -613,6 +727,7 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
             {cat === "Все" ? "событий пока нет" : `в категории «${cat.toLowerCase()}» пока пусто`}
           </div>
         )}
+        {cat === "Все" && <InsiderStrip events={insiderE} />}
       </div>
 
       {searchOpen && <BoardSearch events={searchFeed ?? E} onClose={() => setSearchOpen(false)} />}

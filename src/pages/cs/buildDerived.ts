@@ -42,7 +42,17 @@ export type Ev = {
   venueKey: string  // gazetteer venue key (e.g. "ges2") for the place card, or ""
   ts: number | null // event start as epoch ms (for future-filtering / sorting), null if undated
   tags?: string[]   // fine-grained tag labels for badges (excludes the coarse category `c`)
+  access: Access    // барьер входа: свободный / регистрация / билеты / закрыта / sold out
+  age: string       // возрастной ценз "18+" / "" если нет
+  tier: "insider" | "" // «для знатока» — курируем вниз (закрытые/пресс/VIP-анонсы)
+  friction: number  // 0 (свободно) … 7 (sold out) — чем ниже, тем выше ранг
 }
+
+/** Барьер посещения, извлечённый из текста поста. Порядок в UI — от «просто
+ *  приходи» к «так просто не попасть». */
+export type Access =
+  | "free" | "registration" | "registration_closed"
+  | "ticket" | "signup" | "accreditation" | "sold_out" | ""
 
 export type DerivedData = {
   triptychPosters: (string | null)[]
@@ -101,6 +111,47 @@ export function parseEventTime(raw: string | null | undefined): Date | null {
 const MSK_D: Intl.DateTimeFormatOptions = { day: "2-digit", month: "2-digit", timeZone: "Europe/Moscow" }
 const MSK_T: Intl.DateTimeFormatOptions = { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Moscow" }
 
+// «Трение» — насколько трудно попасть. Ниже = доступнее = выше в ранжировании
+// и в приоритете для героя «выбор редакции».
+const FRICTION: Record<Access, number> = {
+  free: 0, "": 1, registration: 2, signup: 2, ticket: 3,
+  accreditation: 5, registration_closed: 6, sold_out: 7,
+}
+
+/** Барьер входа из текста поста. Проверки идут от самых «запирающих» к мягким,
+ *  чтобы «регистрация закрыта» не схлопнулась в обычную «регистрацию». */
+export function detectAccess(text: string, priceFree: boolean): Access {
+  const t = (text || "").toLowerCase()
+  // жёсткие барьеры (уже не попасть)
+  if (/распродан|sold\s*out|все билеты продан|билеты (закончил|распродан)|мест нет|мест не осталось|аншлаг/.test(t)) return "sold_out"
+  if (/регистрац\w* (закрыт|заверш|окончен|прекращен)|список закрыт|запись закрыт|регистрац\w* больше не/.test(t)) return "registration_closed"
+  if (/аккредитац/.test(t)) return "accreditation"
+  // мягкие барьеры (нужно действие заранее)
+  if (/регистрац|зарегистрир|\bregister\b/.test(t)) return "registration"
+  if (/по (предварительной )?записи|запись обязательн|необходима запись|нужна запись/.test(t)) return "signup"
+  if (/по билет|вход по билет|купить билет|цена билета|стоимость билета|билеты по ссылке/.test(t)) return "ticket"
+  if (priceFree) return "free"
+  return ""
+}
+
+/** Возрастной ценз «18+»/«16+» и т.п., если указан в тексте. */
+export function detectAge(text: string): string {
+  const m = (text || "").match(/(?:^|[^\d])(6|12|16|18|21)\s*\+/)
+  return m ? `${m[1]}+` : ""
+}
+
+/** «Для знатока» — контент, который курируем ВНИЗ, а не в герой: пресс-/VIP-/
+ *  закрытые показы, анонсы по приглашениям и объявления о закрытии выставок
+ *  (это инфо-повод, а не «приходи и смотри»). Публичный вернисаж (открытие) сюда
+ *  НЕ попадает — он должен ранжироваться выше. */
+export function detectTier(text: string, access: Access): "insider" | "" {
+  if (access === "accreditation") return "insider"
+  const t = (text || "").toLowerCase()
+  if (/по приглашени|пресс-показ|пресс-конференц|закрыт(ый|ая|ое) (показ|просмотр|вернисаж|мероприят|встреч|презентац|событ)|только для (член|прессы|профессионал|специалист|своих)|для профессионал|для прессы|\bvip\b|клубный формат/.test(t)) return "insider"
+  if (/последний день (выставк|экспозиц)|закрытие выставк|прощание с выставк|выставка закрывает|финисаж|финиссаж/.test(t)) return "insider"
+  return ""
+}
+
 export function toEv(e: FeedItem): Ev {
   // Category = the FIRST tag that's a known coarse interest. Blindly taking
   // tags[0] now surfaces a raw fine-tag slug (e.g. "haus-vecherinka") when a
@@ -112,6 +163,12 @@ export function toEv(e: FeedItem): Ev {
   const d = dateObj ? dateObj.toLocaleDateString("ru-RU", MSK_D) : "—"
   const tm = dateObj ? dateObj.toLocaleTimeString("ru-RU", MSK_T) : "—"
   const channel = e.channel.replace(/^@/, "")
+  // Сигнал доступности (тема фидбека #3–5): барьер входа, возраст и тир контента
+  // считаем из тела поста — цена «свободный вход» уже извлечена куратором в price.
+  const priceFree = /свобод|беспл|free/i.test(e.price || "")
+  const access = detectAccess(e.description || "", priceFree)
+  const age = detectAge(e.description || "")
+  const tier = detectTier(e.description || "", access)
   return {
     id: e.id,
     t: cleanTitle(e.title || "Событие"),
@@ -133,6 +190,8 @@ export function toEv(e: FeedItem): Ev {
     // fine-grained tag labels for badges — drop the 12 coarse categories and the
     // one already shown as `c`, so the badge row shows only the specific tags.
     tags: (e.tag_labels ?? []).filter((l) => !COARSE_LABELS.has(l) && l !== (interest?.label ?? "")),
+    access, age, tier,
+    friction: FRICTION[access] ?? 1,
   }
 }
 
