@@ -26,7 +26,7 @@ import argparse
 import asyncio
 from datetime import datetime, timedelta
 
-from sqlalchemy import or_, select, update
+from sqlalchemy import func, or_, select, update
 
 from app.config import Settings
 from app.db import create_engine, create_session_maker, session_scope
@@ -36,9 +36,10 @@ from app.pipeline.enricher import enrich_event
 
 # Statuses worth repairing (rejected events surface nowhere, so skip them).
 LIVE_STATUSES = (EventStatus.approved, EventStatus.manual_review, EventStatus.pending)
-# SQL pre-filter: only obviously-suspect rows. A real listing is essentially
-# never >250 days after its own post, and never lands in the 2100s. Re-derivation
-# is still authoritative — this only limits how many rows we load.
+# SQL pre-filter: only obviously-suspect rows — those landing >250 days after
+# their OWN post (the roll-forward signature, caught at any absolute year) or in
+# the 2100s (two-digit-year misparse). Re-derivation is still authoritative — this
+# only limits how many rows we load.
 SUSPECT_AFTER_DAYS = 250
 FAR_YEAR = datetime(2100, 1, 1)
 
@@ -59,7 +60,9 @@ async def main() -> None:
     engine = create_engine(settings.postgres_dsn)
     sf = create_session_maker(engine)
 
-    suspect_cutoff = datetime.utcnow() + timedelta(days=SUSPECT_AFTER_DAYS)
+    # Post time (published_at, else fetch/creation) — the roll-forward signature
+    # is measured against when the post was written, not "now".
+    base_col = func.coalesce(PostRaw.published_at, PostRaw.fetched_at, EventCurated.created_at)
 
     scanned = fixed = unparseable = unchanged = 0
     async with session_scope(sf) as s:
@@ -79,7 +82,7 @@ async def main() -> None:
             .where(
                 or_(
                     EventCurated.event_time >= FAR_YEAR,
-                    EventCurated.event_time >= suspect_cutoff,
+                    EventCurated.event_time > base_col + timedelta(days=SUSPECT_AFTER_DAYS),
                 )
             )
             .order_by(EventCurated.id)
