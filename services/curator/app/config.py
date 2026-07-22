@@ -67,6 +67,7 @@ class Settings(BaseSettings):
     event_score_threshold_auto: int = Field(6, alias="EVENT_SCORE_AUTO")
     default_poll_interval_minutes: int = Field(30, alias="DEFAULT_POLL_INTERVAL_MIN")
     poll_concurrency: int = Field(3, alias="POLL_CONCURRENCY")
+    rank_recompute_minutes: int = Field(15, alias="RANK_RECOMPUTE_MIN")  # пересчёт дедуп+rank_score ленты
 
     model_config = SettingsConfigDict(
         extra="allow",

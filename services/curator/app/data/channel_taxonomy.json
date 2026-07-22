@@ -1,0 +1,570 @@
+{
+"Faux_monnayage": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"a3gallery": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"a_b_gallery": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"admarginem": {
+"authority": 2,
+"ctype": "community-blog"
+},
+"afmagazine": {
+"authority": 1,
+"ctype": "media-outlet"
+},
+"aganiokart": {
+"authority": 1,
+"ctype": "community-blog"
+},
+"ago_shvd_shtil_bestiarii": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"all_festivals": {
+"authority": 1,
+"ctype": "aggregator"
+},
+"animalswithhands": {
+"authority": 1,
+"ctype": "community-blog"
+},
+"armaseventeen": {
+"authority": 2,
+"ctype": "promoter"
+},
+"artvolunteer": {
+"authority": 1,
+"ctype": "community-blog"
+},
+"asylummoscow": {
+"authority": 2,
+"ctype": "promoter"
+},
+"beastybeats23": {
+"authority": 2,
+"ctype": "promoter"
+},
+"besplatnoekino": {
+"authority": 1,
+"ctype": "community-blog"
+},
+"bestttiary": {
+"authority": 1,
+"ctype": "community-blog"
+},
+"bogorodskoegallery": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"cci_fabrika": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"ceammc": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"centralstationmoscow": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"centrezotov": {
+"authority": 3,
+"ctype": "venue-official"
+},
+"club_dex": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"cube_moscow": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"culturalmsk": {
+"authority": 1,
+"ctype": "media-outlet"
+},
+"culturepeople": {
+"authority": 1,
+"ctype": "aggregator"
+},
+"cyclelab": {
+"authority": 2,
+"ctype": "promoter"
+},
+"dada_1978": {
+"authority": 1,
+"ctype": "community-blog"
+},
+"dailydvizh": {
+"authority": 1,
+"ctype": "aggregator"
+},
+"dancingalone": {
+"authority": 1,
+"ctype": "community-blog"
+},
+"delaikulturu": {
+"authority": 1,
+"ctype": "community-blog"
+},
+"dffradio": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"dharma_zine": {
+"authority": 1,
+"ctype": "community-blog"
+},
+"dvevmoskve": {
+"authority": 1,
+"ctype": "aggregator"
+},
+"ergosummsk": {
+"authority": 1,
+"ctype": "community-blog"
+},
+"errioxa": {
+"authority": 1,
+"ctype": "community-blog"
+},
+"eva_neversleeps": {
+"authority": 1,
+"ctype": "community-blog"
+},
+"fabula_gallery": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"festivali_v_moskve": {
+"authority": 1,
+"ctype": "aggregator"
+},
+"fomoteka": {
+"authority": 1,
+"ctype": "aggregator"
+},
+"fondkrugis": {
+"authority": 1,
+"ctype": "venue-official"
+},
+"freeartnewsletter": {
+"authority": 1,
+"ctype": "aggregator"
+},
+"furshetanebudet": {
+"authority": 1,
+"ctype": "community-blog"
+},
+"galereyabomba": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"garagemca": {
+"authority": 3,
+"ctype": "venue-official"
+},
+"go_kitsch": {
+"authority": 1,
+"ctype": "community-blog"
+},
+"gori_yasno": {
+"authority": 1,
+"ctype": "community-blog"
+},
+"gzsmsk": {
+"authority": 2,
+"ctype": "community-blog"
+},
+"hecplace": {
+"authority": 2,
+"ctype": "community-blog"
+},
+"hsedesign": {
+"authority": 1,
+"ctype": "community-blog"
+},
+"humanities666": {
+"authority": 1,
+"ctype": "community-blog"
+},
+"i_am_n_ian": {
+"authority": 2,
+"ctype": "promoter"
+},
+"ica_moscow": {
+"authority": 1,
+"ctype": "community-blog"
+},
+"ifmoscow": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"indancewetrust": {
+"authority": 2,
+"ctype": "promoter"
+},
+"izmgallery": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"jao_da_official": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"jerryrubinclub": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"jewishmuseum": {
+"authority": 3,
+"ctype": "venue-official"
+},
+"kabinet_memologa": {
+"authority": 1,
+"ctype": "community-blog"
+},
+"kashinguru": {
+"authority": 1,
+"ctype": "community-blog"
+},
+"khodynkagallery": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"kholmygallery": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"kinoclub_verticals": {
+"authority": 1,
+"ctype": "community-blog"
+},
+"kp_pyl": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"kristall1901": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"krokingallery": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"lachesis_groves": {
+"authority": 2,
+"ctype": "promoter"
+},
+"lanaravandifadai": {
+"authority": 1,
+"ctype": "community-blog"
+},
+"live_1artchannel": {
+"authority": 1,
+"ctype": "community-blog"
+},
+"messageshadnoanswers": {
+"authority": 2,
+"ctype": "promoter"
+},
+"mmoma": {
+"authority": 3,
+"ctype": "venue-official"
+},
+"mo_yeti": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"mosafishka": {
+"authority": 1,
+"ctype": "aggregator"
+},
+"moscowcalling": {
+"authority": 1,
+"ctype": "aggregator"
+},
+"moskvichmag": {
+"authority": 1,
+"ctype": "media-outlet"
+},
+"mosrutop": {
+"authority": 1,
+"ctype": "aggregator"
+},
+"mostrips": {
+"authority": 1,
+"ctype": "aggregator"
+},
+"multimediaartmuseum": {
+"authority": 3,
+"ctype": "venue-official"
+},
+"musnaive": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"neuroticlub": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"novembercinema": {
+"authority": 2,
+"ctype": "community-blog"
+},
+"omstelegram": {
+"authority": 1,
+"ctype": "community-blog"
+},
+"openklub": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"oriental_centre": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"outlinefestival": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"ovzparkgallery": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"partymust": {
+"authority": 2,
+"ctype": "promoter"
+},
+"peresvetovgallery": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"peysikov": {
+"authority": 1,
+"ctype": "community-blog"
+},
+"powerhousemoscow": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"ppstein": {
+"authority": 2,
+"ctype": "promoter"
+},
+"privetpoidem": {
+"authority": 1,
+"ctype": "aggregator"
+},
+"prostpolitika": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"pschgallery": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"psychodaily": {
+"authority": 1,
+"ctype": "community-blog"
+},
+"random_culture": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"rgubru": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"rndmciub": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"rndmtoday": {
+"authority": 2,
+"ctype": "promoter"
+},
+"rodchenkoartschool": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"roo_msh": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"ros_iso": {
+"authority": 3,
+"ctype": "venue-official"
+},
+"ruartsfoundation": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"rupor_msk": {
+"authority": 2,
+"ctype": "promoter"
+},
+"rushuffle": {
+"authority": 1,
+"ctype": "community-blog"
+},
+"setrumochnyh": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"sigmafestival": {
+"authority": 2,
+"ctype": "promoter"
+},
+"sis_terss": {
+"authority": 1,
+"ctype": "community-blog"
+},
+"skrewru": {
+"authority": 1,
+"ctype": "community-blog"
+},
+"splyuivizhuu": {
+"authority": 2,
+"ctype": "promoter"
+},
+"stoyania": {
+"authority": 1,
+"ctype": "community-blog"
+},
+"stradarium1": {
+"authority": 2,
+"ctype": "promoter"
+},
+"strelkabarmoscow": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"superdiscoclub": {
+"authority": 2,
+"ctype": "promoter"
+},
+"swapmoscow": {
+"authority": 1,
+"ctype": "community-blog"
+},
+"tancevat": {
+"authority": 2,
+"ctype": "promoter"
+},
+"teatr_bulvar": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"teatrtruda_10": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"technotickets": {
+"authority": 2,
+"ctype": "promoter"
+},
+"tolko_sami": {
+"authority": 2,
+"ctype": "promoter"
+},
+"trubnayagallery": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"tsaritsyno_museum": {
+"authority": 3,
+"ctype": "venue-official"
+},
+"tshavel": {
+"authority": 1,
+"ctype": "community-blog"
+},
+"tsvetfest": {
+"authority": 2,
+"ctype": "promoter"
+},
+"tusanatuse": {
+"authority": 1,
+"ctype": "community-blog"
+},
+"tusovki_ru": {
+"authority": 1,
+"ctype": "aggregator"
+},
+"ugolmsk": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"vacges2": {
+"authority": 3,
+"ctype": "venue-official"
+},
+"vdnh_moscow": {
+"authority": 3,
+"ctype": "venue-official"
+},
+"vkabinke": {
+"authority": 2,
+"ctype": "promoter"
+},
+"vladeygram": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"vmuzey": {
+"authority": 1,
+"ctype": "community-blog"
+},
+"vovesgolos1": {
+"authority": 1,
+"ctype": "community-blog"
+},
+"voznesenskycenter": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"vspiskah": {
+"authority": 2,
+"ctype": "promoter"
+},
+"vspyshkafriends": {
+"authority": 2,
+"ctype": "venue-official"
+},
+"vtornikshow": {
+"authority": 2,
+"ctype": "promoter"
+},
+"vygoranie_fest": {
+"authority": 2,
+"ctype": "promoter"
+},
+"workinart": {
+"authority": 1,
+"ctype": "community-blog"
+},
+"your_best_summer": {
+"authority": 2,
+"ctype": "promoter"
+},
+"yourdailyin": {
+"authority": 1,
+"ctype": "aggregator"
+},
+"zempolyana": {
+"authority": 2,
+"ctype": "promoter"
+},
+"zverevcenter": {
+"authority": 2,
+"ctype": "venue-official"
+}
+}

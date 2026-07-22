@@ -53,6 +53,9 @@ class Channel(Base):
     poll_interval_minutes: Mapped[int] = mapped_column(Integer, default=30, nullable=False)
     last_polled_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=False), nullable=True)
     last_message_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    # Ранжирование: тип канала-источника + авторитет (1..3) в weight (оживили
+    # мёртвое поле). Заполняется app.backfill_rank из app/data/channel_taxonomy.json.
+    ctype: Mapped[Optional[str]] = mapped_column(String(24), nullable=True)  # venue-official|promoter|aggregator|community-blog|media-outlet
     weight: Mapped[float] = mapped_column(Float, default=1.0, nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), default=datetime.utcnow, nullable=False)
@@ -124,6 +127,16 @@ class EventCurated(Base):
         default=EventStatus.pending,
         nullable=False,
     )
+
+    # Ранжирование ленты (app.ranking): кросс-пост дедуп + «интересность».
+    #   dup_group_id  — id представителя группы дублей (== своему id для одиночек)
+    #   is_primary    — показывать ли эту копию в ленте (одна на группу)
+    #   crosspost_count — сколько РАЗНЫХ каналов постили событие (сигнал масштаба)
+    #   rank_score    — порядок «самое интересное вверх»; NULL до пересчёта
+    dup_group_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True, index=True)
+    is_primary: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    crosspost_count: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    rank_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True, index=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), default=datetime.utcnow, nullable=False)
 

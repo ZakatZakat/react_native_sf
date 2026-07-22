@@ -149,7 +149,19 @@ class PersonalizedFeedRepository:
             # Usable poster required: an event with no image, or video-only media,
             # renders as a blank card — keep it out of the feed/map entirely.
             .where(func.cast(PostRaw.media_urls, String).ilike("%.jpg%"))
-            .order_by(EventCurated.location_meta.isnot(None).desc(), EventCurated.event_time.asc().nulls_last())
+            # Cross-post dedup: одна карточка на событие (app.ranking выставляет
+            # is_primary). До первого пересчёта is_primary=true у всех → фильтр
+            # ничего не режет (безопасно).
+            .where(EventCurated.is_primary.is_(True))
+            # Ранжирование: «самое интересное вверх» (app.ranking.rank_score).
+            # Неотранжированные (новые/до пересчёта) → нейтральный 0.5: садятся в
+            # середину (видны, не хоронятся вниз). До первого пересчёта все = 0.5 →
+            # тай → прежний порядок: гео-первыми, затем ближайшие по времени.
+            .order_by(
+                func.coalesce(EventCurated.rank_score, 0.5).desc(),
+                EventCurated.location_meta.isnot(None).desc(),
+                EventCurated.event_time.asc().nulls_last(),
+            )
         )
 
         # Filter by tags

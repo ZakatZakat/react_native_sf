@@ -45,6 +45,24 @@ class CuratorScheduler:
             except Exception:  # noqa: BLE001
                 logger.exception("scheduler: unhandled error for %s", handle)
 
+    async def _run_recompute(self) -> None:
+        """Периодический пересчёт дедуп-групп + rank_score ленты. Изолирован:
+        любая ошибка логируется, но не трогает поллинг каналов."""
+        try:
+            from app.db import create_engine, create_session_maker, session_scope
+            from app.ranking import recompute_feed_ranks
+
+            engine = create_engine(self.settings.postgres_dsn)
+            try:
+                sf = create_session_maker(engine)
+                async with session_scope(sf) as s:
+                    res = await recompute_feed_ranks(s, apply=True)
+                logger.info("scheduler: rank recompute %d rows → %d events (dedup −%d)", res.rows, res.groups, res.collapsed)
+            finally:
+                await engine.dispose()
+        except Exception:  # noqa: BLE001
+            logger.exception("scheduler: rank recompute failed")
+
     def add_or_update_channel(self, channel: Channel) -> None:
         if not channel.poll_enabled:
             self.remove_channel(channel.handle)
@@ -81,9 +99,21 @@ class CuratorScheduler:
             return
         for ch in channels:
             self.add_or_update_channel(ch)
+        # Периодический пересчёт ранга ленты (дедуп + rank_score). Первый прогон —
+        # через 90с после старта, дальше каждые rank_recompute_minutes.
+        self._scheduler.add_job(
+            self._run_recompute,
+            trigger=IntervalTrigger(minutes=self.settings.rank_recompute_minutes),
+            id="rank:recompute",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=600,
+            next_run_time=datetime.utcnow() + timedelta(seconds=90),
+        )
         self._scheduler.start()
         self._started = True
-        logger.info("scheduler: started with %d channels", len(channels))
+        logger.info("scheduler: started with %d channels + rank recompute every %d min", len(channels), self.settings.rank_recompute_minutes)
 
     async def shutdown(self) -> None:
         if self._started:
