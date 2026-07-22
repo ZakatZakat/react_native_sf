@@ -135,6 +135,32 @@ const RU_PLURAL = (n: number) =>
 const CAT_WORD = (n: number) =>
   n % 10 === 1 && n % 100 !== 11 ? "категория" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? "категории" : "категорий"
 
+// ── «Умная» система дат: относительные окна в московском времени (UTC+3, без DST).
+//    e.ts — epoch ms старта события; date-only парсится как полночь МСК.
+const MSK_OFF = 3 * 3_600_000
+const DAY_MS = 86_400_000
+const mskMidnight = (ms: number) => Math.floor((ms + MSK_OFF) / DAY_MS) * DAY_MS - MSK_OFF
+type DWin = [number, number]
+/** Границы окон «сегодня / завтра / выходные / неделя» на момент `now`. */
+function dateWindows(now: number): Record<string, DWin> {
+  const t0 = mskMidnight(now)
+  const dow = new Date(now + MSK_OFF).getUTCDay() // 0=вс … 6=сб по МСК
+  let wkndS: number, wkndE: number
+  if (dow === 6) { wkndS = t0; wkndE = t0 + 2 * DAY_MS }               // сб → сб+вс
+  else if (dow === 0) { wkndS = t0; wkndE = t0 + DAY_MS }              // вс → только вс
+  else { wkndS = t0 + (6 - dow) * DAY_MS; wkndE = wkndS + 2 * DAY_MS } // ближайшие сб+вс
+  return { today: [t0, t0 + DAY_MS], tomorrow: [t0 + DAY_MS, t0 + 2 * DAY_MS], weekend: [wkndS, wkndE], week: [t0, t0 + 7 * DAY_MS] }
+}
+const DATE_CHIPS: { key: string; label: string }[] = [
+  { key: "today", label: "Сегодня" },
+  { key: "tomorrow", label: "Завтра" },
+  { key: "weekend", label: "Выходные" },
+  { key: "week", label: "Неделя" },
+]
+/** Попадает ли событие в окно `key` (или в «all»). Недатированные — только в «all». */
+const inWindow = (ts: number | null, key: string, wins: Record<string, DWin>) =>
+  key === "all" ? true : ts != null && ts >= wins[key][0] && ts < wins[key][1]
+
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] as string))
 
 function metersBetween(a: [number, number], b: [number, number]): number {
@@ -378,6 +404,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   // for the first few seconds as posters streamed in («всё летает при открытии»).
   const [headOpen, setHeadOpen] = useState(true) // heading card collapse
   const [catFilter, setCatFilter] = useState<Set<string>>(() => new Set()) // мульти-фильтр карты по категориям (пусто = все)
+  const [dateFilter, setDateFilter] = useState<string>("all") // одиночный фильтр по дате: all|today|tomorrow|weekend|week
   const [deckHidden, setDeckHidden] = useState(false) // hide the deck to reveal the centred building
   // 2D/3D тумблер: плоский вид сверху без 3D-домов (fill-extrusion) ↔ кинематографичный 3D.
   // flatRef читается в easeTo-переходах (Level 1/2), чтобы 2D-режим «прилипал» при навигации.
@@ -553,26 +580,38 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   // events with no resolved poster (e.p === null) entirely — a card with a
   // missing/broken image looks broken, so such events never make it onto the
   // map, into a cluster deck, or the district counts.
+  // Окна дат фиксируем на момент открытия интро (короткоживущий экран).
+  const wins = useMemo(() => dateWindows(Date.now()), [])
   const byZone = useMemo(() => {
     const m: Record<string, Ev[]> = {}
     ZONES.forEach((z) => (m[z.id] = []))
     events.forEach((e) => {
       if (catFilter.size && !catFilter.has(e.catKey)) return
+      if (!inWindow(e.ts, dateFilter, wins)) return
       if (e.p && e.geo && inMoscow(e.geo[0], e.geo[1])) m[zoneOf(e.geo[0], e.geo[1])].push(e)
     })
     return m
-  }, [events, catFilter])
+  }, [events, catFilter, dateFilter, wins])
   const byZoneRef = useRef(byZone); byZoneRef.current = byZone
   const totalPlaced = useMemo(() => Object.values(byZone).reduce((a, b) => a + b.length, 0), [byZone])
-  // категории, реально присутствующие на карте (+счётчики) — для строки фильтра
+  // категории, реально присутствующие на карте (+счётчики), в разрезе текущего
+  // фильтра по дате — для строки фильтра «ЧТО»
   const catChips = useMemo(() => {
     const counts = new Map<string, number>()
     events.forEach((e) => {
-      if (e.p && e.geo && inMoscow(e.geo[0], e.geo[1]) && CAT_SYM[e.catKey]) counts.set(e.catKey, (counts.get(e.catKey) ?? 0) + 1)
+      if (e.p && e.geo && inMoscow(e.geo[0], e.geo[1]) && CAT_SYM[e.catKey] && inWindow(e.ts, dateFilter, wins)) counts.set(e.catKey, (counts.get(e.catKey) ?? 0) + 1)
     })
     return INTERESTS.filter((i) => counts.has(i.key)).map((i) => ({ key: i.key, label: i.label, symbol: i.symbol, n: counts.get(i.key) as number }))
-  }, [events])
-  const mappableTotal = useMemo(() => events.filter((e) => e.p && e.geo && inMoscow(e.geo[0], e.geo[1])).length, [events])
+  }, [events, dateFilter, wins])
+  const mappableTotal = useMemo(() => events.filter((e) => e.p && e.geo && inMoscow(e.geo[0], e.geo[1]) && inWindow(e.ts, dateFilter, wins)).length, [events, dateFilter, wins])
+  // окна дат, реально присутствующие на карте (+счётчики), в разрезе текущего
+  // фильтра по категории — для строки фильтра «КОГДА»
+  const dateChips = useMemo(() => {
+    const base = events.filter((e) => e.p && e.geo && inMoscow(e.geo[0], e.geo[1]) && (catFilter.size === 0 || catFilter.has(e.catKey)))
+    const counts: Record<string, number> = {}
+    DATE_CHIPS.forEach((dc) => (counts[dc.key] = base.filter((e) => inWindow(e.ts, dc.key, wins)).length))
+    return { all: base.length, counts }
+  }, [events, catFilter, wins])
   // sys-fan clusters per zone (real-proximity grouping)
   const clustersByZone = useMemo(() => {
     const m: Record<string, Cluster[]> = {}
@@ -596,6 +635,12 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       return next
     })
   }
+  // выбрать окно даты: сворачиваем открытый район, повторный тап по активному
+  // окну (или тап по «Все») — сброс к «all».
+  const pickDate = (key: string) => {
+    setSelZone(null); setSelCluster(null)
+    setDateFilter((prev) => (prev === key ? "all" : key))
+  }
   // Активные категории — для наглядного индикатора в шапке карты (пусто = «все»).
   const activeCats = catChips.filter((c) => catFilter.has(c.key))
 
@@ -612,9 +657,9 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
     ZONES.forEach((z) => {
       const evs = byZoneRef.current[z.id]
       // Без фильтра — рендерим ВСЕ районы (пустые показывают «нет результатов»).
-      // При активном фильтре по категории пустые районы вообще не выводим —
-      // ни зоны, ни карточки «нет результатов».
-      if (catFilter.size && (!evs || evs.length === 0)) return
+      // При активном фильтре (категория ИЛИ дата) пустые районы вообще не
+      // выводим — ни зоны, ни карточки «нет результатов».
+      if ((catFilter.size || dateFilter !== "all") && (!evs || evs.length === 0)) return
       const el = zoneBubbleEl(z, evs, (id) => onZoneRef.current(id))
       zoneMarkersRef.current[z.id] = el
       const mk = new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([z.dll[1], z.dll[0]]).addTo(map)
@@ -969,8 +1014,28 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
             <span style={{ fontSize: 11, lineHeight: 1 }}>▾</span>
           </button>
         )}
+        {!selZone && DATE_CHIPS.some((dc) => dateChips.counts[dc.key] > 0) && (
+          <div style={{ display: "flex", gap: 6, width: "100%", alignItems: "stretch" }}>
+            <span style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", padding: "0 9px", background: CS.K, color: "#fff", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, letterSpacing: "0.16em" }}>КОГДА</span>
+            <div className="cs-catbar" style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", paddingBottom: 2, flex: 1, minWidth: 0 }}>
+              <button onClick={() => pickDate("all")} style={{ display: "inline-flex", alignItems: "center", gap: 5, flexShrink: 0, cursor: "pointer", padding: "6px 10px", border: `1.5px solid ${CS.K}`, background: dateFilter === "all" ? CS.K : CS.W, color: dateFilter === "all" ? "#fff" : CS.K, fontFamily: FONT_SANS, fontWeight: 800, fontSize: 11, letterSpacing: "-0.01em", textTransform: "uppercase", whiteSpace: "nowrap" }}>
+                Все <span style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, opacity: dateFilter === "all" ? 0.8 : 0.55 }}>{dateChips.all}</span>
+              </button>
+              {DATE_CHIPS.filter((dc) => dateChips.counts[dc.key] > 0 || dateFilter === dc.key).map((dc) => {
+                const on = dateFilter === dc.key
+                return (
+                  <button key={dc.key} onClick={() => pickDate(dc.key)} aria-pressed={on} style={{ display: "inline-flex", alignItems: "center", gap: 6, flexShrink: 0, cursor: "pointer", padding: "6px 10px", border: `1.5px solid ${CS.K}`, background: on ? CS.K : CS.W, color: on ? "#fff" : CS.K, fontFamily: FONT_SANS, fontWeight: 800, fontSize: 11, letterSpacing: "-0.01em", textTransform: "uppercase", whiteSpace: "nowrap" }}>
+                    {dc.label} <span style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, color: on ? "rgba(255,255,255,0.85)" : "rgba(13,13,13,0.55)" }}>{dateChips.counts[dc.key]}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
         {!selZone && catChips.length > 0 && (
-          <div className="cs-catbar" style={{ display: "flex", gap: 6, width: "100%", overflowX: "auto", scrollbarWidth: "none", paddingBottom: 2 }}>
+          <div style={{ display: "flex", gap: 6, width: "100%", alignItems: "stretch" }}>
+            <span style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", padding: "0 9px", background: CS.B, color: "#fff", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, letterSpacing: "0.16em" }}>ЧТО</span>
+          <div className="cs-catbar" style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", paddingBottom: 2, flex: 1, minWidth: 0 }}>
             {/* «Все» — сброс всех; активна, когда ничего не выбрано (без чекбокса) */}
             <button onClick={() => pickCat(null)} style={{ display: "inline-flex", alignItems: "center", gap: 5, flexShrink: 0, cursor: "pointer", padding: "6px 10px", border: `1.5px solid ${CS.K}`, background: catFilter.size === 0 ? CS.K : CS.W, color: catFilter.size === 0 ? "#fff" : CS.K, fontFamily: FONT_SANS, fontWeight: 800, fontSize: 11, letterSpacing: "-0.01em", textTransform: "uppercase", whiteSpace: "nowrap" }}>
               Все <span style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, opacity: catFilter.size === 0 ? 0.8 : 0.55 }}>{mappableTotal}</span>
@@ -985,6 +1050,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
                 </button>
               )
             })}
+          </div>
           </div>
         )}
         {selZone && (() => {
