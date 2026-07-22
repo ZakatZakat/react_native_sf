@@ -25,6 +25,13 @@ from app.models import Channel, EventCurated, EventStatus, PostRaw
 # ── стоп-список отменённых (временный, пока нет news-линкера отмен) ──
 CANCELLED_NAME_TOKENS: set[str] = {"outline"}
 
+# @animalswithhands — живой куратор Москвы. События, на которые он ссылается в
+# своих дайджестах (t.me/канал/msgid), получают буст rank_score как редакционное
+# «одобрение» (без UI-бейджа — просто высокий скор).
+AWH_HANDLE = "animalswithhands"
+ENDORSE_BOOST = 0.30
+_TME_RE = re.compile(r"(?:https?://)?t(?:elegram)?\.me/([A-Za-z0-9_]+)/(\d+)")
+
 _TITLE_STOP = set(
     "январь января февраль февраля март марта апрель апреля май мая июнь июня июль июля "
     "август августа сентябрь сентября октябрь октября ноябрь ноября декабрь декабря "
@@ -92,6 +99,7 @@ class _Row:
     media_hash: str | None
     filter_score: int
     channel: str
+    message_id: int
     ctype: str | None
     authority: float
 
@@ -158,7 +166,7 @@ _AUTH_NORM = {1: 0.2, 2: 0.6, 3: 1.0}
 _X_NORM = {0: 0.0, 1: 0.35, 2: 0.7}
 
 
-def _score(group: list[_Row], today: date) -> float:
+def _score(group: list[_Row], today: date, endorsed: bool = False) -> float:
     chans = {m.channel for m in group if m.channel}
     non_agg = {m.channel for m in group if m.channel and m.ctype != "aggregator"}
     auth = max((int(m.authority) for m in group), default=1)
@@ -183,6 +191,8 @@ def _score(group: list[_Row], today: date) -> float:
     cancelled = bool(blob_tokens & CANCELLED_NAME_TOKENS)
 
     score = 0.35 * auth_norm + 0.25 * x_norm + 0.25 * prox + 0.15 * qual
+    if endorsed:
+        score += ENDORSE_BOOST
     if cancelled:
         score -= 5.0
     return round(score, 4)
@@ -198,6 +208,7 @@ class RankResult:
     rows: int = 0
     groups: int = 0
     collapsed: int = 0
+    endorsed: int = 0  # групп с одобрением @animalswithhands
     updates: list[tuple[int, int, bool, int, float]] = field(default_factory=list)  # id, group_id, primary, xcount, score
 
 
@@ -223,7 +234,8 @@ async def _load_rows(session: AsyncSession) -> list[_Row]:
                 event_time=ev.event_time,
                 media_hash=post.media_hash,
                 filter_score=ev.filter_score or 0,
-                channel=(ch.handle.lstrip("@") if ch and ch.handle else ""),
+                channel=(ch.handle.lstrip("@").lower() if ch and ch.handle else ""),
+                message_id=post.message_id,
                 ctype=(ch.ctype if ch else None),
                 authority=(ch.weight if ch and ch.weight else 1.0),
             )
@@ -231,9 +243,27 @@ async def _load_rows(session: AsyncSession) -> list[_Row]:
     return rows
 
 
+async def _load_endorsed_links(session: AsyncSession) -> set[tuple[str, int]]:
+    """Множество (канал, message_id), на которые ссылается @animalswithhands в
+    своих постах — редакционные «одобрения» событий."""
+    q = (
+        select(PostRaw.text)
+        .join(Channel, Channel.id == PostRaw.channel_id)
+        .where(func.lower(func.replace(Channel.handle, "@", "")) == AWH_HANDLE)
+    )
+    links: set[tuple[str, int]] = set()
+    for (text,) in (await session.execute(q)).all():
+        for h, mid in _TME_RE.findall(text or ""):
+            h = h.lower()
+            if h != AWH_HANDLE:
+                links.add((h, int(mid)))
+    return links
+
+
 async def recompute_feed_ranks(session: AsyncSession, *, apply: bool = True) -> RankResult:
     """Пересчитать дедуп-группы + rank_score для всех фид-событий."""
     rows = await _load_rows(session)
+    endorsed_links = await _load_endorsed_links(session)
     groups = cluster(rows)
     today = datetime.utcnow().date()
 
@@ -242,7 +272,10 @@ async def recompute_feed_ranks(session: AsyncSession, *, apply: bool = True) -> 
         prim = _primary(g)
         gid = prim.id
         xcount = len({m.channel for m in g if m.channel})
-        s = _score(g, today)
+        endorsed = any((m.channel, m.message_id) in endorsed_links for m in g)
+        if endorsed:
+            res.endorsed += 1
+        s = _score(g, today, endorsed)
         for m in g:
             res.updates.append((m.id, gid, m.id == prim.id, xcount, s))
 

@@ -67,7 +67,8 @@ async def main() -> None:
         res = await recompute_feed_ranks(s, apply=args.apply)
         print(
             f"ранг: {res.rows} фид-строк → {res.groups} событий "
-            f"(дедуп −{res.collapsed}); обновлений: {len(res.updates)}"
+            f"(дедуп −{res.collapsed}); одобрено @animalswithhands: {res.endorsed}; "
+            f"обновлений: {len(res.updates)}"
         )
         # топ-15 по скору (из посчитанного)
         top = sorted(
