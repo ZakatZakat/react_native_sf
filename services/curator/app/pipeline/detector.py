@@ -18,8 +18,11 @@ RU_MONTHS = (
     "янв", "фев", "мар", "апр", "ма[яй]", "июн", "июл",
     "авг", "сент?", "окт", "нояб?", "дек",
 )
+# The optional trailing year (only 20YY, so a following price like «1500 ₽» is
+# not mistaken for one) is kept in the match so the enricher can honour an
+# explicit year instead of guessing it.
 DATE_DD_MONTH: Pattern[str] = re.compile(
-    rf"\b(\d{{1,2}})\s*(?:{'|'.join(RU_MONTHS)})[а-я]*\b",
+    rf"\b(\d{{1,2}})\s*(?:{'|'.join(RU_MONTHS)})[а-я]*(?:\s+(20\d{{2}}))?\b",
     re.IGNORECASE,
 )
 DATE_DD_MM: Pattern[str] = re.compile(r"\b(\d{1,2})[.\/](\d{1,2})(?:[.\/](\d{2,4}))?\b")

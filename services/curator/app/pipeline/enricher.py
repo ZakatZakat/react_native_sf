@@ -48,27 +48,63 @@ def _build_dt(date_snippet: str | None, time_snippet: str | None, base: datetime
     return _parse_dt(composed, base=base)
 
 
-def _correct_year_rollover(dt: datetime | None, base: datetime) -> datetime | None:
-    """Undo dateparser's year-rollover for bare (yearless) dates.
+# ── Year normalization for absolute dates ──────────────────────────
+# A 20YY (four-digit) year written anywhere in the snippet is trusted as-is.
+_YEAR_RE: re.Pattern[str] = re.compile(r"\b20\d{2}\b")
+# A numeric date's two-digit year: «15.05.26» / «16.7.26» (day.month.YY). The
+# negative lookahead keeps a four-digit year («15.05.2026») from matching.
+_DDMMYY_RE: re.Pattern[str] = re.compile(r"(\b\d{1,2}[./]\d{1,2}[./])(\d{2})(?!\d)")
+_FAR_FUTURE_DAYS = 730
+
+
+def _expand_two_digit_year(snippet: str | None) -> str | None:
+    """Rewrite a numeric date's two-digit year to 20YY.
+
+    dateparser reads «15.05.26» as the year 2126 (it prefixes the *current*
+    century's «21»), not 2026. Every event here is in the 2000s, so expand
+    «26» → «2026» before parsing."""
+    if not snippet:
+        return snippet
+    return _DDMMYY_RE.sub(lambda m: f"{m.group(1)}20{m.group(2)}", snippet)
+
+
+def _has_explicit_year(snippet: str | None) -> bool:
+    """True if the snippet already carries a four-digit (20YY) year."""
+    return bool(snippet and _YEAR_RE.search(snippet))
+
+
+def _resolve_bare_year(dt: datetime | None, base: datetime) -> datetime | None:
+    """Pick the calendar year that places (month, day) closest to the post.
 
     `_parse_dt` uses PREFER_DATES_FROM='future', so a yearless date that already
-    passed («4 июня» parsed in July) is rolled to NEXT year — the stale event then
-    reads as ~a year away and never expires from the feed's `event_time >= now`
-    gate. A real event is essentially never announced ~a year ahead with a
-    yearless date, so if the parse lands >300 days after the post, treat it as
-    that rollover and pull it back a year: the true (past) date then fails the
-    feed gate and drops out, instead of masquerading as next year."""
+    passed («4 июля» parsed in late July) is rolled a full year forward — the
+    stale event then reads as ~a year away and never expires from the feed's
+    `event_time >= now` gate, cluttering the queue with far-future ghosts.
+
+    An announcement sits near its post date, so resolve to the *nearest*
+    occurrence instead: a day/month that already passed this year stays this
+    year's past date (a one-off event → correctly in the past, drops from the
+    feed) while a December post naming a January date still wraps to next
+    year."""
     if dt is None:
         return None
-    # Absurdly far future (>~2 years) = a stray number misparsed as a year
-    # («2123» from "33 удовольствия"), not a real date → drop it entirely.
-    if (dt - base).days > 730:
-        return None
-    if (dt - base).days > 300:
+    best: datetime | None = None
+    for year in (base.year - 1, base.year, base.year + 1):
         try:
-            return dt.replace(year=dt.year - 1)
+            cand = dt.replace(year=year)
         except ValueError:
-            return dt  # Feb 29 → no such day previous year; leave as parsed
+            continue  # e.g. 29 Feb in a non-leap year
+        if best is None or abs(cand - base) < abs(best - base):
+            best = cand
+    return best if best is not None else dt
+
+
+def _drop_far_future(dt: datetime | None, base: datetime) -> datetime | None:
+    """Backstop: a date landing >2 years ahead is a misparse (a stray number
+    read as a year), not a real listing → drop it rather than let a far-future
+    ghost sit in the queue."""
+    if dt is not None and (dt - base).days > _FAR_FUTURE_DAYS:
+        return None
     return dt
 
 
@@ -79,7 +115,13 @@ def enrich_event(
     channel_handle: str | None = None,
 ) -> EnrichmentResult:
     # ── Datetime ──
+    # An absolute date (DD month / DD.MM[.YY]) carries — or can be resolved to —
+    # a year; a relative day («сегодня», «завтра») is anchored to the post and
+    # must be left to dateparser untouched.
+    has_absolute_date = bool(hits.date)
     date_snippet = hits.date[0] if hits.date else (hits.relative_day[0] if hits.relative_day else None)
+    if has_absolute_date:
+        date_snippet = _expand_two_digit_year(date_snippet)  # «15.05.26» → «15.05.2026»
     time_snippet = None
     end_time_snippet = None
 
@@ -96,11 +138,16 @@ def enrich_event(
         _build_dt(date_snippet, end_time_snippet, base=published_at)
         if end_time_snippet else None
     )
-    # Undo bare-date year-rollover (see _correct_year_rollover) so stale past
-    # dates don't resurface as next-year events.
+
     base_dt = published_at or datetime.utcnow()
-    event_time = _correct_year_rollover(event_time, base_dt)
-    event_time_end = _correct_year_rollover(event_time_end, base_dt)
+    # A yearless absolute date → resolve to the nearest sensible year instead of
+    # dateparser's blind roll-forward; an explicit 20YY (incl. an expanded
+    # two-digit year) is trusted as written.
+    if has_absolute_date and not _has_explicit_year(date_snippet):
+        event_time = _resolve_bare_year(event_time, base_dt)
+        event_time_end = _resolve_bare_year(event_time_end, base_dt)
+    event_time = _drop_far_future(event_time, base_dt)
+    event_time_end = _drop_far_future(event_time_end, base_dt)
 
     # ── Location ──
     location_text: str | None = None
