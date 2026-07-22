@@ -134,6 +134,15 @@ NON_EVENT: Pattern[str] = re.compile(
     r"дедлайн\s+(?:приёма|подачи|заявок)|до\s+конца\s+приёма)",
     re.IGNORECASE,
 )
+# Онлайн-трансляции / радиошоу / эфиры (ВТРНК Radio и т.п.) — это НЕ городские
+# события, на них нельзя прийти. Отсекаем, если есть broadcast-маркер И в тексте
+# нет физического места (у настоящей вечеринки «ВТРНК Radio Show» есть бар+адрес).
+BROADCAST: Pattern[str] = re.compile(
+    r"(vtrnk\.online|^\s*втрнк\s+radio\b|\bна\s+радио\b|в\s+прямом\s+эфире|"
+    r"радиоэфир|сери[яию]\s+эфиров|онлайн[-\s]?трансляц|прямая\s+трансляц|"
+    r"выпуск\s+(?:программы|подкаста|эфира)|\bподкаст)",
+    re.IGNORECASE | re.MULTILINE,
+)
 
 
 def looks_out_of_moscow(text: str) -> bool:
@@ -145,6 +154,18 @@ def looks_out_of_moscow(text: str) -> bool:
 def looks_like_non_event(text: str) -> bool:
     """Application call / course enrolment — has a date but isn't attendable."""
     return bool(NON_EVENT.search(text))
+
+
+def looks_like_broadcast(text: str) -> bool:
+    """Online radio show / stream (not an attendable city event). Rejected only
+    when NO physical venue is named — a real party that's also streamed keeps its
+    bar/street/metro cue and passes."""
+    if not BROADCAST.search(text):
+        return False
+    has_venue = bool(
+        VENUE_STREET.search(text) or VENUE_METRO.search(text) or VENUE_INSTITUTION.search(text)
+    )
+    return not has_venue
 
 
 @dataclass
@@ -191,6 +212,10 @@ def detect_event(text: str) -> DetectionResult:
     # Application call / enrolment → reject (dated but not attendable).
     if looks_like_non_event(text):
         return DetectionResult(0, ["non_event"], DetectionHits())
+
+    # Online radio show / stream without a venue → reject (not attendable).
+    if looks_like_broadcast(text):
+        return DetectionResult(0, ["broadcast"], DetectionHits())
 
     hits = DetectionHits()
     score = 0
