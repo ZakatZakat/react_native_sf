@@ -83,6 +83,12 @@ async def main() -> None:
                 or_(
                     EventCurated.event_time >= FAR_YEAR,
                     EventCurated.event_time > base_col + timedelta(days=SUSPECT_AFTER_DAYS),
+                    # Landing in a later calendar year than the post is the
+                    # roll-forward signature even when the day-gap is under the
+                    # threshold (a Feb/Mar date from a mid-year post). Re-derivation
+                    # stays authoritative, so a same-year listing is never touched.
+                    func.extract("year", EventCurated.event_time)
+                    > func.extract("year", base_col),
                 )
             )
             .order_by(EventCurated.id)
