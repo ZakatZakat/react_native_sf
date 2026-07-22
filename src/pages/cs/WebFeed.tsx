@@ -179,6 +179,7 @@ export default function CsWebFeed() {
   }, [mainE])
   const [cat, setCat] = useState("Все")        // 1-й уровень — крупная категория
   const [tag, setTag] = useState<string | null>(null) // 2-й уровень — подтег
+  const [access, setAccess] = useState<string | null>(null) // фильтр по барьеру входа
   const [q, setQ] = useState("")
   // события выбранной категории (до сужения подтегом)
   const inCat = useMemo(() => (cat === "Все" ? rest : rest.filter((e) => e.c === cat)), [rest, cat])
@@ -188,8 +189,16 @@ export default function CsWebFeed() {
     for (const e of inCat) for (const t of e.tags || []) freq.set(t, (freq.get(t) || 0) + 1)
     return [...freq.entries()].sort((a, b) => b[1] - a[1]).slice(0, 16).map(([t]) => t)
   }, [inCat])
+  // статусы доступа, встречающиеся в категории — в порядке «доступнее → сложнее»
+  const accessOptions = useMemo(() => {
+    const present = new Set<string>()
+    for (const e of inCat) if (ACCESS_LABEL[e.access]) present.add(e.access)
+    const order = ["free", "registration", "signup", "ticket", "accreditation", "registration_closed", "sold_out"]
+    return order.filter((a) => present.has(a))
+  }, [inCat])
   const catalog = useMemo(() => {
     let list = tag ? inCat.filter((e) => e.tags?.includes(tag)) : inCat
+    if (access) list = list.filter((e) => e.access === access)
     const query = q.trim().toLowerCase()
     if (query) list = list.filter((e) => `${e.t} ${e.v} ${e.ch} ${e.c}`.toLowerCase().includes(query))
     // жёсткие барьеры — в конец (как в мобиле)
@@ -197,7 +206,7 @@ export default function CsWebFeed() {
       const ha = HARD_ACCESS.has(a.access), hb = HARD_ACCESS.has(b.access)
       return ha === hb ? 0 : ha ? 1 : -1
     })
-  }, [inCat, tag, q])
+  }, [inCat, tag, access, q])
 
   const ready = allEvents.length > 0
 
@@ -233,6 +242,23 @@ export default function CsWebFeed() {
                 })}
               </div>
 
+              {/* Фильтр по доступу — «на что можно просто прийти». Чипы выглядят как
+                  сами бейджи (квадрат-индикатор), чтобы связь читалась. */}
+              {accessOptions.length > 0 && (
+                <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 10, marginTop: 14 }}>
+                  <span style={{ fontFamily: FONT_MONO, fontSize: 12, letterSpacing: "0.14em", textTransform: "uppercase", color: SK.ink55 }}>доступ</span>
+                  {accessOptions.map((a) => {
+                    const on = access === a
+                    return (
+                      <button key={a} onClick={() => setAccess(on ? null : a)} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "7px 13px 7px 8px", border: `2px solid ${SK.ink}`, background: on ? SK.ink : SK.paper, color: on ? "#fff" : SK.ink, boxShadow: on ? `3px 3px 0 ${CS.B}` : `3px 3px 0 ${SK.ink}`, fontFamily: FONT_SANS, fontWeight: 800, fontSize: 12, letterSpacing: "0.05em", textTransform: "uppercase", cursor: "pointer" }}>
+                        <span style={{ width: 12, height: 12, flex: "0 0 auto", background: on ? "#fff" : accessSquare(a) }} />
+                        {ACCESS_LABEL[a]}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+
               {/* 2-й уровень — подтеги выбранной категории (появляется, только когда
                   категория выбрана и подтеги есть) */}
               {cat !== "Все" && tagChips.length > 0 && (
@@ -252,14 +278,14 @@ export default function CsWebFeed() {
               ) : (
                 <>
                   {/* hero — только когда не ищем/не фильтруем, как «выбор редакции» */}
-                  {cat === "Все" && !q.trim() && hero && (
+                  {cat === "Все" && !q.trim() && !access && hero && (
                     <>
                       <SectionRule>выбор редакции</SectionRule>
                       <WebHero ev={hero} />
                     </>
                   )}
 
-                  <SectionRule>{cat === "Все" ? "каталог" : cat.toLowerCase()}{q.trim() ? ` · поиск «${q.trim()}»` : ""}</SectionRule>
+                  <SectionRule>{cat === "Все" ? "каталог" : cat.toLowerCase()}{access ? ` · ${ACCESS_LABEL[access]}` : ""}{q.trim() ? ` · поиск «${q.trim()}»` : ""}</SectionRule>
                   {catalog.length > 0 ? (
                     <div style={{ columnWidth: 300, columnGap: 22 }}>
                       {catalog.map((ev) => <WebCard key={ev.id} ev={ev} />)}
@@ -269,7 +295,7 @@ export default function CsWebFeed() {
                   )}
 
                   {/* «для знатока» */}
-                  {cat === "Все" && !q.trim() && insiderE.length > 0 && (
+                  {cat === "Все" && !q.trim() && !access && insiderE.length > 0 && (
                     <>
                       <SectionRule>для знатока · по секрету</SectionRule>
                       <div style={{ columnWidth: 300, columnGap: 22 }}>

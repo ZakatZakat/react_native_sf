@@ -11,7 +11,7 @@
 
 import { useMemo } from "react"
 import { useNavigate, useParams } from "@tanstack/react-router"
-import { CS, SK, FONT_SANS, FONT_MONO, ScreenBG, GoingProvider, useGoing } from "./shared"
+import { CS, SK, FONT_SANS, FONT_MONO, ScreenBG, GoingProvider /*, useGoing */ } from "./shared"
 import type { Ev } from "./buildDerived"
 import { useDerived } from "./useJourney"
 import { accessBadges } from "./WebFeed"
@@ -35,8 +35,10 @@ function BackLink() {
 }
 
 function EventDetail({ ev }: { ev: Ev }) {
-  const going = useGoing()
-  const isOn = going.isGoing(ev)
+  // Профиль/RSVP в веб-версии пока нет — кнопка «в профиль» скрыта (см. ниже).
+  // Вернём вместе с ней:
+  // const going = useGoing()
+  // const isOn = going.isGoing(ev)
   const ch = ev.ch.replace(/^@/, "")
   const tgUrl = ev.mid ? `https://t.me/${ch}/${ev.mid}` : (ch && ch !== "—" ? `https://t.me/${ch}` : null)
   const venue = ev.v && !ev.v.startsWith("@") ? ev.v : ""
@@ -86,9 +88,12 @@ function EventDetail({ ev }: { ev: Ev }) {
           )}
 
           <div style={{ display: "flex", gap: 12, marginTop: 22, flexWrap: "wrap" }}>
+            {/* Временно скрыто — в веб-версии пока нет функционала профиля. Вернуть
+                вместе с going/isOn выше:
             <button onClick={() => going.toggle(ev)} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "14px 24px", border: `3px solid ${SK.ink}`, background: isOn ? SK.paper : SK.ink, color: isOn ? SK.ink : "#fff", boxShadow: isOn ? "none" : `4px 4px 0 ${CS.B}`, cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 15, letterSpacing: "0.04em", textTransform: "uppercase" }}>
               {isOn ? <>✓ в профиле</> : <>добавить в профиль <span style={{ fontSize: 18, lineHeight: 1 }}>→</span></>}
             </button>
+            */}
             {tgUrl && (
               <a href={tgUrl} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "14px 24px", border: `3px solid ${SK.ink}`, background: SK.paper, color: SK.ink, boxShadow: `4px 4px 0 ${SK.ink}`, textDecoration: "none", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 15, letterSpacing: "0.04em", textTransform: "uppercase" }}>
                 открыть в telegram <span style={{ fontSize: 15, lineHeight: 1 }}>↗</span>
