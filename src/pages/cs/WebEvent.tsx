@@ -43,10 +43,12 @@ function EventDetail({ ev }: { ev: Ev }) {
   const priceStr = ev.price && ev.price !== "—" ? ev.price : ""
   const bd = accessBadges(ev)
 
-  // описание: убираем первую строку, если это дубль заголовка (частый случай)
+  // описание: убираем первую строку, если это дубль заголовка (частый случай).
+  // NB: нормализуем через \p{L}\p{N} с флагом u — ASCII-\W съедал бы кириллицу.
+  const norm = (s: string) => (s || "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "")
   const lines = (ev.desc || "").split("\n")
-  const first = (lines[0] || "").trim().toLowerCase().replace(/[\W_]+/g, "")
-  const titleKey = (ev.t || "").trim().toLowerCase().replace(/[\W_]+/g, "").slice(0, 24)
+  const first = norm(lines[0] || "")
+  const titleKey = norm(ev.t || "").slice(0, 24)
   const bodyLines = first && titleKey && first.startsWith(titleKey.slice(0, 12)) ? lines.slice(1) : lines
 
   return (
