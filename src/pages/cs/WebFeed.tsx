@@ -12,7 +12,7 @@
  *  Роут: /web
  */
 
-import { useMemo, useState } from "react"
+import { useLayoutEffect, useMemo, useRef, useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import {
   CS, SK, FONT_SANS, FONT_MONO, ScreenBG,
@@ -125,6 +125,37 @@ function WebCard({ ev, i = 0 }: { ev: Ev; i?: number }) {
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+/** Детерминированная masonry: N колонок по ширине контейнера, карточки
+ *  раскладываются round-robin (i % N) — верхний ряд всегда на одной линии,
+ *  порядок чтения слева-направо. Замена CSS column-fill:balance, который
+ *  недетерминирован: при асинхронной догрузке высоких постеров он то
+ *  сваливал всё в одну колонку, то ломал верхнюю линию карточек. */
+function MasonryCols({ items }: { items: Ev[] }) {
+  const ref = useRef<HTMLDivElement | null>(null)
+  const [cols, setCols] = useState(3)
+  const COLW = 300, GAP = 22
+  useLayoutEffect(() => {
+    const measure = () => {
+      const w = ref.current?.clientWidth || 900
+      setCols(Math.max(1, Math.min(5, Math.floor((w + GAP) / (COLW + GAP)))))
+    }
+    measure()
+    window.addEventListener("resize", measure)
+    return () => window.removeEventListener("resize", measure)
+  }, [])
+  const buckets: { ev: Ev; i: number }[][] = Array.from({ length: cols }, () => [])
+  items.forEach((ev, i) => buckets[i % cols].push({ ev, i }))
+  return (
+    <div ref={ref} style={{ display: "flex", gap: GAP, alignItems: "flex-start" }}>
+      {buckets.map((bucket, c) => (
+        <div key={c} style={{ flex: 1, minWidth: 0 }}>
+          {bucket.map(({ ev, i }) => <WebCard key={ev.id} ev={ev} i={i} />)}
+        </div>
+      ))}
     </div>
   )
 }
@@ -324,9 +355,7 @@ export default function CsWebFeed() {
                   {catalog.length > 0 ? (
                     // key завязан на фильтр — при смене категории/подтега/доступа/поиска
                     // грид перемонтируется и ступенчатая анимация появления проигрывается заново
-                    <div key={`${cat}|${tag ?? ""}|${access ?? ""}|${q.trim()}`} style={{ columnWidth: 300, columnGap: 22 }}>
-                      {catalog.map((ev, i) => <WebCard key={ev.id} ev={ev} i={i} />)}
-                    </div>
+                    <MasonryCols key={`${cat}|${tag ?? ""}|${access ?? ""}|${q.trim()}`} items={catalog} />
                   ) : (
                     <div style={{ fontFamily: FONT_MONO, fontSize: 14, color: SK.ink55, letterSpacing: "0.04em", padding: "40px 0" }}>ничего не нашлось</div>
                   )}
@@ -335,9 +364,7 @@ export default function CsWebFeed() {
                   {cat === "Все" && !q.trim() && !access && insiderE.length > 0 && (
                     <>
                       <SectionRule>для знатока · по секрету</SectionRule>
-                      <div style={{ columnWidth: 300, columnGap: 22 }}>
-                        {insiderE.map((ev, i) => <WebCard key={ev.id} ev={ev} i={i} />)}
-                      </div>
+                      <MasonryCols items={insiderE} />
                     </>
                   )}
                 </>
