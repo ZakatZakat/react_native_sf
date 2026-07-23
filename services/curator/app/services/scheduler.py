@@ -15,6 +15,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
 from app.config import Settings
@@ -63,6 +64,24 @@ class CuratorScheduler:
         except Exception:  # noqa: BLE001
             logger.exception("scheduler: rank recompute failed")
 
+    async def _run_moderation_cleanup(self) -> None:
+        """Ночная чистка: прошедшие manual_review → rejected. Изолировано —
+        ошибка логируется, но не трогает поллинг."""
+        try:
+            from app.cleanup_moderation import reject_past_manual_review
+            from app.db import create_engine, create_session_maker, session_scope
+
+            engine = create_engine(self.settings.postgres_dsn)
+            try:
+                sf = create_session_maker(engine)
+                async with session_scope(sf) as s:
+                    n = await reject_past_manual_review(s, apply=True)
+                logger.info("scheduler: moderation cleanup — past manual_review → rejected: %d", n)
+            finally:
+                await engine.dispose()
+        except Exception:  # noqa: BLE001
+            logger.exception("scheduler: moderation cleanup failed")
+
     def add_or_update_channel(self, channel: Channel) -> None:
         if not channel.poll_enabled:
             self.remove_channel(channel.handle)
@@ -110,6 +129,16 @@ class CuratorScheduler:
             coalesce=True,
             misfire_grace_time=600,
             next_run_time=datetime.utcnow() + timedelta(seconds=90),
+        )
+        # Ночная чистка очереди модерации: прошедшие manual_review → rejected (03:30 UTC).
+        self._scheduler.add_job(
+            self._run_moderation_cleanup,
+            trigger=CronTrigger(hour=3, minute=30),
+            id="moderation:cleanup",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=3600,
         )
         self._scheduler.start()
         self._started = True
