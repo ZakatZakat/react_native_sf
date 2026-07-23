@@ -243,15 +243,16 @@ export default function CsWebFeed() {
       `}</style>
       <div style={{ position: "relative", maxWidth: 1360, margin: "0 auto", padding: "40px 32px 90px" }}>
 
-              {/* header — поиск выровнен по ВЕРХУ (вровень с карточкой заголовка),
-                  иначе он «висел» у низа и над ним справа оставалось пусто */}
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}>
-                <div style={{ background: SK.paper, border: `2.5px solid ${SK.ink}`, boxShadow: `5px 5px 0 ${SK.ink}`, padding: "16px 22px 18px" }}>
+              {/* header — заголовок-карточка слева фиксирована, поиск справа
+                  РАСТЯГИВАЕТСЯ на всю свободную ширину (flex:1), чтобы не было
+                  пустого провала между ними; по вертикали — по центру карточки */}
+              <div style={{ display: "flex", alignItems: "center", gap: 24, flexWrap: "wrap" }}>
+                <div style={{ flex: "0 0 auto", background: SK.paper, border: `2.5px solid ${SK.ink}`, boxShadow: `5px 5px 0 ${SK.ink}`, padding: "16px 22px 18px" }}>
                   <div style={{ fontFamily: FONT_MONO, fontSize: 12, letterSpacing: "0.3em", textTransform: "uppercase", color: SK.ink55 }}>афиша · москва</div>
                   <div style={{ fontWeight: 900, fontSize: 54, letterSpacing: "-0.045em", lineHeight: 0.92, marginTop: 6 }}>Что в городе</div>
                   <div style={{ fontFamily: FONT_MONO, fontSize: 13, letterSpacing: "0.06em", marginTop: 8, color: SK.ink }}>{mainE.length} событий впереди</div>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, border: `2px solid ${SK.ink}`, background: SK.paper, boxShadow: `3px 3px 0 ${CS.B}`, padding: "12px 16px", minWidth: 280 }}>
+                <div style={{ flex: "1 1 320px", display: "flex", alignItems: "center", gap: 10, border: `2px solid ${SK.ink}`, background: SK.paper, boxShadow: `3px 3px 0 ${CS.B}`, padding: "15px 18px" }}>
                   <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="7.5" cy="7.5" r="5.3" stroke={SK.ink} strokeWidth="2.2" /><line x1="11.5" y1="11.5" x2="16" y2="16" stroke={SK.ink} strokeWidth="2.2" strokeLinecap="round" /></svg>
                   <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="поиск по афише…" style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontFamily: FONT_MONO, fontSize: 14, letterSpacing: "0.02em", color: SK.ink }} />
                   {q && <button onClick={() => setQ("")} aria-label="Очистить" style={{ border: "none", background: "none", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 16, color: SK.ink55 }}>✕</button>}
