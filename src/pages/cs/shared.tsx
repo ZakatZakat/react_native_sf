@@ -799,18 +799,26 @@ function EventSheet({ ev, onClose }: { ev: Ev | null; onClose: () => void }) {
                 </div>
               )
             })()}
-            <div style={{ height: 2, background: CS.K, margin: "12px 0 11px" }} />
-            <div style={{ fontWeight: 500, fontSize: 13.5, lineHeight: 1.5, color: CS.G70, paddingBottom: 18 }}>
-              {formatEventDesc(ev.desc, ev.t, ev.v, venueInfo(ev.venueKey)?.name || "").split("\n").map((line, i) => {
-                if (!line.trim()) return <div key={i} style={{ height: 8 }} />
-                const m = line.match(DESC_LABEL_RE)
-                return (
-                  <div key={i} style={{ marginTop: i === 0 ? 0 : 7 }}>
-                    {m ? <><span style={{ fontWeight: 800, color: CS.K }}>{m[1]}: </span>{m[2]}</> : line}
+            {(() => {
+              const body = formatEventDesc(ev.desc, ev.t, ev.v, venueInfo(ev.venueKey)?.name || "")
+              if (!body.trim()) return null
+              return (
+                <div style={{ marginTop: 12, marginBottom: 16, border: `2px solid ${CS.K}`, background: CS.W, boxShadow: `2.5px 2.5px 0 ${CS.B}`, padding: "10px 12px 8px" }}>
+                  <div style={{ fontFamily: FONT_MONO, fontSize: 8, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: CS.B, marginBottom: 8 }}>Описание</div>
+                  <div style={{ fontWeight: 500, fontSize: 13.5, lineHeight: 1.5, color: CS.G70 }}>
+                    {body.split("\n").map((line, i) => {
+                      if (!line.trim()) return <div key={i} style={{ height: 8 }} />
+                      const m = line.match(DESC_LABEL_RE)
+                      return (
+                        <div key={i} style={{ marginTop: i === 0 ? 0 : 7 }}>
+                          {m ? <><span style={{ fontWeight: 800, color: CS.K }}>{m[1]}: </span>{m[2]}</> : line}
+                        </div>
+                      )
+                    })}
                   </div>
-                )
-              })}
-            </div>
+                </div>
+              )
+            })()}
           </div>
         </div>
         {/* Footer — single-CTA "Добавить" toggles Going. Reminder strip

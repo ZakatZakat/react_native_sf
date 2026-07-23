@@ -108,10 +108,14 @@ function EventDetail({ ev }: { ev: Ev }) {
             </div>
           )}
 
-          <div style={{ height: 2, background: SK.ink, margin: "26px 0 18px" }} />
-          <div style={{ fontSize: 16, lineHeight: 1.62, color: SK.ink, maxWidth: 680 }}>
-            {bodyLines.map((line, i) => (line.trim() ? <p key={i} style={{ margin: "0 0 11px" }}>{line}</p> : <div key={i} style={{ height: 8 }} />))}
-          </div>
+          {bodyLines.some((l) => l.trim()) && (
+            <div style={{ marginTop: 22, border: `2px solid ${SK.ink}`, background: SK.paper, boxShadow: `4px 4px 0 ${CS.B}`, padding: "16px 18px 5px" }}>
+              <div style={{ fontFamily: FONT_MONO, fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: CS.B, marginBottom: 12 }}>Описание</div>
+              <div style={{ fontSize: 16, lineHeight: 1.62, color: SK.ink }}>
+                {bodyLines.map((line, i) => (line.trim() ? <p key={i} style={{ margin: "0 0 11px" }}>{line}</p> : <div key={i} style={{ height: 8 }} />))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </Shell>
