@@ -243,8 +243,9 @@ export default function CsWebFeed() {
       `}</style>
       <div style={{ position: "relative", maxWidth: 1360, margin: "0 auto", padding: "40px 32px 90px" }}>
 
-              {/* header */}
-              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}>
+              {/* header — поиск выровнен по ВЕРХУ (вровень с карточкой заголовка),
+                  иначе он «висел» у низа и над ним справа оставалось пусто */}
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}>
                 <div style={{ background: SK.paper, border: `2.5px solid ${SK.ink}`, boxShadow: `5px 5px 0 ${SK.ink}`, padding: "16px 22px 18px" }}>
                   <div style={{ fontFamily: FONT_MONO, fontSize: 12, letterSpacing: "0.3em", textTransform: "uppercase", color: SK.ink55 }}>афиша · москва</div>
                   <div style={{ fontWeight: 900, fontSize: 54, letterSpacing: "-0.045em", lineHeight: 0.92, marginTop: 6 }}>Что в городе</div>
