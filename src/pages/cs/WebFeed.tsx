@@ -66,9 +66,17 @@ function DateStamp({ label }: { label: string }) {
   )
 }
 
+/** «Когда»: дата и время. «00:00» — это дефолт для даты-без-времени (событие
+ *  без указанного часа парсится в полночь), поэтому его НЕ показываем — только дату. */
+export function whenLabel(ev: Ev): string {
+  const t = ev.tm && ev.tm !== "—" && ev.tm !== "00:00" ? ev.tm : ""
+  if (ev.d && ev.d !== "—") return t ? `${ev.d} · ${t}` : ev.d
+  return t
+}
+
 export function accessBadges(ev: Ev): React.ReactNode[] {
   const out: React.ReactNode[] = []
-  const when = ev.d && ev.d !== "—" ? (ev.tm && ev.tm !== "—" ? `${ev.d} · ${ev.tm}` : ev.d) : (ev.tm && ev.tm !== "—" ? ev.tm : "")
+  const when = whenLabel(ev)
   if (when) out.push(<DateStamp key="d" label={when} />)
   if (ACCESS_LABEL[ev.access]) out.push(<Stamp key="a" label={ACCESS_LABEL[ev.access]} square={accessSquare(ev.access)} />)
   if (ev.age) out.push(<Stamp key="g" label={ev.age} square={SK.ink} />)
