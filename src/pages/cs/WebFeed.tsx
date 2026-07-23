@@ -246,7 +246,7 @@ export default function CsWebFeed() {
               {/* header — карточка «Что в городе» РАСТЯНУТА на всю свободную ширину
                   (заголовок слева, счётчик справа — чтобы не пустовала), а поиск
                   остаётся своей компактной ширины */}
-              <div style={{ display: "flex", alignItems: "stretch", gap: 24, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 24, flexWrap: "wrap" }}>
                 <div style={{ flex: "1 1 460px", display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, background: SK.paper, border: `2.5px solid ${SK.ink}`, boxShadow: `5px 5px 0 ${SK.ink}`, padding: "16px 24px 18px" }}>
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontFamily: FONT_MONO, fontSize: 12, letterSpacing: "0.3em", textTransform: "uppercase", color: SK.ink55 }}>афиша · москва</div>
