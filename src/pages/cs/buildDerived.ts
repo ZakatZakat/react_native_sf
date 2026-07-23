@@ -79,8 +79,13 @@ export function resolvePoster(e: FeedItem): string | null {
  *  the original if stripping would empty it. */
 export function cleanTitle(raw: string): string {
   const orig = (raw || "").trim()
+  // Невидимые/комбинирующие символы из TG-постов (мягкий перенос «Кварти­рник»,
+  // zero-width, bidi-метки, variation selectors, enclosing keycap «1️⃣»,
+  // комбинирующая диакритика) рендерятся «крючками» под буквами. В русских/
+  // латинских названиях таких нет — вычищаем глобально.
+  let s = orig.replace(/[\u00AD\u200B-\u200F\u2060\uFEFF\uFE00-\uFE0F\u0300-\u036F\u0483-\u0489\u1AB0-\u1AFF\u1DC0-\u1DFF\u20D0-\u20FF]/gu, "")
   // leading date token: 10.07 / 10.07.2026 / 10/07
-  let s = orig.replace(/^\s*\d{1,2}[.\/]\d{1,2}(?:[.\/]\d{2,4})?/, "").trim()
+  s = s.replace(/^\s*\d{1,2}[.\/]\d{1,2}(?:[.\/]\d{2,4})?/, "").trim()
   // leading emoji / stars / separators up to the first real letter, digit or quote
   s = s.replace(/^[^\p{L}\p{Nd}«"'(]+/u, "").trim()
   return s || orig
