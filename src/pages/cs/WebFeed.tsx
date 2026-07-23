@@ -212,8 +212,8 @@ export default function CsWebFeed() {
       })
   }, [allEvents])
   const withPoster = useMemo(() => upcoming.filter((e) => e.p), [upcoming])
-  const mainE = useMemo(() => withPoster.filter((e) => e.tier !== "insider"), [withPoster])
-  const insiderE = useMemo(() => withPoster.filter((e) => e.tier === "insider"), [withPoster])
+  // Полка «для знатока» убрана — insider-контент теперь в общем каталоге.
+  const mainE = withPoster
 
   const heroPool = useMemo(() => {
     const now = Date.now()
@@ -366,14 +366,6 @@ export default function CsWebFeed() {
                     <MasonryCols key={`${cat}|${tag ?? ""}|${access ?? ""}|${q.trim()}`} items={catalog} />
                   ) : (
                     <div style={{ fontFamily: FONT_MONO, fontSize: 14, color: SK.ink55, letterSpacing: "0.04em", padding: "40px 0" }}>ничего не нашлось</div>
-                  )}
-
-                  {/* «для знатока» */}
-                  {cat === "Все" && !q.trim() && !access && insiderE.length > 0 && (
-                    <>
-                      <SectionRule>для знатока · по секрету</SectionRule>
-                      <MasonryCols items={insiderE} />
-                    </>
                   )}
                 </>
               )}

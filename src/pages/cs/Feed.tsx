@@ -511,37 +511,6 @@ function heroScore(e: Ev): number {
   return s
 }
 
-/** Полка «для знатока» (фидбек #5) — курируемый вниз хвост: закрытые/пресс/VIP-
- *  показы и анонсы закрытий. Не в герой и не в общий каталог — отдельной лентой
- *  в конце, чтобы редкий формат не выкидывать, но и не путать неопытного. */
-function InsiderStrip({ events }: { events: Ev[] }) {
-  const open = useOpenEvent()
-  if (!events.length) return null
-  return (
-    <div style={{ marginTop: 10 }}>
-      <SectionLabel>для знатока · по секрету</SectionLabel>
-      <div style={{ fontFamily: FONT_MONO, fontSize: 9.5, letterSpacing: "0.04em", color: SK.ink55, lineHeight: 1.45, margin: "-6px 0 12px" }}>
-        Закрытые показы, пресс-события и редкие форматы — не для всех, но вдруг твоё.
-      </div>
-      <div className="sk-scroll" style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 6 }}>
-        {events.map((ev) => (
-          <div key={ev.id} onClick={() => open(ev)} style={{ flexShrink: 0, width: 150, cursor: "pointer", background: SK.paper, border: `2px solid ${SK.ink}`, overflow: "hidden", boxShadow: `3px 3px 0 ${SK.ink}` }}>
-            <div style={{ position: "relative", background: "#E4E4E1", borderBottom: `2px solid ${SK.ink}`, lineHeight: 0 }}>
-              {ev.p && <img src={ev.p} alt="" style={{ width: "100%", height: 96, objectFit: "cover", display: "block" }} />}
-              <span style={{ position: "absolute", top: 6, left: 6, background: SK.ink, color: SK.paper, fontFamily: FONT_MONO, fontWeight: 700, fontSize: 8, letterSpacing: "0.1em", textTransform: "uppercase", padding: "2px 5px" }}>инсайд</span>
-            </div>
-            <div style={{ padding: "8px 9px 10px" }}>
-              <div style={{ fontFamily: FONT_MONO, fontSize: 8.5, color: SK.ink55, letterSpacing: "0.03em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{[ev.d, ev.tm].filter((s) => s && s !== "—").join(" · ") || "—"}</div>
-              <div style={{ fontWeight: 900, fontSize: 12, lineHeight: 1.08, letterSpacing: "-0.01em", textTransform: "uppercase", color: SK.ink, marginTop: 5, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" } as React.CSSProperties}>{ev.t}</div>
-              {ACCESS_LABEL[ev.access] && <div style={{ marginTop: 7 }}><AccessTag ev={ev} /></div>}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: { feed: Ev[]; searchFeed?: Ev[]; btn?: string; name?: string; onMap?: () => void }) {
   const nav = useContext(NavCtx)
   const wk = weekMeta()
@@ -550,10 +519,9 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
   const [searchOpen, setSearchOpen] = useState(false)
   // Full upcoming catalog (already future-filtered + chronological upstream).
   const E = useMemo(() => feed.filter((e) => e && !e.id.startsWith("__placeholder")), [feed])
-  // «Для знатока» (фидбек #5) — инсайд-контент (закрытые/пресс/VIP-показы, анонсы
-  // закрытий) уводим из героя и общего каталога в отдельную полку внизу.
-  const mainE = useMemo(() => E.filter((e) => e.tier !== "insider"), [E])
-  const insiderE = useMemo(() => E.filter((e) => e.tier === "insider"), [E])
+  // Полка «для знатока» убрана — insider-контент (закрытые/пресс/VIP-показы,
+  // финисаж) теперь в общем каталоге наравне со всеми (по трению осядет вниз).
+  const mainE = E
   // Герой «выбор редакции» (фидбек #4): из ещё НЕ начавшихся событий, ранжированных
   // по доступности (свободно / без регистрации / есть место+дата → выше). Крутим
   // топ-6 по refresh. Прошедшее сегодня (мастер-класс в 15:00, а сейчас 18:00) —
@@ -735,7 +703,6 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
             {cat === "Все" ? "событий пока нет" : `в категории «${cat.toLowerCase()}» пока пусто`}
           </div>
         )}
-        {cat === "Все" && <InsiderStrip events={insiderE} />}
       </div>
 
       {searchOpen && <BoardSearch events={searchFeed ?? E} onClose={() => setSearchOpen(false)} />}
