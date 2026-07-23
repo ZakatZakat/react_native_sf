@@ -47,8 +47,11 @@ def _tokenize(s: str | None) -> list[str]:
 
 
 def _name_tokens(title: str | None, descr: str | None) -> set[str]:
+    # Title-only, если в заголовке ≥3 значимых слова (точнее — тело не зашумляет
+    # набор); добор из тела только для совсем коротких заголовков (дата вместо
+    # названия). Порог 3 ловит короткие кросс-посты вроде «Save Russian Wave».
     toks = _tokenize(title)
-    if len(toks) < 4:
+    if len(toks) < 3:
         toks = _tokenize(f"{title or ''} {(descr or '')[:80]}")
     return set(toks)
 
@@ -113,6 +116,10 @@ def cluster(rows: list[_Row]) -> list[list[_Row]]:
 
     for e in rows:
         t = _tkey(e.event_time)
+        # Fuzzy-склейку бакетим по ДНЮ, а не дню+времени: кросс-посты одного
+        # события часто несут чуть разное время (15:30 vs 16:00) и иначе попадали
+        # бы в разные бакеты. Exact-ключи (постер/текст) остаются на дню+времени.
+        day = e.event_time.strftime("%d.%m") if e.event_time else ""
         exact: list[str] = []
         if e.media_hash:
             exact.append(f"img:{e.media_hash}|{t}")
@@ -126,16 +133,16 @@ def cluster(rows: list[_Row]) -> list[list[_Row]]:
         body = re.sub(r"\s+", " ", (e.descr or "").strip().lower())
         if body:
             exact.append(f"txt:{body}|{t}")
-        nm = _name_tokens(e.title, e.descr) if t else set()
+        nm = _name_tokens(e.title, e.descr)
 
         dup = -1
         for k in exact:
             if k in exact_to_idx:
                 dup = exact_to_idx[k]
                 break
-        if dup < 0 and len(nm) >= 4:
-            for bnm, bidx in name_buckets.get(t, []):
-                if len(bnm) >= 4 and _overlap(nm, bnm) >= 0.8:
+        if dup < 0 and len(nm) >= 3:
+            for bnm, bidx in name_buckets.get(day, []):
+                if len(bnm) >= 3 and _overlap(nm, bnm) >= 0.85:
                     dup = bidx
                     break
 
@@ -145,8 +152,8 @@ def cluster(rows: list[_Row]) -> list[list[_Row]]:
                 reps[dup] = e
             for k in exact:
                 exact_to_idx.setdefault(k, dup)
-            if len(nm) >= 4:
-                name_buckets.setdefault(t, []).append((nm, dup))
+            if len(nm) >= 3:
+                name_buckets.setdefault(day, []).append((nm, dup))
             continue
 
         idx = len(reps)
@@ -154,8 +161,8 @@ def cluster(rows: list[_Row]) -> list[list[_Row]]:
         groups.append([e])
         for k in exact:
             exact_to_idx[k] = idx
-        if len(nm) >= 4:
-            name_buckets.setdefault(t, []).append((nm, idx))
+        if len(nm) >= 3:
+            name_buckets.setdefault(day, []).append((nm, idx))
     return groups
 
 

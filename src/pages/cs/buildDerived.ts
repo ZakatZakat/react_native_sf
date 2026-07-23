@@ -247,8 +247,11 @@ export function buildDerived(events: FeedItem[]): DerivedData {
   // generic, e.g. «10 июля») from the title + the head of the body, which
   // usually leads with the event name.
   const nameTokens = (e: FeedItem): Set<string> => {
+    // Title-only при ≥3 значимых словах (тело не зашумляет набор); добор из тела
+    // только для совсем коротких заголовков (дата вместо названия). Порог 3 ловит
+    // короткие кросс-посты вроде «Save Russian Wave».
     let toks = tokenize(e.title)
-    if (toks.length < 4) toks = tokenize(`${e.title || ""} ${(e.description || "").slice(0, 80)}`)
+    if (toks.length < 3) toks = tokenize(`${e.title || ""} ${(e.description || "").slice(0, 80)}`)
     return new Set(toks)
   }
   // Containment (overlap coefficient) — |∩| / smaller set. Better than Jaccard
@@ -307,6 +310,9 @@ export function buildDerived(events: FeedItem[]): DerivedData {
     const t = td
       ? td.toLocaleDateString("ru-RU", MSK_D) + " " + td.toLocaleTimeString("ru-RU", MSK_T)
       : ""
+    // Fuzzy-склейку бакетим по ДНЮ (а не дню+времени): кросс-посты одного события
+    // часто несут чуть разное время (15:30 vs 16:00). Exact-ключи — на дню+времени.
+    const day = td ? td.toLocaleDateString("ru-RU", MSK_D) : ""
     // Exact keys: byte-identical poster or identical body at the same time.
     const exact: string[] = []
     if (e.media_hash) exact.push(`img:${e.media_hash}|${t}`)
@@ -314,15 +320,15 @@ export function buildDerived(events: FeedItem[]): DerivedData {
     if (t) { const q = quoteKey(e); if (q) exact.push(`name:${q}|${t}`) }
     const body = (e.description || "").trim().toLowerCase().replace(/\s+/g, " ")
     if (body) exact.push(`txt:${body}|${t}`)
-    // Fuzzy name key: same start time + heavy name-word overlap. Catches re-worded
+    // Fuzzy name key: same day + heavy name-word overlap. Catches re-worded
     // captions and re-uploaded (byte-different) posters that exact keys miss.
-    const nm = t ? nameTokens(e) : new Set<string>()
+    const nm = nameTokens(e)
 
     // Find an already-kept event this one duplicates (exact first, then fuzzy).
     let dupIdx = -1
     for (const k of exact) { const i = exactToIdx.get(k); if (i !== undefined) { dupIdx = i; break } }
-    if (dupIdx < 0 && nm.size >= 4) {
-      const hit = (nameBuckets.get(t) ?? []).find((b) => b.nm.size >= 4 && overlap(nm, b.nm) >= 0.8)
+    if (dupIdx < 0 && nm.size >= 3) {
+      const hit = (nameBuckets.get(day) ?? []).find((b) => b.nm.size >= 3 && overlap(nm, b.nm) >= 0.85)
       if (hit) dupIdx = hit.idx
     }
 
@@ -331,14 +337,14 @@ export function buildDerived(events: FeedItem[]): DerivedData {
       // register this copy's keys against the same slot so later dups still match.
       if (titleScore(e) > titleScore(kept[dupIdx])) kept[dupIdx] = e
       exact.forEach((k) => { if (!exactToIdx.has(k)) exactToIdx.set(k, dupIdx) })
-      if (nm.size >= 4) { const b = nameBuckets.get(t) ?? []; b.push({ nm, idx: dupIdx }); nameBuckets.set(t, b) }
+      if (nm.size >= 3) { const b = nameBuckets.get(day) ?? []; b.push({ nm, idx: dupIdx }); nameBuckets.set(day, b) }
       continue
     }
 
     const idx = kept.length
     kept.push(e)
     exact.forEach((k) => exactToIdx.set(k, idx))
-    if (nm.size >= 4) { const b = nameBuckets.get(t) ?? []; b.push({ nm, idx }); nameBuckets.set(t, b) }
+    if (nm.size >= 3) { const b = nameBuckets.get(day) ?? []; b.push({ nm, idx }); nameBuckets.set(day, b) }
   }
   const uniqueEvents = kept
 
