@@ -177,7 +177,8 @@ function WebHero({ ev }: { ev: Ev }) {
         </div>
         <div style={{ fontWeight: 900, fontSize: fs, letterSpacing: "-0.02em", lineHeight: 1.02, textTransform: "uppercase", color: SK.ink, overflowWrap: "break-word" }}>{ev.t}</div>
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 18, flexWrap: "wrap" }}>
-          <div style={{ fontFamily: FONT_MONO, fontSize: 13, letterSpacing: "0.03em", color: SK.ink, lineHeight: 1.6 }}>{ev.v}<br />{ev.d} · {ev.tm}</div>
+          {/* дату/время не дублируем текстом — она уже в бейдже (accessBadges) */}
+          <div style={{ fontFamily: FONT_MONO, fontSize: 13, letterSpacing: "0.03em", color: SK.ink, lineHeight: 1.6 }}>{ev.v && ev.v !== "—" && !ev.v.startsWith("@") ? ev.v : ""}</div>
           {bd.length > 0 && <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>{bd}</div>}
         </div>
       </div>
