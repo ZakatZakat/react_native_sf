@@ -12,7 +12,7 @@
  *  Роут: /web
  */
 
-import { useLayoutEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import {
   CS, SK, FONT_SANS, FONT_MONO, ScreenBG,
@@ -20,6 +20,7 @@ import {
 import type { Ev } from "./buildDerived"
 import { INTERESTS } from "../pipe/preferences"
 import { useDerived } from "./useJourney"
+import { analytics } from "../../lib/analytics"
 
 const CAT_SYM = new Map(INTERESTS.map((i) => [i.label, i.symbol]))
 
@@ -235,6 +236,13 @@ export default function CsWebFeed() {
   const [tag, setTag] = useState<string | null>(null) // 2-й уровень — подтег
   const [access, setAccess] = useState<string | null>(null) // фильтр по барьеру входа
   const [q, setQ] = useState("")
+  // Поиск логируем с дебаунсом — settled-запрос, а не каждое нажатие.
+  useEffect(() => {
+    const query = q.trim()
+    if (!query) return
+    const t = setTimeout(() => analytics.track("cs.feed.filter", { kind: "search", value: query.slice(0, 80) }), 800)
+    return () => clearTimeout(t)
+  }, [q])
   // события выбранной категории (до сужения подтегом)
   const inCat = useMemo(() => (cat === "Все" ? rest : rest.filter((e) => e.c === cat)), [rest, cat])
   // подтеги 2-го уровня — те, что реально встречаются в этой категории, по частоте
@@ -301,7 +309,7 @@ export default function CsWebFeed() {
                   const on = cat === c
                   const sym = c !== "Все" ? CAT_SYM.get(c) : undefined
                   return (
-                    <button key={c} onClick={() => { setCat(c); setTag(null) }} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "9px 16px", border: `2px solid ${SK.ink}`, background: on ? SK.ink : SK.paper, color: on ? SK.paper : SK.ink, fontFamily: FONT_SANS, fontWeight: 800, fontSize: 13, letterSpacing: "0.05em", textTransform: "uppercase", cursor: "pointer", boxShadow: on ? `3px 3px 0 ${CS.B}` : "none" }}>
+                    <button key={c} onClick={() => { setCat(c); setTag(null); analytics.track("cs.feed.filter", { kind: "category", value: c }) }} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "9px 16px", border: `2px solid ${SK.ink}`, background: on ? SK.ink : SK.paper, color: on ? SK.paper : SK.ink, fontFamily: FONT_SANS, fontWeight: 800, fontSize: 13, letterSpacing: "0.05em", textTransform: "uppercase", cursor: "pointer", boxShadow: on ? `3px 3px 0 ${CS.B}` : "none" }}>
                       {sym && <span style={{ fontWeight: 400, fontSize: 15, lineHeight: 1 }}>{sym}</span>}{c}
                     </button>
                   )
@@ -316,7 +324,7 @@ export default function CsWebFeed() {
                   {accessOptions.map((a) => {
                     const on = access === a
                     return (
-                      <button key={a} onClick={() => setAccess(on ? null : a)} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "7px 13px 7px 8px", border: `2px solid ${SK.ink}`, background: on ? SK.ink : SK.paper, color: on ? "#fff" : SK.ink, boxShadow: on ? `3px 3px 0 ${CS.B}` : `3px 3px 0 ${SK.ink}`, fontFamily: FONT_SANS, fontWeight: 800, fontSize: 12, letterSpacing: "0.05em", textTransform: "uppercase", cursor: "pointer" }}>
+                      <button key={a} onClick={() => { setAccess(on ? null : a); if (!on) analytics.track("cs.feed.filter", { kind: "access", value: a }) }} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "7px 13px 7px 8px", border: `2px solid ${SK.ink}`, background: on ? SK.ink : SK.paper, color: on ? "#fff" : SK.ink, boxShadow: on ? `3px 3px 0 ${CS.B}` : `3px 3px 0 ${SK.ink}`, fontFamily: FONT_SANS, fontWeight: 800, fontSize: 12, letterSpacing: "0.05em", textTransform: "uppercase", cursor: "pointer" }}>
                         <span style={{ width: 12, height: 12, flex: "0 0 auto", background: on ? "#fff" : accessSquare(a) }} />
                         {ACCESS_LABEL[a]}
                       </button>
@@ -333,7 +341,7 @@ export default function CsWebFeed() {
                   {tagChips.map((t) => {
                     const on = tag === t
                     return (
-                      <button key={t} onClick={() => setTag(on ? null : t)} style={{ padding: "8px 14px", border: `2px solid ${SK.ink}`, background: on ? SK.ink : CS.B, color: "#fff", boxShadow: `3px 3px 0 ${on ? CS.B : SK.ink}`, fontFamily: FONT_SANS, fontWeight: 800, fontSize: 12, letterSpacing: "0.05em", textTransform: "uppercase", cursor: "pointer" }}>{t}</button>
+                      <button key={t} onClick={() => { setTag(on ? null : t); if (!on) analytics.track("cs.feed.filter", { kind: "tag", value: t }) }} style={{ padding: "8px 14px", border: `2px solid ${SK.ink}`, background: on ? SK.ink : CS.B, color: "#fff", boxShadow: `3px 3px 0 ${on ? CS.B : SK.ink}`, fontFamily: FONT_SANS, fontWeight: 800, fontSize: 12, letterSpacing: "0.05em", textTransform: "uppercase", cursor: "pointer" }}>{t}</button>
                     )
                   })}
                 </div>

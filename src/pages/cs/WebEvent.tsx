@@ -9,12 +9,13 @@
  *  Данные берём из useDerived (тот же кэш, что у ленты). Роут: /web/event/$id
  */
 
-import { useMemo } from "react"
+import { useEffect, useMemo } from "react"
 import { useNavigate, useParams } from "@tanstack/react-router"
 import { CS, SK, FONT_SANS, FONT_MONO, ScreenBG, GoingProvider /*, useGoing */ } from "./shared"
 import type { Ev } from "./buildDerived"
 import { useDerived } from "./useJourney"
 import { accessBadges, whenLabel } from "./WebFeed"
+import { analytics } from "../../lib/analytics"
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
@@ -44,6 +45,13 @@ function EventDetail({ ev }: { ev: Ev }) {
   const venue = ev.v && !ev.v.startsWith("@") ? ev.v : ""
   const priceStr = ev.price && ev.price !== "—" ? ev.price : ""
   const bd = accessBadges(ev)
+
+  // Телеметрия открытия события на веб-странице (аноним, по device_id — профиля
+  // тут нет). Роут /web/event/$id в scenario отделяет это от мини-аппа.
+  useEffect(() => {
+    analytics.track("cs.event.open", { event_id: ev.id, category: ev.c, venue: ev.venueKey || null, has_geo: !!ev.geo }, { data: ev.t.slice(0, 200) })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ev.id])
 
   // описание: убираем первую строку, если это дубль заголовка (частый случай).
   // NB: нормализуем через \p{L}\p{N} с флагом u — ASCII-\W съедал бы кириллицу.
@@ -94,7 +102,7 @@ function EventDetail({ ev }: { ev: Ev }) {
             </button>
             */}
             {tgUrl && (
-              <a href={tgUrl} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "14px 24px", border: `3px solid ${SK.ink}`, background: SK.paper, color: SK.ink, boxShadow: `4px 4px 0 ${SK.ink}`, textDecoration: "none", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 15, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+              <a href={tgUrl} target="_blank" rel="noopener noreferrer" onClick={() => analytics.track("cs.event.tg_post", { event_id: ev.id, channel: ev.ch, has_post: ev.mid != null })} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "14px 24px", border: `3px solid ${SK.ink}`, background: SK.paper, color: SK.ink, boxShadow: `4px 4px 0 ${SK.ink}`, textDecoration: "none", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 15, letterSpacing: "0.04em", textTransform: "uppercase" }}>
                 открыть в telegram <span style={{ fontSize: 15, lineHeight: 1 }}>↗</span>
               </a>
             )}
