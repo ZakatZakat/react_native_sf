@@ -72,8 +72,7 @@ function EventDetail({ ev }: { ev: Ev }) {
 
         {/* детали */}
         <div style={{ flex: "1 1 400px", minWidth: 0 }}>
-          <div style={{ fontFamily: FONT_MONO, fontSize: 13, letterSpacing: "0.06em", color: SK.ink55 }}>{ev.d} · {ev.tm}{priceStr ? ` · ${priceStr}` : ""}</div>
-          <h1 style={{ fontWeight: 900, fontSize: 40, lineHeight: 1.0, letterSpacing: "-0.03em", textTransform: "uppercase", margin: "12px 0 0", overflowWrap: "break-word" }}>{ev.t}</h1>
+          <h1 style={{ fontWeight: 900, fontSize: 40, lineHeight: 1.0, letterSpacing: "-0.03em", textTransform: "uppercase", margin: "0", overflowWrap: "break-word" }}>{ev.t}</h1>
 
           {bd.length > 0 && <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 18 }}>{bd}</div>}
 

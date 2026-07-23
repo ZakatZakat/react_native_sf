@@ -37,23 +37,39 @@ const HARD_ACCESS = new Set(["registration_closed", "sold_out"])
 const RED = "#E0162B"
 const accessSquare = (a: string): string => (a === "free" ? CS.B : HARD_ACCESS.has(a) ? RED : SK.ink)
 
-/** Бейдж-штамп (веб-масштаб): белый блок, квадрат-индикатор, прямые углы. */
+/** Бейдж-штамп (веб-масштаб): белый блок, квадрат-индикатор, прямые углы.
+ *  Компактный — чтобы несколько бейджей помещались в ряд. */
 function Stamp({ label, square }: { label: string; square: string }) {
   return (
     <span style={{
-      display: "inline-flex", alignItems: "center", gap: 7, whiteSpace: "nowrap",
-      fontFamily: FONT_SANS, fontWeight: 800, fontSize: 12, letterSpacing: "0.05em",
-      textTransform: "uppercase", lineHeight: 1, padding: "6px 11px 6px 7px",
-      background: SK.paper, color: SK.ink, border: `2px solid ${SK.ink}`, boxShadow: `3px 3px 0 ${SK.ink}`,
+      display: "inline-flex", alignItems: "center", gap: 6, whiteSpace: "nowrap",
+      fontFamily: FONT_SANS, fontWeight: 800, fontSize: 10.5, letterSpacing: "0.04em",
+      textTransform: "uppercase", lineHeight: 1, padding: "4px 9px 4px 6px",
+      background: SK.paper, color: SK.ink, border: `2px solid ${SK.ink}`, boxShadow: `2px 2px 0 ${SK.ink}`,
     }}>
-      <span style={{ width: 13, height: 13, flex: "0 0 auto", background: square }} />
+      <span style={{ width: 11, height: 11, flex: "0 0 auto", background: square }} />
       {label}
     </span>
   )
 }
 
+/** Бейдж «когда» — тёмный штамп (дата · время) с синей тенью: якорь среди
+ *  белых бейджей доступа. */
+function DateStamp({ label }: { label: string }) {
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", whiteSpace: "nowrap",
+      fontFamily: FONT_MONO, fontWeight: 700, fontSize: 10.5, letterSpacing: "0.04em",
+      lineHeight: 1, padding: "5px 9px",
+      background: SK.ink, color: "#fff", border: `2px solid ${SK.ink}`, boxShadow: `2px 2px 0 ${CS.B}`,
+    }}>{label}</span>
+  )
+}
+
 export function accessBadges(ev: Ev): React.ReactNode[] {
   const out: React.ReactNode[] = []
+  const when = ev.d && ev.d !== "—" ? (ev.tm && ev.tm !== "—" ? `${ev.d} · ${ev.tm}` : ev.d) : (ev.tm && ev.tm !== "—" ? ev.tm : "")
+  if (when) out.push(<DateStamp key="d" label={when} />)
   if (ACCESS_LABEL[ev.access]) out.push(<Stamp key="a" label={ACCESS_LABEL[ev.access]} square={accessSquare(ev.access)} />)
   if (ev.age) out.push(<Stamp key="g" label={ev.age} square={SK.ink} />)
   return out
@@ -74,9 +90,8 @@ function WebCard({ ev }: { ev: Ev }) {
   const [broken, setBroken] = useState(false)
   if (broken) return null
   const venue = ev.v && !ev.v.startsWith("@") ? ev.v : ""
-  const time = ev.tm && ev.tm !== "—" ? ev.tm : ""
-  const price = ev.price && ev.price !== "—" && !/свобод|беспл|free/i.test(ev.price) ? ev.price : ""
-  const meta = [time, price].filter(Boolean).join(" · ")
+  // дата·время ушли в бейдж «когда» — в мете остаётся только реальная цена
+  const meta = ev.price && ev.price !== "—" && !/свобод|беспл|free/i.test(ev.price) ? ev.price : ""
   const nl = (ev.desc || "").indexOf("\n")
   const body = nl >= 0 ? ev.desc.slice(nl + 1).replace(/\s+/g, " ").trim() : ""
   const bd = accessBadges(ev)
@@ -88,8 +103,8 @@ function WebCard({ ev }: { ev: Ev }) {
           <span style={{ position: "absolute", top: 11, right: 11, background: SK.ink, color: SK.paper, fontWeight: 900, fontSize: 16, letterSpacing: "0.02em", padding: "6px 10px" }}>{ev.d}</span>
         </div>
         <div style={{ padding: "14px 16px 17px" }}>
-          <div style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 12.5, letterSpacing: "0.03em", color: SK.ink55, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{meta}</div>
-          {bd.length > 0 && <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>{bd}</div>}
+          {meta && <div style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 12.5, letterSpacing: "0.03em", color: SK.ink55, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{meta}</div>}
+          {bd.length > 0 && <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: meta ? 12 : 0 }}>{bd}</div>}
           <div style={{ fontWeight: 900, fontSize: 22, letterSpacing: "-0.015em", lineHeight: 1.07, marginTop: 12, textTransform: "uppercase", color: SK.ink, overflowWrap: "anywhere", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" } as React.CSSProperties}>{ev.t}</div>
           {venue && <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.3, color: SK.ink55, marginTop: 8 }}>{venue}</div>}
           {body && <div style={{ fontSize: 13.5, lineHeight: 1.42, color: SK.ink55, marginTop: 10, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" } as React.CSSProperties}>{body}</div>}
