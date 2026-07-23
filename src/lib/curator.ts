@@ -54,9 +54,9 @@ export type CuratorTag = {
 
 async function curatorFetch<T>(
   path: string,
-  opts: RequestInit & { auth?: boolean; query?: Record<string, string | number | undefined> } = {}
+  opts: RequestInit & { auth?: boolean; devUserFallback?: boolean; query?: Record<string, string | number | undefined> } = {}
 ): Promise<T> {
-  const { auth = false, query, headers, ...rest } = opts
+  const { auth = false, devUserFallback = true, query, headers, ...rest } = opts
   const params = new URLSearchParams()
   if (query) {
     for (const [k, v] of Object.entries(query)) {
@@ -72,7 +72,11 @@ async function curatorFetch<T>(
       // browser without Telegram. Otherwise fall back to the dev default.
       let urlAsUser = ""
       try { urlAsUser = new URLSearchParams(window.location.search).get("as_user") || "" } catch { /* noop */ }
-      const au = urlAsUser || DEV_USER_ID
+      // devUserFallback=false (лента на вебе): без Telegram и без явного ?as_user
+      // НЕ подставляем dev-юзера — иначе аноним получал бы ЧУЖУЮ персональную
+      // ленту (интересы 12345 сужали фид 398→119). Без as_user → user_id=None →
+      // полный фид без фильтра по интересам.
+      const au = urlAsUser || (devUserFallback ? DEV_USER_ID : "")
       if (au) params.set("as_user", au)
     }
   }
@@ -122,6 +126,9 @@ export const Curator = {
   getFeed: (opts?: { limit?: number; offset?: number; tags?: string[] }) =>
     curatorFetch<FeedItem[]>("/me/feed", {
       auth: true,
+      // Без Telegram-профиля лента остаётся анонимной (полный фид), а не сужается
+      // под интересы dev-юзера. Реальные TG-юзеры шлют init_data → персонализация.
+      devUserFallback: false,
       query: {
         limit: opts?.limit,
         offset: opts?.offset,
