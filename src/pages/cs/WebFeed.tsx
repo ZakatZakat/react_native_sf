@@ -93,7 +93,7 @@ function heroScore(e: Ev): number {
 }
 
 // ── Карточка каталога (крупная) ─────────────────────────────────────────
-function WebCard({ ev }: { ev: Ev }) {
+function WebCard({ ev, i = 0 }: { ev: Ev; i?: number }) {
   const navigate = useNavigate()
   const [broken, setBroken] = useState(false)
   if (broken) return null
@@ -104,7 +104,7 @@ function WebCard({ ev }: { ev: Ev }) {
   const body = nl >= 0 ? ev.desc.slice(nl + 1).replace(/\s+/g, " ").trim() : ""
   const bd = accessBadges(ev)
   return (
-    <div style={{ breakInside: "avoid", WebkitColumnBreakInside: "avoid", marginBottom: 24 }}>
+    <div className="cs-card" style={{ breakInside: "avoid", WebkitColumnBreakInside: "avoid", marginBottom: 24, animationDelay: `${Math.min(i, 24) * 0.028}s` }}>
       <div onClick={() => navigate({ to: "/web/event/$id", params: { id: ev.id } })} style={{ background: SK.paper, border: `2.5px solid ${SK.ink}`, boxShadow: `4px 5px 0 ${SK.ink}`, overflow: "hidden", cursor: "pointer" }}>
         <div style={{ position: "relative", borderBottom: `2.5px solid ${SK.ink}`, background: "#E4E4E1", lineHeight: 0 }}>
           {ev.p && <img src={ev.p} alt="" onError={() => setBroken(true)} style={{ width: "100%", height: "auto", maxHeight: 540, objectFit: "cover", display: "block" }} />}
@@ -236,6 +236,11 @@ export default function CsWebFeed() {
   return (
     <div style={{ position: "relative", minHeight: "100vh", background: CS.W, color: SK.ink, fontFamily: FONT_SANS }}>
       <ScreenBG theme="grid" opacity={0.5} />
+      <style>{`
+        @keyframes cs-card-in { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: none } }
+        .cs-card { animation: cs-card-in 0.46s cubic-bezier(0.22,1,0.36,1) both; will-change: opacity, transform; }
+        @media (prefers-reduced-motion: reduce) { .cs-card { animation: none } }
+      `}</style>
       <div style={{ position: "relative", maxWidth: 1360, margin: "0 auto", padding: "40px 32px 90px" }}>
 
               {/* header */}
@@ -310,8 +315,10 @@ export default function CsWebFeed() {
 
                   <SectionRule>{cat === "Все" ? "каталог" : cat.toLowerCase()}{access ? ` · ${ACCESS_LABEL[access]}` : ""}{q.trim() ? ` · поиск «${q.trim()}»` : ""}</SectionRule>
                   {catalog.length > 0 ? (
-                    <div style={{ columnWidth: 300, columnGap: 22 }}>
-                      {catalog.map((ev) => <WebCard key={ev.id} ev={ev} />)}
+                    // key завязан на фильтр — при смене категории/подтега/доступа/поиска
+                    // грид перемонтируется и ступенчатая анимация появления проигрывается заново
+                    <div key={`${cat}|${tag ?? ""}|${access ?? ""}|${q.trim()}`} style={{ columnWidth: 300, columnGap: 22 }}>
+                      {catalog.map((ev, i) => <WebCard key={ev.id} ev={ev} i={i} />)}
                     </div>
                   ) : (
                     <div style={{ fontFamily: FONT_MONO, fontSize: 14, color: SK.ink55, letterSpacing: "0.04em", padding: "40px 0" }}>ничего не нашлось</div>
@@ -322,7 +329,7 @@ export default function CsWebFeed() {
                     <>
                       <SectionRule>для знатока · по секрету</SectionRule>
                       <div style={{ columnWidth: 300, columnGap: 22 }}>
-                        {insiderE.map((ev) => <WebCard key={ev.id} ev={ev} />)}
+                        {insiderE.map((ev, i) => <WebCard key={ev.id} ev={ev} i={i} />)}
                       </div>
                     </>
                   )}
