@@ -30,6 +30,7 @@ import {
   Clip, Polaroid, Hand, Lbl, Scribble, Sparkle, SkMark, stripHandles,
 } from "./shared"
 import type { Ev } from "./buildDerived"
+import { closingSoon } from "./buildDerived"
 import { INTERESTS } from "../pipe/preferences"
 import { weekMeta } from "./WeekDesigns"
 
@@ -296,6 +297,9 @@ function MosaicCard({ ev, i, onImg }: { ev: Ev; i: number; onImg?: () => void })
                 виндовингом MosaicGrid, поэтому грузим сразу. */}
             {ev.p && <img src={ev.p} alt="" onLoad={onImg} onError={() => { setBroken(true); onImg?.() }} style={{ width: "100%", height: "auto", maxHeight: 380, objectFit: "cover", display: "block" }} />}
             <span style={{ position: "absolute", top: 8, right: 8, background: SK.ink, color: SK.paper, fontWeight: 900, fontSize: 13, letterSpacing: "0.02em", lineHeight: 1, padding: "5px 8px" }}>{ev.d}</span>
+            {(() => { const cs = closingSoon(ev); return cs ? (
+              <span style={{ position: "absolute", top: 8, left: 8, background: "#E0162B", color: "#fff", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 9, letterSpacing: "0.04em", textTransform: "uppercase", padding: "4px 6px", border: `1.5px solid ${SK.ink}`, lineHeight: 1 }}>{cs.label}</span>
+            ) : null })()}
           </div>
           {/* footer block */}
           <div style={{ padding: "9px 11px 11px" }}>
@@ -560,10 +564,21 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
   const filtered = tag ? inCat.filter((e) => e.tags?.includes(tag)) : inCat
   // Ранжирование по трению (фидбек #3): жёсткие барьеры (рега закрыта / sold out)
   // тонут в конец каталога; остальное сохраняет хронологический порядок (stable sort).
-  const catalog = [...filtered].sort((a, b) => {
+  const catalogAll = [...filtered].sort((a, b) => {
     const ha = HARD_ACCESS.has(a.access), hb = HARD_ACCESS.has(b.access)
     return ha === hb ? 0 : ha ? 1 : -1
   })
+  // «Последний шанс» — закрывающиеся в ближайшие дни (в осн. выставки), по
+  // возрастанию дней. Отдельной полкой на дефолт-виде; из каталога убираем, чтобы
+  // не дублировать.
+  const closing = useMemo(() => mainE
+    .map((e) => ({ e, cs: closingSoon(e) }))
+    .filter((x) => x.cs)
+    .sort((a, b) => a.cs!.days - b.cs!.days)
+    .map((x) => x.e), [mainE])
+  const showClosing = cat === "Все" && !tag && closing.length > 0
+  const closingSet = useMemo(() => new Set(closing.map((e) => e.id)), [closing])
+  const catalog = showClosing ? catalogAll.filter((e) => !closingSet.has(e.id)) : catalogAll
   // «Носик» подтег-лотка целится в ВЫБРАННУЮ категорию: меряем её позицию в
   // (скроллящемся) ряду и двигаем треугольник под неё; прячем, если она уехала.
   const catRowRef = useRef<HTMLDivElement | null>(null)
@@ -695,6 +710,12 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
             stagger replays when the visible set changes. */}
         <SectionLabel>выбор недели</SectionLabel>
         {hero && <div key={nonce}><BoardLead ev={hero} /></div>}
+        {showClosing && (
+          <>
+            <SectionLabel>последний шанс · закрывается на неделе</SectionLabel>
+            <div key={`closing-${closing.length}`}><MosaicGrid events={closing} /></div>
+          </>
+        )}
         <SectionLabel>каталог</SectionLabel>
         {catalog.length > 0 ? (
           <div key={`${nonce}-${cat}-${tag ?? ""}`}><MosaicGrid events={catalog} /></div>

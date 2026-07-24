@@ -41,6 +41,7 @@ export type Ev = {
   geo: [number, number] | null  // resolved [lat, lng] for the map, if geocoded
   venueKey: string  // gazetteer venue key (e.g. "ges2") for the place card, or ""
   ts: number | null // event start as epoch ms (for future-filtering / sorting), null if undated
+  endTs: number | null // event CLOSE/end as epoch ms — для «последнего шанса» выставок, null если нет
   tags?: string[]   // fine-grained tag labels for badges (excludes the coarse category `c`)
   access: Access    // барьер входа: свободный / регистрация / билеты / закрыта / sold out
   age: string       // возрастной ценз "18+" / "" если нет
@@ -192,12 +193,30 @@ export function toEv(e: FeedItem): Ev {
     geo: (Array.isArray(e.geo) && e.geo.length === 2) ? [e.geo[0], e.geo[1]] : null,
     venueKey: e.venue || "",
     ts: dateObj && !Number.isNaN(dateObj.getTime()) ? dateObj.getTime() : null,
+    endTs: (() => { const eo = parseEventTime(e.event_time_end); return eo && !Number.isNaN(eo.getTime()) ? eo.getTime() : null })(),
     // fine-grained tag labels for badges — drop the 12 coarse categories and the
     // one already shown as `c`, so the badge row shows only the specific tags.
     tags: (e.tag_labels ?? []).filter((l) => !COARSE_LABELS.has(l) && l !== (interest?.label ?? "")),
     access, age, tier,
     friction: FRICTION[access] ?? 1,
   }
+}
+
+// «Последний шанс» — сколько дней до закрытия (по МСК-дню). Подпись для бейджа
+// возвращаем только для МНОГОДНЕВНЫХ событий (выставок), закрывающихся в ближайшие
+// `within` дней; иначе null (однодневное / уже закрыто / далеко). МСК-день считаем
+// фиксированным сдвигом +3ч — стабильно для любого пояса зрителя.
+const MSK_MS = 3 * 3600000
+const mskDay = (ts: number): number => Math.floor((ts + MSK_MS) / 86400000)
+export function closingSoon(ev: Ev, within = 14): { days: number; label: string } | null {
+  if (ev.endTs == null) return null
+  const endDay = mskDay(ev.endTs)
+  const startDay = ev.ts != null ? mskDay(ev.ts) : null
+  if (startDay != null && endDay <= startDay) return null // однодневное — не «закрывается»
+  const days = endDay - mskDay(Date.now())
+  if (days < 0 || days > within) return null
+  const label = days === 0 ? "закрывается сегодня" : days === 1 ? "закрывается завтра" : `закр. через ${days} дн.`
+  return { days, label }
 }
 
 export function shelfNote(cat: string): string {

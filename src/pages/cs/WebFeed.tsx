@@ -17,7 +17,7 @@ import { useNavigate } from "@tanstack/react-router"
 import {
   CS, SK, FONT_SANS, FONT_MONO, ScreenBG,
 } from "./shared"
-import type { Ev } from "./buildDerived"
+import { closingSoon, type Ev } from "./buildDerived"
 import { INTERESTS } from "../pipe/preferences"
 import { useDerived } from "./useJourney"
 import { analytics } from "../../lib/analytics"
@@ -110,6 +110,9 @@ function WebCard({ ev, i = 0 }: { ev: Ev; i?: number }) {
         <div style={{ position: "relative", borderBottom: `2.5px solid ${SK.ink}`, background: "#E4E4E1", lineHeight: 0 }}>
           {ev.p && <img src={ev.p} alt="" onError={() => setBroken(true)} style={{ width: "100%", height: "auto", maxHeight: 540, objectFit: "cover", display: "block" }} />}
           <span style={{ position: "absolute", top: 11, right: 11, background: SK.ink, color: SK.paper, fontWeight: 900, fontSize: 16, letterSpacing: "0.02em", padding: "6px 10px" }}>{ev.d}</span>
+          {(() => { const cs = closingSoon(ev); return cs ? (
+            <span style={{ position: "absolute", top: 11, left: 11, background: "#E0162B", color: "#fff", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "0.04em", textTransform: "uppercase", padding: "5px 9px", border: `2px solid ${SK.ink}`, lineHeight: 1 }}>{cs.label}</span>
+          ) : null })()}
         </div>
         <div style={{ padding: "14px 16px 17px" }}>
           {meta && <div style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 12.5, letterSpacing: "0.03em", color: SK.ink55, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{meta}</div>}
@@ -271,6 +274,18 @@ export default function CsWebFeed() {
     })
   }, [inCat, tag, access, q])
 
+  // «Последний шанс» — идущие/будущие события, закрывающиеся в ближайшие дни
+  // (в осн. выставки), по возрастанию дней до закрытия. Показываем отдельной
+  // секцией на дефолт-виде и убираем их из общего каталога, чтобы не дублировать.
+  const closing = useMemo(() => mainE
+    .map((e) => ({ e, cs: closingSoon(e) }))
+    .filter((x) => x.cs)
+    .sort((a, b) => a.cs!.days - b.cs!.days)
+    .map((x) => x.e), [mainE])
+  const showClosing = cat === "Все" && !q.trim() && !access && closing.length > 0
+  const closingSet = useMemo(() => new Set(closing.map((e) => e.id)), [closing])
+  const catalogShown = showClosing ? catalog.filter((e) => !closingSet.has(e.id)) : catalog
+
   const ready = allEvents.length > 0
 
   return (
@@ -371,11 +386,18 @@ export default function CsWebFeed() {
                     </>
                   )}
 
+                  {showClosing && (
+                    <>
+                      <SectionRule>последний шанс · закрывается на неделе</SectionRule>
+                      <MasonryCols key={`closing-${closing.length}`} items={closing} />
+                    </>
+                  )}
+
                   <SectionRule>{cat === "Все" ? "каталог" : cat.toLowerCase()}{access ? ` · ${ACCESS_LABEL[access]}` : ""}{q.trim() ? ` · поиск «${q.trim()}»` : ""}</SectionRule>
-                  {catalog.length > 0 ? (
+                  {catalogShown.length > 0 ? (
                     // key завязан на фильтр — при смене категории/подтега/доступа/поиска
                     // грид перемонтируется и ступенчатая анимация появления проигрывается заново
-                    <MasonryCols key={`${cat}|${tag ?? ""}|${access ?? ""}|${q.trim()}`} items={catalog} />
+                    <MasonryCols key={`${cat}|${tag ?? ""}|${access ?? ""}|${q.trim()}`} items={catalogShown} />
                   ) : (
                     <div style={{ fontFamily: FONT_MONO, fontSize: 14, color: SK.ink55, letterSpacing: "0.04em", padding: "40px 0" }}>ничего не нашлось</div>
                   )}

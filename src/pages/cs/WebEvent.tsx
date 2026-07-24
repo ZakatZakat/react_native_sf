@@ -15,6 +15,7 @@ import { CS, SK, FONT_SANS, FONT_MONO, ScreenBG, GoingProvider /*, useGoing */ }
 import type { Ev } from "./buildDerived"
 import { useDerived } from "./useJourney"
 import { accessBadges, whenLabel } from "./WebFeed"
+import { closingSoon } from "./buildDerived"
 import { analytics } from "../../lib/analytics"
 
 function Shell({ children }: { children: React.ReactNode }) {
@@ -83,6 +84,10 @@ function EventDetail({ ev }: { ev: Ev }) {
           <h1 style={{ fontWeight: 900, fontSize: 40, lineHeight: 1.0, letterSpacing: "-0.03em", textTransform: "uppercase", margin: "0", overflowWrap: "break-word" }}>{ev.t}</h1>
 
           {bd.length > 0 && <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 18 }}>{bd}</div>}
+
+          {(() => { const cs = closingSoon(ev); return cs ? (
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, marginTop: 16, background: "#E0162B", color: "#fff", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 14, letterSpacing: "0.04em", textTransform: "uppercase", padding: "8px 14px", border: `2px solid ${SK.ink}`, boxShadow: `3px 3px 0 ${SK.ink}`, lineHeight: 1 }}>⏳ {cs.label}</div>
+          ) : null })()}
 
           {venue && (
             <div style={{ display: "flex", gap: 12, marginTop: 18, padding: "12px 15px", border: `2px solid ${SK.ink}`, background: SK.paper, boxShadow: `3px 3px 0 ${CS.B}` }}>

@@ -480,6 +480,7 @@ export function BillboardProfileBadge({ name }: { name: string }) {
 // ── Event modal (bottom sheet) — opened by tapping a shelf card ─────────
 
 import type { Ev } from "./buildDerived"
+import { closingSoon } from "./buildDerived"
 
 type OpenEvent = (ev: Ev) => void
 export const EventModalCtx = createContext<OpenEvent>(() => {})
@@ -781,6 +782,9 @@ function EventSheet({ ev, onClose }: { ev: Ev | null; onClose: () => void }) {
                 ))}
               </div>
             )}
+            {(() => { const cs = closingSoon(ev); return cs ? (
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 10, background: "#E0162B", color: "#fff", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "0.04em", textTransform: "uppercase", padding: "5px 10px", border: `2px solid ${CS.K}`, boxShadow: `2px 2px 0 ${CS.K}`, lineHeight: 1 }}>⏳ {cs.label}</div>
+            ) : null })()}
             {/* Место — venue block: rich gazetteer info when known, else the raw
                 location text. Sits right under the title so «где» is obvious. */}
             {(() => {

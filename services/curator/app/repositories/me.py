@@ -141,7 +141,9 @@ class PersonalizedFeedRepository:
             select(EventCurated, PostRaw)
             .join(PostRaw, PostRaw.id == EventCurated.post_id)
             .where(EventCurated.status == EventStatus.approved)
-            .where(or_(EventCurated.event_time >= now, EventCurated.event_time.is_(None)))
+            # Идущие события (напр. выставки): старт мог быть в прошлом, но пока
+            # event_time_end в будущем — оставляем в ленте (для «последнего шанса»).
+            .where(or_(EventCurated.event_time >= now, EventCurated.event_time.is_(None), EventCurated.event_time_end >= now))
             # Moscow-only feed: drop events tagged as another city. region is set
             # by the city-detection pass (coords for geocoded, poster-vision for
             # the rest); unset/unknown defaults to moscow so nothing is lost.
