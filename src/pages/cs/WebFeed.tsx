@@ -151,8 +151,12 @@ function MasonryCols({ items }: { items: Ev[] }) {
     window.addEventListener("resize", measure)
     return () => window.removeEventListener("resize", measure)
   }, [])
-  const buckets: { ev: Ev; i: number }[][] = Array.from({ length: cols }, () => [])
-  items.forEach((ev, i) => buckets[i % cols].push({ ev, i }))
+  // Число колонок не больше числа карточек: при 3 событиях в «последнем шансе»
+  // раскладка по 5 колонок оставляла пустые bucket'ы → дыра в ряду. Теперь
+  // карточки заполняют ряд слева направо без пустот.
+  const n = Math.max(1, Math.min(cols, items.length))
+  const buckets: { ev: Ev; i: number }[][] = Array.from({ length: n }, () => [])
+  items.forEach((ev, i) => buckets[i % n].push({ ev, i }))
   return (
     <div ref={ref} style={{ display: "flex", gap: GAP, alignItems: "flex-start" }}>
       {buckets.map((bucket, c) => (
