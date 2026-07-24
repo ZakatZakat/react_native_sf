@@ -712,7 +712,7 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
         {hero && <div key={nonce}><BoardLead ev={hero} /></div>}
         {showClosing && (
           <>
-            <SectionLabel>последний шанс · закрывается на неделе</SectionLabel>
+            <SectionLabel>последний шанс · закрывается скоро</SectionLabel>
             <div key={`closing-${closing.length}`}><MosaicGrid events={closing} /></div>
           </>
         )}

@@ -388,7 +388,7 @@ export default function CsWebFeed() {
 
                   {showClosing && (
                     <>
-                      <SectionRule>последний шанс · закрывается на неделе</SectionRule>
+                      <SectionRule>последний шанс · закрывается скоро</SectionRule>
                       <MasonryCols key={`closing-${closing.length}`} items={closing} />
                     </>
                   )}
