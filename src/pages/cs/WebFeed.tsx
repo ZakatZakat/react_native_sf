@@ -168,14 +168,14 @@ function WebHero({ ev }: { ev: Ev }) {
   const len = (ev.t || "").length
   const fs = len <= 22 ? 46 : len <= 38 ? 38 : len <= 58 ? 30 : len <= 84 ? 24 : 20
   return (
-    <div onClick={() => navigate({ to: "/web/event/$id", params: { id: ev.id } })} style={{ display: "flex", gap: 26, alignItems: "stretch", background: SK.paper, border: `2.5px solid ${SK.ink}`, boxShadow: `6px 6px 0 ${SK.ink}`, padding: 16, cursor: "pointer" }}>
-      {ev.p && <img src={ev.p} alt="" style={{ flexShrink: 0, alignSelf: "center", maxWidth: 360, maxHeight: 420, width: "auto", height: "auto", border: `2px solid ${SK.ink}` }} />}
+    <div className="cs-hero" onClick={() => navigate({ to: "/web/event/$id", params: { id: ev.id } })} style={{ display: "flex", gap: 26, alignItems: "stretch", background: SK.paper, border: `2.5px solid ${SK.ink}`, boxShadow: `6px 6px 0 ${SK.ink}`, padding: 16, cursor: "pointer" }}>
+      {ev.p && <img className="cs-hero-img" src={ev.p} alt="" style={{ flexShrink: 0, alignSelf: "center", maxWidth: 360, maxHeight: 420, width: "auto", height: "auto", border: `2px solid ${SK.ink}` }} />}
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 16 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
           <span style={{ background: SK.ink, color: SK.paper, fontFamily: FONT_SANS, fontWeight: 900, fontSize: 12, letterSpacing: "0.14em", textTransform: "uppercase", padding: "5px 11px" }}>{ev.c}</span>
           <span style={{ fontFamily: FONT_MONO, fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", color: SK.ink55 }}>выбор редакции</span>
         </div>
-        <div style={{ fontWeight: 900, fontSize: fs, letterSpacing: "-0.02em", lineHeight: 1.02, textTransform: "uppercase", color: SK.ink, overflowWrap: "break-word" }}>{ev.t}</div>
+        <div className="cs-hero-title" style={{ fontWeight: 900, fontSize: fs, letterSpacing: "-0.02em", lineHeight: 1.02, textTransform: "uppercase", color: SK.ink, overflowWrap: "break-word" }}>{ev.t}</div>
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 18, flexWrap: "wrap" }}>
           {/* дату/время не дублируем текстом — она уже в бейдже (accessBadges) */}
           <div style={{ fontFamily: FONT_MONO, fontSize: 13, letterSpacing: "0.03em", color: SK.ink, lineHeight: 1.6 }}>{ev.v && ev.v !== "—" && !ev.v.startsWith("@") ? ev.v : ""}</div>
@@ -280,8 +280,19 @@ export default function CsWebFeed() {
         @keyframes cs-card-in { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: none } }
         .cs-card { animation: cs-card-in 0.46s cubic-bezier(0.22,1,0.36,1) both; will-change: opacity, transform; }
         @media (prefers-reduced-motion: reduce) { .cs-card { animation: none } }
+        /* Мобилка: десктоп-лента адаптируется под узкий экран. Горизонтальный
+           hero складывается в колонку (иначе колонка деталей ужималась до ~1
+           символа и вёрстка «слетала»). !important — перебить inline-стили. */
+        @media (max-width: 640px) {
+          .cs-wrap { padding: 18px 14px 72px !important; }
+          .cs-head-title { font-size: 32px !important; }
+          .cs-search { width: 100% !important; min-width: 0 !important; }
+          .cs-hero { flex-direction: column !important; gap: 14px !important; padding: 12px !important; }
+          .cs-hero-img { max-width: 100% !important; width: 100% !important; max-height: none !important; align-self: stretch !important; }
+          .cs-hero-title { font-size: 24px !important; }
+        }
       `}</style>
-      <div style={{ position: "relative", maxWidth: 1360, margin: "0 auto", padding: "40px 32px 90px" }}>
+      <div className="cs-wrap" style={{ position: "relative", maxWidth: 1360, margin: "0 auto", padding: "40px 32px 90px" }}>
 
               {/* header — карточка «Что в городе» РАСТЯНУТА на всю свободную ширину
                   (заголовок слева, счётчик справа — чтобы не пустовала), а поиск
@@ -290,14 +301,14 @@ export default function CsWebFeed() {
                 <div style={{ flex: "1 1 460px", display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, background: SK.paper, border: `2.5px solid ${SK.ink}`, boxShadow: `5px 5px 0 ${SK.ink}`, padding: "16px 24px 18px" }}>
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontFamily: FONT_MONO, fontSize: 12, letterSpacing: "0.3em", textTransform: "uppercase", color: SK.ink55 }}>афиша · москва</div>
-                    <div style={{ fontWeight: 900, fontSize: 54, letterSpacing: "-0.045em", lineHeight: 0.92, marginTop: 6 }}>Что в городе</div>
+                    <div className="cs-head-title" style={{ fontWeight: 900, fontSize: 54, letterSpacing: "-0.045em", lineHeight: 0.92, marginTop: 6 }}>Что в городе</div>
                   </div>
                   <div style={{ flexShrink: 0, textAlign: "right", lineHeight: 1 }}>
                     <div style={{ fontWeight: 900, fontSize: 44, letterSpacing: "-0.03em", color: SK.ink }}>{mainE.length}</div>
                     <div style={{ fontFamily: FONT_MONO, fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: SK.ink55, marginTop: 7 }}>событий впереди</div>
                   </div>
                 </div>
-                <div style={{ flex: "0 0 auto", width: 320, minWidth: 240, display: "flex", alignItems: "center", gap: 10, border: `2px solid ${SK.ink}`, background: SK.paper, boxShadow: `3px 3px 0 ${CS.B}`, padding: "15px 18px" }}>
+                <div className="cs-search" style={{ flex: "0 0 auto", width: 320, minWidth: 240, display: "flex", alignItems: "center", gap: 10, border: `2px solid ${SK.ink}`, background: SK.paper, boxShadow: `3px 3px 0 ${CS.B}`, padding: "15px 18px" }}>
                   <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="7.5" cy="7.5" r="5.3" stroke={SK.ink} strokeWidth="2.2" /><line x1="11.5" y1="11.5" x2="16" y2="16" stroke={SK.ink} strokeWidth="2.2" strokeLinecap="round" /></svg>
                   <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="поиск по афише…" style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontFamily: FONT_MONO, fontSize: 14, letterSpacing: "0.02em", color: SK.ink }} />
                   {q && <button onClick={() => setQ("")} aria-label="Очистить" style={{ border: "none", background: "none", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 16, color: SK.ink55 }}>✕</button>}
