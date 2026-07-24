@@ -21,9 +21,14 @@ from __future__ import annotations
 
 import hashlib
 import logging
+from datetime import datetime
 
 import httpx
 from fastapi import APIRouter, Header, Request, Response
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+from app.db import session_scope
+from app.models import BotSubscriber
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +56,44 @@ FEEDBACK = (
     "Пиши прямо в приложении: «Открыть» → профиль → «Написать нам». "
     "Читаем всё."
 )
+
+STOP = (
+    "Ок, больше не буду присылать подборки. Захочешь вернуться — жми /start."
+)
+
+
+async def _upsert_subscriber(request: Request, chat: dict, subscribe: bool | None) -> None:
+    """Сохранить/обновить подписчика бота (база для рассылок дайджеста).
+
+    subscribe=True (/start) — подписать, False (/stop) — отписать,
+    None (прочие команды) — только обновить профиль, флаг подписки не трогаем.
+    Сбор не должен ронять webhook — любые ошибки логируем и глотаем."""
+    sf = getattr(request.app.state, "session_factory", None)
+    chat_id = chat.get("id")
+    if sf is None or not chat_id:
+        return
+    set_: dict = {
+        "username": chat.get("username"),
+        "first_name": chat.get("first_name"),
+        "updated_at": datetime.utcnow(),
+    }
+    if subscribe is not None:
+        set_["is_subscribed"] = subscribe
+    stmt = (
+        pg_insert(BotSubscriber)
+        .values(
+            chat_id=chat_id,
+            username=chat.get("username"),
+            first_name=chat.get("first_name"),
+            is_subscribed=True if subscribe is None else subscribe,
+        )
+        .on_conflict_do_update(index_elements=[BotSubscriber.chat_id], set_=set_)
+    )
+    try:
+        async with session_scope(sf) as s:
+            await s.execute(stmt)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("subscriber upsert failed: %s", e)
 
 
 def webhook_secret(token: str) -> str:
@@ -117,10 +160,18 @@ async def webhook(
 
     # /start@BotName и /start deep_link → берём первое слово без @suffix
     cmd = text.split(maxsplit=1)[0].split("@", 1)[0].lower()
+
+    # Сбор подписчиков для рассылок: /start подписывает, /stop отписывает,
+    # остальные команды только освежают профиль (флаг подписки не трогают).
+    subscribe = True if cmd == "/start" else (False if cmd == "/stop" else None)
+    await _upsert_subscriber(request, chat, subscribe)
+
     if cmd == "/start":
         await _send(token, chat_id, WELCOME, _keyboard(settings.cs_webapp_url))
     elif cmd == "/help":
         await _send(token, chat_id, HELP, _keyboard(settings.cs_webapp_url))
     elif cmd == "/feedback":
         await _send(token, chat_id, FEEDBACK)
+    elif cmd == "/stop":
+        await _send(token, chat_id, STOP)
     return Response(status_code=200)

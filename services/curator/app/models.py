@@ -415,3 +415,23 @@ class FeedbackNote(Base):
     user_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)  # @username / имя, для удобства
     text: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), default=datetime.utcnow, nullable=False)
+
+
+# ────────────────────────────────────────────────────────────────────
+# Подписчики бота — те, кто нажал /start. База для рассылок дайджеста
+# (Telegram позволяет писать только тем, кто сам начал диалог с ботом).
+# chat_id == user id в приватном чате. Пишем на команды боту; /stop —
+# мягкая отписка (is_subscribed=False), /start — подписка снова.
+# ────────────────────────────────────────────────────────────────────
+class BotSubscriber(Base):
+    __tablename__ = "bot_subscribers"
+    __table_args__ = ({"schema": SCHEMA},)
+
+    chat_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)  # Telegram chat/user id
+    username: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    first_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    is_subscribed: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=False), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
