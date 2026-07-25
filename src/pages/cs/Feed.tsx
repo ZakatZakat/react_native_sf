@@ -41,6 +41,7 @@ import { useDerived, useJourneyState } from "./useJourney"
 import { analytics } from "../../lib/analytics"
 import CsFeedLegacy from "./FeedLegacy"
 import MapIntro from "./MapIntro"
+import { FeedbackSheet } from "./FeedbackModal"
 
 const FALLBACK: Ev = {
   id: "—", t: "—", sub: "", v: "—", d: "—", tm: "—",
@@ -517,6 +518,7 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
   const [nonce, setNonce] = useState(0)
   const [sweep, setSweep] = useState(0)
   const [searchOpen, setSearchOpen] = useState(false)
+  const [fbOpen, setFbOpen] = useState(false)
   // Full upcoming catalog (already future-filtered + chronological upstream).
   const E = useMemo(() => feed.filter((e) => e && !e.id.startsWith("__placeholder")), [feed])
   // Полка «для знатока» убрана — insider-контент (закрытые/пресс/VIP-показы,
@@ -634,6 +636,15 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
               </button>
               <span style={CTRL_CAP}>Обновить</span>
             </div>
+            <div style={CTRL_CELL}>
+              <button onClick={() => setFbOpen(true)} aria-label="Оставить отзыв" style={CTRL_BTN}>
+                <svg width="21" height="21" viewBox="0 0 24 24" fill="none">
+                  <path d="M4 5.4h16a1.6 1.6 0 0 1 1.6 1.6v8a1.6 1.6 0 0 1-1.6 1.6H10.5L6 20.6V16.6H4A1.6 1.6 0 0 1 2.4 15V7A1.6 1.6 0 0 1 4 5.4Z" stroke={SK.ink} strokeWidth="2" strokeLinejoin="round" />
+                  <circle cx="12" cy="10.9" r="1.6" fill={SK.blue} />
+                </svg>
+              </button>
+              <span style={CTRL_CAP}>Отзыв</span>
+            </div>
             {onMap && (
               <div style={CTRL_CELL}>
                 <button onClick={onMap} aria-label="Открыть карту" style={CTRL_BTN}>
@@ -709,6 +720,7 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
       </div>
 
       {searchOpen && <BoardSearch events={searchFeed ?? E} onClose={() => setSearchOpen(false)} />}
+      <FeedbackSheet open={fbOpen} onClose={() => setFbOpen(false)} />
     </div>
   )
 }

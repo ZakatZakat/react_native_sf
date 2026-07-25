@@ -11,12 +11,13 @@ import { tgUserName } from "../../lib/telegram"
 
 type SendState = "idle" | "sending" | "done" | "error"
 
-export function FeedbackButton({ style }: { style?: React.CSSProperties }) {
-  const [open, setOpen] = useState(false)
+/** Только форма-лист (bottom sheet). Открытием управляет родитель — так её можно
+ *  дёрнуть и из профиля (FeedbackButton), и из кнопки в шапке ленты. */
+export function FeedbackSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [text, setText] = useState("")
   const [state, setState] = useState<SendState>("idle")
 
-  const close = () => { setOpen(false); setTimeout(() => { setText(""); setState("idle") }, 250) }
+  const close = () => { onClose(); setTimeout(() => { setText(""); setState("idle") }, 250) }
 
   const send = async () => {
     const t = text.trim()
@@ -31,23 +32,10 @@ export function FeedbackButton({ style }: { style?: React.CSSProperties }) {
     }
   }
 
+  if (!open) return null
   return (
     <>
-      <button
-        onClick={() => setOpen(true)}
-        style={{
-          width: "100%", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 13,
-          letterSpacing: "0.05em", textTransform: "uppercase",
-          display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 9,
-          padding: "12px 16px", border: `3px solid ${CS.K}`,
-          background: CS.W, color: CS.K, cursor: "pointer",
-          boxShadow: `3px 3px 0 ${CS.K}`, ...style,
-        }}
-      >
-        <span>Оставить пожелание</span><span style={{ fontSize: 15, lineHeight: 1 }}>✍️</span>
-      </button>
-
-      {open && (
+      {(
         <div
           onClick={close}
           style={{
@@ -115,6 +103,29 @@ export function FeedbackButton({ style }: { style?: React.CSSProperties }) {
           </div>
         </div>
       )}
+    </>
+  )
+}
+
+/** Кнопка-триггер «Оставить пожелание» (в профиле) + сама форма. */
+export function FeedbackButton({ style }: { style?: React.CSSProperties }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        style={{
+          width: "100%", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 13,
+          letterSpacing: "0.05em", textTransform: "uppercase",
+          display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 9,
+          padding: "12px 16px", border: `3px solid ${CS.K}`,
+          background: CS.W, color: CS.K, cursor: "pointer",
+          boxShadow: `3px 3px 0 ${CS.K}`, ...style,
+        }}
+      >
+        <span>Оставить пожелание</span><span style={{ fontSize: 15, lineHeight: 1 }}>✍️</span>
+      </button>
+      <FeedbackSheet open={open} onClose={() => setOpen(false)} />
     </>
   )
 }
