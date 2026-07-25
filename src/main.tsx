@@ -58,9 +58,9 @@ if (typeof window !== "undefined") {
 // a page.view on every route resolve. Errors are already captured by the
 // SDK's own window hooks — the legacy reportClientError() above lives
 // in parallel for the curator-side debug log.
-analytics.init()
-// Light haptic tap on every button/link across the app (no-op outside TG).
-installGlobalTap()
+// Telegram-личность подхватываем ДО init(): analytics.init() шлёт session.start
+// (и первые page.view/perf), которые читают identity.user_id. Иначе начало каждой
+// сессии уходит в «аноним», пока identify не прикрепит id — атрибуция сессий тонула.
 if (typeof window !== "undefined") {
   const tg = (window as unknown as { Telegram?: { WebApp?: { initDataUnsafe?: { user?: { id?: number; language_code?: string; username?: string; first_name?: string } }; colorScheme?: string } } }).Telegram?.WebApp
   if (tg?.initDataUnsafe?.user?.id) {
@@ -77,6 +77,9 @@ if (typeof window !== "undefined") {
     })
   }
 }
+analytics.init()
+// Light haptic tap on every button/link across the app (no-op outside TG).
+installGlobalTap()
 router.subscribe("onResolved", ({ toLocation }) => {
   analytics.page(toLocation.pathname)
 })
