@@ -94,7 +94,7 @@ function heroScore(e: Ev): number {
 }
 
 // ── Карточка каталога (крупная) ─────────────────────────────────────────
-function WebCard({ ev, i = 0 }: { ev: Ev; i?: number }) {
+function WebCard({ ev, i = 0, onBroken }: { ev: Ev; i?: number; onBroken?: (id: string) => void }) {
   const navigate = useNavigate()
   const [broken, setBroken] = useState(false)
   if (broken) return null
@@ -108,7 +108,7 @@ function WebCard({ ev, i = 0 }: { ev: Ev; i?: number }) {
     <div className="cs-card" style={{ breakInside: "avoid", WebkitColumnBreakInside: "avoid", marginBottom: 24, animationDelay: `${Math.min(i, 24) * 0.028}s` }}>
       <div onClick={() => navigate({ to: "/web/event/$id", params: { id: ev.id } })} style={{ background: SK.paper, border: `2.5px solid ${SK.ink}`, boxShadow: `4px 5px 0 ${SK.ink}`, overflow: "hidden", cursor: "pointer" }}>
         <div style={{ position: "relative", borderBottom: `2.5px solid ${SK.ink}`, background: "#E4E4E1", lineHeight: 0 }}>
-          {ev.p && <img src={ev.p} alt="" onError={() => setBroken(true)} style={{ width: "100%", height: "auto", maxHeight: 540, objectFit: "cover", display: "block" }} />}
+          {ev.p && <img src={ev.p} alt="" onError={() => { setBroken(true); onBroken?.(ev.id) }} style={{ width: "100%", height: "auto", maxHeight: 540, objectFit: "cover", display: "block" }} />}
           <span style={{ position: "absolute", top: 11, right: 11, background: SK.ink, color: SK.paper, fontWeight: 900, fontSize: 16, letterSpacing: "0.02em", padding: "6px 10px" }}>{ev.d}</span>
           {(() => { const cs = closingSoon(ev); return cs ? (
             <span style={{ position: "absolute", top: 11, left: 11, background: "#E0162B", color: "#fff", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "0.04em", textTransform: "uppercase", padding: "5px 9px", border: `2px solid ${SK.ink}`, lineHeight: 1 }}>{cs.label}</span>
@@ -151,17 +151,24 @@ function MasonryCols({ items }: { items: Ev[] }) {
     window.addEventListener("resize", measure)
     return () => window.removeEventListener("resize", measure)
   }, [])
+  // Карточки с битым постером (404/0-байт) WebCard рендерит как `null`. При
+  // round-robin такой `null` держал бы слот в своей колонке → вертикальный
+  // пробел + сбитый порядок чтения. Поднимаем «битость» сюда и выкидываем
+  // такие события ДО раскладки — остальные заполняют ряды без пустот.
+  const [broken, setBroken] = useState<Set<string>>(() => new Set())
+  const markBroken = (id: string) => setBroken((prev) => (prev.has(id) ? prev : new Set(prev).add(id)))
+  const live = useMemo(() => items.filter((e) => !broken.has(e.id)), [items, broken])
   // Число колонок не больше числа карточек: при 3 событиях в «последнем шансе»
   // раскладка по 5 колонок оставляла пустые bucket'ы → дыра в ряду. Теперь
   // карточки заполняют ряд слева направо без пустот.
-  const n = Math.max(1, Math.min(cols, items.length))
-  const buckets: { ev: Ev; i: number }[][] = Array.from({ length: n }, () => [])
-  items.forEach((ev, i) => buckets[i % n].push({ ev, i }))
+  const n = Math.max(1, Math.min(cols, live.length))
+  const buckets: { ev: Ev; i: number }[][] = Array.from({ length: Math.max(1, n) }, () => [])
+  live.forEach((ev, i) => buckets[i % n].push({ ev, i }))
   return (
     <div ref={ref} style={{ display: "flex", gap: GAP, alignItems: "flex-start" }}>
       {buckets.map((bucket, c) => (
         <div key={c} style={{ flex: 1, minWidth: 0 }}>
-          {bucket.map(({ ev, i }) => <WebCard key={ev.id} ev={ev} i={i} />)}
+          {bucket.map(({ ev, i }) => <WebCard key={ev.id} ev={ev} i={i} onBroken={markBroken} />)}
         </div>
       ))}
     </div>
