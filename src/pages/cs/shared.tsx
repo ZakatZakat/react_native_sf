@@ -447,8 +447,8 @@ export function Monogram({
 // ── ProfileBadge — small square button with brutalist blue shadow ───────
 
 export function ProfileBadge({
-  name, dark = false, onClick,
-}: { name: string; dark?: boolean; onClick?: () => void }) {
+  name, dark = false, onClick, icon,
+}: { name: string; dark?: boolean; onClick?: () => void; icon?: React.ReactNode }) {
   const [hover, setHover] = useState(false)
   return (
     <button
@@ -466,7 +466,7 @@ export function ProfileBadge({
         transform: hover ? "translate(-1px,-1px)" : "none",
         transition: "transform 0.12s, box-shadow 0.12s",
       }}
-    >{initials(name)}</button>
+    >{icon ?? initials(name)}</button>
   )
 }
 

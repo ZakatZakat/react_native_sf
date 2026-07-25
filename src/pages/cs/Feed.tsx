@@ -419,33 +419,17 @@ function MosaicGrid({ events }: { events: Ev[] }) {
   )
 }
 
-function RefreshGlyph({ variant = "b", spin = 0 }: { variant?: string; spin?: number }) {
-  const wrap = (children: React.ReactNode) => (
+function RefreshGlyph({ spin = 0 }: { variant?: string; spin?: number }) {
+  // одна чистая круговая стрелка «обновить» — line-art, в тон лупе/пину
+  // (раньше был случайный из 3 глифов; двойные стрелки читались как «recycle»)
+  return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-      <g style={{ transformOrigin: "12px 12px", transform: `rotate(${spin}deg)`, transition: "transform 0.7s cubic-bezier(0.34,1.12,0.64,1)" }}>{children}</g>
+      <g style={{ transformOrigin: "12px 12px", transform: `rotate(${spin}deg)`, transition: "transform 0.7s cubic-bezier(0.34,1.12,0.64,1)" }}>
+        <path d="M12 5 A7 7 0 1 1 5 12" fill="none" stroke={SK.ink} strokeWidth="2" strokeLinecap="round" />
+        <polygon points="12.2,1.6 12.2,8.4 16.8,5" fill={SK.blue} />
+      </g>
     </svg>
   )
-  if (variant === "b") {
-    // two chasing arrows (recycle)
-    return wrap(<>
-      <path d="M5 9 A7 7 0 0 1 18 7.5" stroke={SK.ink} strokeWidth="2" strokeLinecap="round" />
-      <polygon points="18,3.5 19.5,8.5 14,8" fill={SK.blue} />
-      <path d="M19 15 A7 7 0 0 1 6 16.5" stroke={SK.ink} strokeWidth="2" strokeLinecap="round" />
-      <polygon points="6,20.5 4.5,15.5 10,16" fill={SK.blue} />
-    </>)
-  }
-  if (variant === "c") {
-    // rotating square + dot
-    return wrap(<>
-      <rect x="5.5" y="5.5" width="13" height="13" stroke={SK.ink} strokeWidth="2" />
-      <circle cx="12" cy="12" r="2.6" fill={SK.blue} />
-    </>)
-  }
-  // a — single circular arrow
-  return wrap(<>
-    <path d="M12 5 A7 7 0 1 1 5 12" fill="none" stroke={SK.ink} strokeWidth="2" strokeLinecap="round" />
-    <polygon points="12.2,1.6 12.2,8.4 16.8,5" fill={SK.blue} />
-  </>)
 }
 
 /** Full-screen catalog search — filters the board's events by title / venue /
@@ -605,6 +589,11 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
   }
   useLayoutEffect(() => { measureBeak() /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [cat, tagChips.length])
 
+  // общие стили кластера кнопок шапки (иконка + подпись капсом под ней)
+  const CTRL_BTN: React.CSSProperties = { width: 38, height: 38, background: SK.paper, border: `2px solid ${SK.ink}`, boxShadow: `2.5px 2.5px 0 ${SK.blue}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }
+  const CTRL_CELL: React.CSSProperties = { display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }
+  const CTRL_CAP: React.CSSProperties = { fontFamily: FONT_SANS, fontWeight: 800, fontSize: 7.5, letterSpacing: "0.06em", textTransform: "uppercase", color: SK.ink55, lineHeight: 1, whiteSpace: "nowrap" }
+
   return (
     <div style={{ width: "100%", paddingBottom: 54 }}>
       {/* header — title block on the left, profile + refresh on the right */}
@@ -616,64 +605,45 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
             <Lbl size={10}>{E.length} событий · москва</Lbl>
           </div>
         </div>
-        {/* controls — 2×2 cluster: [search][ГО] on top, [refresh][map] below.
-            Compact so the title card doesn't stretch tall. */}
-        <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, marginTop: 2 }}>
+        {/* controls — 2×2 кластер иконок с подписями: [поиск][профиль] / [обновить][карта] */}
+        <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 9, marginTop: 2 }}>
           <div style={{ display: "flex", gap: 8 }}>
-            <button
-              onClick={() => setSearchOpen(true)}
-              aria-label="Поиск по афише"
-              title="Поиск"
-              style={{
-                width: 38, height: 38, background: SK.paper,
-                border: `2px solid ${SK.ink}`,
-                boxShadow: `2.5px 2.5px 0 ${SK.blue}`,
-                cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                padding: 0,
-              }}
-            >
-              <svg width="19" height="19" viewBox="0 0 19 19" fill="none">
-                <circle cx="8" cy="8" r="5.6" stroke={SK.ink} strokeWidth="2.2" />
-                <line x1="12.3" y1="12.3" x2="17" y2="17" stroke={SK.ink} strokeWidth="2.2" strokeLinecap="round" />
-              </svg>
-            </button>
-            <ProfileBadge name={name} onClick={nav.openProfile} />
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button
-              onClick={refresh}
-              aria-label="Обновить ленту"
-              style={{
-                width: 38, height: 38, background: SK.paper,
-                border: `2px solid ${SK.ink}`,
-                boxShadow: `2.5px 2.5px 0 ${SK.blue}`,
-                cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                padding: 0,
-              }}
-            >
-              <RefreshGlyph variant={btn} spin={sweep} />
-            </button>
-            {onMap && (
-              <button
-                onClick={onMap}
-                aria-label="Открыть карту"
-                title="Карта"
-                style={{
-                  width: 38, height: 38, background: SK.paper,
-                  border: `2px solid ${SK.ink}`,
-                  boxShadow: `2.5px 2.5px 0 ${SK.blue}`,
-                  cursor: "pointer",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  padding: 0,
-                }}
-              >
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                  <path d="M12 21 C12 21 5 13.5 5 9 A7 7 0 0 1 19 9 C19 13.5 12 21 12 21 Z" stroke={SK.ink} strokeWidth="2" strokeLinejoin="round" />
-                  <circle cx="12" cy="9" r="2.6" fill={SK.blue} />
+            <div style={CTRL_CELL}>
+              <button onClick={() => setSearchOpen(true)} aria-label="Поиск по афише" style={CTRL_BTN}>
+                <svg width="19" height="19" viewBox="0 0 19 19" fill="none">
+                  <circle cx="8" cy="8" r="5.6" stroke={SK.ink} strokeWidth="2.2" />
+                  <line x1="12.3" y1="12.3" x2="17" y2="17" stroke={SK.ink} strokeWidth="2.2" strokeLinecap="round" />
                 </svg>
               </button>
+              <span style={CTRL_CAP}>Поиск</span>
+            </div>
+            <div style={CTRL_CELL}>
+              <ProfileBadge name={name} onClick={nav.openProfile} icon={
+                <svg width="21" height="21" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="8.4" r="3.7" stroke={SK.paper} strokeWidth="2" />
+                  <path d="M5.6 19.4a6.6 6.6 0 0 1 12.8 0" stroke={SK.paper} strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              } />
+              <span style={CTRL_CAP}>Профиль</span>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <div style={CTRL_CELL}>
+              <button onClick={refresh} aria-label="Обновить ленту" style={CTRL_BTN}>
+                <RefreshGlyph variant={btn} spin={sweep} />
+              </button>
+              <span style={CTRL_CAP}>Обновить</span>
+            </div>
+            {onMap && (
+              <div style={CTRL_CELL}>
+                <button onClick={onMap} aria-label="Открыть карту" style={CTRL_BTN}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 21 C12 21 5 13.5 5 9 A7 7 0 0 1 19 9 C19 13.5 12 21 12 21 Z" stroke={SK.ink} strokeWidth="2" strokeLinejoin="round" />
+                    <circle cx="12" cy="9" r="2.6" fill={SK.blue} />
+                  </svg>
+                </button>
+                <span style={CTRL_CAP}>Карта</span>
+              </div>
             )}
           </div>
         </div>
