@@ -137,6 +137,10 @@ class EventCurated(Base):
     is_primary: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     crosspost_count: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     rank_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True, index=True)
+    #   dup_override_group — семантический дедуп (LLM/ручной): события с ОДИНАКОВЫМ
+    #   значением принудительно склеиваются в одну группу, даже если токен-дедуп их
+    #   не взял (разные обёртки одного события, что текст-оверлап не ловит).
+    dup_override_group: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True, index=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), default=datetime.utcnow, nullable=False)
 

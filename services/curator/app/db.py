@@ -44,8 +44,10 @@ _ADDITIVE_MIGRATIONS: list[str] = [
     'ALTER TABLE "{s}".events_curated ADD COLUMN IF NOT EXISTS is_primary boolean NOT NULL DEFAULT true',
     'ALTER TABLE "{s}".events_curated ADD COLUMN IF NOT EXISTS crosspost_count integer NOT NULL DEFAULT 1',
     'ALTER TABLE "{s}".events_curated ADD COLUMN IF NOT EXISTS rank_score double precision',
+    'ALTER TABLE "{s}".events_curated ADD COLUMN IF NOT EXISTS dup_override_group bigint',
     'CREATE INDEX IF NOT EXISTS ix_events_rank_score ON "{s}".events_curated (rank_score)',
     'CREATE INDEX IF NOT EXISTS ix_events_dup_group ON "{s}".events_curated (dup_group_id)',
+    'CREATE INDEX IF NOT EXISTS ix_events_dup_override ON "{s}".events_curated (dup_override_group)',
 ]
 
 

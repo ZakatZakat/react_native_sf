@@ -113,6 +113,7 @@ class _Row:
     message_id: int
     ctype: str | None
     authority: float
+    override: int | None = None  # dup_override_group — принудительная склейка
 
 
 def cluster(rows: list[_Row]) -> list[list[_Row]]:
@@ -171,6 +172,31 @@ def cluster(rows: list[_Row]) -> list[list[_Row]]:
             exact_to_idx[k] = idx
         if len(nm) >= 3:
             name_buckets.setdefault(day, []).append((nm, idx))
+
+    # Override: события с одинаковым dup_override_group принудительно в одной группе
+    # (семантический дедуп трудных кросс-постов, что токен-оверлап не берёт: разные
+    # обёртки одного события, напр. фильм-концерт Дзиги из 5 разных постов).
+    parent = list(range(len(groups)))
+
+    def _find(i: int) -> int:
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    ov_seen: dict[int, int] = {}
+    for gi, grp in enumerate(groups):
+        for m in grp:
+            if m.override is not None:
+                if m.override in ov_seen:
+                    parent[_find(gi)] = _find(ov_seen[m.override])
+                else:
+                    ov_seen[m.override] = gi
+    if any(parent[i] != i for i in range(len(parent))):
+        by_root: dict[int, list[_Row]] = {}
+        for gi, grp in enumerate(groups):
+            by_root.setdefault(_find(gi), []).extend(grp)
+        groups = list(by_root.values())
     return groups
 
 
@@ -267,6 +293,7 @@ async def _load_rows(session: AsyncSession) -> list[_Row]:
                 message_id=post.message_id,
                 ctype=(ch.ctype if ch else None),
                 authority=(ch.weight if ch and ch.weight else 1.0),
+                override=ev.dup_override_group,
             )
         )
     return rows
