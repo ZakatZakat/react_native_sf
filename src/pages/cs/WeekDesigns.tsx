@@ -7,7 +7,7 @@
  * it inside a phone-shaped box. `still` drops the entry animation (for previews).
  */
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { SK, FONT_SANS, FONT_MONO } from "./shared"
 
 export const WEEK_VARIANTS = ["split", "split2", "split3", "split4"] as const
@@ -39,6 +39,10 @@ export function weekMeta() {
 // глиф с «?». (Postersless-события в триптих уже не попадают — фильтр в Week.tsx.)
 function Poster({ url, style, evId, onBroken }: { url: string | null; style?: React.CSSProperties; evId?: string; onBroken?: (id?: string) => void }) {
   const [broken, setBroken] = useState(false)
+  // Колонки триптиха кеются по индексу — при рефилле (дохлый постер заменён
+  // следующим событием) тот же Poster переиспользуется с новым url, поэтому
+  // сбрасываем «broken», иначе колонка застревала бы на тёмном градиенте.
+  useEffect(() => { setBroken(false) }, [url])
   const base: React.CSSProperties = { width: "100%", height: "100%", objectFit: "cover", ...style }
   return url && !broken
     ? <img src={url} alt="" onError={() => { setBroken(true); onBroken?.(evId) }} style={base} />
