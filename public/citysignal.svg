@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="6" fill="#0D0D0D"/>
+  <!-- «сигнал»: точка-источник + две радиоволны в брендовом синем -->
+  <circle cx="16" cy="23.2" r="2.6" fill="#0055FF"/>
+  <path d="M11.1 19.1a6.9 6.9 0 0 1 9.8 0" fill="none" stroke="#0055FF" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M7.4 15.4a12.1 12.1 0 0 1 17.2 0" fill="none" stroke="#0055FF" stroke-width="2.6" stroke-linecap="round"/>
+</svg>
