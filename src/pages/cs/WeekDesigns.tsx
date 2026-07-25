@@ -7,6 +7,7 @@
  * it inside a phone-shaped box. `still` drops the entry animation (for previews).
  */
 
+import { useState } from "react"
 import { SK, FONT_SANS, FONT_MONO } from "./shared"
 
 export const WEEK_VARIANTS = ["split", "split2", "split3", "split4"] as const
@@ -32,11 +33,15 @@ export function weekMeta() {
   return { n, dates: `${f(mon)} — ${f(sun)}` }
 }
 
-// Poster with a graceful gradient fallback when the item has no image.
+// Poster with a graceful gradient fallback when the item has no image — OR when
+// the image URL is dead (404 / 0-байт / протухшая Telegram-медиа): onError
+// переключает на тот же тёмный градиент, а не оставляет браузерный «сломанный»
+// глиф с «?». (Postersless-события в триптих уже не попадают — фильтр в Week.tsx.)
 function Poster({ url, style }: { url: string | null; style?: React.CSSProperties }) {
+  const [broken, setBroken] = useState(false)
   const base: React.CSSProperties = { width: "100%", height: "100%", objectFit: "cover", ...style }
-  return url
-    ? <img src={url} alt="" style={base} />
+  return url && !broken
+    ? <img src={url} alt="" onError={() => setBroken(true)} style={base} />
     : <div style={{ ...base, background: "linear-gradient(160deg,#222,#0d0d0d)" }} />
 }
 

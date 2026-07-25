@@ -62,8 +62,11 @@ export default function CsWeek() {
 
   const feed = derived.feed
   const hero = pick ?? feed[0]
-  // Триптих needs three posters: hero first, then fill from the feed.
-  const trio = [hero, ...feed.filter((e) => e && e.id !== hero?.id)].filter(Boolean).slice(0, 3) as Ev[]
+  // Триптих needs three posters: hero first, then fill from the feed. Берём в
+  // коллаж ТОЛЬКО события с постером (e.p) — событие без картинки давало бы
+  // тёмный тайл-заглушку в колонке. Дохлый URL (медиа 404) отсекает уже onError
+  // в Poster (см. WeekDesigns), т.к. по e.p его тут не отличить.
+  const trio = [hero, ...feed.filter((e) => e && e.id !== hero?.id)].filter((e): e is Ev => !!e && !!e.p).slice(0, 3)
   const eventsCount = feed.length || Object.values(derived.catCounts).reduce((a, b) => a + b, 0)
   const lead = derived.shelves.length
     ? `На этой неделе — ${derived.shelves.map((s) => s.cat.toLowerCase()).slice(0, 3).join(", ")} и не только. Редакция собрала, ради чего стоит выйти.`
