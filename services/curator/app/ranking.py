@@ -273,7 +273,9 @@ async def _load_rows(session: AsyncSession) -> list[_Row]:
         .where(EventCurated.status == EventStatus.approved)
         # включая идущие (event_time_end в будущем) — как в list_feed, иначе они
         # не получат is_primary/rank_score и «последний шанс» не отранжируется.
-        .where(or_(EventCurated.event_time >= now, EventCurated.event_time.is_(None), EventCurated.event_time_end >= now))
+        # Без-датные (event_time и end оба NULL) НЕ берём — как в list_feed
+        # (прошедшие разовые с нераспарсенной датой протекали через IS NULL).
+        .where(or_(EventCurated.event_time >= now, EventCurated.event_time_end >= now))
         .where(func.coalesce(EventCurated.location_meta.op("->>")("region"), "moscow").notin_(["spb", "other"]))
         .where(func.cast(PostRaw.media_urls, String).ilike("%.jpg%"))
         .order_by(EventCurated.event_time.asc().nulls_last(), EventCurated.id.asc())
