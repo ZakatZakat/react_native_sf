@@ -539,6 +539,7 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
   const [sweep, setSweep] = useState(0)
   const [searchOpen, setSearchOpen] = useState(false)
   const [fbOpen, setFbOpen] = useState(false)
+  const [heroIdx, setHeroIdx] = useState(0)  // «выбор недели»: индекс листаемого кандидата (стрелки ‹ ›)
   // Full upcoming catalog (already future-filtered + chronological upstream).
   const E = useMemo(() => feed.filter((e) => e && !e.id.startsWith("__placeholder")), [feed])
   // Полка «для знатока» убрана — insider-контент (закрытые/пресс/VIP-показы,
@@ -558,9 +559,13 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
       return (a.ts ?? Infinity) - (b.ts ?? Infinity) // при равной доступности — раньше
     })
   }, [mainE])
-  const hero = heroPool.length ? heroPool[nonce % Math.min(heroPool.length, 6)] : undefined
+  // «Выбор недели» листается стрелками (heroIdx) по топ-N кандидатам того же
+  // heroPool (доступность / близость даты). refresh тоже сдвигает.
+  const heroN = Math.min(heroPool.length, 8)
+  const heroCur = heroN ? (((heroIdx % heroN) + heroN) % heroN) : 0
+  const hero = heroN ? heroPool[heroCur] : undefined
   const rest = mainE.filter((e) => e !== hero)
-  const refresh = () => { setNonce((n) => n + 1); setSweep((s) => s + 360) }
+  const refresh = () => { setNonce((n) => n + 1); setSweep((s) => s + 360); setHeroIdx((i) => i + 1) }
   // Category filter — applies ONLY to the «Каталог» grid; «выбор недели» stays.
   const [cat, setCat] = useState("Все")
   const [tag, setTag] = useState<string | null>(null) // second-tier fine tag
@@ -628,6 +633,8 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
   const CTRL_BTN: React.CSSProperties = { width: 38, height: 38, background: SK.paper, border: `2px solid ${SK.ink}`, boxShadow: `2.5px 2.5px 0 ${SK.blue}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }
   const CTRL_CELL: React.CSSProperties = { display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }
   const CTRL_CAP: React.CSSProperties = { fontFamily: FONT_SANS, fontWeight: 800, fontSize: 7.5, letterSpacing: "0.06em", textTransform: "uppercase", color: SK.ink55, lineHeight: 1, whiteSpace: "nowrap" }
+  // Стрелка-переключатель «выбора недели».
+  const HERO_ARROW: React.CSSProperties = { width: 26, height: 26, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, border: `2px solid ${SK.ink}`, background: SK.paper, boxShadow: `2px 2px 0 ${SK.blue}`, cursor: "pointer", fontWeight: 900, fontSize: 17, lineHeight: 1, color: SK.ink }
 
   return (
     <div style={{ width: "100%", paddingBottom: 54 }}>
@@ -749,8 +756,19 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
         {/* hero re-animates only on refresh (nonce → new heroIdx); a category
             tap must not remount it. The catalog keys on the filter too, so its
             stagger replays when the visible set changes. */}
-        <SectionLabel>выбор недели</SectionLabel>
-        {hero && <div key={nonce}><BoardLead ev={hero} /></div>}
+        {/* «выбор недели» + листание: стрелки ‹ N/M › крутят топ-кандидатов */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "24px 0 14px" }}>
+          <Lbl size={9} style={{ letterSpacing: "0.24em" }}>выбор недели</Lbl>
+          <div style={{ flex: 1, height: 2, background: SK.ink }} />
+          {heroN > 1 && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+              <button onClick={() => setHeroIdx((i) => i - 1)} aria-label="Предыдущий вариант" style={HERO_ARROW}>‹</button>
+              <span style={{ fontFamily: FONT_MONO, fontSize: 9, letterSpacing: "0.06em", color: SK.ink55, minWidth: 30, textAlign: "center" }}>{heroCur + 1}/{heroN}</span>
+              <button onClick={() => setHeroIdx((i) => i + 1)} aria-label="Следующий вариант" style={HERO_ARROW}>›</button>
+            </div>
+          )}
+        </div>
+        {hero && <div key={`hero-${heroCur}`}><BoardLead ev={hero} /></div>}
         {showClosing && (
           <>
             <SectionLabel>последний шанс · закрывается скоро</SectionLabel>

@@ -216,6 +216,9 @@ function SectionRule({ children }: { children: React.ReactNode }) {
   )
 }
 
+// Стрелка-переключатель «выбора редакции» (веб-масштаб).
+const WEB_HERO_ARROW: React.CSSProperties = { width: 34, height: 34, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, border: `2px solid ${SK.ink}`, background: SK.paper, boxShadow: `3px 3px 0 ${SK.blue}`, cursor: "pointer", fontWeight: 900, fontSize: 22, lineHeight: 1, color: SK.ink }
+
 // ── Страница ────────────────────────────────────────────────────────────
 export default function CsWebFeed() {
   const { derived } = useDerived()
@@ -246,7 +249,11 @@ export default function CsWebFeed() {
       return s !== 0 ? s : (a.ts ?? Infinity) - (b.ts ?? Infinity)
     })
   }, [mainE])
-  const hero = heroPool[0]
+  // «Выбор редакции» листается стрелками (heroIdx) по топ-N кандидатам heroPool.
+  const [heroIdx, setHeroIdx] = useState(0)
+  const heroN = Math.min(heroPool.length, 8)
+  const heroCur = heroN ? (((heroIdx % heroN) + heroN) % heroN) : 0
+  const hero = heroN ? heroPool[heroCur] : heroPool[0]
   const rest = useMemo(() => mainE.filter((e) => e !== hero), [mainE, hero])
 
   const cats = useMemo(() => {
@@ -402,7 +409,18 @@ export default function CsWebFeed() {
                   {/* hero — только когда не ищем/не фильтруем, как «выбор редакции» */}
                   {cat === "Все" && !q.trim() && !access && hero && (
                     <>
-                      <SectionRule>выбор редакции</SectionRule>
+                      {/* «выбор редакции» + листание: стрелки ‹ N/M › крутят топ-кандидатов */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "36px 0 18px" }}>
+                        <span style={{ fontFamily: FONT_MONO, fontSize: 12, letterSpacing: "0.24em", textTransform: "uppercase", color: SK.ink55 }}>выбор редакции</span>
+                        <div style={{ flex: 1, height: 2, background: SK.ink }} />
+                        {heroN > 1 && (
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                            <button onClick={() => setHeroIdx((i) => i - 1)} aria-label="Предыдущий вариант" style={WEB_HERO_ARROW}>‹</button>
+                            <span style={{ fontFamily: FONT_MONO, fontSize: 12, letterSpacing: "0.06em", color: SK.ink55, minWidth: 40, textAlign: "center" }}>{heroCur + 1}/{heroN}</span>
+                            <button onClick={() => setHeroIdx((i) => i + 1)} aria-label="Следующий вариант" style={WEB_HERO_ARROW}>›</button>
+                          </div>
+                        )}
+                      </div>
                       <WebHero ev={hero} />
                     </>
                   )}
