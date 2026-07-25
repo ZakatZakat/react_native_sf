@@ -1066,9 +1066,65 @@ export function Avatar({ label, color = SK.blue, s = 22, style }: { label: strin
 
 // ── GoingAgenda — calendar of events the user is attending ──────────────
 
-export function GoingAgenda() {
-  const { list, setRemind } = useGoing()
+/** Одна карточка «я иду»: постер события сверху (с датой-бейджем поверх), а
+ *  если постера нет/битый — крупный дата-блок. Ниже заголовок, площадка·время
+ *  и переключатель напоминания. Тап по карточке открывает шит события. */
+function GoingCard({ ev, i }: { ev: GoingItem; i: number }) {
+  const { setRemind } = useGoing()
   const openEvent = useOpenEvent()
+  const [broken, setBroken] = useState(false)
+  const dc = dateChip(ev.d)
+  const sub = [ev.v, ev.tm].map((s) => (s || "").trim()).filter((s) => s && s !== "—").join(" · ")
+  const hasPoster = !!ev.p && !broken
+  // Synthesise an Ev-shaped object for the modal: store items don't carry
+  // `desc`/`price`/`catKey`, so we provide soft defaults.
+  const evForSheet: Ev = {
+    id: ev.t, t: ev.t, v: ev.v, d: ev.d, tm: ev.tm,
+    p: ev.p, c: ev.cat, catKey: "", ch: ev.ch, mid: ev.mid ?? null,
+    desc: "Открой канал для подробностей.", price: "—", venueKey: "", ts: null,
+  }
+  return (
+    <div
+      onClick={() => openEvent(evForSheet)}
+      style={{
+        display: "flex", flexDirection: "column",
+        border: `2px solid ${CS.K}`, background: CS.W, cursor: "pointer",
+        boxShadow: `3px 4px 0 ${CS.K}`, overflow: "hidden",
+        animation: `cs-j-up 0.4s ease ${0.04 * i}s both`,
+      }}
+    >
+      {hasPoster ? (
+        /* Постер + дата-бейдж поверх (синий при активном напоминании). */
+        <div style={{ position: "relative", borderBottom: `2px solid ${CS.K}`, background: "#E4E4E1", lineHeight: 0 }}>
+          <img src={ev.p!} alt="" onError={() => setBroken(true)} style={{ width: "100%", height: "auto", maxHeight: 156, objectFit: "cover", display: "block" }} />
+          <span style={{ position: "absolute", top: 6, left: 6, display: "inline-flex", alignItems: "baseline", gap: 4, padding: "3px 7px 4px", border: `2px solid ${CS.K}`, background: ev.remind ? CS.B : CS.W, color: ev.remind ? CS.W : CS.K }}>
+            <span style={{ fontWeight: 900, fontSize: 17, lineHeight: 0.82, letterSpacing: "-0.04em" }}>{dc.day}</span>
+            <span style={{ fontFamily: FONT_MONO, fontSize: 7.5, letterSpacing: "0.1em", textTransform: "uppercase" }}>{dc.mon}</span>
+          </span>
+        </div>
+      ) : (
+        /* Нет постера — крупный дата-блок (синий при активном напоминании). */
+        <div style={{ display: "flex", alignItems: "baseline", gap: 6, padding: "8px 11px 7px", borderBottom: `2px solid ${CS.K}`, background: ev.remind ? CS.B : CS.W, color: ev.remind ? CS.W : CS.K }}>
+          <span style={{ fontWeight: 900, fontSize: 30, lineHeight: 0.82, letterSpacing: "-0.05em" }}>{dc.day}</span>
+          <span style={{ fontFamily: FONT_MONO, fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase" }}>{dc.mon}</span>
+        </div>
+      )}
+      <div style={{ flex: 1, minWidth: 0, padding: "9px 11px 10px" }}>
+        <div style={{ fontWeight: 900, fontSize: 13, lineHeight: 1.08, letterSpacing: "-0.015em", textTransform: "uppercase", color: CS.K, overflowWrap: "break-word", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" } as React.CSSProperties}>{ev.t}</div>
+        {sub && <div style={{ fontWeight: 600, fontSize: 10, color: CS.G55, marginTop: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</div>}
+      </div>
+      <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 7, padding: "8px 11px", borderTop: `1.5px solid ${CS.G18}` }}>
+        <MiniSwitch on={ev.remind} onClick={(e) => { e.stopPropagation(); setRemind(ev, !ev.remind) }} />
+        <span style={{ fontFamily: FONT_MONO, fontSize: 8, letterSpacing: "0.08em", color: ev.remind ? CS.B : CS.G35, textTransform: "uppercase" }}>
+          {ev.remind ? "напомню" : "напомнить"}
+        </span>
+      </div>
+    </div>
+  )
+}
+
+export function GoingAgenda() {
+  const { list } = useGoing()
   const items = [...list].sort((a, b) => dateSort(a.d) - dateSort(b.d))
   const remindN = items.filter((e) => e.remind).length
 
@@ -1085,55 +1141,8 @@ export function GoingAgenda() {
           <div style={{ fontWeight: 600, fontSize: 11, color: CS.G35, marginTop: 4 }}>Открой событие и нажми «Иду» — оно появится здесь.</div>
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
-          {items.map((ev, i) => {
-            const dc = dateChip(ev.d)
-            // Synthesise an Ev-shaped object for the modal: store items
-            // don't carry `desc`/`price`/`catKey`, so we provide soft
-            // defaults — the sheet renders the curator-text fallback.
-            const evForSheet: Ev = {
-              id: ev.t,
-              t: ev.t, v: ev.v, d: ev.d, tm: ev.tm,
-              p: ev.p, c: ev.cat, catKey: "",
-              ch: ev.ch, mid: ev.mid ?? null,
-              desc: "Открой канал для подробностей.",
-              price: "—", venueKey: "", ts: null,
-            }
-            return (
-              <div
-                key={ev.t}
-                onClick={() => openEvent(evForSheet)}
-                style={{
-                  display: "flex", alignItems: "stretch",
-                  border: `2px solid ${CS.K}`, background: CS.W, cursor: "pointer",
-                  animation: `cs-j-up 0.4s ease ${0.04 * i}s both`,
-                }}
-              >
-                {/* Date chip — coloured blue when reminder is on. */}
-                <div style={{
-                  width: 50, flexShrink: 0,
-                  borderRight: `2px solid ${CS.K}`,
-                  background: ev.remind ? CS.B : CS.W,
-                  color: ev.remind ? CS.W : CS.K,
-                  display: "flex", flexDirection: "column",
-                  alignItems: "center", justifyContent: "center", padding: "8px 0",
-                }}>
-                  <span style={{ fontWeight: 900, fontSize: 22, lineHeight: 0.9, letterSpacing: "-0.04em" }}>{dc.day}</span>
-                  <span style={{ fontFamily: FONT_MONO, fontSize: 8, letterSpacing: "0.12em", marginTop: 3 }}>{dc.mon}</span>
-                </div>
-                <div style={{ flex: 1, minWidth: 0, padding: "9px 10px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
-                  <div style={{ fontWeight: 900, fontSize: 12.5, lineHeight: 1.05, letterSpacing: "-0.02em", textTransform: "uppercase", color: CS.K, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ev.t}</div>
-                  <div style={{ fontWeight: 600, fontSize: 10, color: CS.G55, marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ev.v} · {ev.tm}</div>
-                </div>
-                <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5, padding: "0 10px", borderLeft: `1.5px solid ${CS.G18}` }}>
-                  <MiniSwitch on={ev.remind} onClick={(e) => { e.stopPropagation(); setRemind(ev, !ev.remind) }} />
-                  <span style={{ fontFamily: FONT_MONO, fontSize: 7, letterSpacing: "0.08em", color: ev.remind ? CS.B : CS.G35, textTransform: "uppercase" }}>
-                    {ev.remind ? "напомню" : "напомнить"}
-                  </span>
-                </div>
-              </div>
-            )
-          })}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
+          {items.map((ev, i) => <GoingCard key={ev.t} ev={ev} i={i} />)}
         </div>
       )}
     </div>
