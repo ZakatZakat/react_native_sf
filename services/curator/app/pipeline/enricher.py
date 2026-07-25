@@ -68,6 +68,31 @@ def _expand_two_digit_year(snippet: str | None) -> str | None:
     return _DDMMYY_RE.sub(lambda m: f"{m.group(1)}20{m.group(2)}", snippet)
 
 
+# Числовой месяц → русское слово (родит. падеж) для нормализации голого «DD.MM».
+_MONTHS_GEN: tuple[str, ...] = (
+    "", "января", "февраля", "марта", "апреля", "мая", "июня",
+    "июля", "августа", "сентября", "октября", "ноября", "декабря",
+)
+# Голый «DD.MM» без года. Отрицательный lookahead исключает «DD.MM.YYYY».
+_BARE_DDMM_RE: re.Pattern[str] = re.compile(r"\b(\d{1,2})[./](\d{1,2})\b(?![./]\d)")
+
+
+def _numeric_ddmm_to_words(snippet: str | None) -> str | None:
+    """«23.07» → «23 июля». dateparser читает голый «DD.MM» как ВРЕМЯ (23:07), а
+    «DD.MM HH:MM» вообще не парсит — тогда как «DD <месяц> HH:MM» разбирается
+    верно. Трогаем только даты БЕЗ года (с годом dateparser читает как дату)."""
+    if not snippet:
+        return snippet
+
+    def repl(m: re.Match[str]) -> str:
+        day, mon = int(m.group(1)), int(m.group(2))
+        if 1 <= day <= 31 and 1 <= mon <= 12:
+            return f"{day} {_MONTHS_GEN[mon]}"
+        return m.group(0)
+
+    return _BARE_DDMM_RE.sub(repl, snippet)
+
+
 def _has_explicit_year(snippet: str | None) -> bool:
     """True if the snippet already carries a four-digit (20YY) year."""
     return bool(snippet and _YEAR_RE.search(snippet))
@@ -122,6 +147,7 @@ def enrich_event(
     date_snippet = hits.date[0] if hits.date else (hits.relative_day[0] if hits.relative_day else None)
     if has_absolute_date:
         date_snippet = _expand_two_digit_year(date_snippet)  # «15.05.26» → «15.05.2026»
+        date_snippet = _numeric_ddmm_to_words(date_snippet)  # «23.07» → «23 июля» (иначе dateparser читает как время)
     time_snippet = None
     end_time_snippet = None
 
