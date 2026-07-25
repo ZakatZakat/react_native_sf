@@ -31,6 +31,7 @@ import {
 } from "./shared"
 import type { Ev } from "./buildDerived"
 import { closingSoon } from "./buildDerived"
+import { isFresh, hasSeenNew, markNewSeen } from "./newBadge"
 import { INTERESTS } from "../pipe/preferences"
 import { weekMeta } from "./WeekDesigns"
 
@@ -50,7 +51,7 @@ const FALLBACK: Ev = {
   id: "—", t: "—", sub: "", v: "—", d: "—", tm: "—",
   p: null, c: "—", catKey: "", ch: "@—",
   desc: "", price: "—", note: "", venueKey: "", ts: null,
-  access: "", age: "", tier: "", friction: 1,
+  access: "", age: "", tier: "", friction: 1, createdTs: null,
 }
 
 // ── Доступность как первоклассный сигнал (фидбек #3) ─────────────────────
@@ -261,6 +262,23 @@ function MosaicCard({ ev, i, onImg, onBroken }: { ev: Ev; i: number; onImg?: () 
   // so drop the whole card rather than show a broken «?» tile. CSS columns reflow
   // automatically; onImg re-packs any JS-measured layout.
   const [broken, setBroken] = useState(false)
+  // Бейдж «НОВОЕ»: свежее событие, ещё не виденное этим устройством. Как только
+  // карточка побыла в вьюпорте ~1с — помечаем «просмотрено» и гасим бейдж.
+  const [showNew, setShowNew] = useState(() => isFresh(ev) && !hasSeenNew(ev.id))
+  const rootRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    if (!showNew || typeof IntersectionObserver === "undefined") return
+    const el = rootRef.current
+    if (!el) return
+    let timer = 0
+    const io = new IntersectionObserver((entries) => {
+      const vis = entries.some((en) => en.isIntersecting)
+      if (vis) timer = window.setTimeout(() => { markNewSeen(ev.id); setShowNew(false) }, 1000)
+      else if (timer) { clearTimeout(timer); timer = 0 }
+    }, { threshold: 0.5 })
+    io.observe(el)
+    return () => { io.disconnect(); if (timer) clearTimeout(timer) }
+  }, [showNew, ev.id])
   // Карточки держим ПРЯМО (без scrapbook-наклона) — квадратный бейдж на
   // наклонённой карточке читался «косо/резко». Оставляем только мягкий
   // вертикальный float (без вращения). `rot` — лишь для разброса тайминга float.
@@ -282,7 +300,7 @@ function MosaicCard({ ev, i, onImg, onBroken }: { ev: Ev; i: number; onImg?: () 
   const body = nl >= 0 ? stripHandles(ev.desc.slice(nl + 1).replace(/\s+/g, " ").trim()) : ""
   if (broken) return null
   return (
-    <div style={{ breakInside: "avoid", WebkitColumnBreakInside: "avoid", marginBottom: 20, animation: `sk-refresh 0.5s cubic-bezier(0.22,1,0.36,1) ${(Math.min(i, 12) * 0.06).toFixed(2)}s both` }}>
+    <div ref={rootRef} style={{ breakInside: "avoid", WebkitColumnBreakInside: "avoid", marginBottom: 20, animation: `sk-refresh 0.5s cubic-bezier(0.22,1,0.36,1) ${(Math.min(i, 12) * 0.06).toFixed(2)}s both` }}>
       <div style={{ animation: float ? `sk-float ${dur}s ease-in-out ${delay}s infinite` : undefined }}>
         <div
           onClick={() => open(ev)}
@@ -313,6 +331,11 @@ function MosaicCard({ ev, i, onImg, onBroken }: { ev: Ev; i: number; onImg?: () 
                   {hasDate && <span style={{ position: "absolute", right: 8, ...(cs ? { bottom: 8 } : { top: 8 }), background: SK.ink, color: SK.paper, fontWeight: 900, fontSize: 13, letterSpacing: "0.02em", lineHeight: 1, padding: "5px 8px" }}>{ev.d}</span>}
                   {cs && (
                     <span style={{ position: "absolute", top: 8, left: 8, background: "#E0162B", color: "#fff", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 9, letterSpacing: "0.04em", textTransform: "uppercase", padding: "4px 6px", border: `1.5px solid ${SK.ink}`, lineHeight: 1 }}>{cs.label}</span>
+                  )}
+                  {/* «НОВОЕ» — top-left, синий. Уступаем место красной плашке
+                      «закрывается» (та важнее), поэтому только когда её нет. */}
+                  {showNew && !cs && (
+                    <span style={{ position: "absolute", top: 8, left: 8, background: CS.B, color: "#fff", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 9, letterSpacing: "0.06em", textTransform: "uppercase", padding: "4px 7px", border: `1.5px solid ${SK.ink}`, boxShadow: `1.5px 1.5px 0 ${SK.ink}`, lineHeight: 1 }}>Новое</span>
                   )}
                 </>
               )

@@ -47,6 +47,7 @@ export type Ev = {
   age: string       // возрастной ценз "18+" / "" если нет
   tier: "insider" | "" // «для знатока» — курируем вниз (закрытые/пресс/VIP-анонсы)
   friction: number  // 0 (свободно) … 7 (sold out) — чем ниже, тем выше ранг
+  createdTs: number | null // когда событие впервые попало в базу (ингест) — для бейджа «НОВОЕ»
 }
 
 /** Барьер посещения, извлечённый из текста поста. Порядок в UI — от «просто
@@ -192,6 +193,7 @@ export function toEv(e: FeedItem): Ev {
     dur: "",   // duration — curator doesn't carry it yet
     geo: (Array.isArray(e.geo) && e.geo.length === 2) ? [e.geo[0], e.geo[1]] : null,
     venueKey: e.venue || "",
+    createdTs: e.created_at ? Date.parse(e.created_at) : null,
     ts: dateObj && !Number.isNaN(dateObj.getTime()) ? dateObj.getTime() : null,
     endTs: (() => { const eo = parseEventTime(e.event_time_end); return eo && !Number.isNaN(eo.getTime()) ? eo.getTime() : null })(),
     // fine-grained tag labels for badges — drop the 12 coarse categories and the
