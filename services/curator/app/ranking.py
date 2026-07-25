@@ -32,6 +32,13 @@ AWH_HANDLE = "animalswithhands"
 ENDORSE_BOOST = 0.30
 _TME_RE = re.compile(r"(?:https?://)?t(?:elegram)?\.me/([A-Za-z0-9_]+)/(\d+)")
 
+# «Последний шанс» — событие с чётким СКОРЫМ закрытием (финисаж/последний день/
+# многодневное на исходе) поднимаем в ранге: ургентность = интерес (фидбек тестера).
+# Буст масштабируем по близости закрытия: сегодня → полный, через CLOSE_WINDOW → 0.
+CLOSE_BOOST = 0.35
+CLOSE_WINDOW = 14
+_CLOSING_RE = re.compile(r"финисаж|финиссаж|последн(ий день|яя неделя|юю неделю)|закрыт(ие|ия) выставк|выставка закрыва|успейте|last day|closing", re.I)
+
 _TITLE_STOP = set(
     "январь января февраль февраля март марта апрель апреля май мая июнь июня июль июля "
     "август августа сентябрь сентября октябрь октября ноябрь ноября декабрь декабря "
@@ -99,6 +106,7 @@ class _Row:
     title: str
     descr: str
     event_time: datetime | None
+    event_time_end: datetime | None
     media_hash: str | None
     filter_score: int
     channel: str
@@ -200,6 +208,17 @@ def _score(group: list[_Row], today: date, endorsed: bool = False) -> float:
     score = 0.35 * auth_norm + 0.25 * x_norm + 0.25 * prox + 0.15 * qual
     if endorsed:
         score += ENDORSE_BOOST
+    # «Последний шанс» — чёткое скорое закрытие поднимает в ранге. Многодневное на
+    # исходе ИЛИ однодневный финисаж/последний день (по тексту). Ближе → сильнее.
+    end_dts = [m.event_time_end.date() for m in group if m.event_time_end]
+    if end_dts:
+        end_day = min(end_dts)
+        d_end = (end_day - today).days
+        if 0 <= d_end <= CLOSE_WINDOW:
+            starts = [m.event_time.date() for m in group if m.event_time]
+            multi = (not starts) or (end_day > min(starts))
+            if multi or _CLOSING_RE.search(" ".join((m.title or "") + " " + (m.descr or "") for m in group)):
+                score += CLOSE_BOOST * (1 - d_end / CLOSE_WINDOW)
     if cancelled:
         score -= 5.0
     return round(score, 4)
@@ -226,7 +245,9 @@ async def _load_rows(session: AsyncSession) -> list[_Row]:
         .join(PostRaw, PostRaw.id == EventCurated.post_id)
         .join(Channel, Channel.id == PostRaw.channel_id, isouter=True)
         .where(EventCurated.status == EventStatus.approved)
-        .where(or_(EventCurated.event_time >= now, EventCurated.event_time.is_(None)))
+        # включая идущие (event_time_end в будущем) — как в list_feed, иначе они
+        # не получат is_primary/rank_score и «последний шанс» не отранжируется.
+        .where(or_(EventCurated.event_time >= now, EventCurated.event_time.is_(None), EventCurated.event_time_end >= now))
         .where(func.coalesce(EventCurated.location_meta.op("->>")("region"), "moscow").notin_(["spb", "other"]))
         .where(func.cast(PostRaw.media_urls, String).ilike("%.jpg%"))
         .order_by(EventCurated.event_time.asc().nulls_last(), EventCurated.id.asc())
@@ -239,6 +260,7 @@ async def _load_rows(session: AsyncSession) -> list[_Row]:
                 title=(ev.title or "").strip(),
                 descr=post.text or "",
                 event_time=ev.event_time,
+                event_time_end=ev.event_time_end,
                 media_hash=post.media_hash,
                 filter_score=ev.filter_score or 0,
                 channel=(ch.handle.lstrip("@").lower() if ch and ch.handle else ""),

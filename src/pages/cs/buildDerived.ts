@@ -208,13 +208,19 @@ export function toEv(e: FeedItem): Ev {
 // фиксированным сдвигом +3ч — стабильно для любого пояса зрителя.
 const MSK_MS = 3 * 3600000
 const mskDay = (ts: number): number => Math.floor((ts + MSK_MS) / 86400000)
+// Сигнал «это именно ЗАКРЫТИЕ» для однодневных (финисаж / последний день выставки):
+// иначе обычный однодневный концерт получал бы «закрывается сегодня».
+export const CLOSING_RE = /финисаж|финиссаж|последн(ий день|яя неделя|юю неделю)|закрыт(ие|ия) выставк|выставка закрыва|успейте|last day|closing/iu
 export function closingSoon(ev: Ev, within = 14): { days: number; label: string } | null {
   if (ev.endTs == null) return null
   const endDay = mskDay(ev.endTs)
   const startDay = ev.ts != null ? mskDay(ev.ts) : null
-  if (startDay != null && endDay <= startDay) return null // однодневное — не «закрывается»
   const days = endDay - mskDay(Date.now())
   if (days < 0 || days > within) return null
+  const multiDay = startDay == null || endDay > startDay
+  // многодневное, закрывающееся в окне → «закрывается»; однодневное — только при
+  // явном сигнале (выставка/финисаж), напр. финисаж Дзиги или последний день Дробышевского.
+  if (!multiDay && ev.catKey !== "exhibition" && !CLOSING_RE.test(ev.desc || "")) return null
   const label = days === 0 ? "закрывается сегодня" : days === 1 ? "закрывается завтра" : `закр. через ${days} дн.`
   return { days, label }
 }
