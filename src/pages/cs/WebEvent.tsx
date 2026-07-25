@@ -91,7 +91,10 @@ function EventDetail({ ev }: { ev: Ev }) {
 
           {venue && (
             <div style={{ display: "flex", gap: 12, marginTop: 18, padding: "12px 15px", border: `2px solid ${SK.ink}`, background: SK.paper, boxShadow: `3px 3px 0 ${CS.B}` }}>
-              <span style={{ fontSize: 18, lineHeight: 1.1 }}>📍</span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, marginTop: 1 }}>
+                <path d="M12 21C12 21 5 13.5 5 9A7 7 0 0 1 19 9C19 13.5 12 21 12 21Z" stroke={SK.ink} strokeWidth="2.2" strokeLinejoin="round" />
+                <circle cx="12" cy="9" r="2.6" fill={CS.B} />
+              </svg>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontFamily: FONT_MONO, fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: CS.B }}>Место</div>
                 <div style={{ fontWeight: 900, fontSize: 16, letterSpacing: "-0.01em", marginTop: 3 }}>{venue}</div>

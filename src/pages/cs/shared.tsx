@@ -794,7 +794,10 @@ function EventSheet({ ev, onClose }: { ev: Ev | null; onClose: () => void }) {
               const sub = vi ? [vi.kind, shortAddress(vi.address)].filter(Boolean).join(" · ") : ""
               return (
                 <div style={{ display: "flex", gap: 10, marginTop: 11, padding: "9px 11px", border: `2px solid ${CS.K}`, background: CS.W, boxShadow: `2.5px 2.5px 0 ${CS.B}` }}>
-                  <span style={{ fontSize: 15, lineHeight: 1.15, flexShrink: 0 }}>📍</span>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, marginTop: 1 }}>
+                    <path d="M12 21C12 21 5 13.5 5 9A7 7 0 0 1 19 9C19 13.5 12 21 12 21Z" stroke={CS.K} strokeWidth="2.2" strokeLinejoin="round" />
+                    <circle cx="12" cy="9" r="2.6" fill={CS.B} />
+                  </svg>
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontFamily: FONT_MONO, fontSize: 8, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: CS.B }}>Место</div>
                     <div style={{ fontWeight: 900, fontSize: 13.5, letterSpacing: "-0.01em", color: CS.K, marginTop: 2, lineHeight: 1.12, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{name}</div>
