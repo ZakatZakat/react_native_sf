@@ -855,12 +855,16 @@ export default function CsFeed() {
   )
 
   // v4 map-first intro — a 3D map overlay on first board entry per session.
-  // Disable with ?nointro=1; reopen via the "↻ карта" button.
+  // ВРЕМЕННО ОТКЛЮЧЕНО для пользователей (MAP_ENABLED=false): доска/лента грузится
+  // сразу, без карты. Весь функционал карты сохранён (MapIntro, кнопка «карта»,
+  // dismiss/reopen, ?nointro=1) — чтобы вернуть, поставь MAP_ENABLED=true; тогда
+  // работает прежняя логика «раз за сессию» (cs.mapintro.seen). Доработаем позже.
+  const MAP_ENABLED = false
   const [showIntro, setShowIntro] = useState(() => {
+    if (!MAP_ENABLED) return false
     if (typeof window === "undefined") return false
     if (search.nointro && String(search.nointro) !== "0") return false
-    // По просьбе показываем map-intro ВСЕГДА (не раз за сессию). Выключатель — ?nointro=1.
-    return true
+    return !sessionStorage.getItem("cs.mapintro.seen")
   })
   const dismissIntro = () => {
     try { sessionStorage.setItem("cs.mapintro.seen", "1") } catch { /* noop */ }
@@ -870,7 +874,7 @@ export default function CsFeed() {
   let inner: React.ReactNode
   if (view === "diary") inner = <DiaryView feed={feed} />
   else if (view === "journal") inner = <JournalView feed={feed} name={safeName} />
-  else inner = <BoardView feed={boardCatalog} searchFeed={upcoming} btn={btn} name={safeName} onMap={() => setShowIntro(true)} />
+  else inner = <BoardView feed={boardCatalog} searchFeed={upcoming} btn={btn} name={safeName} onMap={MAP_ENABLED ? () => setShowIntro(true) : undefined} />
 
   return (
     <NavCtx.Provider value={navValue}>

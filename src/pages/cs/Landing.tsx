@@ -127,8 +127,7 @@ export default function CsLanding() {
   // hidden (the lockup draws it), so there's no double banner.
   const [coldOpen, setColdOpen] = useState(() => {
     if (typeof window === "undefined") return false
-    // По просьбе показываем cold-open ВСЕГДА (не раз за сессию) — интро каждый заход.
-    return true
+    return !sessionStorage.getItem("cs.coldopen.seen")
   })
   const dismissColdOpen = () => {
     try { sessionStorage.setItem("cs.coldopen.seen", "1") } catch { /* noop */ }
