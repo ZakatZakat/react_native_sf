@@ -18,6 +18,16 @@ import { accessBadges, whenLabel } from "./WebFeed"
 import { closingSoon } from "./buildDerived"
 import { analytics } from "../../lib/analytics"
 
+// «Место = театр / бар / кафе…» — родовое слово, не реальная площадка/адрес
+// (мусорное извлечение). Такие одиночные венью в блоке «место» не показываем.
+const GENERIC_VENUE = new Set([
+  "театр", "бар", "кафе", "ресторан", "клуб", "галерея", "музей", "зал", "сцена",
+  "сцене", "аудитория", "аудитории", "площадка", "пространство", "центр", "дворец",
+  "парк", "кинотеатр", "лекторий", "студия", "магазин", "библиотека", "коворкинг",
+  "лофт", "веранда", "крыша", "двор", "дом", "храм", "собор", "церковь", "мастерская",
+  "отель", "хостел", "склад", "ангар", "завод", "фабрика", "дк", "тц", "школа", "усадьба",
+])
+
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ position: "relative", minHeight: "100vh", background: CS.W, color: SK.ink, fontFamily: FONT_SANS }}>
@@ -43,7 +53,9 @@ function EventDetail({ ev }: { ev: Ev }) {
   // const isOn = going.isGoing(ev)
   const ch = ev.ch.replace(/^@/, "")
   const tgUrl = ev.mid ? `https://t.me/${ch}/${ev.mid}` : (ch && ch !== "—" ? `https://t.me/${ch}` : null)
-  const venue = ev.v && !ev.v.startsWith("@") ? ev.v : ""
+  const rawVenue = ev.v && !ev.v.startsWith("@") ? ev.v.trim() : ""
+  // мусорные родовые venue («театр», «бар»…) не показываем как «место»
+  const venue = rawVenue && !GENERIC_VENUE.has(rawVenue.toLowerCase().replace(/[«»"'.]/g, "").trim()) ? rawVenue : ""
   const priceStr = ev.price && ev.price !== "—" ? ev.price : ""
   const bd = accessBadges(ev)
 
