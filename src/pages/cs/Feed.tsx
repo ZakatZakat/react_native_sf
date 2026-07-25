@@ -250,7 +250,7 @@ function BoardLead({ ev }: { ev: Ev }) {
 
 /** Catalog card — one bordered component: framed poster (date badge) + a
  *  distinct footer block (meta · full title · venue · description). */
-function MosaicCard({ ev, i, onImg }: { ev: Ev; i: number; onImg?: () => void }) {
+function MosaicCard({ ev, i, onImg, onBroken }: { ev: Ev; i: number; onImg?: () => void; onBroken?: (id: string) => void }) {
   const open = useOpenEvent()
   // Poster failed to load (0-byte/404/corrupt) — a mosaic card is poster-first,
   // so drop the whole card rather than show a broken «?» tile. CSS columns reflow
@@ -295,7 +295,7 @@ function MosaicCard({ ev, i, onImg }: { ev: Ev; i: number; onImg?: () => void })
                 overflow:auto-скроллере не срабатывает в WebKit/iOS (Telegram),
                 постеры остаются пустыми. Число картинок в DOM и так ограничено
                 виндовингом MosaicGrid, поэтому грузим сразу. */}
-            {ev.p && <img src={ev.p} alt="" onLoad={onImg} onError={() => { setBroken(true); onImg?.() }} style={{ width: "100%", height: "auto", maxHeight: 380, objectFit: "cover", display: "block" }} />}
+            {ev.p && <img src={ev.p} alt="" onLoad={onImg} onError={() => { setBroken(true); onBroken?.(ev.id); onImg?.() }} style={{ width: "100%", height: "auto", maxHeight: 380, objectFit: "cover", display: "block" }} />}
             <span style={{ position: "absolute", top: 8, right: 8, background: SK.ink, color: SK.paper, fontWeight: 900, fontSize: 13, letterSpacing: "0.02em", lineHeight: 1, padding: "5px 8px" }}>{ev.d}</span>
             {(() => { const cs = closingSoon(ev); return cs ? (
               <span style={{ position: "absolute", top: 8, left: 8, background: "#E0162B", color: "#fff", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 9, letterSpacing: "0.04em", textTransform: "uppercase", padding: "4px 6px", border: `1.5px solid ${SK.ink}`, lineHeight: 1 }}>{cs.label}</span>
@@ -345,9 +345,16 @@ function MosaicGrid({ events }: { events: Ev[] }) {
   const rafRef = useRef(0)
   const firstRef = useRef(false) // first layout of a set → place without animating
   const [layout, setLayout] = useState<{ pos: { x: number; y: number; w: number }[]; h: number; anim: boolean }>({ pos: [], h: 0, anim: false })
-  useEffect(() => { setVisible(INITIAL); firstRef.current = false }, [events]) // reset on category/data change
+  // Постеры-битые карточки (404/0-байт) МЫ ВЫКИДЫВАЕМ из раскладки целиком, а не
+  // рендерим на месте `null`: иначе битая карточка держит слот в колонке нулевой
+  // высоты, а над ней остаётся пустая дыра (симптом «секция едет не с начала»).
+  // Исключаем их ДО окна/упаковки — остальные перетекают влево.
+  const [broken, setBroken] = useState<Set<string>>(() => new Set())
+  const markBroken = (id: string) => setBroken((prev) => (prev.has(id) ? prev : new Set(prev).add(id)))
+  const live = useMemo(() => events.filter((e) => !broken.has(e.id)), [events, broken])
+  useEffect(() => { setVisible(INITIAL); firstRef.current = false; setBroken(new Set()) }, [events]) // reset on category/data change
   useEffect(() => {
-    if (visible >= events.length) return
+    if (visible >= live.length) return
     // Walk UP from the grid to its real scroll container and grow the window
     // when the user nears the bottom. (There can be more than one `.sk-scroll`
     // in the tree, so query-by-class grabs the wrong one; and a viewport-root
@@ -362,14 +369,14 @@ function MosaicGrid({ events }: { events: Ev[] }) {
       // a masonry "dead end" (one column ends ~a card short → white gap). Only
       // the true end of the list keeps a small ragged edge (masonry is like that).
       if (el.scrollTop + el.clientHeight >= el.scrollHeight - 2400) {
-        setVisible((v) => Math.min(v + STEP, events.length))
+        setVisible((v) => Math.min(v + STEP, live.length))
       }
     }
     el.addEventListener("scroll", onScroll, { passive: true })
     onScroll() // in case the initial window already fits without scrolling
     return () => el.removeEventListener("scroll", onScroll)
-  }, [visible, events.length])
-  const shown = events.slice(0, visible)
+  }, [visible, live.length])
+  const shown = live.slice(0, visible)
   const relayout = () => {
     const wrap = wrapRef.current
     if (!wrap) return
@@ -389,7 +396,7 @@ function MosaicGrid({ events }: { events: Ev[] }) {
   // is a fresh slice every render, so depending on it re-ran the effect on its
   // own setLayout → infinite loop.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useLayoutEffect(relayout, [visible, events])
+  useLayoutEffect(relayout, [visible, live])
   const scheduleRelayout = () => { cancelAnimationFrame(rafRef.current); rafRef.current = requestAnimationFrame(relayout) }
   useEffect(() => () => cancelAnimationFrame(rafRef.current), [])
   return (
@@ -400,7 +407,7 @@ function MosaicGrid({ events }: { events: Ev[] }) {
           ref={(el) => { cardRefs.current[i] = el }}
           style={{ position: "absolute", left: 0, top: 0, width: layout.pos[i]?.w ?? "calc(50% - 7px)", transform: `translate(${layout.pos[i]?.x ?? 0}px, ${layout.pos[i]?.y ?? 0}px)`, transition: layout.anim ? "transform 0.22s cubic-bezier(0.22,1,0.36,1)" : "none" }}
         >
-          <MosaicCard ev={e} i={i} onImg={scheduleRelayout} />
+          <MosaicCard ev={e} i={i} onImg={scheduleRelayout} onBroken={markBroken} />
         </div>
       ))}
     </div>
