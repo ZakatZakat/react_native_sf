@@ -66,16 +66,30 @@ function EventDetail({ ev }: { ev: Ev }) {
     <Shell>
       <BackLink />
       <div style={{ display: "flex", gap: 36, marginTop: 24, alignItems: "flex-start", flexWrap: "wrap" }}>
-        {/* постер */}
-        {ev.p && (
+        {/* постер + блок «место» под ним */}
+        {(ev.p || venue) && (
           <div style={{ flex: "0 0 auto", width: "min(440px, 100%)" }}>
-            <div style={{ position: "relative", border: `2.5px solid ${SK.ink}`, boxShadow: `6px 6px 0 ${SK.ink}`, background: "#E4E4E1", lineHeight: 0 }}>
-              <img src={ev.p} alt="" style={{ width: "100%", height: "auto", display: "block" }} />
-              <span style={{ position: "absolute", top: 11, left: 11, background: CS.B, color: "#fff", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", padding: "5px 10px", border: `1.5px solid ${SK.ink}` }}>{ev.c}</span>
-              <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, display: "flex", justifyContent: "space-between", padding: "8px 11px", background: SK.ink, color: "#fff", fontFamily: FONT_MONO, fontSize: 11, letterSpacing: "0.06em" }}>
-                <span>{whenLabel(ev)}</span>{priceStr && <span>{priceStr}</span>}
+            {ev.p && (
+              <div style={{ position: "relative", border: `2.5px solid ${SK.ink}`, boxShadow: `6px 6px 0 ${SK.ink}`, background: "#E4E4E1", lineHeight: 0 }}>
+                <img src={ev.p} alt="" style={{ width: "100%", height: "auto", display: "block" }} />
+                <span style={{ position: "absolute", top: 11, left: 11, background: CS.B, color: "#fff", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", padding: "5px 10px", border: `1.5px solid ${SK.ink}` }}>{ev.c}</span>
+                <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, display: "flex", justifyContent: "space-between", padding: "8px 11px", background: SK.ink, color: "#fff", fontFamily: FONT_MONO, fontSize: 11, letterSpacing: "0.06em" }}>
+                  <span>{whenLabel(ev)}</span>{priceStr && <span>{priceStr}</span>}
+                </div>
               </div>
-            </div>
+            )}
+            {venue && (
+              <div style={{ display: "flex", gap: 12, marginTop: ev.p ? 14 : 0, padding: "12px 15px", border: `2px solid ${SK.ink}`, background: SK.paper }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, marginTop: 1 }}>
+                  <path d="M12 21C12 21 5 13.5 5 9A7 7 0 0 1 19 9C19 13.5 12 21 12 21Z" stroke={SK.ink} strokeWidth="2.2" strokeLinejoin="round" />
+                  <circle cx="12" cy="9" r="2.6" fill={CS.B} />
+                </svg>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontFamily: FONT_MONO, fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: CS.B }}>Место</div>
+                  <div style={{ fontWeight: 900, fontSize: 16, letterSpacing: "-0.01em", marginTop: 3 }}>{venue}</div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -88,19 +102,6 @@ function EventDetail({ ev }: { ev: Ev }) {
           {(() => { const cs = closingSoon(ev); return cs ? (
             <div style={{ display: "inline-flex", alignItems: "center", gap: 8, marginTop: 16, background: "#E0162B", color: "#fff", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 14, letterSpacing: "0.04em", textTransform: "uppercase", padding: "8px 14px", border: `2px solid ${SK.ink}`, boxShadow: `3px 3px 0 ${SK.ink}`, lineHeight: 1 }}>⏳ {cs.label}</div>
           ) : null })()}
-
-          {venue && (
-            <div style={{ display: "flex", gap: 12, marginTop: 18, padding: "12px 15px", border: `2px solid ${SK.ink}`, background: SK.paper, boxShadow: `3px 3px 0 ${CS.B}` }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, marginTop: 1 }}>
-                <path d="M12 21C12 21 5 13.5 5 9A7 7 0 0 1 19 9C19 13.5 12 21 12 21Z" stroke={SK.ink} strokeWidth="2.2" strokeLinejoin="round" />
-                <circle cx="12" cy="9" r="2.6" fill={CS.B} />
-              </svg>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontFamily: FONT_MONO, fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: CS.B }}>Место</div>
-                <div style={{ fontWeight: 900, fontSize: 16, letterSpacing: "-0.01em", marginTop: 3 }}>{venue}</div>
-              </div>
-            </div>
-          )}
 
           <div style={{ display: "flex", gap: 12, marginTop: 22, flexWrap: "wrap" }}>
             {/* Временно скрыто — в веб-версии пока нет функционала профиля. Вернуть
