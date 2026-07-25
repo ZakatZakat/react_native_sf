@@ -884,7 +884,8 @@ export default function CsFeed() {
   const [showIntro, setShowIntro] = useState(() => {
     if (typeof window === "undefined") return false
     if (search.nointro && String(search.nointro) !== "0") return false
-    return !sessionStorage.getItem("cs.mapintro.seen")
+    // По просьбе показываем map-intro ВСЕГДА (не раз за сессию). Выключатель — ?nointro=1.
+    return true
   })
   const dismissIntro = () => {
     try { sessionStorage.setItem("cs.mapintro.seen", "1") } catch { /* noop */ }
