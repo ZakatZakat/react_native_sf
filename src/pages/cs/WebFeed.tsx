@@ -90,6 +90,11 @@ function heroScore(e: Ev): number {
   if (e.ts == null) s += 1.5
   if (!e.v || e.v.startsWith("@")) s += 1
   if (e.geo) s -= 0.5
+  // «Выбор недели» = про эту неделю: мягкий штраф за дальние даты (14д→0, 28д→+1, 42д+→+2).
+  if (e.ts != null) {
+    const days = (e.ts - Date.now()) / 86400000
+    if (days > 14) s += Math.min((days - 14) / 14, 2)
+  }
   return s
 }
 
