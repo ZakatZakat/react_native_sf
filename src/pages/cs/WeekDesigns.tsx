@@ -19,7 +19,7 @@ export const WEEK_VARIANT_LABELS: Record<WeekVariant, string> = {
   split4: "Триптих",
 }
 
-export type WeekHero = { p: string | null; tm?: string }
+export type WeekHero = { p: string | null; tm?: string; id?: string }
 
 // Week label — a stable-ish ISO week number + date span for "this week".
 export function weekMeta() {
@@ -37,11 +37,11 @@ export function weekMeta() {
 // the image URL is dead (404 / 0-байт / протухшая Telegram-медиа): onError
 // переключает на тот же тёмный градиент, а не оставляет браузерный «сломанный»
 // глиф с «?». (Postersless-события в триптих уже не попадают — фильтр в Week.tsx.)
-function Poster({ url, style }: { url: string | null; style?: React.CSSProperties }) {
+function Poster({ url, style, evId, onBroken }: { url: string | null; style?: React.CSSProperties; evId?: string; onBroken?: (id?: string) => void }) {
   const [broken, setBroken] = useState(false)
   const base: React.CSSProperties = { width: "100%", height: "100%", objectFit: "cover", ...style }
   return url && !broken
-    ? <img src={url} alt="" onError={() => setBroken(true)} style={base} />
+    ? <img src={url} alt="" onError={() => { setBroken(true); onBroken?.(evId) }} style={base} />
     : <div style={{ ...base, background: "linear-gradient(160deg,#222,#0d0d0d)" }} />
 }
 
@@ -54,7 +54,7 @@ function Kicker({ children, color }: { children: React.ReactNode; color?: string
 }
 
 export function WeekDesign({
-  variant, hero, trio = [], wk, lead, eventsCount, still = false,
+  variant, hero, trio = [], wk, lead, eventsCount, still = false, onPosterBroken,
 }: {
   variant: WeekVariant
   hero?: WeekHero
@@ -63,6 +63,7 @@ export function WeekDesign({
   lead: string
   eventsCount: number
   still?: boolean
+  onPosterBroken?: (id?: string) => void
 }) {
   const anim = (d: number): React.CSSProperties => still ? {} : ({ animation: `sk-week-up 0.55s cubic-bezier(0.22,1,0.36,1) ${d}s both` })
   const heroTag = hero?.tm && hero.tm !== "—" ? `ГЛАВНОЕ · ${hero.tm}` : "ГЛАВНОЕ"
@@ -129,7 +130,7 @@ export function WeekDesign({
       <div style={{ position: "absolute", inset: 0, display: "flex", ...anim(0) }}>
         {cols.map((e, i) => (
           <div key={i} style={{ flex: 1, overflow: "hidden", borderRight: i < 2 ? `2px solid ${SK.ink}` : "none" }}>
-            <Poster url={e?.p ?? null} style={{ opacity: 0.9 }} />
+            <Poster url={e?.p ?? null} style={{ opacity: 0.9 }} evId={e?.id} onBroken={onPosterBroken} />
           </div>
         ))}
       </div>
