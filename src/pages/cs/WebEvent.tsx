@@ -73,7 +73,7 @@ function EventDetail({ ev }: { ev: Ev }) {
               <img src={ev.p} alt="" style={{ width: "100%", height: "auto", display: "block" }} />
               <span style={{ position: "absolute", top: 11, left: 11, background: CS.B, color: "#fff", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", padding: "5px 10px", border: `1.5px solid ${SK.ink}` }}>{ev.c}</span>
               <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, display: "flex", justifyContent: "space-between", padding: "8px 11px", background: SK.ink, color: "#fff", fontFamily: FONT_MONO, fontSize: 11, letterSpacing: "0.06em" }}>
-                <span>{whenLabel(ev) || ev.d}</span>{priceStr && <span>{priceStr}</span>}
+                <span>{whenLabel(ev)}</span>{priceStr && <span>{priceStr}</span>}
               </div>
             </div>
           </div>

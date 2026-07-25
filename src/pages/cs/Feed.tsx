@@ -304,12 +304,13 @@ function MosaicCard({ ev, i, onImg, onBroken }: { ev: Ev; i: number; onImg?: () 
             {ev.p && <img src={ev.p} alt="" onLoad={onImg} onError={() => { setBroken(true); onBroken?.(ev.id); onImg?.() }} style={{ width: "100%", height: "auto", maxHeight: 380, objectFit: "cover", display: "block" }} />}
             {(() => {
               const cs = closingSoon(ev)
+              const hasDate = !!ev.d && ev.d !== "—"   // выставки-диапазоны без даты старта → бейдж не рисуем
               return (
                 <>
                   {/* Дата — обычно top-right. Если есть красный бейдж «закрывается»
                       (top-left, длинный) — уводим дату в НИЖНИЙ правый угол, иначе на
-                      узкой карточке плашка налезает на дату. */}
-                  <span style={{ position: "absolute", right: 8, ...(cs ? { bottom: 8 } : { top: 8 }), background: SK.ink, color: SK.paper, fontWeight: 900, fontSize: 13, letterSpacing: "0.02em", lineHeight: 1, padding: "5px 8px" }}>{ev.d}</span>
+                      узкой карточке плашка налезает на дату. Пустой «—» не показываем. */}
+                  {hasDate && <span style={{ position: "absolute", right: 8, ...(cs ? { bottom: 8 } : { top: 8 }), background: SK.ink, color: SK.paper, fontWeight: 900, fontSize: 13, letterSpacing: "0.02em", lineHeight: 1, padding: "5px 8px" }}>{ev.d}</span>}
                   {cs && (
                     <span style={{ position: "absolute", top: 8, left: 8, background: "#E0162B", color: "#fff", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 9, letterSpacing: "0.04em", textTransform: "uppercase", padding: "4px 6px", border: `1.5px solid ${SK.ink}`, lineHeight: 1 }}>{cs.label}</span>
                   )}

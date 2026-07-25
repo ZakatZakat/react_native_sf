@@ -116,7 +116,7 @@ function WebCard({ ev, i = 0, onBroken }: { ev: Ev; i?: number; onBroken?: (id: 
       <div onClick={() => navigate({ to: "/web/event/$id", params: { id: ev.id } })} style={{ background: SK.paper, border: `2.5px solid ${SK.ink}`, boxShadow: `4px 5px 0 ${SK.ink}`, overflow: "hidden", cursor: "pointer" }}>
         <div style={{ position: "relative", borderBottom: `2.5px solid ${SK.ink}`, background: "#E4E4E1", lineHeight: 0 }}>
           {ev.p && <img src={ev.p} alt="" onError={() => { setBroken(true); onBroken?.(ev.id) }} style={{ width: "100%", height: "auto", maxHeight: 540, objectFit: "cover", display: "block" }} />}
-          <span style={{ position: "absolute", top: 11, right: 11, background: SK.ink, color: SK.paper, fontWeight: 900, fontSize: 16, letterSpacing: "0.02em", padding: "6px 10px" }}>{ev.d}</span>
+          {ev.d && ev.d !== "—" && <span style={{ position: "absolute", top: 11, right: 11, background: SK.ink, color: SK.paper, fontWeight: 900, fontSize: 16, letterSpacing: "0.02em", padding: "6px 10px" }}>{ev.d}</span>}
           {(() => { const cs = closingSoon(ev); return cs ? (
             <span style={{ position: "absolute", top: 11, left: 11, background: "#E0162B", color: "#fff", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "0.04em", textTransform: "uppercase", padding: "5px 9px", border: `2px solid ${SK.ink}`, lineHeight: 1 }}>{cs.label}</span>
           ) : null })()}
