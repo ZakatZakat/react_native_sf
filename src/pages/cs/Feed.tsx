@@ -74,32 +74,33 @@ function accessSquare(access: string): string {
 
 /** Блок-штамп: рамка + смещённая тень + цветной квадрат + подпись капсом.
  *  Углы прямые (квадратный вид) — по вкусу. */
-function StampBadge({ label, square, style }: { label: string; square: string; style?: React.CSSProperties }) {
+function StampBadge({ label, square, style, compact = false }: { label: string; square: string; style?: React.CSSProperties; compact?: boolean }) {
+  const b = compact ? 1.5 : 2
   return (
     <span style={{
-      display: "inline-flex", alignItems: "center", gap: 5, whiteSpace: "nowrap",
-      fontFamily: FONT_SANS, fontWeight: 800, fontSize: 9.5, letterSpacing: "0.05em",
-      textTransform: "uppercase", lineHeight: 1, padding: "4px 8px 4px 5px",
-      background: SK.paper, color: SK.ink, border: `2px solid ${SK.ink}`,
-      boxShadow: `2px 2px 0 ${SK.ink}`, ...style,
+      display: "inline-flex", alignItems: "center", gap: compact ? 4 : 5, whiteSpace: "nowrap",
+      fontFamily: FONT_SANS, fontWeight: 800, fontSize: compact ? 8 : 9.5, letterSpacing: compact ? "0.03em" : "0.05em",
+      textTransform: "uppercase", lineHeight: 1, padding: compact ? "3px 6px 3px 4px" : "4px 8px 4px 5px",
+      background: SK.paper, color: SK.ink, border: `${b}px solid ${SK.ink}`,
+      boxShadow: `${b}px ${b}px 0 ${SK.ink}`, ...style,
     }}>
-      <span style={{ width: 10, height: 10, flex: "0 0 auto", background: square }} />
+      <span style={{ width: compact ? 7 : 10, height: compact ? 7 : 10, flex: "0 0 auto", background: square }} />
       {label}
     </span>
   )
 }
 
 /** Бейдж доступа. Рендерит «свободно» и все барьеры; пусто — без сигнала. */
-function AccessTag({ ev, style }: { ev: Ev; style?: React.CSSProperties }) {
+function AccessTag({ ev, style, compact }: { ev: Ev; style?: React.CSSProperties; compact?: boolean }) {
   const label = ACCESS_LABEL[ev.access]
   if (!label) return null
-  return <StampBadge label={label} square={accessSquare(ev.access)} style={style} />
+  return <StampBadge label={label} square={accessSquare(ev.access)} style={style} compact={compact} />
 }
 
 /** Возрастной ценз «18+» — тот же штамп с чёрным квадратом. */
-function AgeTag({ ev, style }: { ev: Ev; style?: React.CSSProperties }) {
+function AgeTag({ ev, style, compact }: { ev: Ev; style?: React.CSSProperties; compact?: boolean }) {
   if (!ev.age) return null
-  return <StampBadge label={ev.age} square={SK.ink} style={style} />
+  return <StampBadge label={ev.age} square={SK.ink} style={style} compact={compact} />
 }
 
 /** Pick N events from the feed; pad with positionally-unique placeholders
@@ -265,11 +266,12 @@ function MosaicCard({ ev, i, onImg, onBroken }: { ev: Ev; i: number; onImg?: () 
   const float = i < 20
   // venue / subtitle only if it's a real place (not a bare @channel handle)
   const venue = ev.v && !ev.v.startsWith("@") ? ev.v : ""
-  const time = ev.tm && ev.tm !== "—" ? ev.tm : ""
-  // «Свободный вход» уносим из меты — его показывает синий бейдж «свободно»,
-  // чтобы не дублировать; в мете остаётся время + реальная цена (₽).
+  // «00:00» — дефолт для события без указанного часа (парсится в полночь);
+  // как в вебе (whenLabel) его НЕ показываем — только реальное время.
+  const time = ev.tm && ev.tm !== "—" && ev.tm !== "00:00" ? ev.tm : ""
+  // «Свободный вход» уносим — его показывает синий бейдж «свободно», чтобы не
+  // дублировать; остаётся реальная цена (₽).
   const price = ev.price && ev.price !== "—" && !/свобод|беспл|free/i.test(ev.price) ? ev.price : ""
-  const meta = [time, price].filter(Boolean).join(" · ")
   // description = the post body BELOW its first line (the first line is the
   // title, already shown in full above — don't repeat it).
   const nl = (ev.desc || "").indexOf("\n")
@@ -303,14 +305,17 @@ function MosaicCard({ ev, i, onImg, onBroken }: { ev: Ev; i: number; onImg?: () 
           </div>
           {/* footer block */}
           <div style={{ padding: "9px 11px 11px" }}>
-            <div style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9.5, letterSpacing: "0.03em", color: SK.ink55, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{meta}</div>
-            {(ACCESS_LABEL[ev.access] || ev.age) && (
-              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 5, marginTop: 7 }}>
-                <AccessTag ev={ev} />
-                <AgeTag ev={ev} />
+            {/* время + доступ + возраст — компактные блок-штампы в один ряд;
+                стремятся уместиться в одну строку (мельче + меньше gap) */}
+            {(time || ACCESS_LABEL[ev.access] || ev.age) && (
+              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 4 }}>
+                {time && <StampBadge label={time} square={CS.B} compact />}
+                <AccessTag ev={ev} compact />
+                <AgeTag ev={ev} compact />
               </div>
             )}
-            <div style={{ fontWeight: 900, fontSize: 17, letterSpacing: "-0.015em", lineHeight: 1.06, color: SK.ink, marginTop: 6, textTransform: "uppercase", overflowWrap: "break-word", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{ev.t}</div>
+            {price && <div style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9.5, letterSpacing: "0.03em", color: SK.ink55, marginTop: 6, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{price}</div>}
+            <div style={{ fontWeight: 900, fontSize: 14, letterSpacing: "-0.01em", lineHeight: 1.08, color: SK.ink, marginTop: 8, textTransform: "uppercase", overflowWrap: "break-word", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{ev.t}</div>
             {venue && <div style={{ fontWeight: 700, fontSize: 11, lineHeight: 1.25, color: SK.ink55, marginTop: 5 }}>{venue}</div>}
             {body && (
               <div style={{ fontSize: 10.5, lineHeight: 1.34, color: SK.ink55, marginTop: 7, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{body}</div>
