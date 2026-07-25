@@ -23,6 +23,8 @@ import { useDerived } from "./useJourney"
 import { analytics } from "../../lib/analytics"
 
 const CAT_SYM = new Map(INTERESTS.map((i) => [i.label, i.symbol]))
+// Порядок чипов-категорий: сначала «якорные» (выставки/кино/музыка), потом остальное.
+const CAT_PRIORITY = ["Выставки", "Кино", "Музыка"]
 
 // ── Доступность (тот же смысл, что в мобильной ленте, крупнее) ──────────
 const ACCESS_LABEL: Record<string, string> = {
@@ -250,7 +252,10 @@ export default function CsWebFeed() {
   const cats = useMemo(() => {
     const seen: string[] = []
     for (const e of mainE) if (e.c && e.c !== "—" && !seen.includes(e.c)) seen.push(e.c)
-    return ["Все", ...seen]
+    const origIdx = new Map(seen.map((c, i) => [c, i]))
+    const pr = (c: string) => { const i = CAT_PRIORITY.indexOf(c); return i === -1 ? 99 : i }
+    const ordered = [...seen].sort((a, b) => (pr(a) - pr(b)) || (origIdx.get(a)! - origIdx.get(b)!))
+    return ["Все", ...ordered]
   }, [mainE])
   const [cat, setCat] = useState("Все")        // 1-й уровень — крупная категория
   const [tag, setTag] = useState<string | null>(null) // 2-й уровень — подтег

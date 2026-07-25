@@ -37,6 +37,9 @@ import { weekMeta } from "./WeekDesigns"
 // Метка крупной категории → её символ из таксономии (◤ ▶ ♪ ▦ …) — ведущий глиф
 // на чипах фильтра, чтобы категории читались и «фирменно», и быстрее.
 const CAT_SYM = new Map(INTERESTS.map((i) => [i.label, i.symbol]))
+// Порядок чипов-категорий в фильтре: сначала «якорные» (выставки/кино/музыка),
+// затем всё остальное в порядке первого появления. По просьбе — арт вперёд.
+const CAT_PRIORITY = ["Выставки", "Кино", "Музыка"]
 import { useDerived, useJourneyState } from "./useJourney"
 import { analytics } from "../../lib/analytics"
 import CsFeedLegacy from "./FeedLegacy"
@@ -551,13 +554,25 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
   // Category filter — applies ONLY to the «Каталог» grid; «выбор недели» stays.
   const [cat, setCat] = useState("Все")
   const [tag, setTag] = useState<string | null>(null) // second-tier fine tag
+  const [access, setAccess] = useState<string | null>(null) // фильтр по барьеру входа
   const cats = useMemo(() => {
     const seen: string[] = []
     for (const e of mainE) if (e.c && e.c !== "—" && !seen.includes(e.c)) seen.push(e.c)
-    return ["Все", ...seen]
+    const origIdx = new Map(seen.map((c, i) => [c, i]))
+    const pr = (c: string) => { const i = CAT_PRIORITY.indexOf(c); return i === -1 ? 99 : i }
+    const ordered = [...seen].sort((a, b) => (pr(a) - pr(b)) || (origIdx.get(a)! - origIdx.get(b)!))
+    return ["Все", ...ordered]
   }, [mainE])
   // events in the chosen category (before the fine-tag narrowing)
   const inCat = cat === "Все" ? rest : rest.filter((e) => e.c === cat)
+  // статусы доступа, встречающиеся в категории — в порядке «доступнее → сложнее»
+  const accessOptions = useMemo(() => {
+    const present = new Set<string>()
+    for (const e of inCat) if (ACCESS_LABEL[e.access]) present.add(e.access)
+    const order = ["free", "registration", "signup", "ticket", "accreditation", "registration_closed", "sold_out"]
+    return order.filter((a) => present.has(a))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [E, cat])
   // second-row fine-tag chips — the tags that actually occur on this category's
   // events, ranked by frequency, top 12. Data-driven, no bundled taxonomy.
   const tagChips = useMemo(() => {
@@ -566,7 +581,8 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
     return [...freq.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12).map(([t]) => t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [E, cat])
-  const filtered = tag ? inCat.filter((e) => e.tags?.includes(tag)) : inCat
+  let filtered = tag ? inCat.filter((e) => e.tags?.includes(tag)) : inCat
+  if (access) filtered = filtered.filter((e) => e.access === access)
   // Ранжирование по трению (фидбек #3): жёсткие барьеры (рега закрыта / sold out)
   // тонут в конец каталога; остальное сохраняет хронологический порядок (stable sort).
   const catalogAll = [...filtered].sort((a, b) => {
@@ -581,7 +597,7 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
     .filter((x) => x.cs)
     .sort((a, b) => a.cs!.days - b.cs!.days)
     .map((x) => x.e), [mainE])
-  const showClosing = cat === "Все" && !tag && closing.length > 0
+  const showClosing = cat === "Все" && !tag && !access && closing.length > 0
   const closingSet = useMemo(() => new Set(closing.map((e) => e.id)), [closing])
   const catalog = showClosing ? catalogAll.filter((e) => !closingSet.has(e.id)) : catalogAll
   // «Носик» подтег-лотка целится в ВЫБРАННУЮ категорию: меряем её позицию в
@@ -668,17 +684,32 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
       </div>
 
       {/* category filter — chips filter the «Каталог» grid only (hero stays) */}
-      <div ref={catRowRef} onScroll={measureBeak} className="sk-scroll" style={{ display: "flex", gap: 8, overflowX: "auto", padding: "0 14px 4px", marginBottom: (cat !== "Все" && tagChips.length > 0) ? 0 : 14 }}>
+      <div ref={catRowRef} onScroll={measureBeak} className="sk-scroll" style={{ display: "flex", gap: 8, overflowX: "auto", padding: "0 14px 4px", marginBottom: (accessOptions.length > 0 || (cat !== "Все" && tagChips.length > 0)) ? 8 : 14 }}>
         {cats.map((c) => {
           const on = cat === c
           const sym = c !== "Все" ? CAT_SYM.get(c) : undefined
           return (
-            <button key={c} data-active={on ? "1" : undefined} onClick={() => { setCat(c); setTag(null); analytics.track("cs.feed.filter", { kind: "category", value: c }) }} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 12px", border: `2px solid ${SK.ink}`, background: on ? SK.ink : SK.paper, color: on ? SK.paper : SK.ink, fontFamily: FONT_SANS, fontWeight: 800, fontSize: 10.5, letterSpacing: "0.05em", textTransform: "uppercase", whiteSpace: "nowrap", cursor: "pointer" }}>
+            <button key={c} data-active={on ? "1" : undefined} onClick={() => { setCat(c); setTag(null); setAccess(null); analytics.track("cs.feed.filter", { kind: "category", value: c }) }} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 12px", border: `2px solid ${SK.ink}`, background: on ? SK.ink : SK.paper, color: on ? SK.paper : SK.ink, fontFamily: FONT_SANS, fontWeight: 800, fontSize: 10.5, letterSpacing: "0.05em", textTransform: "uppercase", whiteSpace: "nowrap", cursor: "pointer" }}>
               {sym && <span style={{ fontWeight: 400, fontSize: 12.5, lineHeight: 1 }}>{sym}</span>}{c}
             </button>
           )
         })}
       </div>
+      {/* фильтр доступа — как в вебе: свободно / регистрация / билеты / … .
+          Показываем статусы, реально встречающиеся в текущей категории. */}
+      {accessOptions.length > 0 && (
+        <div className="sk-scroll" style={{ display: "flex", gap: 8, overflowX: "auto", padding: "0 14px 4px", marginBottom: (cat !== "Все" && tagChips.length > 0) ? 8 : 14 }}>
+          {accessOptions.map((a) => {
+            const on = access === a
+            return (
+              <button key={a} onClick={() => { setAccess(on ? null : a); if (!on) analytics.track("cs.feed.filter", { kind: "access", value: a }) }} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 11px 6px 7px", border: `2px solid ${SK.ink}`, background: on ? SK.ink : SK.paper, color: on ? "#fff" : SK.ink, boxShadow: on ? `2.5px 2.5px 0 ${CS.B}` : `2.5px 2.5px 0 ${SK.ink}`, fontFamily: FONT_SANS, fontWeight: 800, fontSize: 10, letterSpacing: "0.04em", textTransform: "uppercase", whiteSpace: "nowrap", cursor: "pointer" }}>
+                <span style={{ width: 11, height: 11, flex: "0 0 auto", background: on ? "#fff" : accessSquare(a) }} />
+                {ACCESS_LABEL[a]}
+              </button>
+            )
+          })}
+        </div>
+      )}
       {/* Вариант 1 — подтеги раскрываются ИЗ-ПОД выбранной категории: «носик»-
           треугольник + выезд, в лёгком синем лотке, мельче и тонким синим. «Все»
           → второго ряда нет вообще (не тащим пустой уровень). */}
@@ -718,10 +749,10 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
         )}
         <SectionLabel>каталог</SectionLabel>
         {catalog.length > 0 ? (
-          <div key={`${nonce}-${cat}-${tag ?? ""}`}><MosaicGrid events={catalog} /></div>
+          <div key={`${nonce}-${cat}-${tag ?? ""}-${access ?? ""}`}><MosaicGrid events={catalog} /></div>
         ) : (
           <div style={{ fontFamily: FONT_MONO, fontSize: 11, color: SK.ink55, letterSpacing: "0.04em", padding: "10px 2px 4px" }}>
-            {cat === "Все" ? "событий пока нет" : `в категории «${cat.toLowerCase()}» пока пусто`}
+            {access ? "по этому фильтру пусто" : cat === "Все" ? "событий пока нет" : `в категории «${cat.toLowerCase()}» пока пусто`}
           </div>
         )}
       </div>
