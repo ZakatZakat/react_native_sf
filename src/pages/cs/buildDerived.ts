@@ -185,6 +185,15 @@ export function toEv(e: FeedItem): Ev {
   if (access === "" && REGISTRATION_VENUES.has(e.venue || "")) access = "registration"
   const age = detectAge(e.description || "")
   const tier = detectTier(e.description || "", access)
+  const startTs = dateObj && !Number.isNaN(dateObj.getTime()) ? dateObj.getTime() : null
+  const endObj = parseEventTime(e.event_time_end)
+  const endTs = endObj && !Number.isNaN(endObj.getTime()) ? endObj.getTime() : null
+  // «Вернисаж» — это ОТКРЫТИЕ (разовое), а не весь прогон выставки. Пост анонсирует
+  // открытие, поэтому тег висит все недели показа. Прячем бейдж, когда открытие
+  // (старт) уже прошло у многодневной выставки — остаётся просто идущая экспозиция.
+  const openingPassed = startTs != null && endTs != null && startTs < Date.now()
+  let tags = (e.tag_labels ?? []).filter((l) => !COARSE_LABELS.has(l) && l !== (interest?.label ?? ""))
+  if (openingPassed) tags = tags.filter((l) => l !== "вернисаж")
   return {
     id: e.id,
     t: cleanTitle(e.title || "Событие"),
@@ -203,11 +212,11 @@ export function toEv(e: FeedItem): Ev {
     geo: (Array.isArray(e.geo) && e.geo.length === 2) ? [e.geo[0], e.geo[1]] : null,
     venueKey: e.venue || "",
     createdTs: e.created_at ? Date.parse(e.created_at) : null,
-    ts: dateObj && !Number.isNaN(dateObj.getTime()) ? dateObj.getTime() : null,
-    endTs: (() => { const eo = parseEventTime(e.event_time_end); return eo && !Number.isNaN(eo.getTime()) ? eo.getTime() : null })(),
-    // fine-grained tag labels for badges — drop the 12 coarse categories and the
-    // one already shown as `c`, so the badge row shows only the specific tags.
-    tags: (e.tag_labels ?? []).filter((l) => !COARSE_LABELS.has(l) && l !== (interest?.label ?? "")),
+    ts: startTs,
+    endTs,
+    // fine-grained tag labels for badges — drop the 12 coarse categories, the one
+    // already shown as `c`, and «вернисаж» once the opening has passed (above).
+    tags,
     access, age, tier,
     friction: FRICTION[access] ?? 1,
   }
@@ -222,7 +231,7 @@ const mskDay = (ts: number): number => Math.floor((ts + MSK_MS) / 86400000)
 // Сигнал «это именно ЗАКРЫТИЕ» для однодневных (финисаж / последний день выставки):
 // иначе обычный однодневный концерт получал бы «закрывается сегодня».
 export const CLOSING_RE = /финисаж|финиссаж|последн(ий день|яя неделя|юю неделю)|закрыт(ие|ия) выставк|выставка закрыва|успейте|last day|closing/iu
-export function closingSoon(ev: Ev, within = 14): { days: number; label: string } | null {
+export function closingSoon(ev: Ev, within = 7): { days: number; label: string } | null {
   if (ev.endTs == null) return null
   const endDay = mskDay(ev.endTs)
   const startDay = ev.ts != null ? mskDay(ev.ts) : null
