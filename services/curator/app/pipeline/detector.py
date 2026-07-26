@@ -142,6 +142,37 @@ BROADCAST: Pattern[str] = re.compile(
     re.IGNORECASE | re.MULTILINE,
 )
 
+# ── Политическая / антиправительственная «запрещёнка» ──────────────
+# Заказчик работает на РФ-аудиторию: события про политзаключённых, антивоенные
+# акции, митинги/пикеты и упоминания признанных «иноагентами/экстремистами»
+# лиц/организаций — юридический риск, в ленту не пускаем (см. processor →
+# EventStatus.rejected). Паттерн подобран на ПРЕЦИЗИЮ: границы слова, чтобы не
+# ловить «кар‑НАВАЛЬН‑ый», «Сергей Кара‑Мурза» (социолог), «МИТАП», «сПИКЕр»,
+# и без голого «иноагент» (редакционный сарказм в легальных постах). Тюнинг и
+# кейсы — в tests/test_political_filter.py.
+POLITICAL: Pattern[str] = re.compile(
+    r"(?:"
+    r"политзакл\w*|политзэк\w*|политзек\w*|"                        # политзаключённые
+    r"узник\w*\s+совести|"
+    r"письм\w*\s+политзакл\w*|поддержк\w+\s+политзакл\w*|"
+    r"свободу\s+(?:политзакл\w+|узник\w+|навальн\w+|всем\s+политзакл\w+)|"
+    r"антивоенн\w*|(?:против|нет|останов\w+)\s+войны|"              # антивоенное
+    r"\bнавальн\w*|\bфбк\b|умное\s+голосован\w*|ходорковск\w*|"     # признанные лица/орг
+    r"pussy\s*riot|пусси\s*райот|"
+    r"овд[-\s]?инфо|"
+    r"\bпикет\w*|\bмитинг\w*|"                                      # уличные акции
+    r"акци\w*\s+протеста|протестн\w+\s+(?:акци|митинг|выступлен|движени)\w*|"
+    r"антиправительств\w*|"
+    r"нежелательн\w+\s+организац\w*|экстремистск\w+\s+(?:организац|сообщест|движени)\w*"
+    r")",
+    re.IGNORECASE,
+)
+
+
+def looks_political(text: str) -> bool:
+    """Политическая / антиправительственная «запрещёнка» — не для ленты."""
+    return bool(POLITICAL.search(text))
+
 
 def looks_out_of_moscow(text: str) -> bool:
     """A non-Moscow city is named AND Moscow is not — so the event itself is
@@ -183,6 +214,7 @@ class DetectionResult:
     score: int
     reasons: list[str]
     hits: DetectionHits
+    political: bool = False
 
     @property
     def is_event_review(self) -> bool:
@@ -196,6 +228,11 @@ class DetectionResult:
 def detect_event(text: str) -> DetectionResult:
     if not text:
         return DetectionResult(0, [], DetectionHits())
+
+    # Политическая «запрещёнка» — проверяем ПЕРВОЙ, чтобы флаг ставился всегда,
+    # даже если пост заодно похож на дайджест/др. Процессор отправит в rejected.
+    if looks_political(text):
+        return DetectionResult(0, ["political"], DetectionHits(), political=True)
 
     # Digest / roundup posts (a week's worth of events in one message) score
     # high on every signal — reject before scoring so they never surface as a

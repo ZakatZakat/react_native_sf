@@ -106,6 +106,16 @@ class PipelineProcessor:
                     last_msg_id = p.message_id
 
                 detection = detect_event(p.text)
+                # Политические/антиправительственные ивенты («запрещёнка») — НЕ в
+                # ленту. Сохраняем как rejected (аудит в админке, вкладка Rejected),
+                # но не публикуем и не шлём пуш. Юр-риск для РФ-аудитории.
+                if detection.political:
+                    enrichment = enrich_event(
+                        p.text, detection.hits, published_at=p.published_at, channel_handle=ch.handle
+                    )
+                    await events_repo.insert(p, detection, enrichment, EventStatus.rejected)
+                    rejected += 1
+                    continue
                 if not detection.is_event_review:
                     rejected += 1
                     continue
