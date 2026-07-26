@@ -242,16 +242,18 @@ function DayUsers({ days }: { days: InsightsDay[] }) {
               </div>
               {/* строки пользователей */}
               {d.users.map((u, i) => (
-                <div key={u.user_id} style={{ display: "flex", alignItems: "baseline", gap: 8, padding: "8px 13px", borderTop: i === 0 ? "none" : `1px solid ${HAIR}` }}>
-                  <span style={{ minWidth: 0, flex: 1, fontFamily: FONT_SANS, fontSize: 13, fontWeight: 700, color: INK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {u.username ? `@${u.username}` : (u.name || `id ${u.user_id}`)}
-                  </span>
-                  <span style={{ flexShrink: 0, fontFamily: FONT_MONO, fontSize: 12, fontWeight: 700, color: BLUE }}>
-                    {u.first}{u.last && u.last !== u.first ? `–${u.last}` : ""}
-                  </span>
-                  <span style={{ flexShrink: 0, width: 92, textAlign: "right", fontFamily: FONT_MONO, fontSize: 10.5, color: MUTE }}>
+                <div key={u.user_id} style={{ padding: "8px 13px", borderTop: i === 0 ? "none" : `1px solid ${HAIR}` }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                    <span style={{ minWidth: 0, flex: 1, fontFamily: FONT_SANS, fontSize: 13.5, fontWeight: 700, color: INK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {u.username ? `@${u.username}` : (u.name || `id ${u.user_id}`)}
+                    </span>
+                    <span style={{ flexShrink: 0, fontFamily: FONT_MONO, fontSize: 12.5, fontWeight: 700, color: BLUE, whiteSpace: "nowrap" }}>
+                      {u.first}{u.last && u.last !== u.first ? `–${u.last}` : ""}
+                    </span>
+                  </div>
+                  <div style={{ fontFamily: FONT_MONO, fontSize: 10.5, color: MUTE, marginTop: 2 }}>
                     {u.events} соб · {u.sessions} сес
-                  </span>
+                  </div>
                 </div>
               ))}
             </div>

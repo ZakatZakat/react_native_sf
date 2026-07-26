@@ -33,6 +33,17 @@ _EVID = "payload->'scenario'->>'event_id'"
 _USERNAME = "payload->'scenario'->'tg'->>'username'"
 _FIRSTNAME = "payload->'scenario'->'tg'->>'first_name'"
 
+# Ручной маппинг известных tg-id без публичного @username → имя (тестеры и т.п.).
+# Показывается, когда в аналитике нет ни username, ни first_name. Дополнять сюда.
+KNOWN_NAMES: dict[str, str] = {
+    "6858954895": "Simon",
+    "38146919": "healingdamage",
+}
+
+
+def _display_name(uid: str, first_name: str | None) -> str | None:
+    return first_name or KNOWN_NAMES.get(uid)
+
 
 def get_analytics_engine(request: Request) -> AsyncEngine:
     eng = getattr(request.app.state, "analytics_engine", None)
@@ -130,7 +141,7 @@ async def insights(
             users.append({
                 "user_id": r["uid"],
                 "username": nm["username"] if nm else None,
-                "name": (nm["first_name"] if nm else None),
+                "name": _display_name(r["uid"], nm["first_name"] if nm else None),
                 "events": r["events"],
                 "sessions": r["sessions"],
                 "opens": r["opens"],
@@ -163,7 +174,7 @@ async def insights(
             d["users"].append({
                 "user_id": r["uid"],
                 "username": nm["username"] if nm else None,
-                "name": nm["first_name"] if nm else None,
+                "name": _display_name(r["uid"], nm["first_name"] if nm else None),
                 "events": r["events"],
                 "sessions": r["sessions"],
                 "first": r["first_hm"],
