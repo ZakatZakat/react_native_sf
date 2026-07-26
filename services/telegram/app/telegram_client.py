@@ -5,7 +5,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
-from dataclasses import dataclass
+import time
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -23,6 +24,17 @@ logger = logging.getLogger(__name__)
 @dataclass
 class TelegramService:
     settings: Settings
+    # Один долгоживущий клиент на весь процесс (см. _get_client). Раньше ingest
+    # создавал новый клиент на КАЖДЫЙ запрос → Telethon заново резолвил каждый
+    # канал через ResolveUsername → аккаунт ловил хронический FloodWait на весь
+    # аккаунт (сотни в час). Переиспользуя один клиент, мы сохраняем его
+    # in-memory entity-кэш (id+access_hash) между запросами: после первого
+    # прогрева повторные обращения идут в getHistory без ResolveUsername.
+    _client: TelegramClient | None = field(default=None, init=False, repr=False, compare=False)
+    _client_lock: asyncio.Lock = field(default_factory=asyncio.Lock, init=False, repr=False, compare=False)
+    # handle без «@» в нижнем регистре → time.monotonic(), до которого канал на
+    # cooldown после FloodWait: не долбим залоченный канал каждый цикл.
+    _flood_until: dict[str, float] = field(default_factory=dict, init=False, repr=False, compare=False)
 
     @property
     def media_root(self) -> Path:
@@ -40,6 +52,23 @@ class TelegramService:
             api_id=self.settings.telegram_api_id,
             api_hash=self.settings.telegram_api_hash,
         )
+
+    async def _get_client(self) -> TelegramClient:
+        """Вернуть общий долгоживущий клиент, создав/подключив его при первом
+        вызове. Сессия/авторизация не меняются — та же session-строка, что и
+        раньше; отличие лишь в том, что клиент не выбрасывается после запроса,
+        поэтому его entity-кэш переживает между вызовами."""
+        client = self._client
+        if client is not None and client.is_connected():
+            return client
+        async with self._client_lock:
+            if self._client is not None and self._client.is_connected():
+                return self._client
+            client = self._create_client()
+            await self._start_client(client)
+            self._client = client
+            logger.info("Telegram client started (shared, long-lived)")
+            return client
 
     async def _start_client(self, client: TelegramClient) -> None:
         if self.settings.telegram_login_mode == "bot":
@@ -274,36 +303,44 @@ class TelegramService:
     ) -> dict[str, Any]:
         """Fetch recent messages from channels; return list of event payloads (no DB). Optionally filter by event_keywords."""
         self.media_root.mkdir(parents=True, exist_ok=True)
-        client = self._create_client()
-        await self._start_client(client)
+        client = await self._get_client()
         events: list[dict[str, Any]] = []
         ok: list[str] = []
         failed: dict[str, str] = {}
-        async with client:
-            for channel in channel_ids:
-                try:
-                    async for message in client.iter_messages(entity=channel, limit=per_channel_limit):
-                        if not isinstance(message, Message):
-                            continue
-                        if not message.message and not message.media:
-                            continue
-                        media_urls = await self._collect_media(client, message) if collect_media else []
-                        events.append(self._message_to_payload(channel, message, media_urls))
-                        if pause_between_messages > 0:
-                            await asyncio.sleep(pause_between_messages)
-                    ok.append(channel)
-                except FloodWaitError as e:
-                    wait = max(0, int(getattr(e, "seconds", 0)))
-                    logger.warning("FloodWait %ss on %s", wait, channel)
-                    failed[channel] = f"FloodWait({wait}s)"
-                except ValueError as e:
-                    logger.warning("Channel not found or invalid: %s — %s", channel, e)
-                    failed[channel] = str(e)[:500]
-                except Exception as e:
-                    logger.exception("Ingest failed channel=%s", channel)
-                    failed[channel] = str(e)[:500]
-                if pause_between_channels > 0:
-                    await asyncio.sleep(pause_between_channels)
+        for channel in channel_ids:
+            key = channel.strip().lower().lstrip("@")
+            remaining = self._flood_until.get(key, 0.0) - time.monotonic()
+            if remaining > 0:
+                # Канал ещё на cooldown после недавнего FloodWait — не трогаем,
+                # чтобы не продлевать лимит. Отдаём наверх как failed (видно в
+                # channels_failed), пост подтянется следующим циклом.
+                failed[channel] = f"FloodCooldown({int(remaining)}s)"
+                continue
+            try:
+                async for message in client.iter_messages(entity=channel, limit=per_channel_limit):
+                    if not isinstance(message, Message):
+                        continue
+                    if not message.message and not message.media:
+                        continue
+                    media_urls = await self._collect_media(client, message) if collect_media else []
+                    events.append(self._message_to_payload(channel, message, media_urls))
+                    if pause_between_messages > 0:
+                        await asyncio.sleep(pause_between_messages)
+                ok.append(channel)
+                self._flood_until.pop(key, None)
+            except FloodWaitError as e:
+                wait = max(0, int(getattr(e, "seconds", 0)))
+                self._flood_until[key] = time.monotonic() + wait
+                logger.warning("FloodWait %ss on %s (cooling down)", wait, channel)
+                failed[channel] = f"FloodWait({wait}s)"
+            except ValueError as e:
+                logger.warning("Channel not found or invalid: %s — %s", channel, e)
+                failed[channel] = str(e)[:500]
+            except Exception as e:
+                logger.exception("Ingest failed channel=%s", channel)
+                failed[channel] = str(e)[:500]
+            if pause_between_channels > 0:
+                await asyncio.sleep(pause_between_channels)
         if event_keywords:
             events = [e for e in events if any(kw.lower() in (e.get("text") or "").lower() for kw in event_keywords)]
         return {
