@@ -6,7 +6,7 @@
  * browser (dev / web) we fall back to opening the link in a new tab.
  */
 
-type TgUser = { first_name?: string; last_name?: string; username?: string }
+type TgUser = { id?: number; first_name?: string; last_name?: string; username?: string }
 
 type TgWebApp = {
   openTelegramLink?: (url: string) => void
@@ -27,6 +27,22 @@ export function tgUserName(): string {
   if (!u) return ""
   const full = [u.first_name, u.last_name].filter(Boolean).join(" ").trim()
   return full || (u.username || "").trim()
+}
+
+/** The signed-in Telegram account id (from initDataUnsafe), or null in a browser. */
+export function tgUserId(): number | null {
+  const id = webApp()?.initDataUnsafe?.user?.id
+  return typeof id === "number" ? id : null
+}
+
+/** Is the current Telegram user the owner? Controls visibility of the private
+ *  «Пульс» link only — the real gate is server-side (require_owner). Owner id
+ *  is a build-time env (VITE_OWNER_TG_ID); empty → link never shown. */
+export function isOwner(): boolean {
+  const owner = (import.meta.env.VITE_OWNER_TG_ID as string | undefined)?.trim()
+  if (!owner) return false
+  const id = tgUserId()
+  return id != null && String(id) === owner
 }
 
 /** Bare channel username from a stored handle ("@garagemca", "garagemca", or a

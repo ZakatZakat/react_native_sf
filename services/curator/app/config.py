@@ -35,6 +35,14 @@ class Settings(BaseSettings):
     telegram_bot_token: str = Field("", alias="TELEGRAM_BOT_TOKEN")
     auth_dev_mode: bool = Field(False, alias="AUTH_DEV_MODE")  # accept ?as_user=N for dev
 
+    # ── Приватная аналитика владельца (/insights, страница /cs/pulse) ──
+    # Read-only DSN до аналитической БД (analytics-platform). Пусто → раздел
+    # аналитики просто выключен (curator работает как обычно). Секрет —
+    # альтернатива Telegram-owner-гейту для доступа из браузера (?k=…); он
+    # НЕ уходит в бандл фронта, живёт только в серверном .env.
+    analytics_dsn: str = Field("", alias="ANALYTICS_DSN")
+    insights_secret: str = Field("", alias="ANALYTICS_SECRET")
+
     # Публичный бот CitySignal — тот же, что владеет мини-аппом и подписывает
     # init_data. Держим отдельный CS_BOT_TOKEN на случай выделенного бота под
     # /start; по умолчанию — тот же TELEGRAM_BOT_TOKEN. cs_webapp_url — куда

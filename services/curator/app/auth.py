@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hmac
 from typing import Optional
 
 from fastapi import Depends, Header, HTTPException, Query, Request
@@ -54,6 +55,47 @@ async def require_admin(
     if user_id not in admins:
         raise HTTPException(403, "admin only")
     return user_id
+
+
+async def require_owner(
+    request: Request,
+    init_data: str | None = Header(default=None, alias="X-Tg-Init-Data"),
+    init_data_q: str | None = Query(default=None, alias="initData"),
+    key: str | None = Query(default=None, alias="k"),
+    key_h: str | None = Header(default=None, alias="X-Insights-Key"),
+) -> int:
+    """Строгий гейт приватной аналитики — «только владелец».
+
+    В отличие от require_admin здесь СОЗНАТЕЛЬНО нет ?as_user-обхода: в проде
+    AUTH_DEV_MODE=true, и as_user (= id владельца) угадывается тривиально, поэтому
+    для «секретной» страницы он не годится. Доступ дают ровно два пути:
+      1) валидный Telegram initData, чей user.id ∈ ADMIN_USER_IDS (владелец) —
+         работает внутри мини-аппа;
+      2) секретный токен ?k=… (или X-Insights-Key), равный ANALYTICS_SECRET —
+         для открытия из обычного браузера по закладке. Токен только на сервере.
+    """
+    settings: Settings = request.app.state.settings
+
+    # 2) Секретный токен (константное сравнение). Пустой секрет не открывает.
+    supplied = key or key_h
+    secret = settings.insights_secret
+    if secret and supplied and hmac.compare_digest(supplied, secret):
+        return next(iter(settings.admin_user_ids), 0)
+
+    # 1) Telegram-owner по подписанному initData (as_user не принимается).
+    raw = init_data or init_data_q
+    if not raw:
+        raise HTTPException(401, "owner auth required")
+    if not settings.telegram_bot_token:
+        raise HTTPException(500, "TELEGRAM_BOT_TOKEN not configured on server")
+    user = verify_init_data(raw, settings.telegram_bot_token)
+    if not user or not user.get("id"):
+        raise HTTPException(401, "invalid init_data")
+    uid = int(user["id"])
+    owners = settings.admin_user_ids
+    if not owners or uid not in owners:
+        raise HTTPException(403, "owner only")
+    return uid
 
 
 async def optional_current_user_id(

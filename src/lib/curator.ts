@@ -52,6 +52,32 @@ export type CuratorTag = {
   sort_order: number
 }
 
+/** Приватная аналитика владельца — ответ GET /curator/insights. */
+export type InsightsUser = {
+  user_id: string
+  username: string | null
+  name: string | null
+  events: number
+  sessions: number
+  opens: number
+  rsvps: number
+  filters: number
+  platform: string | null
+  first_seen: string | null
+  last_seen: string | null
+}
+export type Insights = {
+  service: string
+  range: { first: string | null; last: string | null }
+  totals: { events: number; tg_users: number; devices: number; sessions: number; rsvps: number; errors: number }
+  active: { dau: number; wau: number; mau: number }
+  per_day: { day: string; events: number; users: number; devices: number; sessions: number }[]
+  users: InsightsUser[]
+  actions: { type: string; n: number }[]
+  funnel: { reach: number; landing: number; week: number; feed: number; opened: number; going: number }
+  by_hour: number[]
+}
+
 async function curatorFetch<T>(
   path: string,
   opts: RequestInit & { auth?: boolean; devUserFallback?: boolean; query?: Record<string, string | number | undefined> } = {}
@@ -196,6 +222,11 @@ export const Curator = {
     posts_raw: number
     events_by_status: Record<string, number>
   }>("/admin/stats", { auth: true }),
+
+  // Приватная аналитика владельца (/insights). Внутри Telegram авторизует
+  // initData владельца; из браузера — секрет ?k=… (в бандл не попадает).
+  getInsights: (k?: string) =>
+    curatorFetch<Insights>("/insights", { auth: true, query: k ? { k } : undefined }),
 
   // Week digest — editorial «выбор недели» hero pick
   getWeekPick: () => curatorFetch<FeedItem | null>("/me/week"),

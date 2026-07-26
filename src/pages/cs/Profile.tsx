@@ -21,6 +21,7 @@ import {
 } from "./shared"
 import { useDerived, useJourneyState } from "./useJourney"
 import { FeedbackButton } from "./FeedbackModal"
+import { isOwner } from "../../lib/telegram"
 
 /** Taste spectrum. When the user has added ≥2 categories of events, it's their
  *  REAL taste (frequency of added events per category). Otherwise it falls back
@@ -202,6 +203,23 @@ function ProfileInner() {
           >
             <span>Редактировать профиль</span><span style={{ fontSize: 18, lineHeight: 1 }}>→</span>
           </button>
+          {/* Скрытая строка «Пульс» — приватная аналитика, видна только владельцу
+              (по TG-id). Реальный гейт на бэке (require_owner). */}
+          {isOwner() && (
+            <button
+              onClick={() => navigate({ to: "/cs/pulse" })}
+              style={{
+                width: "100%", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 11.5,
+                letterSpacing: "0.14em", textTransform: "uppercase",
+                display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
+                padding: "6px 10px", border: "none", background: "none",
+                color: CS.G55, cursor: "pointer",
+              }}
+            >
+              <span style={{ width: 6, height: 6, background: CS.B, display: "inline-block" }} />
+              Пульс · аналитика
+            </button>
+          )}
         </div>
       </div>
     </CsPage>

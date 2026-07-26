@@ -13,6 +13,9 @@ services:
         - VITE_ANALYTICS_URL=https://analytics-platform.digital-assistant.tech/api/v1/events
         - VITE_ANALYTICS_TOKEN=${VITE_ANALYTICS_TOKEN}
         - VITE_ANALYTICS_SERVICE=citysignal
+        # TG-id владельца — только для показа скрытой ссылки «Пульс» в профиле.
+        # Не секрет (реальный гейт на бэке); пусто → ссылка не показывается.
+        - VITE_OWNER_TG_ID=${OWNER_TG_ID:-}
     env_file: [.env]
     working_dir: /app
     networks: [traefik-public]
@@ -101,7 +104,10 @@ services:
     env_file: [.env]
     depends_on:
       db: { condition: service_healthy }
-    networks: [traefik-public]
+    # analytics-platform_internal — внешняя сеть проекта analytics-platform;
+    # курэйтору она нужна только чтобы читать analytics-БД (раздел /insights).
+    # Traefik-роут остаётся на traefik-public (см. traefik.docker.network ниже).
+    networks: [traefik-public, analytics-platform_internal]
     labels:
       - traefik.enable=true
       - traefik.docker.network=traefik-public
@@ -169,6 +175,10 @@ services:
 
 networks:
   traefik-public:
+    external: true
+  # Сеть проекта analytics-platform — подключаемся к ней как external, чтобы
+  # курэйтор мог читать analytics-БД. Саму analytics-platform не трогаем.
+  analytics-platform_internal:
     external: true
 
 

@@ -13,6 +13,7 @@ from app.repositories.tags import TagsRepository
 from app.routers import admin as admin_router
 from app.routers import bot as bot_router
 from app.routers import channels as channels_router
+from app.routers import insights as insights_router
 from app.routers import me as me_router
 from app.routers import push as push_router
 from app.routers import scheduler as scheduler_router
@@ -42,6 +43,7 @@ app.include_router(scheduler_router.router)
 app.include_router(tags_router.router)
 app.include_router(me_router.router)
 app.include_router(admin_router.router)
+app.include_router(insights_router.router)
 app.include_router(push_router.router)
 app.include_router(bot_router.router)
 
@@ -54,6 +56,17 @@ async def on_startup() -> None:
     app.state.settings = settings
     app.state.engine = engine
     app.state.session_factory = session_factory
+
+    # Read-only engine до аналитической БД (analytics-platform) для приватного
+    # раздела /insights. Поднимаем только если задан ANALYTICS_DSN; любая ошибка
+    # создания НЕ должна валить старт курэйтора — раздел просто останется 503.
+    app.state.analytics_engine = None
+    if settings.analytics_dsn:
+        try:
+            app.state.analytics_engine = create_engine(settings.analytics_dsn)
+            logger.info("analytics engine ready (insights enabled)")
+        except Exception as exc:  # noqa: BLE001 — аналитика опциональна
+            logger.warning("analytics engine init failed, /insights disabled: %s", exc)
 
     # Seed initial taxonomy (idempotent — uses ON CONFLICT). INITIAL_TAGS = the
     # 12 coarse categories; KLURSI_TAGS = 177 fine tags mined from the КЛЮРСИ
@@ -98,6 +111,9 @@ async def on_shutdown() -> None:
     engine = getattr(app.state, "engine", None)
     if engine is not None:
         await engine.dispose()
+    an_engine = getattr(app.state, "analytics_engine", None)
+    if an_engine is not None:
+        await an_engine.dispose()
 
 
 @app.get("/health")

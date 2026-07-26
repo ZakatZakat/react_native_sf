@@ -41,6 +41,7 @@ import CsProfile from "./pages/cs/Profile"
 import CsAdmin from "./pages/cs/Admin"
 import CsAdminWeek from "./pages/cs/AdminWeek"
 import CsAdminLanding from "./pages/cs/AdminLanding"
+import CsPulse from "./pages/cs/Pulse"
 import Feed2 from "./pages/Feed2"
 import About from "./pages/About"
 import Profile from "./pages/Profile"
@@ -104,6 +105,7 @@ const csProfileRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs
 const csAdminRoute = createRoute({ getParentRoute: () => rootRoute, path: "/admin", component: CsAdmin })
 const csAdminWeekRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/admin/week", component: CsAdminWeek })
 const csAdminLandingRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/admin/landing", component: CsAdminLanding })
+const csPulseRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/pulse", component: CsPulse })
 const aboutRoute = createRoute({ getParentRoute: () => rootRoute, path: "/about", component: About })
 const profileRoute = createRoute({ getParentRoute: () => rootRoute, path: "/profile", component: Profile })
 const notFoundRoute = createRoute({ getParentRoute: () => rootRoute, path: "$", component: NotFound })
@@ -150,6 +152,7 @@ const routeTree = rootRoute.addChildren([
   csAdminRoute,
   csAdminWeekRoute,
   csAdminLandingRoute,
+  csPulseRoute,
   aboutRoute,
   profileRoute,
   notFoundRoute,
