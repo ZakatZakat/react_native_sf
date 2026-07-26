@@ -125,6 +125,12 @@ const FRICTION: Record<Access, number> = {
   accreditation: 5, registration_closed: 6, sold_out: 7,
 }
 
+/** Площадки, где вход на события по регистрации по умолчанию, даже если в тексте
+ *  конкретного поста слово «регистрация» не написано (оно в кнопке/на сайте).
+ *  Ключ — venue-код из геокод-газеттира (location_meta.venue). ГЭС-2: вход в
+ *  Дом культуры свободный, но на туры/мастер-классы/перформансы нужна запись. */
+const REGISTRATION_VENUES: ReadonlySet<string> = new Set(["ges2"])
+
 /** Барьер входа из текста поста. Проверки идут от самых «запирающих» к мягким,
  *  чтобы «регистрация закрыта» не схлопнулась в обычную «регистрацию». */
 export function detectAccess(text: string, priceFree: boolean): Access {
@@ -173,7 +179,10 @@ export function toEv(e: FeedItem): Ev {
   // Сигнал доступности (тема фидбека #3–5): барьер входа, возраст и тир контента
   // считаем из тела поста — цена «свободный вход» уже извлечена куратором в price.
   const priceFree = /свобод|беспл|free/i.test(e.price || "")
-  const access = detectAccess(e.description || "", priceFree)
+  let access = detectAccess(e.description || "", priceFree)
+  // Venue-дефолт: если из текста барьер не считался, но площадка работает по
+  // записи (ГЭС-2) — помечаем «регистрация», иначе такие события идут без бейджа.
+  if (access === "" && REGISTRATION_VENUES.has(e.venue || "")) access = "registration"
   const age = detectAge(e.description || "")
   const tier = detectTier(e.description || "", access)
   return {
