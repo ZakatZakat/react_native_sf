@@ -183,14 +183,15 @@ function MasonryCols({ items }: { items: Ev[] }) {
 }
 
 // ── Герой «выбор редакции» (крупный) ───────────────────────────────────
-function WebHero({ ev }: { ev: Ev }) {
+function WebHero({ ev, onBroken }: { ev: Ev; onBroken?: (id: string) => void }) {
   const navigate = useNavigate()
+  const [broken, setBroken] = useState(false)
   const bd = accessBadges(ev)
   const len = (ev.t || "").length
   const fs = len <= 22 ? 46 : len <= 38 ? 38 : len <= 58 ? 30 : len <= 84 ? 24 : 20
   return (
     <div className="cs-hero" onClick={() => navigate({ to: "/web/event/$id", params: { id: ev.id } })} style={{ display: "flex", gap: 26, alignItems: "stretch", background: SK.paper, border: `2.5px solid ${SK.ink}`, boxShadow: `6px 6px 0 ${SK.ink}`, padding: 16, cursor: "pointer" }}>
-      {ev.p && <img className="cs-hero-img" src={ev.p} alt="" style={{ flexShrink: 0, alignSelf: "center", maxWidth: 360, maxHeight: 420, width: "auto", height: "auto", border: `2px solid ${SK.ink}` }} />}
+      {ev.p && !broken && <img className="cs-hero-img" src={ev.p} alt="" onError={() => { setBroken(true); onBroken?.(ev.id) }} style={{ flexShrink: 0, alignSelf: "center", maxWidth: 360, maxHeight: 420, width: "auto", height: "auto", border: `2px solid ${SK.ink}` }} />}
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 16 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
           <span style={{ background: SK.ink, color: SK.paper, fontFamily: FONT_SANS, fontWeight: 900, fontSize: 12, letterSpacing: "0.14em", textTransform: "uppercase", padding: "5px 11px" }}>{ev.c}</span>
@@ -240,15 +241,23 @@ export default function CsWebFeed() {
   // Полка «для знатока» убрана — insider-контент теперь в общем каталоге.
   const mainE = withPoster
 
+  // Битые постеры героя (404) — WebHero сообщает сюда, и мы выкидываем событие
+  // из пула, авто-подставляя следующего кандидата (без «?»-глифа в шапке).
+  const [brokenHero, setBrokenHero] = useState<Set<string>>(() => new Set())
+  const markHeroBroken = (id: string) => setBrokenHero((p) => (p.has(id) ? p : new Set(p).add(id)))
   const heroPool = useMemo(() => {
     const now = Date.now()
-    const up = mainE.filter((e) => e.ts == null || e.ts >= now)
-    const base = up.length ? up : mainE
+    // Герой «выбор редакции» обязан быть с картинкой — событие без постера
+    // (или с дохлым) в шапку не берём.
+    const withPoster = mainE.filter((e) => e.p && !brokenHero.has(e.id))
+    const src = withPoster.length ? withPoster : mainE
+    const up = src.filter((e) => e.ts == null || e.ts >= now)
+    const base = up.length ? up : src
     return [...base].sort((a, b) => {
       const s = heroScore(a) - heroScore(b)
       return s !== 0 ? s : (a.ts ?? Infinity) - (b.ts ?? Infinity)
     })
-  }, [mainE])
+  }, [mainE, brokenHero])
   // «Выбор редакции» листается стрелками (heroIdx) по топ-N кандидатам heroPool.
   const [heroIdx, setHeroIdx] = useState(0)
   const heroN = Math.min(heroPool.length, 8)
@@ -421,7 +430,7 @@ export default function CsWebFeed() {
                           </div>
                         )}
                       </div>
-                      <WebHero ev={hero} />
+                      <WebHero key={hero.id} ev={hero} onBroken={markHeroBroken} />
                     </>
                   )}
 
