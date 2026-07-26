@@ -141,6 +141,37 @@ async def insights(
                 "last_seen": r["last_seen"].isoformat() if r["last_seen"] else None,
             })
 
+        # ── Кто и когда: активность TG-юзеров по дням (МСК) ───────────
+        du_rows = (await conn.execute(text(f"""
+            SELECT (received_at AT TIME ZONE 'Europe/Moscow')::date AS day,
+                   {_UID} AS uid,
+                   count(*)                   AS events,
+                   count(DISTINCT request_id) AS sessions,
+                   to_char(min(received_at) AT TIME ZONE 'Europe/Moscow', 'HH24:MI') AS first_hm,
+                   to_char(max(received_at) AT TIME ZONE 'Europe/Moscow', 'HH24:MI') AS last_hm
+            FROM events
+            WHERE service = :svc AND {_UID} IS NOT NULL
+              AND received_at >= now() - (:days * interval '1 day')
+            GROUP BY day, uid
+            ORDER BY day DESC, events DESC
+        """), p)).mappings().all()
+        day_map: dict[str, dict[str, Any]] = {}
+        for r in du_rows:
+            day = r["day"].isoformat()
+            d = day_map.setdefault(day, {"day": day, "events": 0, "users": []})
+            nm = name_by_uid.get(r["uid"])
+            d["users"].append({
+                "user_id": r["uid"],
+                "username": nm["username"] if nm else None,
+                "name": nm["first_name"] if nm else None,
+                "events": r["events"],
+                "sessions": r["sessions"],
+                "first": r["first_hm"],
+                "last": r["last_hm"],
+            })
+            d["events"] += r["events"]
+        day_users = sorted(day_map.values(), key=lambda x: x["day"], reverse=True)
+
         # ── Топ действий (cs.*) ───────────────────────────────────────
         actions = (await conn.execute(text("""
             SELECT type, count(*) AS n
@@ -188,6 +219,7 @@ async def insights(
         },
         "active": {"dau": active["dau"], "wau": active["wau"], "mau": active["mau"]},
         "per_day": [dict(r) for r in per_day],
+        "day_users": day_users,
         "users": users,
         "actions": [dict(r) for r in actions],
         "funnel": {

@@ -12,7 +12,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { CS, FONT_MONO, FONT_SANS } from "./shared"
-import { Curator, type Insights, type InsightsUser } from "../../lib/curator"
+import { Curator, type Insights, type InsightsUser, type InsightsDay } from "../../lib/curator"
 
 const INK = CS.K
 const PAPER = CS.W
@@ -50,6 +50,15 @@ function fmtDay(iso: string): { d: string; wd: string; weekend: boolean } {
   const dt = new Date(iso + "T00:00:00")
   const wd = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"][dt.getDay()]
   return { d: String(dt.getDate()), wd, weekend: dt.getDay() === 0 || dt.getDay() === 6 }
+}
+
+function fmtDayFull(iso: string): { title: string; wd: string; weekend: boolean } {
+  const dt = new Date(iso + "T00:00:00")
+  const wd = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"][dt.getDay()]
+  return {
+    title: dt.toLocaleDateString("ru-RU", { day: "numeric", month: "long" }),
+    wd, weekend: dt.getDay() === 0 || dt.getDay() === 6,
+  }
 }
 
 function relTime(iso: string | null): string {
@@ -213,6 +222,52 @@ function UsersTable({ users }: { users: InsightsUser[] }) {
   )
 }
 
+/** «Кто и когда» — по каждому дню список активных TG-юзеров с окном времени. */
+function DayUsers({ days }: { days: InsightsDay[] }) {
+  const [all, setAll] = useState(false)
+  const shown = all ? days : days.slice(0, 8)
+  return (
+    <div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {shown.map((d) => {
+          const f = fmtDayFull(d.day)
+          return (
+            <div key={d.day} style={{ border: `2px solid ${INK}`, background: PAPER }}>
+              {/* заголовок дня */}
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, padding: "9px 13px", borderBottom: `1.5px solid ${INK}`, background: f.weekend ? "rgba(0,85,255,0.06)" : "transparent" }}>
+                <span style={{ fontFamily: FONT_SANS, fontWeight: 900, fontSize: 14, letterSpacing: "-0.01em", color: INK }}>
+                  {f.title} <span style={{ fontFamily: FONT_MONO, fontWeight: 400, fontSize: 11, color: FAINT, textTransform: "uppercase" }}>{f.wd}</span>
+                </span>
+                <span style={{ fontFamily: FONT_MONO, fontSize: 10.5, color: MUTE, whiteSpace: "nowrap" }}>{d.users.length} чел · {d.events} соб</span>
+              </div>
+              {/* строки пользователей */}
+              {d.users.map((u, i) => (
+                <div key={u.user_id} style={{ display: "flex", alignItems: "baseline", gap: 8, padding: "8px 13px", borderTop: i === 0 ? "none" : `1px solid ${HAIR}` }}>
+                  <span style={{ minWidth: 0, flex: 1, fontFamily: FONT_SANS, fontSize: 13, fontWeight: 700, color: INK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {u.username ? `@${u.username}` : (u.name || `id ${u.user_id}`)}
+                  </span>
+                  <span style={{ flexShrink: 0, fontFamily: FONT_MONO, fontSize: 12, fontWeight: 700, color: BLUE }}>
+                    {u.first}{u.last && u.last !== u.first ? `–${u.last}` : ""}
+                  </span>
+                  <span style={{ flexShrink: 0, width: 92, textAlign: "right", fontFamily: FONT_MONO, fontSize: 10.5, color: MUTE }}>
+                    {u.events} соб · {u.sessions} сес
+                  </span>
+                </div>
+              ))}
+            </div>
+          )
+        })}
+      </div>
+      {days.length > 8 && (
+        <button onClick={() => setAll((v) => !v)} style={{ width: "100%", marginTop: 10, border: `2px solid ${INK}`, background: PAPER, padding: "9px", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 800, fontSize: 12, letterSpacing: "0.05em", textTransform: "uppercase", color: INK }}>
+          {all ? "Свернуть" : `Показать все ${days.length} дней`}
+        </button>
+      )}
+      {days.length === 0 && <div style={{ fontFamily: FONT_MONO, fontSize: 12, color: MUTE }}>Нет активности TG-юзеров за период.</div>}
+    </div>
+  )
+}
+
 /* ── страница ──────────────────────────────────────────────────────── */
 
 export default function CsPulse() {
@@ -291,6 +346,10 @@ export default function CsPulse() {
 
             <Section title="По дням" right={`${data.per_day.length} дней · МСК`}>
               <DayChart per_day={data.per_day} />
+            </Section>
+
+            <Section title="Кто и когда" right="по дням · МСК">
+              <DayUsers days={data.day_users || []} />
             </Section>
 
             <Section title="По пользователям" right={`${data.users.length} с TG-профилем`}>

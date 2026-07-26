@@ -66,12 +66,23 @@ export type InsightsUser = {
   first_seen: string | null
   last_seen: string | null
 }
+export type InsightsDayUser = {
+  user_id: string
+  username: string | null
+  name: string | null
+  events: number
+  sessions: number
+  first: string | null // «HH:MM» МСК
+  last: string | null  // «HH:MM» МСК
+}
+export type InsightsDay = { day: string; events: number; users: InsightsDayUser[] }
 export type Insights = {
   service: string
   range: { first: string | null; last: string | null }
   totals: { events: number; tg_users: number; devices: number; sessions: number; rsvps: number; errors: number }
   active: { dau: number; wau: number; mau: number }
   per_day: { day: string; events: number; users: number; devices: number; sessions: number }[]
+  day_users: InsightsDay[]
   users: InsightsUser[]
   actions: { type: string; n: number }[]
   funnel: { reach: number; landing: number; week: number; feed: number; opened: number; going: number }
