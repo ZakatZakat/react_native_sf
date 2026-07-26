@@ -36,7 +36,7 @@ from app.repositories.posts import (
     PostsRepository,
 )
 from app.repositories.tags import EventTagsRepository, TagsRepository
-from app.services.tg_client import TelegramServiceClient
+from app.services.tg_client import TelegramFetchError, TelegramServiceClient
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +76,18 @@ class PipelineProcessor:
         # 1) FETCH (separate session — long external call, no transaction held)
         try:
             raw = await self.tg.fetch(ch.handle, limit=limit)
+        except TelegramFetchError as e:
+            # Ожидаемый мягкий сбой: поллер не смог вытащить канал (FloodWait /
+            # ResolveUsername / потеря доступа). Раньше это выглядело как «success,
+            # 0 постов» — теперь пишем run как failed (видно в ingest_runs), без
+            # пугающего traceback.
+            logger.warning("poller could not fetch %s: %s", ch.handle, e)
+            async with session_scope(self.sf) as s:
+                await IngestRunsRepository(s).log(
+                    channel_id, status=IngestStatus.failed,
+                    error=f"poller: {e!s}"[:500], started_at=started,
+                )
+            return ChannelRunResult(ch.handle, 0, 0, 0, 0, 0, error=str(e))
         except Exception as e:
             logger.exception("fetch failed for %s", ch.handle)
             async with session_scope(self.sf) as s:

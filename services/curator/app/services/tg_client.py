@@ -14,6 +14,12 @@ import httpx
 logger = logging.getLogger(__name__)
 
 
+class TelegramFetchError(Exception):
+    """Poller reported the channel in `channels_failed` (FloodWait / resolve /
+    access). Raised so the run is logged as failed instead of a silent
+    success-with-0-posts that hides the problem from ingest_runs + monitoring."""
+
+
 @dataclass
 class RawMessage:
     channel: str
@@ -80,6 +86,16 @@ class TelegramServiceClient:
             )
             resp.raise_for_status()
             data = resp.json()
+            # The poller returns HTTP 200 even when it couldn't fetch the channel
+            # (FloodWait / ResolveUsername / lost access) — those land in
+            # `channels_failed`. Previously we read only `events` and ignored this,
+            # so a failed poll looked like «success, 0 new posts». Surface it as a
+            # real failure → the processor's fetch-try/except logs ingest_run
+            # status=failed with the reason, making it visible.
+            failed = data.get("channels_failed") or {}
+            if failed:
+                reason = failed.get(handle) or next(iter(failed.values()), "unknown")
+                raise TelegramFetchError(f"{handle}: {reason}")
             # Mirror media to the shared server immediately, so the poller can
             # drop it right after (keeps the poller secrets-only).
             if self._media_dir and collect_media:
