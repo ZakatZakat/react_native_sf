@@ -14,9 +14,13 @@ Two passes, both re-running the *fixed* detector/enricher over the stored post
   1. LIVE events (approved / manual_review / pending) with a start but no end →
      fill event_time_end when a range end is now derivable.
   2. REJECTED events whose reject_reason marks a *past/date* sweep (not a content
-     rejection like non_event / out_of_moscow) → if a derived end is still in the
-     future, set the end AND restore the event (events_curated + moderation_queue
-     back to approved). A row with no derivable future end is left rejected.
+     rejection like non_event / out_of_moscow) → if the post still reads as a real
+     event (detector score ≥ REVIEW) AND a derived end is still in the future, set
+     the end AND return the event to *manual_review* (events_curated +
+     moderation_queue) so the normal curation pass gives it a title/tags/geo and
+     drops duplicates — nothing uncurated goes straight to the live feed. A row
+     with no derivable future end, or that no longer reads as an event, is left
+     rejected.
 
 Dry-run by default — pass --apply to write.
 
@@ -120,10 +124,10 @@ async def main() -> None:
             det = detect_event(text or "")
             # The bulk-close overwrote reject_reason for everything it swept —
             # regardless of WHY — so a «bulk close» reason alone doesn't prove the
-            # post is a real event. Auto-revive only what still clears the AUTO
-            # bar (score ≥ 6): digests, open-calls, out-of-moscow and broadcasts
-            # score 0 and stay rejected for a human to reconsider.
-            if not det.is_event_auto:
+            # post is a real event. Revive only what still reads as an event
+            # (score ≥ REVIEW); digests, open-calls, out-of-moscow and broadcasts
+            # score 0 and stay rejected.
+            if not det.is_event_review:
                 continue
             enr = enrich_event(text or "", det.hits, published_at=_base_of(pub, fet, cre))
             end = enr.event_time_end
@@ -132,9 +136,9 @@ async def main() -> None:
                 continue
             revive.append((eid, end))
             revived += 1
-            if revived <= 40:
+            if revived <= 60:
                 one = " ".join((text or "").split())[:50]
-                print(f"  revive id={eid:<6} end={end:%Y-%m-%d} was='{(reason or '')[:24]}' | {one}")
+                print(f"  revive id={eid:<6} end={end:%Y-%m-%d} score={det.score} | {one}")
 
         if args.apply:
             for eid, end in end_updates:
@@ -145,12 +149,12 @@ async def main() -> None:
                 await s.execute(
                     update(EventCurated)
                     .where(EventCurated.id == eid)
-                    .values(event_time_end=end, status=EventStatus.approved)
+                    .values(event_time_end=end, status=EventStatus.manual_review)
                 )
                 await s.execute(
                     update(ModerationQueue)
                     .where(ModerationQueue.event_id == eid)
-                    .values(status=EventStatus.approved, reject_reason=None, reviewed_at=now)
+                    .values(status=EventStatus.manual_review, reject_reason=None, reviewed_at=now)
                 )
 
     await engine.dispose()
