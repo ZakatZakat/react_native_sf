@@ -82,7 +82,13 @@ async def main() -> None:
             stmt = stmt.limit(args.limit)
         for eid, et, text, pub, fet, cre in (await s.execute(stmt)).all():
             scanned_live += 1
-            enr = enrich_event(text or "", detect_event(text or "").hits, published_at=_base_of(pub, fet, cre))
+            det = detect_event(text or "")
+            # Skip content the detector now gates out (digest / non-event /
+            # out-of-moscow / broadcast → score 0): don't extend the life of a
+            # roundup or an out-of-town post that slipped in earlier.
+            if det.score <= 0:
+                continue
+            enr = enrich_event(text or "", det.hits, published_at=_base_of(pub, fet, cre))
             end = enr.event_time_end
             if end is None or (et is not None and end <= et):
                 continue
@@ -111,7 +117,15 @@ async def main() -> None:
             stmt = stmt.limit(args.limit)
         for eid, et, text, pub, fet, cre, reason in (await s.execute(stmt)).all():
             scanned_rej += 1
-            enr = enrich_event(text or "", detect_event(text or "").hits, published_at=_base_of(pub, fet, cre))
+            det = detect_event(text or "")
+            # The bulk-close overwrote reject_reason for everything it swept —
+            # regardless of WHY — so a «bulk close» reason alone doesn't prove the
+            # post is a real event. Auto-revive only what still clears the AUTO
+            # bar (score ≥ 6): digests, open-calls, out-of-moscow and broadcasts
+            # score 0 and stay rejected for a human to reconsider.
+            if not det.is_event_auto:
+                continue
+            enr = enrich_event(text or "", det.hits, published_at=_base_of(pub, fet, cre))
             end = enr.event_time_end
             # Restore only if the show provably still runs (derived end in future).
             if end is None or end < now or (et is not None and end <= et):
