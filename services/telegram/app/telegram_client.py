@@ -12,7 +12,7 @@ from typing import Any
 
 from telethon import TelegramClient
 from telethon.errors import FloodWaitError
-from telethon.sessions import StringSession
+from telethon.sessions import SQLiteSession, StringSession
 from telethon.tl.functions.channels import GetFullChannelRequest
 from telethon.tl.types import Message, MessageEntityTextUrl, MessageEntityMention, PeerChannel
 
@@ -43,32 +43,82 @@ class TelegramService:
             return Path(root)
         return root
 
-    def _create_client(self) -> TelegramClient:
-        session: StringSession | str = "tg_session"
-        if self.settings.telegram_login_mode != "bot" and self.settings.telegram_session_string:
-            session = StringSession(self.settings.telegram_session_string)
+    def _build_client(self, session) -> TelegramClient:
         return TelegramClient(
             session=session,
             api_id=self.settings.telegram_api_id,
             api_hash=self.settings.telegram_api_hash,
         )
 
+    def _string_session(self) -> StringSession | str:
+        if self.settings.telegram_login_mode != "bot" and self.settings.telegram_session_string:
+            return StringSession(self.settings.telegram_session_string)
+        return "tg_session"
+
+    def _create_client(self) -> TelegramClient:
+        # Короткоживущие клиенты (аватары / refetch media) — всегда in-memory
+        # StringSession: не конкурируют с долгоживущим клиентом за файл сессии
+        # (SQLite database lock).
+        return self._build_client(self._string_session())
+
+    def _persistent_session(self) -> SQLiteSession | None:
+        """SQLite-сессия на диске (volume) — её entity-кэш (username→id+access_hash)
+        переживает рестарты контейнера, поэтому после рестарта НЕ нужно заново
+        резолвить весь список каналов (→ аккаунт-wide FloodWait). Бутстрапим один
+        раз из TELEGRAM_SESSION_STRING. Любая проблема → None (вызывающий
+        откатится на StringSession — прежнее поведение, без даунтайма)."""
+        path = (self.settings.session_path or "").strip()
+        if not path or self.settings.telegram_login_mode == "bot" or not self.settings.telegram_session_string:
+            return None
+        try:
+            Path(path).parent.mkdir(parents=True, exist_ok=True)
+            fs = SQLiteSession(path)
+            if fs.auth_key is None:
+                ss = StringSession(self.settings.telegram_session_string)
+                fs.set_dc(ss.dc_id, ss.server_address, ss.port)
+                fs.auth_key = ss.auth_key
+                fs.save()
+                logger.info("bootstrapped persistent SQLite session at %s", path)
+            return fs
+        except Exception as e:  # noqa: BLE001 — персист опционален, не должен ронять поллер
+            logger.warning("persistent session unavailable (%s) — using in-memory string session", e)
+            return None
+
+    async def _connect_shared(self) -> TelegramClient:
+        """Поднять общий клиент на персистентной SQLite-сессии; при любой проблеме
+        с авторизацией — откат на прежнюю StringSession (без даунтайма)."""
+        persistent = self._persistent_session()
+        if persistent is not None:
+            client = self._build_client(persistent)
+            try:
+                await client.connect()
+                if await client.is_user_authorized():
+                    logger.info("Telegram client started (persistent SQLite session)")
+                    return client
+                raise RuntimeError("persistent session not authorized")
+            except Exception as e:  # noqa: BLE001
+                logger.warning("persistent session start failed (%s) — falling back to string session", e)
+                try:
+                    await client.disconnect()
+                except Exception:
+                    pass
+        client = self._create_client()
+        await self._start_client(client)
+        logger.info("Telegram client started (in-memory string session)")
+        return client
+
     async def _get_client(self) -> TelegramClient:
         """Вернуть общий долгоживущий клиент, создав/подключив его при первом
-        вызове. Сессия/авторизация не меняются — та же session-строка, что и
-        раньше; отличие лишь в том, что клиент не выбрасывается после запроса,
-        поэтому его entity-кэш переживает между вызовами."""
+        вызове. Клиент не выбрасывается после запроса → его entity-кэш переживает
+        между вызовами; с персистентной сессией — ещё и между рестартами."""
         client = self._client
         if client is not None and client.is_connected():
             return client
         async with self._client_lock:
             if self._client is not None and self._client.is_connected():
                 return self._client
-            client = self._create_client()
-            await self._start_client(client)
-            self._client = client
-            logger.info("Telegram client started (shared, long-lived)")
-            return client
+            self._client = await self._connect_shared()
+            return self._client
 
     async def _start_client(self, client: TelegramClient) -> None:
         if self.settings.telegram_login_mode == "bot":

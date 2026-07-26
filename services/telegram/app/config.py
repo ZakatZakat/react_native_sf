@@ -25,6 +25,12 @@ class Settings(BaseSettings):
     telegram_bot_token: str | None = Field(default=None, alias="TELEGRAM_BOT_TOKEN")
     telegram_login_mode: str = Field("bot", alias="TELEGRAM_LOGIN_MODE")
     telegram_session_string: str | None = Field(default=None, alias="TELEGRAM_SESSION_STRING")
+    # Path to a persistent SQLite session FILE (on a docker volume). Telethon's
+    # entity cache (username→id+access_hash) lives IN this file, so it survives
+    # container restarts — no mass re-ResolveUsername (→ account-wide FloodWait)
+    # on every restart. Bootstrapped once from TELEGRAM_SESSION_STRING. Empty →
+    # keep the old in-memory StringSession (cache lost on restart).
+    session_path: str | None = Field(default=None, alias="POLLER_SESSION_PATH")
     # Shared bearer token guarding the data endpoints. When the poller runs
     # on a separate (internet-exposed) box, set this on both the poller and
     # curator (TELEGRAM_SERVICE_TOKEN). If unset, endpoints stay open (local
