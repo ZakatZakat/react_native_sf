@@ -98,7 +98,7 @@ function HBar({ label, n, max, accent }: { label: string; n: number; max: number
   const pct = max > 0 ? Math.round((n / max) * 100) : 0
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 9 }}>
-      <span style={{ width: 150, flexShrink: 0, fontFamily: FONT_SANS, fontSize: 12.5, fontWeight: 600, color: INK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
+      <span style={{ width: 124, flexShrink: 0, fontFamily: FONT_SANS, fontSize: 12, fontWeight: 600, color: INK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
       <div style={{ flex: 1, height: 14, border: `1.5px solid ${INK}`, background: PAPER, position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", inset: 0, width: `${pct}%`, background: accent ? BLUE : INK }} />
       </div>
@@ -174,41 +174,41 @@ function UsersTable({ users }: { users: InsightsUser[] }) {
     return c
   }, [users, by])
   const maxE = Math.max(1, ...users.map((u) => u.events))
-  const Th = ({ id, children }: { id: "last" | "events" | "rsvps"; children: React.ReactNode }) => (
-    <button onClick={() => setBy(id)} style={{ border: "none", background: "none", cursor: "pointer", fontFamily: FONT_MONO, fontSize: 10.5, letterSpacing: "0.06em", textTransform: "uppercase", color: by === id ? BLUE : MUTE, padding: 0 }}>{children}{by === id ? " ↓" : ""}</button>
+  const Sort = ({ id, children }: { id: "last" | "events" | "rsvps"; children: React.ReactNode }) => (
+    <button onClick={() => setBy(id)} style={{ border: `1.5px solid ${by === id ? INK : HAIR}`, background: by === id ? INK : PAPER, color: by === id ? PAPER : MUTE, cursor: "pointer", fontFamily: FONT_MONO, fontSize: 10.5, letterSpacing: "0.04em", textTransform: "uppercase", padding: "5px 10px" }}>{children}</button>
   )
   return (
-    <div style={{ border: `2px solid ${INK}`, background: PAPER }}>
-      {/* header row */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 58px 54px 54px 56px", gap: 8, padding: "10px 13px", borderBottom: `2px solid ${INK}`, alignItems: "center" }}>
-        <span style={{ fontFamily: FONT_MONO, fontSize: 10.5, letterSpacing: "0.06em", textTransform: "uppercase", color: MUTE }}>Пользователь</span>
-        <span style={{ textAlign: "right" }}><Th id="events">Событий</Th></span>
-        <span style={{ textAlign: "right", fontFamily: FONT_MONO, fontSize: 10.5, letterSpacing: "0.06em", textTransform: "uppercase", color: MUTE }}>Открыл</span>
-        <span style={{ textAlign: "right" }}><Th id="rsvps">Пойду</Th></span>
-        <span style={{ textAlign: "right" }}><Th id="last">Был</Th></span>
+    <div>
+      {/* сортировка */}
+      <div style={{ display: "flex", gap: 7, marginBottom: 10, alignItems: "center" }}>
+        <span style={{ fontFamily: FONT_MONO, fontSize: 10, color: FAINT, textTransform: "uppercase", letterSpacing: "0.06em" }}>сорт:</span>
+        <Sort id="events">событий</Sort>
+        <Sort id="rsvps">пойду</Sort>
+        <Sort id="last">недавно</Sort>
       </div>
-      {sorted.map((u, i) => {
-        const pct = Math.round((u.events / maxE) * 100)
-        return (
-          <div key={u.user_id} style={{ display: "grid", gridTemplateColumns: "1fr 58px 54px 54px 56px", gap: 8, padding: "11px 13px", borderTop: i === 0 ? "none" : `1px solid ${HAIR}`, alignItems: "center", position: "relative" }}>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontFamily: FONT_SANS, fontSize: 13.5, fontWeight: 700, color: INK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{userLabel(u)}</div>
-              <div style={{ fontFamily: FONT_MONO, fontSize: 10, color: FAINT, marginTop: 2 }}>
-                {u.sessions} сес. · {u.platform === "web" ? "веб" : "tg"}{u.name && u.username ? ` · ${u.name}` : ""}
+      <div style={{ border: `2px solid ${INK}`, background: PAPER }}>
+        {sorted.map((u, i) => {
+          const pct = Math.round((u.events / maxE) * 100)
+          return (
+            <div key={u.user_id} style={{ padding: "12px 13px", borderTop: i === 0 ? "none" : `1px solid ${HAIR}` }}>
+              {/* строка 1: имя + число событий */}
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
+                <span style={{ minWidth: 0, fontFamily: FONT_SANS, fontSize: 14, fontWeight: 800, color: INK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{userLabel(u)}</span>
+                <span style={{ flexShrink: 0, fontFamily: FONT_MONO, fontWeight: 700, fontSize: 14, color: INK }}>{u.events.toLocaleString("ru-RU")}<span style={{ fontSize: 10, color: FAINT }}> соб.</span></span>
               </div>
-              {/* тонкая полоса активности под именем */}
-              <div style={{ height: 3, background: HAIR, marginTop: 5, position: "relative", overflow: "hidden" }}>
+              {/* строка 2: компактная мета (мешок цифр, переносится нормально) */}
+              <div style={{ fontFamily: FONT_MONO, fontSize: 10.5, color: MUTE, marginTop: 4, lineHeight: 1.5 }}>
+                {u.opens} откр · <span style={{ color: u.rsvps ? BLUE : FAINT, fontWeight: u.rsvps ? 700 : 400 }}>{u.rsvps} пойду</span> · {u.sessions} сес · {u.platform === "web" ? "веб" : "tg"} · был {relTime(u.last_seen)}
+              </div>
+              {/* полоса активности */}
+              <div style={{ height: 4, background: HAIR, marginTop: 7, position: "relative", overflow: "hidden" }}>
                 <div style={{ position: "absolute", inset: 0, width: `${pct}%`, background: BLUE }} />
               </div>
             </div>
-            <span style={{ textAlign: "right", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 13, color: INK }}>{u.events}</span>
-            <span style={{ textAlign: "right", fontFamily: FONT_MONO, fontSize: 13, color: MUTE }}>{u.opens}</span>
-            <span style={{ textAlign: "right", fontFamily: FONT_MONO, fontWeight: u.rsvps ? 700 : 400, fontSize: 13, color: u.rsvps ? BLUE : FAINT }}>{u.rsvps}</span>
-            <span style={{ textAlign: "right", fontFamily: FONT_MONO, fontSize: 12, color: MUTE }}>{relTime(u.last_seen)}</span>
-          </div>
-        )
-      })}
-      {users.length === 0 && <div style={{ padding: "16px 13px", fontFamily: FONT_MONO, fontSize: 12, color: MUTE }}>Пока нет пользователей с TG-профилем.</div>}
+          )
+        })}
+        {users.length === 0 && <div style={{ padding: "16px 13px", fontFamily: FONT_MONO, fontSize: 12, color: MUTE }}>Пока нет пользователей с TG-профилем.</div>}
+      </div>
     </div>
   )
 }
