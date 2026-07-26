@@ -35,6 +35,13 @@ def _event_date(text: str, base: datetime) -> str | None:
     return enr.event_time.strftime("%Y-%m-%d") if enr.event_time else None
 
 
+def _event_end_date(text: str, base: datetime) -> str | None:
+    """Run the real detector + enricher and return event_time_end as YYYY-MM-DD."""
+    det = detect_event(text)
+    enr = enrich_event(text, det.hits, published_at=base)
+    return enr.event_time_end.strftime("%Y-%m-%d") if enr.event_time_end else None
+
+
 # ── End-to-end: the exact prod symptoms ────────────────────────────
 @pytest.mark.parametrize(
     "label, text, base, expected",
@@ -75,6 +82,48 @@ def test_explicit_year_survives_even_when_far_in_past():
 # ── Relative days are left to dateparser (anchored to the post) ────
 def test_relative_day_is_not_year_shifted():
     assert _event_date("Завтра в 19:00 концерт в клубе", JUL_2026) == "2026-07-23"
+
+
+# ── Date-range END extraction (exhibitions run for weeks) ──────────
+# The bug: only the opening date was kept, so once it passed the still-running
+# show read as finished and dropped from the feed (prod: Studio 54, id=3258).
+@pytest.mark.parametrize(
+    "label, text, base, start, end",
+    [
+        # numeric range with em-dash — the real Studio 54 poster form
+        ("19.07 — 01.09", "Studio 54 and Others, выставка 19.07 — 01.09 на Яузской",
+         JUL_2026, "2026-07-19", "2026-09-01"),
+        # «с DD месяц по DD месяц»
+        ("с 30 мая по 27 сентября", "Выставка с 30 мая по 27 сентября в галерее",
+         JUL_2026, "2026-05-30", "2026-09-27"),
+        # numeric two-digit-year range
+        ("16.07.26 – 23.08.26", "Фестиваль 16.07.26 – 23.08.26 в парке",
+         JUL_2026, "2026-07-16", "2026-08-23"),
+        # month-name dash range
+        ("19 июля — 1 сентября", "Экспозиция 19 июля — 1 сентября, вход свободный",
+         JUL_2026, "2026-07-19", "2026-09-01"),
+    ],
+)
+def test_range_end_extracted(label, text, base, start, end):
+    assert _event_date(text, base) == start, f"{label} start"
+    assert _event_end_date(text, base) == end, f"{label} end"
+
+
+def test_open_ended_until_date():
+    # «до DATE» with no explicit start still yields a closing date so the show
+    # stays live until it actually closes.
+    assert _event_end_date("Выставка работает до 1 сентября в музее", JUL_2026) == "2026-09-01"
+
+
+def test_single_date_has_no_range_end():
+    # A one-off event (single date, no range) must not invent an end date.
+    assert _event_end_date("Концерт 27 сентября в 19:00 в клубе", JUL_2026) is None
+
+
+def test_same_day_time_range_is_not_a_date_range():
+    # «19:00 — 22:00» is a time span within one day, not a multi-day run: the end
+    # stays the same calendar day, not mis-read as a date range.
+    assert _event_end_date("Лекция 5 августа 19:00 — 22:00 в центре", JUL_2026) == "2026-08-05"
 
 
 # ── Helper units ───────────────────────────────────────────────────

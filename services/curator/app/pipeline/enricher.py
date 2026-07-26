@@ -10,7 +10,7 @@ from typing import Optional
 import dateparser
 
 from app.pipeline import gazetteer
-from app.pipeline.detector import DetectionHits
+from app.pipeline.detector import RU_MONTHS, DetectionHits
 
 
 PRICE_FREE: re.Pattern[str] = re.compile(
@@ -133,6 +133,51 @@ def _drop_far_future(dt: datetime | None, base: datetime) -> datetime | None:
     return dt
 
 
+# ── Date-range end («19.07 — 01.09», «с 30 мая по 27 сентября», «до 1 сентября») ──
+# Exhibitions/festivals run for weeks and state a closing date, but the enricher
+# used to keep only the opening date (event_time), leaving event_time_end NULL.
+# Once the opening passed, the feed's `event_time >= now OR event_time_end >= now`
+# gate — and any «past event» sweep — read the still-running show as finished and
+# dropped it. Parse the range's END so an ongoing show stays live to its close.
+#
+# A single date token: «19 июля[ 2026]» or «19.07[.26]» (mirrors the detector).
+_DATE_TOKEN = (
+    rf"(?:\d{{1,2}}\s*(?:{'|'.join(RU_MONTHS)})[а-я]*(?:\s+20\d{{2}})?"
+    rf"|\d{{1,2}}[./]\d{{1,2}}(?:[./]\d{{2,4}})?)"
+)
+# «DATE <по|до|—> DATE» — a date on both sides makes the connective unambiguous.
+_RANGE_RE: re.Pattern[str] = re.compile(
+    rf"({_DATE_TOKEN})\s*(?:[–—-]|по|до)\s*({_DATE_TOKEN})", re.IGNORECASE
+)
+# «до DATE» with no start — an open-ended «работает до 1 сентября». Restricted to
+# «до» (not «по») to avoid false hits like «по 8 адресам».
+_END_ONLY_RE: re.Pattern[str] = re.compile(rf"\bдо\s+({_DATE_TOKEN})", re.IGNORECASE)
+
+
+def _find_end_date_snippet(text: str) -> str | None:
+    """The closing date of a range, if the text states one."""
+    if (m := _RANGE_RE.search(text)) is not None:
+        return m.group(2)
+    if (m := _END_ONLY_RE.search(text)) is not None:
+        return m.group(1)
+    return None
+
+
+def _build_range_end(text: str, base: datetime) -> datetime | None:
+    """Normalized closing date, run through the same pipeline as event_time."""
+    snippet = _find_end_date_snippet(text)
+    if not snippet:
+        return None
+    snippet = _expand_two_digit_year(snippet)  # «01.09.26» → «01.09.2026»
+    snippet = _numeric_ddmm_to_words(snippet)  # «01.09» → «1 сентября»
+    dt = _parse_dt(snippet, base=base)
+    if dt is None:
+        return None
+    if not _has_explicit_year(snippet):
+        dt = _resolve_bare_year(dt, base)
+    return _drop_far_future(dt, base)
+
+
 def enrich_event(
     text: str,
     hits: DetectionHits,
@@ -174,6 +219,14 @@ def enrich_event(
         event_time_end = _resolve_bare_year(event_time_end, base_dt)
     event_time = _drop_far_future(event_time, base_dt)
     event_time_end = _drop_far_future(event_time_end, base_dt)
+
+    # A multi-day range («19.07 — 01.09», «до 1 сентября») → closing date. Only
+    # when a same-day time-range hasn't already set an end, and only if it's not
+    # before the start (a mis-paired date is dropped rather than trusted).
+    if event_time_end is None:
+        range_end = _build_range_end(text, base_dt)
+        if range_end is not None and (event_time is None or range_end >= event_time):
+            event_time_end = range_end
 
     # ── Location ──
     location_text: str | None = None

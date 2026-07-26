@@ -133,16 +133,22 @@ class ModerationRepository:
         """Browse curated events with their source post + channel.
 
         - status: filter by status (None = all).
-        - when: "upcoming" (event_time >= now or unknown), "past"
-          (event_time < now), or "all".
+        - when: "upcoming" (still running or unknown), "past" (already
+          closed), or "all". «Still running» keys off the closing date when
+          the event has one — an exhibition open through its end date is
+          upcoming, not past, even after its opening day.
         Ordering puts items needing moderation (manual_review / pending)
         on top, then sorts by event_time — ascending for upcoming, newest
         first for past/all.
         """
         from datetime import datetime
-        from sqlalchemy import case, or_
+        from sqlalchemy import case, func, or_
         from app.models import PostRaw, Channel
         now = datetime.utcnow()
+        # An event lives until its END date (its start when no end is known), so
+        # a multi-day show open through its close stays "upcoming". Mirrors the
+        # public feed's `event_time >= now OR event_time_end >= now` gate.
+        alive = func.coalesce(EventCurated.event_time_end, EventCurated.event_time)
         stmt = (
             select(EventCurated, PostRaw, Channel)
             .join(PostRaw, PostRaw.id == EventCurated.post_id)
@@ -151,9 +157,9 @@ class ModerationRepository:
         if status is not None:
             stmt = stmt.where(EventCurated.status == status)
         if when == "upcoming":
-            stmt = stmt.where(or_(EventCurated.event_time.is_(None), EventCurated.event_time >= now))
+            stmt = stmt.where(or_(alive.is_(None), alive >= now))
         elif when == "past":
-            stmt = stmt.where(EventCurated.event_time < now)
+            stmt = stmt.where(alive < now)
 
         mod_first = case(
             (EventCurated.status.in_([EventStatus.manual_review, EventStatus.pending]), 0),
