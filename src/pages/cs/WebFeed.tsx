@@ -237,11 +237,16 @@ export default function CsWebFeed() {
     const cutoff = new Date(); cutoff.setHours(0, 0, 0, 0)
     const c = cutoff.getTime(), now = Date.now()
     return allEvents
-      .filter((e) => e.ts == null || e.ts >= c)
+      // старт в будущем / без даты / ИЛИ ещё идёт (конец сегодня-позже) — идущие
+      // многодневные выставки с прошедшим открытием не выпадают из каталога.
+      .filter((e) => e.ts == null || e.ts >= c || (e.endTs != null && e.endTs >= c))
       .sort((a, b) => {
-        const ap = a.ts != null && a.ts < now, bp = b.ts != null && b.ts < now
+        const ap = a.ts != null && a.ts < now && !(a.endTs != null && a.endTs >= now)
+        const bp = b.ts != null && b.ts < now && !(b.endTs != null && b.endTs >= now)
         if (ap !== bp) return ap ? 1 : -1
-        return (a.ts ?? Infinity) - (b.ts ?? Infinity)
+        const ka = a.ts != null && a.ts >= now ? a.ts : (a.endTs ?? a.ts ?? Infinity)
+        const kb = b.ts != null && b.ts >= now ? b.ts : (b.endTs ?? b.ts ?? Infinity)
+        return ka - kb
       })
   }, [allEvents])
   const withPoster = useMemo(() => upcoming.filter((e) => e.p), [upcoming])

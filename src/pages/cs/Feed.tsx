@@ -949,12 +949,18 @@ export default function CsFeed() {
     const c = cutoff.getTime()
     const now = Date.now()
     return allEvents
-      .filter((e) => e.ts == null || e.ts >= c) // сегодняшние остаются (findable)
+      // старт в будущем / без даты / ИЛИ ещё идёт (конец сегодня-позже) — идущие
+      // многодневные выставки с прошедшим открытием не выпадают из каталога.
+      .filter((e) => e.ts == null || e.ts >= c || (e.endTs != null && e.endTs >= c))
       .sort((a, b) => {
-        // прошедшие сегодня тонут ПОД ещё-предстоящими (asc клал их наверх)
-        const ap = a.ts != null && a.ts < now, bp = b.ts != null && b.ts < now
+        // «прошедшее» = и старт, и конец в прошлом; идущая выставка не тонет
+        const ap = a.ts != null && a.ts < now && !(a.endTs != null && a.endTs >= now)
+        const bp = b.ts != null && b.ts < now && !(b.endTs != null && b.endTs >= now)
         if (ap !== bp) return ap ? 1 : -1
-        return (a.ts ?? Infinity) - (b.ts ?? Infinity)
+        // будущий старт → по старту; идущее (старт в прошлом) → по дате закрытия
+        const ka = a.ts != null && a.ts >= now ? a.ts : (a.endTs ?? a.ts ?? Infinity)
+        const kb = b.ts != null && b.ts >= now ? b.ts : (b.endTs ?? b.ts ?? Infinity)
+        return ka - kb
       })
   }, [allEvents])
   // Visual surfaces (board hero + poster mosaic + map) show only events WITH an
