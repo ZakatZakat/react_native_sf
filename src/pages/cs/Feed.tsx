@@ -556,10 +556,18 @@ function heroScore(e: Ev): number {
   return s
 }
 
+// Детерминированный псевдослучай 0..1 из (индекс, seed) — для перемешивания
+// каталога со сдвигом по рангу (стабильно в рамках захода, меняется с seed).
+function seededRand(i: number, s: number): number {
+  const x = Math.sin((i + 1) * 127.1 + s * 311.7) * 43758.5453
+  return x - Math.floor(x)
+}
+
 function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: { feed: Ev[]; searchFeed?: Ev[]; btn?: string; name?: string; onMap?: () => void }) {
   const nav = useContext(NavCtx)
   const wk = weekMeta()
   const [nonce, setNonce] = useState(0)
+  const [shuffleSeed] = useState(() => Math.floor(Math.random() * 1e9))  // перемешивание каталога: свой на каждый заход
   const [sweep, setSweep] = useState(0)
   const [searchOpen, setSearchOpen] = useState(false)
   const [fbOpen, setFbOpen] = useState(false)
@@ -624,10 +632,15 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
   if (access) filtered = filtered.filter((e) => e.access === access)
   // Ранжирование по трению (фидбек #3): жёсткие барьеры (рега закрыта / sold out)
   // тонут в конец каталога; остальное сохраняет хронологический порядок (stable sort).
-  const catalogAll = [...filtered].sort((a, b) => {
-    const ha = HARD_ACCESS.has(a.access), hb = HARD_ACCESS.has(b.access)
-    return ha === hb ? 0 : ha ? 1 : -1
-  })
+  // Каталог перемешиваем со сдвигом по рангу: свой порядок на каждый заход
+  // (shuffleSeed) и на каждое «обновить» (nonce), но сильные события всё равно
+  // тяготеют вверх (rank-биас по позиции), а жёсткие барьеры тонут в конец.
+  const shufSeed = shuffleSeed + nonce
+  const SPREAD = filtered.length * 0.6
+  const catalogAll = filtered
+    .map((e, i) => ({ e, hard: HARD_ACCESS.has(e.access), key: i + seededRand(i, shufSeed) * SPREAD }))
+    .sort((a, b) => (a.hard === b.hard ? a.key - b.key : a.hard ? 1 : -1))
+    .map((x) => x.e)
   // «Последний шанс» — закрывающиеся в ближайшие дни (в осн. выставки), по
   // возрастанию дней. Отдельной полкой на дефолт-виде; из каталога убираем, чтобы
   // не дублировать.
