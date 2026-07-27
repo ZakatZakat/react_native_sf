@@ -152,36 +152,59 @@ async def insights(
                 "last_seen": r["last_seen"].isoformat() if r["last_seen"] else None,
             })
 
-        # ── Кто и когда: активность TG-юзеров по дням (МСК) ───────────
+        # ── Кто и когда: активность TG-юзеров по дням, ОКНА ПО ЗАХОДАМ (МСК) ──
+        # Гранулярность — сессия (request_id): по каждой берём first/last время.
+        # Дальше в Python сессии, идущие подряд с зазором ≤ VISIT_GAP, склеиваем
+        # в один «заход» — чтобы быстрые пере-открытия не плодили окна, а утро/вечер
+        # оставались раздельными.
         du_rows = (await conn.execute(text(f"""
             SELECT (received_at AT TIME ZONE 'Europe/Moscow')::date AS day,
                    {_UID} AS uid,
-                   count(*)                   AS events,
-                   count(DISTINCT request_id) AS sessions,
+                   count(*) AS events,
+                   extract(epoch FROM min(received_at)) AS start_ep,
+                   extract(epoch FROM max(received_at)) AS end_ep,
                    to_char(min(received_at) AT TIME ZONE 'Europe/Moscow', 'HH24:MI') AS first_hm,
                    to_char(max(received_at) AT TIME ZONE 'Europe/Moscow', 'HH24:MI') AS last_hm
             FROM events
             WHERE service = :svc AND {_UID} IS NOT NULL
               AND received_at >= now() - (:days * interval '1 day')
-            GROUP BY day, uid
-            ORDER BY day DESC, events DESC
+            GROUP BY day, uid, request_id
         """), p)).mappings().all()
-        day_map: dict[str, dict[str, Any]] = {}
+
+        VISIT_GAP = 20 * 60  # ≤20 мин между сессиями → тот же «заход»
+        by_day_uid: dict[tuple[str, str], list] = {}
         for r in du_rows:
-            day = r["day"].isoformat()
-            d = day_map.setdefault(day, {"day": day, "events": 0, "users": []})
-            nm = name_by_uid.get(r["uid"])
-            d["users"].append({
-                "user_id": r["uid"],
+            by_day_uid.setdefault((r["day"].isoformat(), r["uid"]), []).append(r)
+
+        days_tmp: dict[str, list] = {}
+        for (day, uid), sess in by_day_uid.items():
+            sess.sort(key=lambda x: float(x["start_ep"]))
+            windows: list[dict[str, str]] = []
+            cur_end = None
+            for s in sess:
+                if windows and cur_end is not None and float(s["start_ep"]) - cur_end <= VISIT_GAP:
+                    windows[-1]["last"] = s["last_hm"]          # продлеваем текущий заход
+                    cur_end = max(cur_end, float(s["end_ep"]))
+                else:
+                    windows.append({"first": s["first_hm"], "last": s["last_hm"]})
+                    cur_end = float(s["end_ep"])
+            nm = name_by_uid.get(uid)
+            days_tmp.setdefault(day, []).append({
+                "user_id": uid,
                 "username": nm["username"] if nm else None,
-                "name": _display_name(r["uid"], nm["first_name"] if nm else None),
-                "events": r["events"],
-                "sessions": r["sessions"],
-                "first": r["first_hm"],
-                "last": r["last_hm"],
+                "name": _display_name(uid, nm["first_name"] if nm else None),
+                "events": sum(s["events"] for s in sess),
+                "sessions": len(sess),
+                "visits": len(windows),
+                "windows": windows,
+                # overall first/last — фолбэк для старого фронта в момент выката
+                "first": windows[0]["first"] if windows else None,
+                "last": windows[-1]["last"] if windows else None,
             })
-            d["events"] += r["events"]
-        day_users = sorted(day_map.values(), key=lambda x: x["day"], reverse=True)
+        day_users = []
+        for day in sorted(days_tmp, reverse=True):
+            ulist = sorted(days_tmp[day], key=lambda u: u["events"], reverse=True)
+            day_users.append({"day": day, "events": sum(u["events"] for u in ulist), "users": ulist})
 
         # ── Топ действий (cs.*) ───────────────────────────────────────
         actions = (await conn.execute(text("""

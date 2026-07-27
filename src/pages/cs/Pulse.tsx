@@ -241,21 +241,23 @@ function DayUsers({ days }: { days: InsightsDay[] }) {
                 <span style={{ fontFamily: FONT_MONO, fontSize: 10.5, color: MUTE, whiteSpace: "nowrap" }}>{d.users.length} чел · {d.events} соб</span>
               </div>
               {/* строки пользователей */}
-              {d.users.map((u, i) => (
-                <div key={u.user_id} style={{ padding: "8px 13px", borderTop: i === 0 ? "none" : `1px solid ${HAIR}` }}>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                    <span style={{ minWidth: 0, flex: 1, fontFamily: FONT_SANS, fontSize: 13.5, fontWeight: 700, color: INK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {d.users.map((u, i) => {
+                const wins = (u.windows && u.windows.length) ? u.windows : (u.first ? [{ first: u.first, last: u.last || u.first }] : [])
+                const shownW = wins.slice(0, 3)
+                const extraW = wins.length - shownW.length
+                const fmtW = (w: { first: string; last: string }) => (w.last && w.last !== w.first ? `${w.first}–${w.last}` : w.first)
+                return (
+                  <div key={u.user_id} style={{ padding: "9px 13px", borderTop: i === 0 ? "none" : `1px solid ${HAIR}` }}>
+                    <div style={{ fontFamily: FONT_SANS, fontSize: 13.5, fontWeight: 800, color: INK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {u.username ? `@${u.username}` : (u.name || `id ${u.user_id}`)}
-                    </span>
-                    <span style={{ flexShrink: 0, fontFamily: FONT_MONO, fontSize: 12.5, fontWeight: 700, color: BLUE, whiteSpace: "nowrap" }}>
-                      {u.first}{u.last && u.last !== u.first ? `–${u.last}` : ""}
-                    </span>
+                    </div>
+                    <div style={{ fontFamily: FONT_MONO, fontSize: 11, lineHeight: 1.55, marginTop: 3 }}>
+                      <span style={{ color: BLUE, fontWeight: 700 }}>{shownW.map(fmtW).join("  ·  ")}{extraW > 0 ? ` +${extraW}` : ""}</span>
+                      <span style={{ color: MUTE }}>{"  ·  "}{u.events} соб · {u.sessions} сес</span>
+                    </div>
                   </div>
-                  <div style={{ fontFamily: FONT_MONO, fontSize: 10.5, color: MUTE, marginTop: 2 }}>
-                    {u.events} соб · {u.sessions} сес
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )
         })}

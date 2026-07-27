@@ -72,8 +72,10 @@ export type InsightsDayUser = {
   name: string | null
   events: number
   sessions: number
-  first: string | null // «HH:MM» МСК
-  last: string | null  // «HH:MM» МСК
+  visits?: number
+  windows?: { first: string; last: string }[] // окна заходов, МСК
+  first: string | null // overall min «HH:MM» (фолбэк)
+  last: string | null  // overall max «HH:MM» (фолбэк)
 }
 export type InsightsDay = { day: string; events: number; users: InsightsDayUser[] }
 export type Insights = {
