@@ -40,13 +40,6 @@ const HARD_ACCESS = new Set(["registration_closed", "sold_out"])
 const RED = "#E0162B"
 const accessSquare = (a: string): string => (a === "free" ? CS.B : HARD_ACCESS.has(a) ? RED : SK.ink)
 
-// Детерминированный псевдослучай 0..1 из (индекс, seed) — перемешивание каталога
-// со сдвигом по рангу (свой порядок на каждую загрузку страницы).
-function seededRand(i: number, s: number): number {
-  const x = Math.sin((i + 1) * 127.1 + s * 311.7) * 43758.5453
-  return x - Math.floor(x)
-}
-
 /** Бейдж-штамп (веб-масштаб): белый блок, квадрат-индикатор, прямые углы.
  *  Компактный — чтобы несколько бейджей помещались в ряд. */
 function Stamp({ label, square }: { label: string; square: string }) {
@@ -285,9 +278,6 @@ export default function CsWebFeed() {
     const ordered = [...seen].sort((a, b) => (pr(a) - pr(b)) || (origIdx.get(a)! - origIdx.get(b)!))
     return ["Все", ...ordered]
   }, [mainE])
-  // Сид перемешивания — свой на каждый заход (загрузку страницы). Каталог
-  // тасуется со сдвигом по рангу: качество вверху сохраняется, но порядок разный.
-  const [shuffleSeed] = useState(() => Math.floor(Math.random() * 1e9))
   const [cat, setCat] = useState("Все")        // 1-й уровень — крупная категория
   const [tag, setTag] = useState<string | null>(null) // 2-й уровень — подтег
   const [access, setAccess] = useState<string | null>(null) // фильтр по барьеру входа
@@ -319,15 +309,13 @@ export default function CsWebFeed() {
     if (access) list = list.filter((e) => e.access === access)
     const query = q.trim().toLowerCase()
     if (query) list = list.filter((e) => `${e.t} ${e.v} ${e.ch} ${e.c}`.toLowerCase().includes(query))
-    // Перемешивание со сдвигом по рангу: к позиции i прибавляем случайный сдвиг
-    // (до ~60% длины), поэтому топ остаётся сверху, но порядок разный на заход.
-    // Жёсткие барьеры (sold_out/closed) — всегда в конец, как в мобиле.
-    const spread = list.length * 0.6
-    return list
-      .map((e, i) => ({ e, hard: HARD_ACCESS.has(e.access), key: i + seededRand(i, shuffleSeed) * spread }))
-      .sort((a, b) => (a.hard === b.hard ? a.key - b.key : a.hard ? 1 : -1))
-      .map((x) => x.e)
-  }, [inCat, tag, access, q, shuffleSeed])
+    // Строгий календарный порядок (из inCat — по дате), СТАБИЛЬНЫЙ между
+    // перезагрузками. Жёсткие барьеры (sold_out/closed) — в конец; внутри каждой
+    // группы порядок сохраняется (Array.sort стабилен), т.е. остаётся по дате.
+    const soft = list.filter((e) => !HARD_ACCESS.has(e.access))
+    const hard = list.filter((e) => HARD_ACCESS.has(e.access))
+    return [...soft, ...hard]
+  }, [inCat, tag, access, q])
 
   // «Последний шанс» — идущие/будущие события, закрывающиеся в ближайшие дни
   // (в осн. выставки), по возрастанию дней до закрытия. Показываем отдельной
