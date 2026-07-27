@@ -31,6 +31,13 @@ class Settings(BaseSettings):
     # on every restart. Bootstrapped once from TELEGRAM_SESSION_STRING. Empty →
     # keep the old in-memory StringSession (cache lost on restart).
     session_path: str | None = Field(default=None, alias="POLLER_SESSION_PATH")
+    # Рейт-лимит на ResolveUsername (флуд-опасный вызов). Канал, которого ещё нет
+    # в entity-кэше сессии, при чтении форсит резолв; таких пускаем не больше
+    # resolve_max_per_window за resolve_window_sec — чтобы прогрев холодного кэша
+    # (после первого запуска) размазывался во времени и НЕ вызывал аккаунт-wide
+    # FloodWait. Уже закэшированные каналы читаются свободно (резолв не нужен).
+    resolve_max_per_window: int = Field(4, alias="RESOLVE_MAX_PER_WINDOW")
+    resolve_window_sec: int = Field(600, alias="RESOLVE_WINDOW_SEC")
     # Shared bearer token guarding the data endpoints. When the poller runs
     # on a separate (internet-exposed) box, set this on both the poller and
     # curator (TELEGRAM_SERVICE_TOKEN). If unset, endpoints stay open (local

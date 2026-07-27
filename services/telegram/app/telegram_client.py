@@ -6,6 +6,7 @@ import asyncio
 import logging
 import re
 import time
+from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -35,6 +36,10 @@ class TelegramService:
     # handle без «@» в нижнем регистре → time.monotonic(), до которого канал на
     # cooldown после FloodWait: не долбим залоченный канал каждый цикл.
     _flood_until: dict[str, float] = field(default_factory=dict, init=False, repr=False, compare=False)
+    # Токен-бакет на ResolveUsername: времена последних резолвов (monotonic).
+    # Не даём прогреву холодного кэша делать бёрст резолвов → нет нового флуда.
+    _resolve_times: deque = field(default_factory=deque, init=False, repr=False, compare=False)
+    _resolve_lock: asyncio.Lock = field(default_factory=asyncio.Lock, init=False, repr=False, compare=False)
 
     @property
     def media_root(self) -> Path:
@@ -342,6 +347,29 @@ class TelegramService:
             "published_at": published_at.isoformat() if published_at else None,
         }
 
+    def _needs_resolve(self, client: TelegramClient, key: str) -> bool:
+        """True, если канала ещё НЕТ в entity-кэше сессии → его чтение вызовет
+        ResolveUsername (флуд-опасно). Ошибку трактуем как «нужен резолв» (безопасно
+        — тогда его прикроет рейт-лимит)."""
+        try:
+            client.session.get_input_entity(key)
+            return False
+        except Exception:
+            return True
+
+    async def _resolve_budget_ok(self) -> bool:
+        """Токен-бакет: не больше resolve_max_per_window резолвов за окно."""
+        now = time.monotonic()
+        win = max(1, self.settings.resolve_window_sec)
+        mx = max(1, self.settings.resolve_max_per_window)
+        async with self._resolve_lock:
+            while self._resolve_times and now - self._resolve_times[0] > win:
+                self._resolve_times.popleft()
+            if len(self._resolve_times) >= mx:
+                return False
+            self._resolve_times.append(now)
+            return True
+
     async def ingest(
         self,
         channel_ids: list[str],
@@ -365,6 +393,13 @@ class TelegramService:
                 # чтобы не продлевать лимит. Отдаём наверх как failed (видно в
                 # channels_failed), пост подтянется следующим циклом.
                 failed[channel] = f"FloodCooldown({int(remaining)}s)"
+                continue
+            # Рейт-лимит РЕЗОЛВОВ: канал не в кэше сессии → чтение форсит
+            # ResolveUsername. Сверх бюджета — пропускаем (подтянется следующим
+            # циклом): прогрев холодного кэша размазывается во времени, без флуда.
+            # Закэшированные каналы резолв не требуют и идут свободно.
+            if self._needs_resolve(client, key) and not await self._resolve_budget_ok():
+                failed[channel] = "ResolveThrottled (прогрев кэша)"
                 continue
             try:
                 async for message in client.iter_messages(entity=channel, limit=per_channel_limit):
