@@ -293,7 +293,7 @@ function MosaicCard({ ev, i, onImg, onBroken }: { ev: Ev; i: number; onImg?: () 
   const time = ev.tm && ev.tm !== "—" && ev.tm !== "00:00" ? ev.tm : ""
   // «Свободный вход» уносим — его показывает синий бейдж «свободно», чтобы не
   // дублировать; остаётся реальная цена (₽).
-  const price = ev.price && ev.price !== "—" && !/свобод|беспл|free/i.test(ev.price) ? ev.price : ""
+  const price = ev.price && ev.price !== "—" && !/свобод|беспл|free/i.test(ev.price) && ev.price.length <= 14 ? ev.price.trim() : ""
   // description = the post body BELOW its first line (the first line is the
   // title, already shown in full above — don't repeat it).
   const nl = (ev.desc || "").indexOf("\n")
@@ -345,14 +345,14 @@ function MosaicCard({ ev, i, onImg, onBroken }: { ev: Ev; i: number; onImg?: () 
           <div style={{ padding: "9px 11px 11px" }}>
             {/* время + доступ + возраст — компактные блок-штампы в один ряд;
                 стремятся уместиться в одну строку (мельче + меньше gap) */}
-            {(time || ACCESS_LABEL[ev.access] || ev.age) && (
+            {(time || ACCESS_LABEL[ev.access] || price || ev.age) && (
               <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 4 }}>
                 {time && <StampBadge label={time} square={CS.B} compact />}
                 <AccessTag ev={ev} compact />
+                {price && <StampBadge label={price} square={SK.ink} compact />}
                 <AgeTag ev={ev} compact />
               </div>
             )}
-            {price && <div style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9.5, letterSpacing: "0.03em", color: SK.ink55, marginTop: 6, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{price}</div>}
             <div style={{ fontWeight: 900, fontSize: 14, letterSpacing: "-0.01em", lineHeight: 1.08, color: SK.ink, marginTop: 8, textTransform: "uppercase", overflowWrap: "break-word", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{ev.t}</div>
             {venue && <div style={{ fontWeight: 700, fontSize: 11, lineHeight: 1.25, color: SK.ink55, marginTop: 5 }}>{venue}</div>}
             {body && (
