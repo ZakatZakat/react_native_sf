@@ -117,8 +117,12 @@ async def bulk_create_channels(
             except Exception:
                 skipped.append(raw)
                 continue
+            # Savepoint per create: дубликат откатывает только свой SAVEPOINT,
+            # не отравляя внешнюю транзакцию, поэтому остальные (новые) каналы
+            # из того же батча создаются и коммитятся.
             try:
-                row = await repo.create(payload)
+                async with s.begin_nested():
+                    row = await repo.create(payload)
                 created.append(payload.handle)
                 if sch is not None:
                     sch.add_or_update_channel(row)
