@@ -66,6 +66,7 @@ class IngestRequest(BaseModel):
     pause_between_messages: float = 0.0
     collect_media: bool = True
     event_keywords: list[str] | None = None
+    min_id: int | None = None   # «догон»: тянуть всё новее этого id (до per_channel_limit)
 
 
 @app.post("/ingest")
@@ -78,6 +79,7 @@ async def ingest(body: IngestRequest, _: None = Depends(require_token)) -> dict:
         pause_between_messages=body.pause_between_messages,
         collect_media=body.collect_media,
         event_keywords=body.event_keywords,
+        min_id=body.min_id,
     )
 
 

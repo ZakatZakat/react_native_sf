@@ -40,7 +40,7 @@ class CuratorScheduler:
     async def _run_channel(self, channel_id: int, handle: str) -> None:
         async with self._sem:
             try:
-                result = await self.processor.process_channel(channel_id, limit=5)
+                result = await self.processor.process_channel(channel_id, limit=25)
                 if result.error:
                     logger.warning("scheduler: %s failed: %s", handle, result.error)
             except Exception:  # noqa: BLE001
@@ -81,6 +81,23 @@ class CuratorScheduler:
                 await engine.dispose()
         except Exception:  # noqa: BLE001
             logger.exception("scheduler: moderation cleanup failed")
+
+    async def _run_media_retry(self) -> None:
+        """Периодический ретрай битых постеров (медиа, упавшее на FLOOD_PREMIUM_WAIT).
+        Изолировано — ошибка логируется, поллинг не трогает."""
+        try:
+            from app.backfill_media_retry import retry_broken_posters
+            from app.db import create_engine, create_session_maker
+
+            engine = create_engine(self.settings.postgres_dsn)
+            try:
+                sf = create_session_maker(engine)
+                res = await retry_broken_posters(sf, self.processor.tg, days=1, apply=True, limit=300)
+                logger.info("scheduler: media retry — %s", res)
+            finally:
+                await engine.dispose()
+        except Exception:  # noqa: BLE001
+            logger.exception("scheduler: media retry failed")
 
     def add_or_update_channel(self, channel: Channel) -> None:
         if not channel.poll_enabled:
@@ -139,6 +156,17 @@ class CuratorScheduler:
             max_instances=1,
             coalesce=True,
             misfire_grace_time=3600,
+        )
+        # Ретрай битых постеров (медиа-флуд) — каждые 30 мин, первый через 5 мин.
+        self._scheduler.add_job(
+            self._run_media_retry,
+            trigger=IntervalTrigger(minutes=30),
+            id="media:retry",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=600,
+            next_run_time=datetime.utcnow() + timedelta(seconds=300),
         )
         self._scheduler.start()
         self._started = True

@@ -273,15 +273,18 @@ class TelegramService:
         except Exception as e:
             logger.warning("Media download failed %s: %s", filename, e)
             path = None
-        # Drop empty/partial leftovers so the next poll retries instead of
-        # pinning the post to a broken image.
+        # Скачивание не удалось (обычно FLOOD_PREMIUM_WAIT на не-premium аккаунте).
+        # Чистим 0-байтный огрызок, НО возвращаем ожидаемый URL постера — чтобы
+        # событие его не потеряло: файл дотянет авто-ретрай (curator
+        # backfill_media_retry по (channel_id,message_id) из имени файла). Битую
+        # картинку фронт прячет по onError до догрузки.
         if not path or not dest.exists() or dest.stat().st_size == 0:
             try:
                 if dest.exists():
                     dest.unlink()
             except OSError:
                 pass
-            return []
+            return [f"/media/{filename}"]
         return [f"/media/{Path(path).name}"]
 
     async def refetch_media(self, items: list[dict[str, Any]], pause: float = 0.4) -> dict[str, Any]:
@@ -378,8 +381,10 @@ class TelegramService:
         pause_between_messages: float = 0.0,
         collect_media: bool = True,
         event_keywords: list[str] | None = None,
+        min_id: int | None = None,
     ) -> dict[str, Any]:
-        """Fetch recent messages from channels; return list of event payloads (no DB). Optionally filter by event_keywords."""
+        """Fetch recent messages from channels; return list of event payloads (no DB). Optionally filter by event_keywords.
+        min_id → «догон»: вернуть всё новее этого id (до per_channel_limit), а не только последние N."""
         self.media_root.mkdir(parents=True, exist_ok=True)
         client = await self._get_client()
         events: list[dict[str, Any]] = []
@@ -402,7 +407,10 @@ class TelegramService:
                 failed[channel] = "ResolveThrottled (прогрев кэша)"
                 continue
             try:
-                async for message in client.iter_messages(entity=channel, limit=per_channel_limit):
+                # min_id=0 → отдаём Telethon как None (иначе он это как «с самого начала»)
+                async for message in client.iter_messages(
+                    entity=channel, limit=per_channel_limit, min_id=(min_id or 0)
+                ):
                     if not isinstance(message, Message):
                         continue
                     if not message.message and not message.media:

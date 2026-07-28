@@ -74,8 +74,11 @@ class PipelineProcessor:
                 return ChannelRunResult("?", 0, 0, 0, 0, 0, error="channel not found")
 
         # 1) FETCH (separate session — long external call, no transaction held)
+        # min_id=last_message_id → «догон»: тянем ВСЁ, что вышло с прошлого опроса
+        # (до limit), а не только последние N. Иначе активный канал, выложивший
+        # между опросами >N постов, терял старшие безвозвратно.
         try:
-            raw = await self.tg.fetch(ch.handle, limit=limit)
+            raw = await self.tg.fetch(ch.handle, limit=limit, min_id=ch.last_message_id)
         except TelegramFetchError as e:
             # Ожидаемый мягкий сбой: поллер не смог вытащить канал (FloodWait /
             # ResolveUsername / потеря доступа). Раньше это выглядело как «success,

@@ -70,19 +70,38 @@ class TelegramServiceClient:
             except Exception:
                 logger.warning("media pull failed for %s", rel, exc_info=False)
 
-    async def fetch(self, handle: str, limit: int = 20, collect_media: bool = True) -> list[RawMessage]:
-        """Pull last `limit` messages from a single channel via /ingest."""
+    async def refetch_media(self, items: list[dict[str, Any]]) -> dict[str, Any]:
+        """Ask the poller to re-download media for given (channel, message_id, channel_id)
+        items — repairs posters that flooded on first download. The poller re-fetches to
+        its store; media-nginx serves them on the next request (proxy_store), so no local
+        mirror needed here. Returns the poller's {repaired, failed}."""
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            resp = await client.post(
+                f"{self._base}/refetch-media", headers=self._headers, json={"items": items}
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    async def fetch(
+        self, handle: str, limit: int = 20, collect_media: bool = True, min_id: int | None = None
+    ) -> list[RawMessage]:
+        """Pull messages from a single channel via /ingest. When `min_id` is set,
+        the poller returns everything newer than it (up to `limit`) — «догон», so a
+        burst between polls isn't lost. min_id=None → last `limit` messages."""
+        body: dict[str, Any] = {
+            "channel_ids": [handle],
+            "per_channel_limit": limit,
+            "pause_between_channels": 0.5,
+            "pause_between_messages": 0.05,
+            "collect_media": collect_media,
+        }
+        if min_id:
+            body["min_id"] = int(min_id)
         async with httpx.AsyncClient(timeout=self._timeout) as client:
             resp = await client.post(
                 f"{self._base}/ingest",
                 headers=self._headers,
-                json={
-                    "channel_ids": [handle],
-                    "per_channel_limit": limit,
-                    "pause_between_channels": 0.5,
-                    "pause_between_messages": 0.05,
-                    "collect_media": collect_media,
-                },
+                json=body,
             )
             resp.raise_for_status()
             data = resp.json()
