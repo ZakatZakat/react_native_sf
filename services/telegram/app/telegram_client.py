@@ -40,6 +40,11 @@ class TelegramService:
     # Не даём прогреву холодного кэша делать бёрст резолвов → нет нового флуда.
     _resolve_times: deque = field(default_factory=deque, init=False, repr=False, compare=False)
     _resolve_lock: asyncio.Lock = field(default_factory=asyncio.Lock, init=False, repr=False, compare=False)
+    # time.monotonic(), до которого НЕ делаем НИ ОДНОГО резолва: FloodWait на
+    # ResolveUsername — аккаунт-wide, поэтому per-channel cooldown его не лечит
+    # (следующий холодный канал флудит сразу и продлевает общий лимит). Глобальный
+    # кулдаун даёт лимиту сброситься, потом кэш прогревается по чуть-чуть.
+    _resolve_blocked_until: float = field(default=0.0, init=False, repr=False, compare=False)
 
     @property
     def media_root(self) -> Path:
@@ -399,13 +404,21 @@ class TelegramService:
                 # channels_failed), пост подтянется следующим циклом.
                 failed[channel] = f"FloodCooldown({int(remaining)}s)"
                 continue
-            # Рейт-лимит РЕЗОЛВОВ: канал не в кэше сессии → чтение форсит
-            # ResolveUsername. Сверх бюджета — пропускаем (подтянется следующим
-            # циклом): прогрев холодного кэша размазывается во времени, без флуда.
-            # Закэшированные каналы резолв не требуют и идут свободно.
-            if self._needs_resolve(client, key) and not await self._resolve_budget_ok():
-                failed[channel] = "ResolveThrottled (прогрев кэша)"
-                continue
+            # Канал не в entity-кэше → его чтение форсит ResolveUsername (флуд-опасно).
+            needs = self._needs_resolve(client, key)
+            if needs:
+                # Аккаунт-wide кулдаун: недавний резолв словил FloodWait → НЕ трогаем
+                # резолвы вообще, пока лимит не сбросится (иначе каждый холодный канал
+                # заново его продлевает — вечная петля резолв→флуд→кэш пуст).
+                g = int(self._resolve_blocked_until - time.monotonic())
+                if g > 0:
+                    failed[channel] = f"ResolveGlobalCooldown({g}s)"
+                    continue
+                # Сверх бюджета — пропускаем (подтянется следующим циклом): прогрев
+                # холодного кэша размазан во времени. Закэшированные идут свободно.
+                if not await self._resolve_budget_ok():
+                    failed[channel] = "ResolveThrottled (прогрев кэша)"
+                    continue
             try:
                 # min_id=0 → отдаём Telethon как None (иначе он это как «с самого начала»)
                 async for message in client.iter_messages(
@@ -424,7 +437,13 @@ class TelegramService:
             except FloodWaitError as e:
                 wait = max(0, int(getattr(e, "seconds", 0)))
                 self._flood_until[key] = time.monotonic() + wait
-                logger.warning("FloodWait %ss on %s (cooling down)", wait, channel)
+                if needs:
+                    # Флуд на ResolveUsername (канал не был в кэше) — аккаунт-wide.
+                    # Блокируем ВСЕ резолвы на это же время, чтобы лимит сбросился.
+                    self._resolve_blocked_until = time.monotonic() + wait
+                    logger.warning("ResolveUsername FloodWait %ss on %s → глобальный кулдаун резолвов %ss", wait, channel, wait)
+                else:
+                    logger.warning("FloodWait %ss on %s (cooling down)", wait, channel)
                 failed[channel] = f"FloodWait({wait}s)"
             except ValueError as e:
                 logger.warning("Channel not found or invalid: %s — %s", channel, e)
