@@ -76,8 +76,8 @@ async def reclassify_all(request: Request) -> dict:
     with an existing llm/manual row can never abort the batch."""
     from sqlalchemy import select, delete, distinct
     from sqlalchemy.dialects.postgresql import insert as pg_insert
-    from app.models import ClassifierSource, EventCurated, EventTag, PostRaw, Tag
-    from app.pipeline.classifier import KeywordClassifier
+    from app.models import Channel, ClassifierSource, EventCurated, EventTag, PostRaw, Tag
+    from app.pipeline.classifier import KeywordClassifier, apply_cinema_venue_default
 
     sf: async_sessionmaker[AsyncSession] = request.app.state.session_factory
     classifier = KeywordClassifier()
@@ -93,15 +93,20 @@ async def reclassify_all(request: Request) -> dict:
         # Wipe existing keyword classifications
         await s.execute(delete(EventTag).where(EventTag.source == ClassifierSource.keyword))
         # Re-classify
-        rows = (await s.execute(select(EventCurated.id, PostRaw.text).join(PostRaw, PostRaw.id == EventCurated.post_id))).all()
+        rows = (await s.execute(
+            select(EventCurated.id, PostRaw.text, Channel.handle)
+            .join(PostRaw, PostRaw.id == EventCurated.post_id)
+            .join(Channel, Channel.id == PostRaw.channel_id)
+        )).all()
         n_events = 0
         n_skipped = 0
         n_assignments = 0
-        for ev_id, text in rows:
+        for ev_id, text, handle in rows:
             if ev_id in llm_events:
                 n_skipped += 1
                 continue
             assignments = classifier.classify(text or "", tags)
+            assignments = apply_cinema_venue_default(handle, assignments, tags)
             n_events += 1
             for a in assignments:
                 stmt = pg_insert(EventTag).values(

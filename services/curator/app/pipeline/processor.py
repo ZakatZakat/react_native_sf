@@ -25,7 +25,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 from app.config import Settings
 from app.db import session_scope
 from app.models import Channel, EventStatus, IngestStatus
-from app.pipeline.classifier import KeywordClassifier
+from app.pipeline.classifier import KeywordClassifier, apply_cinema_venue_default
 from app.pipeline.detector import detect_event
 from app.pipeline.enricher import enrich_event
 from app.repositories.channels import ChannelsRepository
@@ -149,8 +149,10 @@ class PipelineProcessor:
                 else:
                     approved += 1
 
-                # Classify
+                # Classify (+ venue-default: alt-cinema каналы → cinema+киноклуб,
+                # снятие ложных лекция/театр по каналу-источнику)
                 assignments = self.classifier.classify(p.text, tags_list)
+                assignments = apply_cinema_venue_default(ch.handle, assignments, tags_list)
                 if assignments:
                     await event_tags_repo.attach_many(
                         ev.id,
