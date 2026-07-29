@@ -68,9 +68,11 @@ VENUE_INSTITUTION: Pattern[str] = re.compile(
 )
 # Named garden / park («Сад им. Баумана», «Парк Горького», «саду им.Баумана») —
 # a proper venue name, preferred over the bare institution word for display.
+# NB: the stem/«им.» are case-insensitive (scoped `(?i:…)`), but the proper name
+# must start with a REAL uppercase letter — a global re.IGNORECASE would let
+# `[А-ЯЁ]` match lowercase and capture noise («парк своими», «сада на»).
 VENUE_GARDEN: Pattern[str] = re.compile(
-    r"\b(?:сад[уаые]?|парк[еуаи]?)\s+(?:им(?:ени)?\.?\s*)?[А-ЯЁ][А-Яа-яё\-]+",
-    re.IGNORECASE,
+    r"\b(?i:сад[уаые]?|парк[еуаи]?)\s+(?i:им(?:ени)?\.?\s*)?[А-ЯЁ][А-Яа-яё\-]+",
 )
 VENUE_LINK: Pattern[str] = re.compile(
     r"(?:t\.me/|yandex\.\w+/maps|2gis\.ru|maps\.google|goo\.gl/maps)", re.IGNORECASE

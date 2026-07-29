@@ -50,3 +50,15 @@ def test_quoted_institution_name_kept():
 def test_real_theatre_still_detected():
     # A genuine «театр» (not preceded by кино-) is still a venue.
     assert _loc("Спектакль в театр «Практика» в 19:00") == "театр «Практика»"
+
+
+def test_garden_does_not_capture_lowercase_noise():
+    # The proper name must start with a REAL uppercase letter — a garden word
+    # followed by a lowercase word is NOT a venue name («парк своими руками»).
+    for text in (
+        "Мастер-класс: соберём парк своими руками в 15:00",
+        "Экран превращается в кино-театр под небом",
+        "у сада на входе встречаемся",
+    ):
+        got = _loc(text)
+        assert got not in {"парк своими", "сада на", "театр"}, text
