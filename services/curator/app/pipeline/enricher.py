@@ -98,6 +98,51 @@ def _has_explicit_year(snippet: str | None) -> bool:
     return bool(snippet and _YEAR_RE.search(snippet))
 
 
+# Порядковый суффикс дня: «1-го августа» / «5-е мая». dateparser такое НЕ парсит
+# (возвращает None), а «1 августа» — парсит. Срезаем «-го/-е/-ое/-ого» до месяца.
+_ORDINAL_RE: re.Pattern[str] = re.compile(r"(\d{1,2})-?(?:го|е|ое|ого)(?=\s)", re.IGNORECASE)
+
+
+def _strip_ordinal(snippet: str | None) -> str | None:
+    if not snippet:
+        return snippet
+    return _ORDINAL_RE.sub(r"\1", snippet)
+
+
+# ── Weekday-as-date («в субботу … 23:00») ──────────────────────────────
+# Афиши баров/вечеринок часто не пишут числовую дату в тексте (она на картинке),
+# а дают день недели: «в эту субботу». Детектор ловит его в hits.weekday, но
+# энричер это игнорировал → дата падала на день ПУБЛИКАЦИИ. dateparser резолвит
+# голый день недели (даже в косвенном падеже, «субботу») в ближайшую будущую дату
+# относительно поста. Точность: берём день недели как дату ТОЛЬКО когда он
+# однозначно = один датированный ивент.
+#
+# Периодичность/часы работы, где день недели — расписание, а НЕ дата ивента:
+# «по будням», «с понедельника по пятницу», «каждую субботу», «по средам»,
+# «в выходные».
+_WD_STEMS = "понедельник|вторник|сред|четверг|пятниц|суббот|воскресень"
+_WEEKDAY_RECURRING: re.Pattern[str] = re.compile(
+    rf"по\s+будн|кажд(?:ый|ую|ое|ые|ого)|"
+    rf"с\s+(?:{_WD_STEMS})\w*\s+по\s+(?:{_WD_STEMS})\w*|"
+    rf"по\s+(?:{_WD_STEMS})\w*ам|выходн",
+    re.IGNORECASE,
+)
+
+
+def _weekday_date_snippet(hits: DetectionHits, text: str) -> str | None:
+    """Голый день недели как дата ивента — только если он однозначно указывает
+    ОДНУ датированную дату: ровно один день недели, есть время на часах, и нет
+    маркеров периодичности/часов работы. Возвращает слово дня недели (напр.
+    «субботу») для dateparser, иначе None."""
+    if not hits.weekday or not hits.time:
+        return None
+    if len({w.lower()[:4] for w in hits.weekday}) != 1:
+        return None
+    if _WEEKDAY_RECURRING.search(text):
+        return None
+    return hits.weekday[0]
+
+
 def _resolve_bare_year(dt: datetime | None, base: datetime) -> datetime | None:
     """Pick the calendar year that places (month, day) closest to the post.
 
@@ -193,6 +238,14 @@ def enrich_event(
     if has_absolute_date:
         date_snippet = _expand_two_digit_year(date_snippet)  # «15.05.26» → «15.05.2026»
         date_snippet = _numeric_ddmm_to_words(date_snippet)  # «23.07» → «23 июля» (иначе dateparser читает как время)
+        date_snippet = _strip_ordinal(date_snippet)          # «1-го августа» → «1 августа»
+    # Нет числовой даты и нет сегодня/завтра, но есть день недели с временем
+    # («в субботу … 23:00») → резолвим его в ближайшую будущую дату. Иначе дата
+    # падала на день публикации (см. _weekday_date_snippet). has_absolute_date
+    # остаётся False → year-resolution ниже не трогает (dateparser уже дал
+    # абсолютную дату по relative-base).
+    if date_snippet is None:
+        date_snippet = _weekday_date_snippet(hits, text)
     time_snippet = None
     end_time_snippet = None
 

@@ -22,7 +22,7 @@ RU_MONTHS = (
 # not mistaken for one) is kept in the match so the enricher can honour an
 # explicit year instead of guessing it.
 DATE_DD_MONTH: Pattern[str] = re.compile(
-    rf"\b(\d{{1,2}})\s*(?:{'|'.join(RU_MONTHS)})[а-я]*(?:\s+(20\d{{2}}))?\b",
+    rf"\b(\d{{1,2}})(?:-?(?:го|е|ое|ого))?\s*(?:{'|'.join(RU_MONTHS)})[а-я]*(?:\s+(20\d{{2}}))?\b",
     re.IGNORECASE,
 )
 DATE_DD_MM: Pattern[str] = re.compile(r"\b(\d{1,2})[.\/](\d{1,2})(?:[.\/](\d{2,4}))?\b")

@@ -20,12 +20,14 @@ from app.pipeline.enricher import (
     _expand_two_digit_year,
     _has_explicit_year,
     _resolve_bare_year,
+    _strip_ordinal,
     enrich_event,
 )
 
 
 # A post published in late July 2026 — the window the prod symptoms came from.
-JUL_2026 = datetime(2026, 7, 22, 12, 0, 0)
+JUL_2026 = datetime(2026, 7, 22, 12, 0, 0)   # Wednesday
+JUL29_2026 = datetime(2026, 7, 29, 8, 0, 0)  # Wednesday — coming Saturday = 1 Aug
 
 
 def _event_date(text: str, base: datetime) -> str | None:
@@ -124,6 +126,83 @@ def test_same_day_time_range_is_not_a_date_range():
     # «19:00 — 22:00» is a time span within one day, not a multi-day run: the end
     # stays the same calendar day, not mis-read as a date range.
     assert _event_end_date("Лекция 5 августа 19:00 — 22:00 в центре", JUL_2026) == "2026-08-05"
+
+
+# ── Weekday-as-date («в субботу … 23:00») ──────────────────────────
+# The bug (prod id=5567 «SATURDAY NIGHT SHKAF.FM»): posters put the numeric date
+# on the image, the text says only «в эту субботу». The enricher ignored the
+# detected weekday → event_time fell to the PUBLISH day. Resolve a lone weekday
+# (with a clock time, no recurring phrasing) to its next future occurrence.
+SHKAF = (
+    "SATURDAY NIGHT 🤍SHKAF.FM\n\n"
+    "В эту субботу вход на вечеринку Shkaf через бар Стрелка.\n"
+    "Начало 23:00, вход свободный 🎰"
+)
+
+
+def test_weekday_resolves_to_next_occurrence():
+    # Wed 29 Jul → «в эту субботу … 23:00» = Sat 1 Aug (NOT the publish day).
+    assert _event_date(SHKAF, JUL29_2026) == "2026-08-01"
+
+
+def test_weekday_coming_saturday_from_wednesday():
+    assert _event_date("В субботу вечеринка, начало в 22:00", JUL_2026) == "2026-07-25"
+
+
+def test_weekday_without_time_is_not_dated():
+    # No clock time → too weak to date (a weekday in an event NAME must not
+    # silently become the event date). Better no date than a wrong one.
+    assert _event_date("В субботу большая вечеринка в баре", JUL_2026) is None
+
+
+# The next two verify the GUARD only: a recurring / multi-weekday mention must
+# NOT be turned into a specific weekday date (e.g. next Monday). It falls back to
+# the pre-existing bare-time behaviour (publish day at the stated time) — that
+# fallback is a separate, broader concern, out of scope for the weekday fix. The
+# assertion here is «not a weekday-resolved date», i.e. still the publish day.
+def test_recurring_weekday_hours_not_resolved_to_a_weekday():
+    # «с понедельника по пятницу … 12:00» = opening hours, not a dated event:
+    # must NOT become next Monday (2026-07-27).
+    got = _event_date("Открыто с понедельника по пятницу с 12:00 до 19:00", JUL_2026)
+    assert got != "2026-07-27"
+    assert got == "2026-07-22"  # publish day (bare-time fallback), weekday unused
+
+
+def test_two_weekdays_not_resolved_to_a_weekday():
+    # Two distinct weekdays (a slogan) → must NOT become Fri 24 or Sun 26.
+    got = _event_date("Рай — пятница, ад — воскресенье. Экскурсия в 20:00", JUL_2026)
+    assert got not in {"2026-07-24", "2026-07-26"}
+    assert got == "2026-07-22"  # publish day, weekday unused
+
+
+def test_numeric_date_wins_over_weekday():
+    # An explicit numeric date takes precedence over the weekday word.
+    assert _event_date("В субботу 1 августа концерт в 20:00", JUL_2026) == "2026-08-01"
+
+
+# ── Ordinal numeric dates («1-го августа», «5-е мая») ──────────────
+# dateparser can't read «1-го августа»; the detector missed it (no ordinal in the
+# regex) → the date fell through. Detect the ordinal, strip the suffix, parse.
+def test_ordinal_date_is_parsed():
+    assert _event_date("Концерт 1-го августа в 19:00 в клубе", JUL_2026) == "2026-08-01"
+
+
+def test_ordinal_date_resolves_nearest_year():
+    # «5-е мая» seen in July → this year's May (past), not next year.
+    assert _event_date("Выставка 5-е мая в 18:00 в галерее", JUL_2026) == "2026-05-05"
+
+
+@pytest.mark.parametrize(
+    "raw, stripped",
+    [
+        ("1-го августа", "1 августа"),
+        ("5-е мая", "5 мая"),
+        ("1 августа", "1 августа"),   # no ordinal → untouched
+        ("15.05.2026", "15.05.2026"),  # numeric date → untouched
+    ],
+)
+def test_strip_ordinal(raw, stripped):
+    assert _strip_ordinal(raw) == stripped
 
 
 # ── Helper units ───────────────────────────────────────────────────
