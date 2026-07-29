@@ -44,12 +44,16 @@ CINEMA_VENUE_CHANNELS: frozenset[str] = frozenset({
     "neuroticlub",        # невротик (бар)
     "novembercinema",     # Кинотеатр «Ноябрь» (инди-кинотеатр)
     "kinoclub_verticals",  # Киноклуб «Вертикали»
+    "osobnyakkosti",      # Особняк Кости (киноклуб, Бульвар Рокоссовского)
+    "posletitroff",       # После титров (киноклуб, тот же особняк — кросс-пост)
+    "perfect_days_cinema",  # Perfect Days Cinema (киноклуб, Рокоссовского)
+    "dffradio",           # DFF (клуб: кино + вечеринки + ужины — спасает гейт)
 })
-# Для этих каналов (когда пост реально про кино) гарантируем cinema+киноклуб и
-# снимаем ложные лекция/театр.
 _CINEMA_FORCE: tuple[tuple[str, float], ...] = (("cinema", 0.95), ("kinoklub", 0.9))
-_CINEMA_STRIP: frozenset[str] = frozenset({"lekciya", "theatre"})
-# Киносигнал: coarse «cinema» или любой fine-тег кино-домена (sort_order 100-116).
+# Кино-домен: coarse «cinema» + fine кино-теги. Для киносигнальных постов этих
+# каналов ОСТАВЛЯЕМ только эти теги — остальные (академическая музыка, лекция,
+# театр, литература, танец…) это keyword-шум с описаний фильмов (композитор /
+# саундтрек / сюжет / обсуждение) и лезут ложным чипом.
 _CINEMA_FAMILY: frozenset[str] = frozenset({
     "cinema", "arthaus", "dokumentalnoe-kino", "animaciya", "kinoklub",
     "retrospektiva", "nemoe-kino", "eksperimentalnoe-kino", "kinofestival",
@@ -61,19 +65,21 @@ _CINEMA_FAMILY: frozenset[str] = frozenset({
 def apply_cinema_venue_default(
     handle: str, assignments: list[TagAssignment], tags: list[Tag]
 ) -> list[TagAssignment]:
-    """Для alt-venue кино-каналов И только если пост реально про кино: выбросить
-    ложные лекция/театр (течёт из keyword-матча) и гарантировать cinema+киноклуб.
-    Гейт по киносигналу важен для смешанных площадок (Невротик = бар: кино +
-    настоящие лекции + вечеринки) — иначе форс исказил бы не-кино события. Для
+    """Для kino-venue каналов И только если пост реально про кино: оставить лишь
+    теги кино-домена (`_CINEMA_FAMILY`) и гарантировать cinema+киноклуб. Так
+    режется keyword-шум с описаний фильмов — «академическая музыка» (саундтрек),
+    «лекция»/«театр» (обсуждение), «литература» (сюжет) — что вылезал ложным
+    чипом вместо «киноклуб». Гейт по киносигналу важен для смешанных площадок
+    (Невротик/DFF: кино + вечеринки + ужины) — не-кино посты не трогаем. Для
     прочих каналов / постов без киносигнала — no-op."""
     h = (handle or "").lstrip("@").lower()
     if h not in CINEMA_VENUE_CHANNELS:
         return assignments
     keys = {a.tag_key for a in assignments}
     if keys.isdisjoint(_CINEMA_FAMILY):
-        return assignments  # не кино (лекция/вечеринка на смешанной площадке)
+        return assignments  # не кино (вечеринка/ужин/лекция на смешанной площадке)
     by_key = {t.key: t for t in tags}
-    kept = [a for a in assignments if a.tag_key not in _CINEMA_STRIP]
+    kept = [a for a in assignments if a.tag_key in _CINEMA_FAMILY]
     have = {a.tag_key for a in kept}
     for key, conf in _CINEMA_FORCE:
         if key not in have and (t := by_key.get(key)) is not None:
