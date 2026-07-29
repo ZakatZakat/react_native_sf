@@ -59,8 +59,17 @@ VENUE_STREET: Pattern[str] = re.compile(
     r"\b(?:ул(?:ица)?\.?|пр-?т|пр\.|просп\.|пер\.|переулок|бул\.|бульвар|пл\.|площадь|наб\.|набережная|шоссе|ш\.)\s+[«»\"\']?[А-ЯЁA-Z][а-яёa-z\-\s\d]{2,}",
     re.IGNORECASE,
 )
+# Institution-type word, optionally followed by its quoted proper name
+# («бар «Стрелка»» → whole phrase). Negative lookbehind on «театр» so «кино-театр»
+# / «кино театр» (a metaphor in cinema posts) is NOT read as a theatre venue.
 VENUE_INSTITUTION: Pattern[str] = re.compile(
-    r"\b(?:музе[йяюе]|театр|клуб|центр|галере[яюи]|парк|дом|кинотеатр|библиотек[аеуи]|павильон|пространств[оае]|кафе|бар|ресторан|лофт|холл|аудитори[яюи]|кафедра)\b",
+    r"\b(?:музе[йяюе]|(?<!кино[- ])театр|клуб|центр|галере[яюи]|парк|дом|кинотеатр|библиотек[аеуи]|павильон|пространств[оае]|кафе|бар|ресторан|лофт|холл|аудитори[яюи]|кафедра)\b(?:\s+[«\"][^»\"\n]{1,40}[»\"])?",
+    re.IGNORECASE,
+)
+# Named garden / park («Сад им. Баумана», «Парк Горького», «саду им.Баумана») —
+# a proper venue name, preferred over the bare institution word for display.
+VENUE_GARDEN: Pattern[str] = re.compile(
+    r"\b(?:сад[уаые]?|парк[еуаи]?)\s+(?:им(?:ени)?\.?\s*)?[А-ЯЁ][А-Яа-яё\-]+",
     re.IGNORECASE,
 )
 VENUE_LINK: Pattern[str] = re.compile(
@@ -306,10 +315,16 @@ def detect_event(text: str) -> DetectionResult:
         venue_score = 2
         for m in VENUE_STREET.finditer(text):
             hits.venues.append(m.group(0).strip())
-    elif VENUE_INSTITUTION.search(text):
-        venue_score = 1
-        for m in VENUE_INSTITUTION.finditer(text):
+    else:
+        # A named garden/park is a proper venue name — take it before the bare
+        # institution word so «Сад им. Баумана» wins over a stray «театр».
+        for m in VENUE_GARDEN.finditer(text):
             hits.venues.append(m.group(0).strip())
+        if VENUE_INSTITUTION.search(text):
+            for m in VENUE_INSTITUTION.finditer(text):
+                hits.venues.append(m.group(0).strip())
+        if hits.venues:
+            venue_score = 1
     if VENUE_LINK.search(text):
         venue_score = max(venue_score, 1)
     if venue_score:
