@@ -45,19 +45,33 @@ CINEMA_VENUE_CHANNELS: frozenset[str] = frozenset({
     "novembercinema",     # Кинотеатр «Ноябрь» (инди-кинотеатр)
     "kinoclub_verticals",  # Киноклуб «Вертикали»
 })
-# Для этих каналов гарантируем cinema+киноклуб и снимаем ложные лекция/театр.
+# Для этих каналов (когда пост реально про кино) гарантируем cinema+киноклуб и
+# снимаем ложные лекция/театр.
 _CINEMA_FORCE: tuple[tuple[str, float], ...] = (("cinema", 0.95), ("kinoklub", 0.9))
 _CINEMA_STRIP: frozenset[str] = frozenset({"lekciya", "theatre"})
+# Киносигнал: coarse «cinema» или любой fine-тег кино-домена (sort_order 100-116).
+_CINEMA_FAMILY: frozenset[str] = frozenset({
+    "cinema", "arthaus", "dokumentalnoe-kino", "animaciya", "kinoklub",
+    "retrospektiva", "nemoe-kino", "eksperimentalnoe-kino", "kinofestival",
+    "horror", "kultovoe-kino", "kinolektoriy", "plenochnyy-pokaz",
+    "etnograficheskoe-kino", "kino-o-telesnosti", "press-pokaz",
+})
 
 
 def apply_cinema_venue_default(
     handle: str, assignments: list[TagAssignment], tags: list[Tag]
 ) -> list[TagAssignment]:
-    """Для alt-venue кино-каналов: выбросить ложные лекция/театр, что течёт из
-    keyword-матча, и гарантировать cinema+киноклуб. Для прочих каналов — no-op."""
+    """Для alt-venue кино-каналов И только если пост реально про кино: выбросить
+    ложные лекция/театр (течёт из keyword-матча) и гарантировать cinema+киноклуб.
+    Гейт по киносигналу важен для смешанных площадок (Невротик = бар: кино +
+    настоящие лекции + вечеринки) — иначе форс исказил бы не-кино события. Для
+    прочих каналов / постов без киносигнала — no-op."""
     h = (handle or "").lstrip("@").lower()
     if h not in CINEMA_VENUE_CHANNELS:
         return assignments
+    keys = {a.tag_key for a in assignments}
+    if keys.isdisjoint(_CINEMA_FAMILY):
+        return assignments  # не кино (лекция/вечеринка на смешанной площадке)
     by_key = {t.key: t for t in tags}
     kept = [a for a in assignments if a.tag_key not in _CINEMA_STRIP]
     have = {a.tag_key for a in kept}
