@@ -258,4 +258,4 @@ async def broadcast(
             if len(errors) < 10:
                 errors.append(f"{cid}: {str(e)[:160]}")
         await asyncio.sleep(0.06)  # ~16 msg/s, безопасно под лимитом Telegram
-    return {"target": target, "recipients": len(recipients), "sent": sent, "failed": failed, "errors": errors}
+    return {"target": req.target, "recipients": len(recipients), "sent": sent, "failed": failed, "errors": errors}
