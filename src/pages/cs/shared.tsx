@@ -527,6 +527,46 @@ export function dateSort(d: string): number {
   return parseInt(m[2], 10) * 100 + parseInt(m[1], 10)
 }
 
+/** «DD.MM» без года → timestamp. Год выбираем так, чтобы (день,месяц) лёг ближе
+ *  всего к сегодня (как в enricher'е): «24.07» в конце июля = этот год, «05.01»
+ *  в декабре = следующий. Для старых записей «Я иду» без точного ts. */
+function nearestTsFromDM(d: string): number | null {
+  const m = (d || "").match(/(\d{1,2})\.(\d{1,2})/)
+  if (!m) return null
+  const day = parseInt(m[1], 10), mon = parseInt(m[2], 10) - 1
+  const now = Date.now()
+  const y0 = new Date().getFullYear()
+  let best: number | null = null
+  for (const y of [y0 - 1, y0, y0 + 1]) {
+    const t = new Date(y, mon, day).getTime()
+    if (best === null || Math.abs(t - now) < Math.abs(best - now)) best = t
+  }
+  return best
+}
+
+/** Порядок «Я иду»: сначала ПРЕДСТОЯЩИЕ (ближайшее вверху), затем ПРОШЕДШИЕ
+ *  (недавнее выше); недатированные — в самый низ. Помечаем `past` для
+ *  приглушённого вида. Точная дата — из `ts` (новые записи), иначе из строки `d`.
+ *  Идущие многодневные (endTs ещё в будущем) считаются предстоящими. */
+export function orderGoing(list: GoingItem[]): { ev: GoingItem; past: boolean }[] {
+  const start = new Date(); start.setHours(0, 0, 0, 0)
+  const today = start.getTime()
+  const info = list.map((ev) => {
+    const startTs = typeof ev.ts === "number" ? ev.ts : nearestTsFromDM(ev.d)
+    const endTs = typeof ev.endTs === "number" ? ev.endTs : startTs
+    const dated = startTs !== null
+    const past = dated ? (endTs as number) < today : false
+    return { ev, startTs, dated, past }
+  })
+  info.sort((a, b) => {
+    if (a.dated !== b.dated) return a.dated ? -1 : 1            // датированные выше недатированных
+    if (!a.dated) return 0
+    if (a.past !== b.past) return a.past ? 1 : -1               // предстоящие выше прошедших
+    return a.past ? (b.startTs! - a.startTs!) : (a.startTs! - b.startTs!)  // past: недавнее выше; future: ближайшее выше
+  })
+  return info.map(({ ev, past }) => ({ ev, past }))
+}
+
 const GO_KEY = "cs-going-v1"
 
 /** Slim subset of Ev kept in the store — enough to re-render the agenda
@@ -534,6 +574,9 @@ const GO_KEY = "cs-going-v1"
 export type GoingItem = {
   id?: string; t: string; v: string; d: string; tm: string; ch: string; cat: string;
   p: string | null; remind: boolean; mid?: number | null
+  // Точные метки времени события — для сортировки «предстоящие → прошедшие».
+  // Старые записи их не имеют → дата восстанавливается из строки `d`.
+  ts?: number | null; endTs?: number | null
 }
 
 type GoingValue = {
@@ -575,6 +618,8 @@ export function GoingProvider({ children }: { children: React.ReactNode }) {
         : [...cur, {
             id: ev.id, t: ev.t, v: ev.v, d: ev.d, tm: ev.tm, ch: ev.ch,
             cat: ("c" in ev ? ev.c : ev.cat), p: ev.p, remind: true, mid: ev.mid ?? null,
+            ts: "ts" in ev ? (ev.ts ?? null) : null,
+            endTs: "endTs" in ev ? ((ev as Ev).endTs ?? null) : null,
           }],
     )
   }
@@ -1072,7 +1117,7 @@ export function Avatar({ label, color = SK.blue, s = 22, style }: { label: strin
 /** Одна карточка «я иду»: постер события сверху (с датой-бейджем поверх), а
  *  если постера нет/битый — крупный дата-блок. Ниже заголовок, площадка·время
  *  и переключатель напоминания. Тап по карточке открывает шит события. */
-function GoingCard({ ev, i }: { ev: GoingItem; i: number }) {
+function GoingCard({ ev, i, past = false }: { ev: GoingItem; i: number; past?: boolean }) {
   const { setRemind } = useGoing()
   const openEvent = useOpenEvent()
   const [broken, setBroken] = useState(false)
@@ -1094,6 +1139,9 @@ function GoingCard({ ev, i }: { ev: GoingItem; i: number }) {
         border: `2px solid ${CS.K}`, background: CS.W, cursor: "pointer",
         boxShadow: `3px 4px 0 ${CS.K}`, overflow: "hidden",
         animation: `cs-j-up 0.4s ease ${0.04 * i}s both`,
+        // Приглушаем прошедшие через filter, а НЕ opacity: entry-анимация cs-j-up
+        // доводит opacity до 1 (fill both) и перебила бы inline-значение.
+        filter: past ? "grayscale(0.55) opacity(0.6)" : undefined,
       }}
     >
       {hasPoster ? (
@@ -1117,10 +1165,17 @@ function GoingCard({ ev, i }: { ev: GoingItem; i: number }) {
         {sub && <div style={{ fontWeight: 600, fontSize: 10, color: CS.G55, marginTop: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</div>}
       </div>
       <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 7, padding: "8px 11px", borderTop: `1.5px solid ${CS.G18}` }}>
-        <MiniSwitch on={ev.remind} onClick={(e) => { e.stopPropagation(); setRemind(ev, !ev.remind) }} />
-        <span style={{ fontFamily: FONT_MONO, fontSize: 8, letterSpacing: "0.08em", color: ev.remind ? CS.B : CS.G35, textTransform: "uppercase" }}>
-          {ev.remind ? "напомню" : "напомнить"}
-        </span>
+        {past ? (
+          /* Прошедшее — напоминать нечего; показываем статус вместо тумблера. */
+          <span style={{ fontFamily: FONT_MONO, fontSize: 8, letterSpacing: "0.1em", color: CS.G35, textTransform: "uppercase" }}>прошло</span>
+        ) : (
+          <>
+            <MiniSwitch on={ev.remind} onClick={(e) => { e.stopPropagation(); setRemind(ev, !ev.remind) }} />
+            <span style={{ fontFamily: FONT_MONO, fontSize: 8, letterSpacing: "0.08em", color: ev.remind ? CS.B : CS.G35, textTransform: "uppercase" }}>
+              {ev.remind ? "напомню" : "напомнить"}
+            </span>
+          </>
+        )}
       </div>
     </div>
   )
@@ -1128,14 +1183,16 @@ function GoingCard({ ev, i }: { ev: GoingItem; i: number }) {
 
 export function GoingAgenda() {
   const { list } = useGoing()
-  const items = [...list].sort((a, b) => dateSort(a.d) - dateSort(b.d))
-  const remindN = items.filter((e) => e.remind).length
+  // Сначала предстоящие (ближайшее вверху), затем прошедшие (приглушённо).
+  const items = orderGoing(list)
+  const upcomingN = items.filter((x) => !x.past).length
+  const pastN = items.length - upcomingN
 
   return (
     <div style={{ marginTop: 24 }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", borderBottom: `2px solid ${CS.K}`, paddingBottom: 7 }}>
         <Mark>Я иду</Mark>
-        <Mono color={CS.G55}>{items.length} событий · {remindN} напоминаний</Mono>
+        <Mono color={CS.G55}>{upcomingN} впереди{pastN > 0 ? ` · ${pastN} прошло` : ""}</Mono>
       </div>
 
       {items.length === 0 ? (
@@ -1145,7 +1202,7 @@ export function GoingAgenda() {
         </div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
-          {items.map((ev, i) => <GoingCard key={ev.t} ev={ev} i={i} />)}
+          {items.map(({ ev, past }, i) => <GoingCard key={ev.t} ev={ev} i={i} past={past} />)}
         </div>
       )}
     </div>
