@@ -188,9 +188,18 @@ def looks_political(text: str) -> bool:
 
 
 def looks_out_of_moscow(text: str) -> bool:
-    """A non-Moscow city is named AND Moscow is not — so the event itself is
-    elsewhere, not a touring artist merely mentioned alongside a Moscow venue."""
-    return bool(OTHER_CITY.search(text)) and not MOSCOW_HINT.search(text)
+    """A non-Moscow city named as the event LOCATION — Moscow not mentioned, and
+    the city is not merely an artist's ORIGIN («фотограф из Казани», «группа из
+    Новосибирска»), which describes a touring guest at a Moscow event, not where
+    it happens."""
+    if MOSCOW_HINT.search(text):
+        return False
+    for m in OTHER_CITY.finditer(text):
+        # «из <город>» = откуда артист/автор, а не где событие → пропускаем матч.
+        if text[max(0, m.start() - 4):m.start()].lower().endswith("из "):
+            continue
+        return True
+    return False
 
 
 def looks_like_non_event(text: str) -> bool:
