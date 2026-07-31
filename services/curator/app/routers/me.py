@@ -51,6 +51,64 @@ async def put_interests(
         return await UserInterestsRepository(s).replace(user_id, body.tag_keys)
 
 
+# ── Reminders (личные напоминания в ЛС бота) ───────────────────────
+class ReminderBody(BaseModel):
+    remind: bool
+    event_ts: int              # ms epoch начала события
+    title: str
+    event_id: Optional[int] = None
+    venue: Optional[str] = None
+
+
+@router.post("/reminders")
+async def set_reminder(
+    body: ReminderBody,
+    user_id: int = Depends(current_user_id),
+    sf: async_sessionmaker[AsyncSession] = Depends(get_session_factory),
+) -> dict:
+    """Включить/выключить напоминание о событии. `chat_id` = tg-id (= id личного
+    чата с ботом). Слать сможем только если пользователь нажал /start у бота —
+    возвращаем `bot_started`, чтобы мини-апп мог подсказать. Само сообщение шлёт
+    scheduler-джоба `reminders:send` за сутки до начала."""
+    from datetime import datetime, timedelta
+
+    from sqlalchemy import delete, select
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+    from app.models import BotSubscriber, Reminder
+
+    ekey = str(body.event_id) if body.event_id else ("t:" + (body.title or "")[:150])
+    now = datetime.utcnow()
+    async with session_scope(sf) as s:
+        started = (await s.execute(
+            select(BotSubscriber.chat_id).where(BotSubscriber.chat_id == user_id)
+        )).first() is not None
+
+        event_time = datetime.utcfromtimestamp(body.event_ts / 1000)
+        # Выключили, или событие уже прошло → снимаем напоминание (если было).
+        if not body.remind or event_time <= now:
+            await s.execute(delete(Reminder).where(
+                Reminder.chat_id == user_id, Reminder.event_key == ekey))
+            return {"ok": True, "reminding": False, "bot_started": started,
+                    "past": event_time <= now}
+
+        fire_at = event_time - timedelta(days=1)
+        if fire_at < now:
+            fire_at = now  # событие меньше чем через сутки — напомним на ближайшем прогоне
+        stmt = pg_insert(Reminder).values(
+            chat_id=user_id, event_key=ekey, event_id=body.event_id,
+            title=(body.title or "")[:500], venue=(body.venue or None),
+            event_time=event_time, fire_at=fire_at, status="pending", created_at=now,
+        ).on_conflict_do_update(
+            constraint="uq_reminder_chat_event",
+            set_={"event_time": event_time, "fire_at": fire_at,
+                  "title": (body.title or "")[:500], "venue": (body.venue or None),
+                  "event_id": body.event_id, "status": "pending", "error": None, "sent_at": None},
+        )
+        await s.execute(stmt)
+    return {"ok": True, "reminding": True, "bot_started": started, "fire_at": fire_at.isoformat()}
+
+
 # ── Feed ───────────────────────────────────────────────────────────
 @router.get("/feed")
 async def get_feed(

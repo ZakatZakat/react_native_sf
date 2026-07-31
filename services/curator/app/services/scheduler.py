@@ -24,6 +24,33 @@ from app.pipeline.processor import PipelineProcessor
 
 logger = logging.getLogger(__name__)
 
+_RU_MONTHS = (
+    "", "января", "февраля", "марта", "апреля", "мая", "июня",
+    "июля", "августа", "сентября", "октября", "ноября", "декабря",
+)
+
+
+def _esc(s: str) -> str:
+    return (s or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def _reminder_text(title: str, venue: str | None, event_time, url: str, now) -> str:
+    """HTML-текст напоминания. «когда» — завтра/сегодня/дата, время как в афише."""
+    days = (event_time.date() - now.date()).days
+    hhmm = event_time.strftime("%H:%M")
+    if days <= 0:
+        when = f"сегодня в {hhmm}"
+    elif days == 1:
+        when = f"завтра в {hhmm}"
+    else:
+        when = f"{event_time.day} {_RU_MONTHS[event_time.month]} в {hhmm}"
+    place = f" · {_esc(venue)}" if venue else ""
+    return (
+        f"⏰ <b>Напоминание</b>\n\n"
+        f"<b>{_esc(title)}</b>\n{when}{place}\n\n"
+        f"Открыть афишу: {url}"
+    )
+
 
 def _job_id(handle: str) -> str:
     return f"poll:{handle}"
@@ -99,6 +126,70 @@ class CuratorScheduler:
         except Exception:  # noqa: BLE001
             logger.exception("scheduler: media retry failed")
 
+    async def _run_reminders(self) -> None:
+        """Разослать созревшие персональные напоминания в ЛС бота. Берём pending
+        с наступившим fire_at (окно 12ч, чтобы не слать протухшее), шлём DM,
+        помечаем sent/failed. «chat not found» = юзер не нажал /start → failed,
+        не ретраим. Изолировано: ошибка логируется, поллинг не трогает."""
+        token = self.settings.bot_token
+        if not token:
+            return
+        try:
+            import httpx
+            from sqlalchemy import select, update
+
+            from app.db import create_engine, create_session_maker, session_scope
+            from app.models import Reminder
+
+            now = datetime.utcnow()
+            engine = create_engine(self.settings.postgres_dsn)
+            try:
+                sf = create_session_maker(engine)
+                async with session_scope(sf) as s:
+                    due = (await s.execute(
+                        select(Reminder)
+                        .where(
+                            Reminder.status == "pending",
+                            Reminder.fire_at <= now,
+                            Reminder.fire_at > now - timedelta(hours=12),
+                        )
+                        .limit(200)
+                    )).scalars().all()
+                if not due:
+                    return
+                url = self.settings.cs_webapp_url
+                sent = failed = 0
+                async with httpx.AsyncClient(timeout=20) as http:
+                    for r in due:
+                        text = _reminder_text(r.title, r.venue, r.event_time, url, now)
+                        err: Optional[str] = None
+                        try:
+                            resp = await http.post(
+                                f"https://api.telegram.org/bot{token}/sendMessage",
+                                json={"chat_id": r.chat_id, "text": text,
+                                      "parse_mode": "HTML", "disable_web_page_preview": True},
+                            )
+                            ok = resp.status_code == 200 and bool(resp.json().get("ok"))
+                            if not ok:
+                                err = resp.text[:250]
+                        except Exception as e:  # noqa: BLE001
+                            ok = False
+                            err = str(e)[:250]
+                        async with session_scope(sf) as s:
+                            await s.execute(update(Reminder).where(Reminder.id == r.id).values(
+                                status="sent" if ok else "failed",
+                                sent_at=now if ok else None,
+                                error=None if ok else err,
+                            ))
+                        sent += 1 if ok else 0
+                        failed += 0 if ok else 1
+                        await asyncio.sleep(0.06)  # ~16 msg/s под лимит Telegram
+                logger.info("scheduler: reminders — due=%d sent=%d failed=%d", len(due), sent, failed)
+            finally:
+                await engine.dispose()
+        except Exception:  # noqa: BLE001
+            logger.exception("scheduler: reminders failed")
+
     def add_or_update_channel(self, channel: Channel) -> None:
         if not channel.poll_enabled:
             self.remove_channel(channel.handle)
@@ -167,6 +258,17 @@ class CuratorScheduler:
             coalesce=True,
             misfire_grace_time=600,
             next_run_time=datetime.utcnow() + timedelta(seconds=300),
+        )
+        # Рассылка персональных напоминаний в ЛС — каждые 10 мин, первый через 2 мин.
+        self._scheduler.add_job(
+            self._run_reminders,
+            trigger=IntervalTrigger(minutes=10),
+            id="reminders:send",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=600,
+            next_run_time=datetime.utcnow() + timedelta(seconds=120),
         )
         self._scheduler.start()
         self._started = True

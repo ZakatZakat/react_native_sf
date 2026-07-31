@@ -10,6 +10,7 @@ import { useNavigate } from "@tanstack/react-router"
 import { haptics } from "../../lib/haptics"
 import { openTelegram, tgChannelUrl, tgPostUrl } from "../../lib/telegram"
 import { analytics } from "../../lib/analytics"
+import { Curator } from "../../lib/curator"
 import { venueInfo } from "./venues"
 
 // ── Tokens ────────────────────────────────────────────────────────────────
@@ -583,13 +584,46 @@ type GoingValue = {
   list: GoingItem[]
   isGoing: (ev: { t: string }) => boolean
   toggle: (ev: Ev | GoingItem) => void
-  setRemind: (ev: { t: string; id?: string }, on: boolean) => void
+  setRemind: (ev: { t: string; id?: string; v?: string; d?: string; ts?: number | null }, on: boolean) => void
 }
 
 export const GoingCtx = createContext<GoingValue>({
   list: [], isGoing: () => false, toggle: () => {}, setRemind: () => {},
 })
 export function useGoing() { return useContext(GoingCtx) }
+
+// Нуджим «нажми /start у бота» один раз за сессию — иначе напоминания слать некуда.
+let botStartNudged = false
+function promptBotStart() {
+  if (botStartNudged) return
+  botStartNudged = true
+  const link = "https://t.me/citysignalllbot"
+  const wa = (window as unknown as { Telegram?: { WebApp?: { showConfirm?: (m: string, cb: (ok: boolean) => void) => void } } })?.Telegram?.WebApp
+  try {
+    if (wa?.showConfirm) {
+      wa.showConfirm("Чтобы напоминания приходили в личку, запусти бота @citysignalllbot и нажми Start.", (ok) => { if (ok) openTelegram(link) })
+      return
+    }
+  } catch { /* ignore */ }
+  openTelegram(link)
+}
+
+/** Синхронизация напоминания с сервером (бот шлёт DM за сутки до начала).
+ *  Best-effort: ошибки/оффлайн не ломают локальный тумблер. Дата берётся из ts
+ *  (новые записи) или восстанавливается из строки d. Если юзер не нажал /start
+ *  у бота (bot_started=false) при включении — один раз подсказываем. */
+function syncReminder(
+  item: { id?: string; t: string; v?: string; d?: string; ts?: number | null },
+  remind: boolean,
+): void {
+  const rawId = item.id
+  const eid = rawId != null && /^\d+$/.test(String(rawId)) ? parseInt(String(rawId), 10) : null
+  const ts = (typeof item.ts === "number" ? item.ts : null) ?? nearestTsFromDM(item.d || "")
+  if (ts == null) return  // без даты напоминание поставить некуда
+  Curator.setReminder({ remind, event_ts: ts, title: item.t, event_id: eid, venue: item.v || null })
+    .then((r) => { if (remind && r && r.reminding && !r.bot_started) promptBotStart() })
+    .catch(() => { /* сеть/оффлайн — тумблер уже сохранён локально */ })
+}
 
 /** Provider — keeps the list in localStorage; default empty (the
  *  reference's mock items don't apply to real Curator events). */
@@ -609,8 +643,9 @@ export function GoingProvider({ children }: { children: React.ReactNode }) {
   const isGoing = (ev: { t: string }) => list.some((e) => e.t === ev.t)
 
   const toggle = (ev: Ev | GoingItem) => {
+    const willGo = !isGoing(ev)
     analytics.track("cs.event.going", {
-      event_id: ev.id ?? null, title: ev.t.slice(0, 120), on: !isGoing(ev), category: ("c" in ev ? ev.c : ev.cat),
+      event_id: ev.id ?? null, title: ev.t.slice(0, 120), on: willGo, category: ("c" in ev ? ev.c : ev.cat),
     })
     setList((cur) =>
       cur.some((e) => e.t === ev.t)
@@ -622,10 +657,13 @@ export function GoingProvider({ children }: { children: React.ReactNode }) {
             endTs: "endTs" in ev ? ((ev as Ev).endTs ?? null) : null,
           }],
     )
+    // Добавили «иду» → напоминание вкл по умолчанию; убрали → снимаем.
+    syncReminder(ev as GoingItem, willGo)
   }
-  const setRemind = (ev: { t: string; id?: string }, on: boolean) => {
+  const setRemind = (ev: { t: string; id?: string; v?: string; d?: string; ts?: number | null }, on: boolean) => {
     analytics.track("cs.event.remind", { event_id: ev.id ?? null, title: (ev.t || "").slice(0, 120), on })
     setList((cur) => cur.map((e) => e.t === ev.t ? { ...e, remind: on } : e))
+    syncReminder(ev, on)
   }
 
   return (

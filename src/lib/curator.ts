@@ -161,6 +161,15 @@ export const Curator = {
       body: JSON.stringify({ tag_keys }),
     }),
 
+  // Reminders — вкл/выкл напоминание о событии (бот пишет в ЛС за сутки).
+  // Возвращает bot_started: нажал ли юзер /start (иначе слать некуда).
+  setReminder: (r: { remind: boolean; event_ts: number; title: string; event_id?: number | null; venue?: string | null }) =>
+    curatorFetch<{ ok: boolean; reminding: boolean; bot_started: boolean; past?: boolean }>("/me/reminders", {
+      auth: true,
+      method: "POST",
+      body: JSON.stringify(r),
+    }),
+
   // Feed
   getFeed: (opts?: { limit?: number; offset?: number; tags?: string[] }) =>
     curatorFetch<FeedItem[]>("/me/feed", {

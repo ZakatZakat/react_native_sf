@@ -439,3 +439,31 @@ class BotSubscriber(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=False), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
     )
+
+
+class Reminder(Base):
+    """Персональное напоминание о событии: бот пишет пользователю в ЛС за день до
+    начала. Регистрируется, когда в мини-аппе включён тумблер «напомню» на событии
+    из «Я иду». `chat_id` = tg-id пользователя (= id личного чата с ботом).
+    Дедуп по (chat_id, event_key). Рассылку шлёт scheduler-джоба `reminders:send`."""
+
+    __tablename__ = "reminders"
+    __table_args__ = (
+        UniqueConstraint("chat_id", "event_key", name="uq_reminder_chat_event"),
+        {"schema": SCHEMA},
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    chat_id: Mapped[int] = mapped_column(BigInteger, index=True, nullable=False)
+    # Ключ дедупа: str(event_id) если есть, иначе "t:"+заголовок.
+    event_key: Mapped[str] = mapped_column(String(180), nullable=False)
+    event_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    venue: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    event_time: Mapped[datetime] = mapped_column(DateTime(timezone=False), nullable=False)
+    # Когда слать (= event_time − сутки, но не в прошлом; для скорых событий — сразу).
+    fire_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), index=True, nullable=False)
+    status: Mapped[str] = mapped_column(String(16), default="pending", nullable=False)  # pending/sent/failed
+    error: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), default=datetime.utcnow, nullable=False)
+    sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=False), nullable=True)
