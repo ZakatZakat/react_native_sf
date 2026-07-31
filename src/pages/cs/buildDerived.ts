@@ -235,8 +235,13 @@ export function closingSoon(ev: Ev, within = 7): { days: number; label: string }
   if (ev.endTs == null) return null
   const endDay = mskDay(ev.endTs)
   const startDay = ev.ts != null ? mskDay(ev.ts) : null
-  const days = endDay - mskDay(Date.now())
+  const todayDay = mskDay(Date.now())
+  const days = endDay - todayDay
   if (days < 0 || days > within) return null
+  // Ещё НЕ открылось (старт сегодня или в будущем) — это не «последний шанс»,
+  // а начало: многодневный фест, стартующий сегодня и идущий 2 дня, не должен
+  // читаться как «закрывается через 2 дня».
+  if (startDay != null && startDay >= todayDay) return null
   const multiDay = startDay == null || endDay > startDay
   // многодневное, закрывающееся в окне → «закрывается»; однодневное — только при
   // явном сигнале (выставка/финисаж), напр. финисаж Дзиги или последний день Дробышевского.
