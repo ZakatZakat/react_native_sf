@@ -54,10 +54,11 @@ async def put_interests(
 # ── Reminders (личные напоминания в ЛС бота) ───────────────────────
 class ReminderBody(BaseModel):
     remind: bool
-    event_ts: int              # ms epoch начала события
+    event_ts: int              # ms epoch начала события (для расписания рассылки)
     title: str
     event_id: Optional[int] = None
     venue: Optional[str] = None
+    when: Optional[str] = None  # готовая строка «когда» (лок. время юзера) для текста
 
 
 @router.post("/reminders")
@@ -95,15 +96,20 @@ async def set_reminder(
         fire_at = event_time - timedelta(days=1)
         if fire_at < now:
             fire_at = now  # событие меньше чем через сутки — напомним на ближайшем прогоне
+        when_text = (body.when or None)
+        if when_text:
+            when_text = when_text[:80]
         stmt = pg_insert(Reminder).values(
             chat_id=user_id, event_key=ekey, event_id=body.event_id,
             title=(body.title or "")[:500], venue=(body.venue or None),
-            event_time=event_time, fire_at=fire_at, status="pending", created_at=now,
+            event_time=event_time, when_text=when_text,
+            fire_at=fire_at, status="pending", created_at=now,
         ).on_conflict_do_update(
             constraint="uq_reminder_chat_event",
             set_={"event_time": event_time, "fire_at": fire_at,
                   "title": (body.title or "")[:500], "venue": (body.venue or None),
-                  "event_id": body.event_id, "status": "pending", "error": None, "sent_at": None},
+                  "when_text": when_text, "event_id": body.event_id,
+                  "status": "pending", "error": None, "sent_at": None},
         )
         await s.execute(stmt)
     return {"ok": True, "reminding": True, "bot_started": started, "fire_at": fire_at.isoformat()}

@@ -461,6 +461,9 @@ class Reminder(Base):
     title: Mapped[str] = mapped_column(Text, nullable=False)
     venue: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     event_time: Mapped[datetime] = mapped_column(DateTime(timezone=False), nullable=False)
+    # Готовая строка «когда» с ФРОНТА (локальное время юзера, напр. «1 августа,
+    # 23:00») — показываем как есть, чтобы не путаться в tz на сервере (UTC).
+    when_text: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
     # Когда слать (= event_time − сутки, но не в прошлом; для скорых событий — сразу).
     fire_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), index=True, nullable=False)
     status: Mapped[str] = mapped_column(String(16), default="pending", nullable=False)  # pending/sent/failed

@@ -48,6 +48,7 @@ _ADDITIVE_MIGRATIONS: list[str] = [
     'CREATE INDEX IF NOT EXISTS ix_events_rank_score ON "{s}".events_curated (rank_score)',
     'CREATE INDEX IF NOT EXISTS ix_events_dup_group ON "{s}".events_curated (dup_group_id)',
     'CREATE INDEX IF NOT EXISTS ix_events_dup_override ON "{s}".events_curated (dup_override_group)',
+    'ALTER TABLE "{s}".reminders ADD COLUMN IF NOT EXISTS when_text varchar(80)',
 ]
 
 

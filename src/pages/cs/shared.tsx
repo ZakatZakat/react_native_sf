@@ -584,7 +584,7 @@ type GoingValue = {
   list: GoingItem[]
   isGoing: (ev: { t: string }) => boolean
   toggle: (ev: Ev | GoingItem) => void
-  setRemind: (ev: { t: string; id?: string; v?: string; d?: string; ts?: number | null }, on: boolean) => void
+  setRemind: (ev: { t: string; id?: string; v?: string; d?: string; tm?: string; ts?: number | null }, on: boolean) => void
 }
 
 export const GoingCtx = createContext<GoingValue>({
@@ -608,19 +608,35 @@ function promptBotStart() {
   openTelegram(link)
 }
 
+const _RU_MON = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"]
+
+/** Готовая строка «когда» для текста напоминания — в ЛОКАЛЬНОМ времени юзера
+ *  (браузер), абсолютная дата+время, напр. «1 августа, 23:00». Считаем на фронте,
+ *  чтобы не путаться в tz на сервере (там UTC). */
+function reminderWhen(item: { d?: string; tm?: string; ts?: number | null }): string | null {
+  const ts = (typeof item.ts === "number" ? item.ts : null) ?? nearestTsFromDM(item.d || "")
+  const tm = item.tm && item.tm !== "—" && item.tm !== "00:00" ? item.tm : ""
+  if (ts == null) return [item.d, tm].filter(Boolean).join(" · ") || null
+  const dt = new Date(ts)
+  const date = `${dt.getDate()} ${_RU_MON[dt.getMonth()]}`
+  const hhmm = tm || (dt.getHours() || dt.getMinutes()
+    ? `${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}` : "")
+  return hhmm ? `${date}, ${hhmm}` : date
+}
+
 /** Синхронизация напоминания с сервером (бот шлёт DM за сутки до начала).
  *  Best-effort: ошибки/оффлайн не ломают локальный тумблер. Дата берётся из ts
  *  (новые записи) или восстанавливается из строки d. Если юзер не нажал /start
  *  у бота (bot_started=false) при включении — один раз подсказываем. */
 function syncReminder(
-  item: { id?: string; t: string; v?: string; d?: string; ts?: number | null },
+  item: { id?: string; t: string; v?: string; d?: string; tm?: string; ts?: number | null },
   remind: boolean,
 ): void {
   const rawId = item.id
   const eid = rawId != null && /^\d+$/.test(String(rawId)) ? parseInt(String(rawId), 10) : null
   const ts = (typeof item.ts === "number" ? item.ts : null) ?? nearestTsFromDM(item.d || "")
   if (ts == null) return  // без даты напоминание поставить некуда
-  Curator.setReminder({ remind, event_ts: ts, title: item.t, event_id: eid, venue: item.v || null })
+  Curator.setReminder({ remind, event_ts: ts, title: item.t, event_id: eid, venue: item.v || null, when: reminderWhen(item) })
     .then((r) => { if (remind && r && r.reminding && !r.bot_started) promptBotStart() })
     .catch(() => { /* сеть/оффлайн — тумблер уже сохранён локально */ })
 }
@@ -660,7 +676,7 @@ export function GoingProvider({ children }: { children: React.ReactNode }) {
     // Добавили «иду» → напоминание вкл по умолчанию; убрали → снимаем.
     syncReminder(ev as GoingItem, willGo)
   }
-  const setRemind = (ev: { t: string; id?: string; v?: string; d?: string; ts?: number | null }, on: boolean) => {
+  const setRemind = (ev: { t: string; id?: string; v?: string; d?: string; tm?: string; ts?: number | null }, on: boolean) => {
     analytics.track("cs.event.remind", { event_id: ev.id ?? null, title: (ev.t || "").slice(0, 120), on })
     setList((cur) => cur.map((e) => e.t === ev.t ? { ...e, remind: on } : e))
     syncReminder(ev, on)

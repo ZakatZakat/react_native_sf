@@ -163,7 +163,7 @@ export const Curator = {
 
   // Reminders — вкл/выкл напоминание о событии (бот пишет в ЛС за сутки).
   // Возвращает bot_started: нажал ли юзер /start (иначе слать некуда).
-  setReminder: (r: { remind: boolean; event_ts: number; title: string; event_id?: number | null; venue?: string | null }) =>
+  setReminder: (r: { remind: boolean; event_ts: number; title: string; event_id?: number | null; venue?: string | null; when?: string | null }) =>
     curatorFetch<{ ok: boolean; reminding: boolean; bot_started: boolean; past?: boolean }>("/me/reminders", {
       auth: true,
       method: "POST",

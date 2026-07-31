@@ -34,16 +34,21 @@ def _esc(s: str) -> str:
     return (s or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
-def _reminder_text(title: str, venue: str | None, event_time, url: str, now) -> str:
-    """HTML-текст напоминания. «когда» — завтра/сегодня/дата, время как в афише."""
-    days = (event_time.date() - now.date()).days
-    hhmm = event_time.strftime("%H:%M")
-    if days <= 0:
-        when = f"сегодня в {hhmm}"
-    elif days == 1:
-        when = f"завтра в {hhmm}"
+def _reminder_text(title: str, venue: str | None, event_time, url: str, now, when_text: str | None = None) -> str:
+    """HTML-текст напоминания. «когда» берём из when_text (готовая строка с фронта,
+    локальное время юзера) — иначе фолбэк по event_time (UTC, может быть неточно)."""
+    if when_text:
+        when = when_text
     else:
-        when = f"{event_time.day} {_RU_MONTHS[event_time.month]} в {hhmm}"
+        days = (event_time.date() - now.date()).days
+        hhmm = event_time.strftime("%H:%M")
+        if days <= 0:
+            when = f"сегодня в {hhmm}"
+        elif days == 1:
+            when = f"завтра в {hhmm}"
+        else:
+            when = f"{event_time.day} {_RU_MONTHS[event_time.month]} в {hhmm}"
+    when = _esc(when)
     place = f" · {_esc(venue)}" if venue else ""
     return (
         f"⏰ <b>Напоминание</b>\n\n"
@@ -161,7 +166,7 @@ class CuratorScheduler:
                 sent = failed = 0
                 async with httpx.AsyncClient(timeout=20) as http:
                     for r in due:
-                        text = _reminder_text(r.title, r.venue, r.event_time, url, now)
+                        text = _reminder_text(r.title, r.venue, r.event_time, url, now, r.when_text)
                         err: Optional[str] = None
                         try:
                             resp = await http.post(
