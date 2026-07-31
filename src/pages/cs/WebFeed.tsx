@@ -18,6 +18,7 @@ import {
   CS, SK, FONT_SANS, FONT_MONO, ScreenBG,
 } from "./shared"
 import { closingSoon, type Ev } from "./buildDerived"
+import { hideEvent, unhideEvent, clearHidden, useHiddenIds } from "./hidden"
 import { INTERESTS } from "../pipe/preferences"
 import { useDerived } from "./useJourney"
 import { analytics } from "../../lib/analytics"
@@ -101,7 +102,7 @@ function heroScore(e: Ev): number {
 }
 
 // ── Карточка каталога (крупная) ─────────────────────────────────────────
-function WebCard({ ev, i = 0, onBroken }: { ev: Ev; i?: number; onBroken?: (id: string) => void }) {
+function WebCard({ ev, i = 0, onBroken, hiddenMode = false }: { ev: Ev; i?: number; onBroken?: (id: string) => void; hiddenMode?: boolean }) {
   const navigate = useNavigate()
   const [broken, setBroken] = useState(false)
   if (broken) return null
@@ -113,7 +114,7 @@ function WebCard({ ev, i = 0, onBroken }: { ev: Ev; i?: number; onBroken?: (id: 
   const price = (ev.price || "").trim()
   if (price && price !== "—" && !/свобод|беспл|free/i.test(price) && price.length <= 14) bd.push(<Stamp key="p" label={price} square={SK.ink} />)
   return (
-    <div className="cs-card" style={{ breakInside: "avoid", WebkitColumnBreakInside: "avoid", marginBottom: 24, animationDelay: `${Math.min(i, 24) * 0.028}s` }}>
+    <div className="cs-card" style={{ breakInside: "avoid", WebkitColumnBreakInside: "avoid", marginBottom: 24, animationDelay: `${Math.min(i, 24) * 0.028}s`, opacity: hiddenMode ? 0.62 : 1 }}>
       <div onClick={() => navigate({ to: "/web/event/$id", params: { id: ev.id } })} style={{ background: SK.paper, border: `2.5px solid ${SK.ink}`, boxShadow: `4px 5px 0 ${SK.ink}`, overflow: "hidden", cursor: "pointer" }}>
         <div style={{ position: "relative", borderBottom: `2.5px solid ${SK.ink}`, background: "#E4E4E1", lineHeight: 0 }}>
           {ev.p && <img src={ev.p} alt="" onError={() => { setBroken(true); onBroken?.(ev.id) }} style={{ width: "100%", height: "auto", maxHeight: 540, objectFit: "cover", display: "block" }} />}
@@ -121,6 +122,20 @@ function WebCard({ ev, i = 0, onBroken }: { ev: Ev; i?: number; onBroken?: (id: 
           {(() => { const cs = closingSoon(ev); return cs ? (
             <span style={{ position: "absolute", top: 11, left: 11, background: "#E0162B", color: "#fff", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "0.04em", textTransform: "uppercase", padding: "5px 9px", border: `2px solid ${SK.ink}`, lineHeight: 1 }}>{cs.label}</span>
           ) : null })()}
+          {hiddenMode ? (
+            <button
+              onClick={(e) => { e.stopPropagation(); unhideEvent(ev.id); analytics.track("cs.feed.unhide", { id: ev.id }) }}
+              title="Вернуть в ленту" aria-label="Вернуть событие"
+              style={{ position: "absolute", bottom: 10, right: 10, height: 30, display: "inline-flex", alignItems: "center", gap: 5, padding: "0 11px", background: CS.B, color: "#fff", border: `2px solid ${SK.ink}`, boxShadow: `2px 2px 0 ${SK.ink}`, cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 800, fontSize: 12, letterSpacing: "0.04em", textTransform: "uppercase", lineHeight: 1 }}
+            >↩ вернуть</button>
+          ) : (
+            <button
+              className="cs-hide-btn"
+              onClick={(e) => { e.stopPropagation(); hideEvent(ev.id); analytics.track("cs.feed.hide", { id: ev.id }) }}
+              title="Скрыть — не интересно" aria-label="Скрыть событие"
+              style={{ position: "absolute", bottom: 10, right: 10, width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center", background: SK.paper, color: SK.ink, border: `2px solid ${SK.ink}`, boxShadow: `2px 2px 0 ${SK.ink}`, cursor: "pointer", fontWeight: 900, fontSize: 15, lineHeight: 1, padding: 0 }}
+            >✕</button>
+          )}
         </div>
         <div style={{ padding: "14px 16px 17px" }}>
           {bd.length > 0 && <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>{bd}</div>}
@@ -243,8 +258,14 @@ export default function CsWebFeed() {
       })
   }, [allEvents])
   const withPoster = useMemo(() => upcoming.filter((e) => e.p), [upcoming])
+  // Скрытые пользователем (localStorage, без регистрации) — убираем из ленты
+  // целиком (герой/каталог/счётчик), но держим их отдельным списком для
+  // секции «показать скрытые».
+  const hiddenIds = useHiddenIds()
+  const hidden = useMemo(() => new Set(hiddenIds), [hiddenIds])
+  const hiddenEvents = useMemo(() => withPoster.filter((e) => hidden.has(e.id)), [withPoster, hidden])
   // Полка «для знатока» убрана — insider-контент теперь в общем каталоге.
-  const mainE = withPoster
+  const mainE = useMemo(() => withPoster.filter((e) => !hidden.has(e.id)), [withPoster, hidden])
 
   // Битые постеры героя (404) — WebHero сообщает сюда, и мы выкидываем событие
   // из пула, авто-подставляя следующего кандидата (без «?»-глифа в шапке).
@@ -282,6 +303,8 @@ export default function CsWebFeed() {
   const [tag, setTag] = useState<string | null>(null) // 2-й уровень — подтег
   const [access, setAccess] = useState<string | null>(null) // фильтр по барьеру входа
   const [q, setQ] = useState("")
+  const [showHidden, setShowHidden] = useState(false)       // секция «показать скрытые»
+  const hiddenRef = useRef<HTMLDivElement | null>(null)
   // Поиск логируем с дебаунсом — settled-запрос, а не каждое нажатие.
   useEffect(() => {
     const query = q.trim()
@@ -338,6 +361,11 @@ export default function CsWebFeed() {
         @keyframes cs-card-in { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: none } }
         .cs-card { animation: cs-card-in 0.46s cubic-bezier(0.22,1,0.36,1) both; will-change: opacity, transform; }
         @media (prefers-reduced-motion: reduce) { .cs-card { animation: none } }
+        /* Кнопка «скрыть»: проявляется при наведении на карточку (десктоп); на
+           тач-устройствах (hover:none) — всегда видна. Фокус клавиатурой тоже. */
+        .cs-hide-btn { opacity: 0; transition: opacity .12s ease; }
+        .cs-card:hover .cs-hide-btn, .cs-hide-btn:focus-visible { opacity: 1; }
+        @media (hover: none) { .cs-hide-btn { opacity: 1; } }
         /* Мобилка: десктоп-лента адаптируется под узкий экран. Горизонтальный
            hero складывается в колонку (иначе колонка деталей ужималась до ~1
            символа и вёрстка «слетала»). !important — перебить inline-стили. */
@@ -417,6 +445,17 @@ export default function CsWebFeed() {
                 </div>
               )}
 
+              {/* «Показать скрытые» — появляется, только когда есть что показывать.
+                  Раскрывает секцию скрытых внизу ленты и скроллит к ней. */}
+              {hiddenEvents.length > 0 && (
+                <div style={{ marginTop: 16, display: "flex", justifyContent: "flex-end" }}>
+                  <button
+                    onClick={() => { const next = !showHidden; setShowHidden(next); if (next) { analytics.track("cs.feed.show_hidden", { count: hiddenEvents.length }); requestAnimationFrame(() => hiddenRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })) } }}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "9px 15px", border: `2px solid ${SK.ink}`, background: showHidden ? SK.ink : SK.paper, color: showHidden ? SK.paper : SK.ink55, boxShadow: showHidden ? `3px 3px 0 ${CS.B}` : "none", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", cursor: "pointer" }}
+                  >{showHidden ? "скрыть список" : `показать скрытые · ${hiddenEvents.length}`}</button>
+                </div>
+              )}
+
               {!ready ? (
                 <div style={{ fontFamily: FONT_MONO, fontSize: 14, color: SK.ink55, letterSpacing: "0.04em", padding: "80px 0", textAlign: "center" }}>загружаем афишу…</div>
               ) : (
@@ -459,6 +498,21 @@ export default function CsWebFeed() {
                     <MasonryCols key={`${cat}|${tag ?? ""}|${access ?? ""}|${q.trim()}`} items={catalogShown} />
                   ) : (
                     <div style={{ fontFamily: FONT_MONO, fontSize: 14, color: SK.ink55, letterSpacing: "0.04em", padding: "40px 0" }}>ничего не нашлось</div>
+                  )}
+
+                  {/* Скрытые — отдельной секцией внизу, с «вернуть» на каждой и
+                      «вернуть все». Приглушены (opacity), чтобы читались как архив. */}
+                  {showHidden && hiddenEvents.length > 0 && (
+                    <div ref={hiddenRef}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "44px 0 18px" }}>
+                        <span style={{ fontFamily: FONT_MONO, fontSize: 12, letterSpacing: "0.24em", textTransform: "uppercase", color: SK.ink55 }}>скрытые · {hiddenEvents.length}</span>
+                        <div style={{ flex: 1, height: 2, background: SK.ink }} />
+                        <button onClick={() => { clearHidden(); analytics.track("cs.feed.clear_hidden", { count: hiddenEvents.length }) }} style={{ flexShrink: 0, padding: "7px 13px", border: `2px solid ${SK.ink}`, background: SK.paper, color: SK.ink, boxShadow: `2px 2px 0 ${CS.B}`, fontFamily: FONT_SANS, fontWeight: 800, fontSize: 11, letterSpacing: "0.05em", textTransform: "uppercase", cursor: "pointer" }}>↩ вернуть все</button>
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 22, alignItems: "start" }}>
+                        {hiddenEvents.map((ev, i) => <WebCard key={ev.id} ev={ev} i={i} hiddenMode />)}
+                      </div>
+                    </div>
                   )}
                 </>
               )}
