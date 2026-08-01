@@ -852,7 +852,6 @@ function RatingBlock({ ev }: { ev: Ev }) {
               <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                 <StarRow value={rv.stars} readOnly size={12} />
                 <span style={{ fontWeight: 800, fontSize: 11, color: CS.K }}>{rv.author}</span>
-                <span style={{ fontFamily: FONT_MONO, fontSize: 8, color: CS.B, letterSpacing: "0.08em", textTransform: "uppercase" }}>⭐ шарит</span>
               </div>
               {rv.comment && <div style={{ fontSize: 12.5, color: CS.G70, marginTop: 3, lineHeight: 1.35 }}>{rv.comment}</div>}
             </div>
