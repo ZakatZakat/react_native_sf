@@ -78,6 +78,33 @@ def _quote_key(title: str | None, descr: str | None) -> str:
     return re.sub(r"\s+", " ", m.group(1).lower()).strip() if m else ""
 
 
+_QUOTE_A = re.compile(r"«([^»]{5,80})»")
+_QUOTE_B = re.compile(r'"([^"]{5,80})"')
+
+
+def _quote_keys(title: str | None, descr: str | None) -> set[str]:
+    """Все имена в кавычках («…»/\"…\") ≥5 симв., нормализованные — набор возможных
+    «имён события» (название/площадка). Для семантической склейки кросс-постов."""
+    src = f"{title or ''} {(descr or '')[:200]}"
+    out: set[str] = set()
+    for rx in (_QUOTE_A, _QUOTE_B):
+        for m in rx.finditer(src):
+            q = re.sub(r"\s+", " ", m.group(1).lower()).strip()
+            if len(q) >= 5:
+                out.add(q)
+    return out
+
+
+def _quotes_overlap(a: set[str], b: set[str]) -> bool:
+    """True, если есть общее имя в кавычках — точное совпадение или вложение одного
+    в другое (напр. «вкуса» ⊂ «театр вкуса»). Обе стороны уже ≥5 симв."""
+    for x in a:
+        for y in b:
+            if x == y or x in y or y in x:
+                return True
+    return False
+
+
 _URL_RE = re.compile(r"(?:https?://)?[a-z0-9][a-z0-9.-]*\.[a-z]{2,}/[^\s)<>\"'»]+", re.I)
 _URL_SKIP = re.compile(r"^(t\.me/|telegram\.|instagram\.|vk\.(com|ru)/|facebook\.|youtu|\S+\.jpe?g)")
 
@@ -114,6 +141,7 @@ class _Row:
     ctype: str | None
     authority: float
     override: int | None = None  # dup_override_group — принудительная склейка
+    venue: str | None = None     # location_meta.venue — гео-ключ площадки
 
 
 def cluster(rows: list[_Row]) -> list[list[_Row]]:
@@ -192,6 +220,46 @@ def cluster(rows: list[_Row]) -> list[list[_Row]]:
                     parent[_find(gi)] = _find(ov_seen[m.override])
                 else:
                     ov_seen[m.override] = gi
+
+    # ── Семантические склейки: кросс-посты одного события, что токен-оверлап (0.85)
+    # не берёт из-за разных постеров/текста. Аггрегаты по текущим группам: ──
+    g_names = [_name_tokens(reps[i].title, reps[i].descr) for i in range(len(groups))]
+    g_chan = [{m.channel for m in g if m.channel} for g in groups]
+    g_days = [{m.event_time.strftime("%d.%m") for m in g if m.event_time} for g in groups]
+    g_times = [{m.event_time.strftime("%d.%m %H:%M") for m in g
+                if m.event_time and (m.event_time.hour or m.event_time.minute)} for g in groups]
+    g_venues = [{m.venue for m in g if m.venue} for g in groups]
+    g_quotes = [set().union(*[_quote_keys(m.title, m.descr) for m in g]) for g in groups]
+
+    # Проход A — одна ПЛОЩАДКА (venue из геокода) + один ДЕНЬ + похожий текст
+    # (overlap ≥ 0.5): venue — сильный приор, поэтому снижаем фаззи-порог с 0.85.
+    vd_seen: dict[tuple[str, str], int] = {}
+    for gi in range(len(groups)):
+        for v in g_venues[gi]:
+            for d in g_days[gi]:
+                key = (v, d)
+                oj = vd_seen.get(key)
+                if oj is None:
+                    vd_seen[key] = gi
+                elif _find(gi) != _find(oj) and _overlap(g_names[gi], g_names[oj]) >= 0.5:
+                    parent[_find(gi)] = _find(oj)
+
+    # Проход B — один ДЕНЬ+ТОЧНОЕ ВРЕМЯ (не полночь) + РАЗНЫЕ каналы + общее имя в
+    # кавычках. Ловит кросс-посты одного события с разными постерами/текстом (напр.
+    # «Театр Вкуса» от площадки и от афиши-агрегатора). Точная минута + кросс-
+    # канальность + именная кавычка → высокая точность, без over-merge.
+    time_bucket: dict[str, list[int]] = {}
+    for gi in range(len(groups)):
+        for tk in g_times[gi]:
+            time_bucket.setdefault(tk, []).append(gi)
+    for gis in time_bucket.values():
+        for a in range(len(gis)):
+            for b in range(a + 1, len(gis)):
+                ga, gb = gis[a], gis[b]
+                if _find(ga) != _find(gb) and g_chan[ga].isdisjoint(g_chan[gb]) \
+                        and _quotes_overlap(g_quotes[ga], g_quotes[gb]):
+                    parent[_find(ga)] = _find(gb)
+
     if any(parent[i] != i for i in range(len(parent))):
         by_root: dict[int, list[_Row]] = {}
         for gi, grp in enumerate(groups):
@@ -296,6 +364,7 @@ async def _load_rows(session: AsyncSession) -> list[_Row]:
                 ctype=(ch.ctype if ch else None),
                 authority=(ch.weight if ch and ch.weight else 1.0),
                 override=ev.dup_override_group,
+                venue=((ev.location_meta or {}).get("venue") if isinstance(ev.location_meta, dict) else None),
             )
         )
     return rows
