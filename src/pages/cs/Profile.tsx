@@ -14,6 +14,7 @@
  *     hardcoded CAT_COUNTS map.
  */
 
+import { useEffect, useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import {
   CsPage, CS, FONT_MONO, FONT_SANS, Mark, Mono, Monogram, PBARS, ScreenBG,
@@ -22,6 +23,38 @@ import {
 import { useDerived, useJourneyState } from "./useJourney"
 import { FeedbackButton } from "./FeedbackModal"
 import { isOwner } from "../../lib/telegram"
+import { Curator, type ExpertStatus } from "../../lib/curator"
+
+/** Плашка статуса эксперта: если прошёл гейт вовлечённости — «ты эксперт, можешь
+ *  оценивать»; иначе прогресс до порога (сохрани N событий, заходи M дней). */
+function ExpertBadge() {
+  const [e, setE] = useState<ExpertStatus | null>(null)
+  useEffect(() => { let ok = true; Curator.getExpert().then((x) => { if (ok) setE(x) }).catch(() => {}); return () => { ok = false } }, [])
+  if (!e) return null
+  if (e.is_expert) {
+    return (
+      <div style={{ marginTop: 20, border: `2px solid ${CS.K}`, background: CS.B, color: CS.W, boxShadow: `4px 4px 0 ${CS.K}`, padding: "12px 14px" }}>
+        <div style={{ fontFamily: FONT_MONO, fontSize: 9, letterSpacing: "0.16em", textTransform: "uppercase", opacity: 0.85 }}>⭐ Статус</div>
+        <div style={{ fontWeight: 900, fontSize: 17, letterSpacing: "-0.01em", marginTop: 3 }}>Ты эксперт</div>
+        <div style={{ fontWeight: 600, fontSize: 11.5, marginTop: 4, opacity: 0.9 }}>Можешь ставить звёзды и короткие комменты к событиям — их видят все.</div>
+      </div>
+    )
+  }
+  const needSaves = Math.max(0, e.min_saves - e.saves)
+  const needDays = Math.max(0, e.min_days - e.active_days)
+  return (
+    <div style={{ marginTop: 20, border: `2px solid ${CS.K}`, background: CS.W, boxShadow: `4px 4px 0 ${CS.B}`, padding: "12px 14px" }}>
+      <div style={{ fontFamily: FONT_MONO, fontSize: 9, letterSpacing: "0.16em", textTransform: "uppercase", color: CS.B }}>⭐ До статуса «эксперт»</div>
+      <div style={{ fontWeight: 700, fontSize: 12.5, color: CS.G70, marginTop: 5, lineHeight: 1.45 }}>
+        Оценивать события могут завсегдатаи. Осталось:
+        {needSaves > 0 && <> сохранить ещё <b style={{ color: CS.K }}>{needSaves}</b> {needSaves === 1 ? "событие" : "событий"}</>}
+        {needSaves > 0 && needDays > 0 && " ·"}
+        {needDays > 0 && <> заходить ещё <b style={{ color: CS.K }}>{needDays}</b> дн.</>}
+        {needSaves === 0 && needDays === 0 && " почти готово 🎉"} за {e.window_days} дней.
+      </div>
+    </div>
+  )
+}
 
 /** Taste spectrum. When the user has added ≥2 categories of events, it's their
  *  REAL taste (frequency of added events per category). Otherwise it falls back
@@ -146,6 +179,9 @@ function ProfileInner() {
               with the EventSheet via the surrounding GoingProvider so
               toggling "Иду" in the modal updates this list live. */}
           <GoingAgenda />
+
+          {/* Экспертный статус (право оценивать) — по алгоритму вовлечённости */}
+          <ExpertBadge />
 
           {/* Spectrum bar — real taste (from added events) or the city's scenes */}
           <Mark style={{ display: "block", marginTop: 22, marginBottom: 12 }}>{spectrum.personal ? "Ты про" : "Популярно в городе"}</Mark>

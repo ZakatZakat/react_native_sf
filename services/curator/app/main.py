@@ -16,6 +16,7 @@ from app.routers import channels as channels_router
 from app.routers import insights as insights_router
 from app.routers import me as me_router
 from app.routers import push as push_router
+from app.routers import ratings as ratings_router
 from app.routers import scheduler as scheduler_router
 from app.routers import sync as sync_router
 from app.routers import tags as tags_router
@@ -46,6 +47,7 @@ app.include_router(admin_router.router)
 app.include_router(insights_router.router)
 app.include_router(push_router.router)
 app.include_router(bot_router.router)
+app.include_router(ratings_router.router)
 
 
 @app.on_event("startup")

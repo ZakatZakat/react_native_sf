@@ -8,9 +8,9 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import { haptics } from "../../lib/haptics"
-import { openTelegram, tgChannelUrl, tgPostUrl } from "../../lib/telegram"
+import { openTelegram, tgChannelUrl, tgPostUrl, tgUserName } from "../../lib/telegram"
 import { analytics } from "../../lib/analytics"
-import { Curator } from "../../lib/curator"
+import { Curator, type EventRatings as EventRatingsData, type ExpertStatus } from "../../lib/curator"
 import { venueInfo } from "./venues"
 
 // ── Tokens ────────────────────────────────────────────────────────────────
@@ -780,6 +780,111 @@ function formatEventDesc(raw: string, ...heads: string[]): string {
   return lines.join("\n").trim()
 }
 
+/** Ряд звёзд 1-5. readOnly — просто показ; иначе тап ставит оценку. */
+function StarRow({ value, onPick, size = 22, readOnly = false }: { value: number; onPick?: (n: number) => void; size?: number; readOnly?: boolean }) {
+  return (
+    <div style={{ display: "inline-flex", gap: 3 }}>
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button
+          key={n} disabled={readOnly}
+          onClick={onPick ? () => onPick(n) : undefined}
+          aria-label={`${n} из 5`}
+          style={{ border: "none", background: "none", padding: 0, cursor: readOnly ? "default" : "pointer", fontSize: size, lineHeight: 1, color: n <= value ? CS.B : CS.G35 }}
+        >{n <= value ? "★" : "☆"}</button>
+      ))}
+    </div>
+  )
+}
+
+/** Блок оценок события в шите: средняя + отзывы экспертов; если сам эксперт —
+ *  ставит звёзды и короткий коммент. Оценки/статус тянет с сервера при открытии.
+ *  Только TG-мини-апп (нужен tg-id); в вебе покажет только чтение (без права). */
+function RatingBlock({ ev }: { ev: Ev }) {
+  const eid = ev.id != null && /^\d+$/.test(String(ev.id)) ? Number(ev.id) : null
+  const [data, setData] = useState<EventRatingsData | null>(null)
+  const [expert, setExpert] = useState<ExpertStatus | null>(null)
+  const [stars, setStars] = useState(0)
+  const [comment, setComment] = useState("")
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    if (eid == null) return
+    let ok = true
+    Curator.eventRatings(eid).then((r) => { if (ok && r) { setData(r); if (r.mine) { setStars(r.mine.stars); setComment(r.mine.comment || "") } } }).catch(() => {})
+    Curator.getExpert().then((e) => { if (ok) setExpert(e) }).catch(() => {})
+    return () => { ok = false }
+  }, [eid])
+
+  if (eid == null) return null
+  const count = data?.count ?? 0
+  const isExpert = !!expert?.is_expert
+  const reviews = data?.reviews ?? []
+
+  const submit = async (nextStars: number, nextComment: string) => {
+    if (busy) return
+    setBusy(true)
+    try {
+      const r = await Curator.rate({ event_id: eid, stars: nextStars, comment: nextComment || null, author: tgUserName() || null })
+      if (r) { setData(r); if (r.mine) { setStars(r.mine.stars); setComment(r.mine.comment || "") } else { setStars(0); setComment("") } }
+      analytics.track("cs.event.rate", { event_id: eid, stars: nextStars, has_comment: !!nextComment })
+    } catch { /* 403 (не эксперт) / сеть — молча */ } finally { setBusy(false) }
+  }
+
+  // Ничего не показываем, если оценок нет И юзер не эксперт (не захламляем шит).
+  if (count === 0 && !isExpert) return null
+
+  return (
+    <div style={{ marginTop: 4, marginBottom: 16, border: `2px solid ${CS.K}`, background: CS.W, boxShadow: `2.5px 2.5px 0 ${CS.B}`, padding: "10px 12px 12px" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ fontFamily: FONT_MONO, fontSize: 8, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: CS.B }}>Оценки экспертов</div>
+        {count > 0 && data?.avg != null && (
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <StarRow value={Math.round(data.avg)} readOnly size={15} />
+            <span style={{ fontWeight: 900, fontSize: 13, color: CS.K }}>{data.avg}</span>
+            <span style={{ fontFamily: FONT_MONO, fontSize: 9, color: CS.G55 }}>· {count}</span>
+          </div>
+        )}
+      </div>
+      {reviews.length > 0 && (
+        <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+          {reviews.slice(0, 4).map((rv, i) => (
+            <div key={i} style={{ borderLeft: `3px solid ${CS.B}`, paddingLeft: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                <StarRow value={rv.stars} readOnly size={12} />
+                <span style={{ fontWeight: 800, fontSize: 11, color: CS.K }}>{rv.author}</span>
+                <span style={{ fontFamily: FONT_MONO, fontSize: 8, color: CS.B, letterSpacing: "0.08em", textTransform: "uppercase" }}>⭐ шарит</span>
+              </div>
+              {rv.comment && <div style={{ fontSize: 12.5, color: CS.G70, marginTop: 3, lineHeight: 1.35 }}>{rv.comment}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+      {isExpert && (
+        <div style={{ marginTop: reviews.length || count ? 12 : 4, borderTop: reviews.length || count ? `1.5px solid ${CS.G18}` : "none", paddingTop: reviews.length || count ? 10 : 0 }}>
+          <div style={{ fontFamily: FONT_MONO, fontSize: 8.5, color: CS.G55, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 6 }}>Твоя оценка · ты эксперт</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <StarRow value={stars} onPick={(n) => { setStars(n); submit(n, comment) }} size={28} />
+            {stars > 0 && <button onClick={() => submit(0, "")} style={{ border: "none", background: "none", cursor: "pointer", fontFamily: FONT_MONO, fontSize: 10, color: CS.G55, textDecoration: "underline" }}>снять</button>}
+          </div>
+          <div style={{ display: "flex", gap: 8, marginTop: 9 }}>
+            <input
+              value={comment}
+              onChange={(e) => setComment(e.target.value.slice(0, 140))}
+              placeholder="коротко: как оно? (необязательно)"
+              style={{ flex: 1, minWidth: 0, border: `2px solid ${CS.K}`, background: CS.W, padding: "8px 10px", fontFamily: FONT_SANS, fontSize: 12.5, color: CS.K, outline: "none" }}
+            />
+            <button
+              onClick={() => { if (stars > 0) submit(stars, comment) }}
+              disabled={busy || stars === 0}
+              style={{ flexShrink: 0, border: `2px solid ${CS.K}`, background: stars > 0 ? CS.K : CS.W, color: stars > 0 ? CS.W : CS.G35, cursor: stars > 0 ? "pointer" : "default", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "0.05em", textTransform: "uppercase", padding: "0 13px", boxShadow: stars > 0 ? `2px 2px 0 ${CS.B}` : "none" }}
+            >ок</button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function EventSheet({ ev, onClose }: { ev: Ev | null; onClose: () => void }) {
   const [shown, setShown] = useState(false)
   // Poster can 404 at runtime (media purged upstream) even though the event
@@ -925,6 +1030,8 @@ function EventSheet({ ev, onClose }: { ev: Ev | null; onClose: () => void }) {
                 </div>
               )
             })()}
+            {/* Оценки экспертов + (если сам эксперт) свой рейтинг */}
+            <RatingBlock ev={ev} />
           </div>
         </div>
         {/* Footer — single-CTA "Добавить" toggles Going. Reminder strip

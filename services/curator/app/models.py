@@ -470,3 +470,28 @@ class Reminder(Base):
     error: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), default=datetime.utcnow, nullable=False)
     sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=False), nullable=True)
+
+
+class EventRating(Base):
+    """Оценка события (звёзды 1-5 + опц. короткий коммент). Ставит только
+    «эксперт» — юзер, прошедший алгоритмический гейт вовлечённости (см.
+    services/experts.py). Одна оценка на (tg_id, event_id) — upsert. Показывается
+    в карточке события как social proof + бейдж автора «шарит»."""
+
+    __tablename__ = "event_ratings"
+    __table_args__ = (
+        UniqueConstraint("tg_id", "event_id", name="uq_rating_user_event"),
+        {"schema": SCHEMA},
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tg_id: Mapped[int] = mapped_column(BigInteger, index=True, nullable=False)
+    event_id: Mapped[int] = mapped_column(Integer, index=True, nullable=False)
+    stars: Mapped[int] = mapped_column(Integer, nullable=False)          # 1..5
+    comment: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # ≤140, опц.
+    author_name: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)  # для показа
+    hidden: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)   # модерация коммента
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=False), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )

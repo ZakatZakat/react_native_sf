@@ -77,6 +77,15 @@ class Settings(BaseSettings):
     poll_concurrency: int = Field(3, alias="POLL_CONCURRENCY")
     rank_recompute_minutes: int = Field(15, alias="RANK_RECOMPUTE_MIN")  # пересчёт дедуп+rank_score ленты
 
+    # Экспертный гейт оценок: право ставить звёзды/комменты получает тот, кто за
+    # окно EXPERT_WINDOW_DAYS сохранил ≥ EXPERT_MIN_SAVES событий И был активен
+    # ≥ EXPERT_MIN_DAYS дней (по телеметрии в аналитике). Самозатухает (окно
+    # съезжает). Целевые значения владельца — 10/5; на старте пороги мягче
+    # (мало юзеров), крутятся через env. Владелец (ADMIN_USER_IDS) — эксперт всегда.
+    expert_min_saves: int = Field(8, alias="EXPERT_MIN_SAVES")
+    expert_min_days: int = Field(3, alias="EXPERT_MIN_DAYS")
+    expert_window_days: int = Field(7, alias="EXPERT_WINDOW_DAYS")
+
     model_config = SettingsConfigDict(
         extra="allow",
         **(dict(env_file=ENV_FILE, env_file_encoding="utf-8") if ENV_FILE else {}),

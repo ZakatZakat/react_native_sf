@@ -148,6 +148,23 @@ async function curatorFetch<T>(
 
 /* ── Public API ─────────────────────────────────────────────────── */
 
+export type ExpertStatus = {
+  is_expert: boolean
+  owner: boolean
+  saves: number
+  active_days: number
+  min_saves: number
+  min_days: number
+  window_days: number
+}
+export type RatingReview = { stars: number; comment: string | null; author: string; when: string }
+export type EventRatings = {
+  avg: number | null
+  count: number
+  reviews: RatingReview[]
+  mine: { stars: number; comment: string | null } | null
+}
+
 export const Curator = {
   // Tags
   listTags: () => curatorFetch<CuratorTag[]>("/tags"),
@@ -169,6 +186,16 @@ export const Curator = {
       method: "POST",
       body: JSON.stringify(r),
     }),
+
+  // ── Ratings (экспертные оценки событий) ──────────────────────────
+  // Статус эксперта текущего юзера (право ставить звёзды + прогресс до порога).
+  getExpert: () => curatorFetch<ExpertStatus>("/me/expert", { auth: true }),
+  // Публичная сводка оценок события (avg/count/отзывы + mine для авторизованного).
+  eventRatings: (eventId: number | string) =>
+    curatorFetch<EventRatings>(`/events/${eventId}/ratings`, { auth: true, devUserFallback: false }),
+  // Поставить/обновить/снять (stars=0) оценку. Только эксперт → иначе 403.
+  rate: (r: { event_id: number; stars: number; comment?: string | null; author?: string | null }) =>
+    curatorFetch<EventRatings>("/me/rating", { auth: true, method: "POST", body: JSON.stringify(r) }),
 
   // Feed
   getFeed: (opts?: { limit?: number; offset?: number; tags?: string[] }) =>
