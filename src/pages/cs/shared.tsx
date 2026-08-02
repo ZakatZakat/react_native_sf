@@ -830,8 +830,10 @@ function RatingBlock({ ev }: { ev: Ev }) {
     } catch { /* 403 (не эксперт) / сеть — молча */ } finally { setBusy(false) }
   }
 
-  // Ничего не показываем, если оценок нет И юзер не эксперт (не захламляем шит).
-  if (count === 0 && !isExpert) return null
+  // Ничего не показываем, если нет ни оценок, ни отзывов И юзер не эксперт.
+  if (count === 0 && reviews.length === 0 && !isExpert) return null
+  const canSubmit = stars > 0 || comment.trim().length > 0
+  const hasMine = stars > 0 || comment.trim().length > 0
 
   return (
     <div style={{ marginTop: 4, marginBottom: 16, border: `2px solid ${CS.K}`, background: CS.W, boxShadow: `2.5px 2.5px 0 ${CS.B}`, padding: "10px 12px 12px" }}>
@@ -850,7 +852,7 @@ function RatingBlock({ ev }: { ev: Ev }) {
           {reviews.slice(0, 4).map((rv, i) => (
             <div key={i} style={{ borderLeft: `3px solid ${CS.B}`, paddingLeft: 8 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                <StarRow value={rv.stars} readOnly size={12} />
+                {rv.stars > 0 && <StarRow value={rv.stars} readOnly size={12} />}
                 <span style={{ fontWeight: 800, fontSize: 11, color: CS.K }}>{rv.author}</span>
               </div>
               {rv.comment && <div style={{ fontSize: 12.5, color: CS.G70, marginTop: 3, lineHeight: 1.35 }}>{rv.comment}</div>}
@@ -860,22 +862,24 @@ function RatingBlock({ ev }: { ev: Ev }) {
       )}
       {isExpert && (
         <div style={{ marginTop: reviews.length || count ? 12 : 4, borderTop: reviews.length || count ? `1.5px solid ${CS.G18}` : "none", paddingTop: reviews.length || count ? 10 : 0 }}>
-          <div style={{ fontFamily: FONT_MONO, fontSize: 8.5, color: CS.G55, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 6 }}>Твоя оценка · ты эксперт</div>
+          <div style={{ fontFamily: FONT_MONO, fontSize: 8.5, color: CS.G55, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 6 }}>Твой отзыв · ты эксперт</div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <StarRow value={stars} onPick={(n) => { setStars(n); submit(n, comment) }} size={28} />
-            {stars > 0 && <button onClick={() => submit(0, "")} style={{ border: "none", background: "none", cursor: "pointer", fontFamily: FONT_MONO, fontSize: 10, color: CS.G55, textDecoration: "underline" }}>снять</button>}
+            <span style={{ fontFamily: FONT_MONO, fontSize: 9, color: CS.G35 }}>звёзды по желанию</span>
+            {hasMine && <button onClick={() => { setStars(0); setComment(""); submit(0, "") }} style={{ marginLeft: "auto", border: "none", background: "none", cursor: "pointer", fontFamily: FONT_MONO, fontSize: 10, color: CS.G55, textDecoration: "underline" }}>убрать</button>}
           </div>
           <div style={{ display: "flex", gap: 8, marginTop: 9 }}>
             <input
               value={comment}
               onChange={(e) => setComment(e.target.value.slice(0, 140))}
-              placeholder="коротко: как оно? (необязательно)"
+              onKeyDown={(e) => { if (e.key === "Enter" && canSubmit) submit(stars, comment) }}
+              placeholder="коротко: как оно? можно без звёзд"
               style={{ flex: 1, minWidth: 0, border: `2px solid ${CS.K}`, background: CS.W, padding: "8px 10px", fontFamily: FONT_SANS, fontSize: 12.5, color: CS.K, outline: "none" }}
             />
             <button
-              onClick={() => { if (stars > 0) submit(stars, comment) }}
-              disabled={busy || stars === 0}
-              style={{ flexShrink: 0, border: `2px solid ${CS.K}`, background: stars > 0 ? CS.K : CS.W, color: stars > 0 ? CS.W : CS.G35, cursor: stars > 0 ? "pointer" : "default", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "0.05em", textTransform: "uppercase", padding: "0 13px", boxShadow: stars > 0 ? `2px 2px 0 ${CS.B}` : "none" }}
+              onClick={() => { if (canSubmit) submit(stars, comment) }}
+              disabled={busy || !canSubmit}
+              style={{ flexShrink: 0, border: `2px solid ${CS.K}`, background: canSubmit ? CS.K : CS.W, color: canSubmit ? CS.W : CS.G35, cursor: canSubmit ? "pointer" : "default", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "0.05em", textTransform: "uppercase", padding: "0 13px", boxShadow: canSubmit ? `2px 2px 0 ${CS.B}` : "none" }}
             >ок</button>
           </div>
         </div>

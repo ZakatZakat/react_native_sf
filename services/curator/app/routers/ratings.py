@@ -13,7 +13,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 
@@ -49,7 +49,7 @@ async def my_expert_status(
 
 class RatingBody(BaseModel):
     event_id: int
-    stars: int            # 0 = снять оценку, иначе 1..5
+    stars: int            # 1..5 = оценка; 0 = без оценки (коммент-заметка, либо снять если и коммент пуст)
     comment: Optional[str] = None
     author: Optional[str] = None  # отображаемое имя (из initData), опц.
 
@@ -58,8 +58,12 @@ async def _summary(s: AsyncSession, event_id: int, uid: int | None) -> dict:
     rows = (await s.execute(
         select(EventRating).where(EventRating.event_id == event_id, EventRating.hidden.is_(False))
     )).scalars().all()
-    count = len(rows)
-    avg = round(sum(r.stars for r in rows) / count, 1) if count else None
+    # Звёзды опциональны: коммент без оценки хранится как stars=0. Среднее и
+    # счётчик — только по строкам со звёздами, но комменты-без-звёзд всё равно
+    # попадают в reviews.
+    rated = [r for r in rows if r.stars >= 1]
+    count = len(rated)
+    avg = round(sum(r.stars for r in rated) / count, 1) if count else None
     reviews = [
         {"stars": r.stars, "comment": r.comment,
          "author": r.author_name or "Эксперт", "when": r.created_at.isoformat()}
@@ -85,26 +89,29 @@ async def set_rating(
     if not await is_expert(_engine(request), user_id, settings, is_owner=owner):
         raise HTTPException(403, "not an expert yet")
 
+    comment = (body.comment or "").strip()[:140] or None
+    if comment and looks_political(comment):
+        raise HTTPException(400, "comment rejected")
+    author = (body.author or "").strip()[:80] or None
+
     sf = _sf(request)
     async with session_scope(sf) as s:
-        if body.stars <= 0:  # снять оценку
+        # Ни звёзд, ни коммента → снять запись целиком.
+        if body.stars <= 0 and not comment:
             await s.execute(delete(EventRating).where(
                 EventRating.tg_id == user_id, EventRating.event_id == body.event_id))
             return await _summary(s, body.event_id, user_id)
 
-        if not (1 <= body.stars <= 5):
-            raise HTTPException(400, "stars must be 1..5")
-        comment = (body.comment or "").strip()[:140] or None
-        if comment and looks_political(comment):
-            raise HTTPException(400, "comment rejected")
-        author = (body.author or "").strip()[:80] or None
+        if not (0 <= body.stars <= 5):
+            raise HTTPException(400, "stars must be 0..5")
+        stars_val = body.stars  # 0 = коммент-заметка без оценки
 
         stmt = pg_insert(EventRating).values(
-            tg_id=user_id, event_id=body.event_id, stars=body.stars,
+            tg_id=user_id, event_id=body.event_id, stars=stars_val,
             comment=comment, author_name=author, hidden=False,
         ).on_conflict_do_update(
             constraint="uq_rating_user_event",
-            set_={"stars": body.stars, "comment": comment, "author_name": author, "hidden": False},
+            set_={"stars": stars_val, "comment": comment, "author_name": author, "hidden": False},
         )
         await s.execute(stmt)
         return await _summary(s, body.event_id, user_id)
