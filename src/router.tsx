@@ -1,6 +1,5 @@
 // src/router.tsx
 import { createRootRoute, createRouter, createRoute, redirect } from "@tanstack/react-router"
-import { introSeenThisWeek } from "./lib/intro"
 import App from "./App"
 import Landing from "./pages/Landing"
 import Landing2 from "./pages/Landing2"
@@ -59,10 +58,12 @@ const rootRoute = createRootRoute({
 const landingRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
-  // Недельное интро (лендинг → загрузка → «Неделя») — раз в неделю на юзера.
-  // Уже видел на этой неделе → сразу в ленту; иначе играем интро с лендинга.
+  // Все — и новые, и вернувшиеся — сразу в ленту. Недельное интро (лендинг →
+  // загрузка → «Неделя») больше не показываем автоматически (экран «Неделя»
+  // сейчас без редакционного героя). Сами экраны живы по прямым /cs/landing,
+  // /cs/week — при желании интро можно вернуть сюда.
   beforeLoad: () => {
-    throw redirect({ to: introSeenThisWeek() ? "/cs/feed" : "/cs/landing" })
+    throw redirect({ to: "/cs/feed" })
   },
 })
 const landingOldRoute = createRoute({ getParentRoute: () => rootRoute, path: "/landing-1", component: Landing })
