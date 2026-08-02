@@ -30,9 +30,12 @@ async def current_user_id(
     raw = init_data or init_data_q
     if not raw:
         raise HTTPException(401, "missing init_data")
-    if not settings.telegram_bot_token:
-        raise HTTPException(500, "TELEGRAM_BOT_TOKEN not configured on server")
-    user = verify_init_data(raw, settings.telegram_bot_token)
+    # init_data подписан токеном бота, который обслуживает мини-апп
+    # (@citysignalllbot → CS_BOT_TOKEN); берём объединённый bot_token, а не
+    # голый telegram_bot_token (на проде он пуст → был 500 на всех POST).
+    if not settings.bot_token:
+        raise HTTPException(500, "bot token not configured on server")
+    user = verify_init_data(raw, settings.bot_token)
     if not user:
         raise HTTPException(401, "invalid init_data")
     uid = user.get("id")
@@ -86,9 +89,9 @@ async def require_owner(
     raw = init_data or init_data_q
     if not raw:
         raise HTTPException(401, "owner auth required")
-    if not settings.telegram_bot_token:
-        raise HTTPException(500, "TELEGRAM_BOT_TOKEN not configured on server")
-    user = verify_init_data(raw, settings.telegram_bot_token)
+    if not settings.bot_token:
+        raise HTTPException(500, "bot token not configured on server")
+    user = verify_init_data(raw, settings.bot_token)
     if not user or not user.get("id"):
         raise HTTPException(401, "invalid init_data")
     uid = int(user["id"])
