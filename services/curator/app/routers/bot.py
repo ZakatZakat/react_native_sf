@@ -196,6 +196,7 @@ class BroadcastReq(BaseModel):
     caption: str = ""           # подпись к фото (<=1024), опц.
     parse_mode: str = "HTML"
     target: str = "test"        # test → админам; subscribers → is_subscribed
+    chat_ids: list[int] | None = None  # явный список получателей (перекрывает target) — для точечных/персональных рассылок
     as_document: bool = False   # true → sendDocument (без сжатия Telegram), иначе sendPhoto
     dry_run: bool = False
     photo_b64: str | None = None  # PNG в base64 (без data:-префикса)
@@ -215,7 +216,9 @@ async def broadcast(
     if not token:
         raise HTTPException(500, "bot token not configured")
 
-    if req.target == "subscribers":
+    if req.chat_ids:
+        recipients = [int(c) for c in req.chat_ids]
+    elif req.target == "subscribers":
         sf = request.app.state.session_factory
         async with session_scope(sf) as s:
             rows = (await s.execute(select(BotSubscriber.chat_id).where(BotSubscriber.is_subscribed.is_(True)))).all()
