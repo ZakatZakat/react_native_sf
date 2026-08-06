@@ -47,7 +47,10 @@ KEEP_SQL = text(
     LATERAL json_array_elements_text(pr.media_urls) AS f
     WHERE f LIKE '/media/%'
       AND (
-        (ec.id IS NOT NULL AND (ec.event_time >= (SELECT c FROM cutoff) OR ec.event_time IS NULL))
+        -- Держим медиа, пока событие ещё ИДЁТ: по дате ОКОНЧАНИЯ (COALESCE с
+        -- началом), иначе идущая выставка со стартом в прошлом теряет постер, хотя
+        -- до закрытия ещё недели. Без даты вовсе (обе NULL) — тоже держим (safe).
+        (ec.id IS NOT NULL AND (COALESCE(ec.event_time_end, ec.event_time) >= (SELECT c FROM cutoff) OR ec.event_time IS NULL))
         OR pr.fetched_at >= now() - make_interval(days => :buffer_days)
       )
     """
