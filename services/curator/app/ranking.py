@@ -273,10 +273,13 @@ def cluster(
     # Telegram при перепосте (media_hash-sha256 разошёлся, текст/имя разные), даёт
     # почти одинаковый dHash. Сравниваем группы того же ДНЯ:
     #   C (строгий) — min Hamming ≤ phash_max_hamming → сливаем (визуально идентично);
-    #   D (рыхлый + имя) — Hamming ≤ phash_corrob_hamming И общий токен имени (≥0.5):
-    #     тот же постер с мелкой правкой (спонсор-плашка) — «L'atelier de Musique»
-    #     без/с «Т БАНК» даёт Ham=10. Подтверждение именем отсекает лукэлайки разных
-    #     афиш одного шаблона («ФИНСКИЙ ЗАЛИВ» vs «FABŪLA» — общих слов нет).
+    #   D (рыхлый + имя) — Hamming ≤ phash_corrob_hamming И общее имя: overlap имён
+    #     ≥0.5 ЛИБО ≥2 общих значимых токена. Тот же постер с мелкой правкой
+    #     (спонсор-плашка) — «L'atelier de Musique» без/с «Т БАНК» даёт Ham=10.
+    #     У этих событий пустой title → имя берётся из шумного descr, где доля
+    #     размывается (overlap 0.25), поэтому смотрим и на ЧИСЛО общих токенов
+    #     (atelier+musique = 2). Подтверждение отсекает лукэлайки разных афиш
+    #     одного шаблона («ФИНСКИЙ ЗАЛИВ» vs «FABŪLA» — общих слов 0).
     if phash_max_hamming is not None or phash_corrob_hamming is not None:
         from app.imagehash import hamming as _ham
 
@@ -301,8 +304,10 @@ def cluster(
                     d = _phash_min(pa, pb)
                     if phash_max_hamming is not None and d <= phash_max_hamming:
                         parent[_find(ga)] = _find(gb)  # Проход C — строгий
-                    elif phash_corrob_hamming is not None and d <= phash_corrob_hamming \
-                            and _overlap(g_names[ga], g_names[gb]) >= 0.5:
+                    elif phash_corrob_hamming is not None and d <= phash_corrob_hamming and (
+                        _overlap(g_names[ga], g_names[gb]) >= 0.5
+                        or len(g_names[ga] & g_names[gb]) >= 2
+                    ):
                         parent[_find(ga)] = _find(gb)  # Проход D — рыхлый + имя
 
     if any(parent[i] != i for i in range(len(parent))):

@@ -111,25 +111,22 @@ def test_pass_c_strict_merges_identical_poster():
 
 
 def test_pass_d_corrob_merges_lookalike_same_event():
-    # «L'atelier de Musique» с/без плашки «Т БАНК»: Ham=10 (> строгого 8), но общий
-    # токен имени (atelier/musique) → склеиваем рыхлым проходом D.
+    # Реальный прод-кейс #7544/#7611: пустой title, имя тонет в шумном descr →
+    # overlap имён 0.25 (<0.5), НО 2 общих значимых токена (atelier/musique) +
+    # Ham=10 → склеиваем рыхлым проходом D. Плашка «Т БАНК» дала Ham=10.
     rows = [
-        _mk(1, "7 августа L'atelier de Musique в Нюансе, техно", "chanA", D_2000,
-            title="L'atelier de Musique", phash=_PH_A),
-        _mk(2, "«Нюанс» x L'atelier de Musique французский дворик", "chanB", D_2000,
-            title="Нюанс x L'atelier de Musique", phash=_PH_B),
+        _mk(1, "7 августа — L'atelier de Musique В эту пятницу вас ждет вечер где музыку подбирают", "chanA", D_2000, phash=_PH_A),
+        _mk(2, "07.08 «Нюанс» x L'atelier de Musique Тот самый идеальный микс французский дворик", "chanB", D_2000, phash=_PH_B),
     ]
     assert len(cluster(rows, phash_max_hamming=8, phash_corrob_hamming=14)) == 1
 
 
 def test_pass_d_needs_shared_name():
     # Похожие постеры одного шаблона (Ham=10 в рыхлой зоне), но РАЗНЫЕ события без
-    # общих слов имени → НЕ склеиваем (защита от лукэлайков).
+    # общих слов имени (0 общих токенов) → НЕ склеиваем (защита от лукэлайков).
     rows = [
-        _mk(1, "ФИНСКИЙ ЗАЛИВ ХАУС ПАТИ на воде вечером", "chanA", D_2000,
-            title="Финский залив хаус пати", phash=_PH_A),
-        _mk(2, "SATURDAY NIGHT FABULA приземляется на Стрелку", "chanB", D_2000,
-            title="Saturday night Fabula", phash=_PH_B),
+        _mk(1, "ФИНСКИЙ ЗАЛИВ ХАУС ПАТИ на воде вечером зажигаем", "chanA", D_2000, phash=_PH_A),
+        _mk(2, "SATURDAY NIGHT FABULA приземляется на Стрелку танцуем", "chanB", D_2000, phash=_PH_B),
     ]
     assert len(cluster(rows, phash_max_hamming=8, phash_corrob_hamming=14)) == 2
 
