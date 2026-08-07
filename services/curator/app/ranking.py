@@ -142,10 +142,14 @@ class _Row:
     authority: float
     override: int | None = None  # dup_override_group — принудительная склейка
     venue: str | None = None     # location_meta.venue — гео-ключ площадки
+    phash: str | None = None     # dHash постера — дедуп по картинке (см. Проход C)
 
 
-def cluster(rows: list[_Row]) -> list[list[_Row]]:
-    """Схлопывает кросс-посты в группы. Возвращает список групп (списков строк)."""
+def cluster(rows: list[_Row], phash_max_hamming: int | None = None) -> list[list[_Row]]:
+    """Схлопывает кросс-посты в группы. Возвращает список групп (списков строк).
+
+    phash_max_hamming — если задан, включает Проход C (дедуп по перцептивному хэшу
+    постера). None → проход выключен (обратная совместимость / до офлайн-ревью)."""
     groups: list[list[_Row]] = []
     reps: list[_Row] = []  # представитель группы (лучший титул), индекс = группа
     exact_to_idx: dict[str, int] = {}
@@ -260,6 +264,31 @@ def cluster(rows: list[_Row]) -> list[list[_Row]]:
                         and _quotes_overlap(g_quotes[ga], g_quotes[gb]):
                     parent[_find(ga)] = _find(gb)
 
+    # Проход C — перцептивный dHash постера. Один и тот же постер, перепакованный
+    # Telegram при перепосте (media_hash-sha256 разошёлся, текст/имя разные), даёт
+    # почти одинаковый dHash. Сливаем группы того же ДНЯ, чьи постеры визуально
+    # идентичны (min Hamming ≤ порог). Гейт — phash_max_hamming (None → выключено).
+    if phash_max_hamming is not None:
+        from app.imagehash import hamming as _ham
+
+        g_phashes = [[m.phash for m in g if m.phash] for g in groups]
+        day_bucket: dict[str, list[int]] = {}
+        for gi in range(len(groups)):
+            for d in g_days[gi]:
+                day_bucket.setdefault(d, []).append(gi)
+        for gis in day_bucket.values():
+            for a in range(len(gis)):
+                for b in range(a + 1, len(gis)):
+                    ga, gb = gis[a], gis[b]
+                    if _find(ga) == _find(gb):
+                        continue
+                    pa, pb = g_phashes[ga], g_phashes[gb]
+                    if pa and pb and any(
+                        len(x) == len(y) and _ham(x, y) <= phash_max_hamming
+                        for x in pa for y in pb
+                    ):
+                        parent[_find(ga)] = _find(gb)
+
     if any(parent[i] != i for i in range(len(parent))):
         by_root: dict[int, list[_Row]] = {}
         for gi, grp in enumerate(groups):
@@ -365,6 +394,7 @@ async def _load_rows(session: AsyncSession) -> list[_Row]:
                 authority=(ch.weight if ch and ch.weight else 1.0),
                 override=ev.dup_override_group,
                 venue=((ev.location_meta or {}).get("venue") if isinstance(ev.location_meta, dict) else None),
+                phash=post.media_phash,
             )
         )
     return rows
@@ -387,11 +417,15 @@ async def _load_endorsed_links(session: AsyncSession) -> set[tuple[str, int]]:
     return links
 
 
-async def recompute_feed_ranks(session: AsyncSession, *, apply: bool = True) -> RankResult:
-    """Пересчитать дедуп-группы + rank_score для всех фид-событий."""
+async def recompute_feed_ranks(
+    session: AsyncSession, *, apply: bool = True, phash_hamming: int | None = None
+) -> RankResult:
+    """Пересчитать дедуп-группы + rank_score для всех фид-событий.
+
+    phash_hamming — порог dHash для Прохода C (дедуп по картинке); None → выкл."""
     rows = await _load_rows(session)
     endorsed_links = await _load_endorsed_links(session)
-    groups = cluster(rows)
+    groups = cluster(rows, phash_max_hamming=phash_hamming)
     today = datetime.utcnow().date()
 
     res = RankResult(rows=len(rows), groups=len(groups), collapsed=len(rows) - len(groups))

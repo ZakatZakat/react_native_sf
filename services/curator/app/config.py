@@ -77,6 +77,16 @@ class Settings(BaseSettings):
     poll_concurrency: int = Field(3, alias="POLL_CONCURRENCY")
     rank_recompute_minutes: int = Field(15, alias="RANK_RECOMPUTE_MIN")  # пересчёт дедуп+rank_score ленты
 
+    # ── Перцептивный дедуп постеров (dHash по картинке) ──
+    # MEDIA_LOCAL_DIR — путь к смонтированному citysignal_media внутри curator
+    # (пусто → phash не считаем). phash_dedup_enabled — гейт врезки в cluster()
+    # (включаем ПОСЛЕ офлайн-ревью найденных дублей). phash_max_hamming — порог
+    # расстояния Хэмминга (≤ порога = один постер). Всё крутится через env.
+    media_local_dir: str = Field("", alias="MEDIA_LOCAL_DIR")
+    phash_dedup_enabled: bool = Field(False, alias="PHASH_DEDUP_ENABLED")
+    phash_max_hamming: int = Field(8, alias="PHASH_MAX_HAMMING")
+    phash_refresh_minutes: int = Field(15, alias="PHASH_REFRESH_MIN")
+
     # Экспертный гейт оценок: право ставить звёзды/комменты получает тот, кто за
     # окно EXPERT_WINDOW_DAYS сохранил ≥ EXPERT_MIN_SAVES событий И был активен
     # ≥ EXPERT_MIN_DAYS дней (по телеметрии в аналитике). Самозатухает (окно

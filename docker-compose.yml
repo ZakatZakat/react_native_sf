@@ -101,7 +101,11 @@ services:
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@digital-assistant.tech}
+      # Постеры (том media nginx) — read-only, для перцептивного дедупа по картинке
+      MEDIA_LOCAL_DIR: /srv/media
     env_file: [.env]
+    volumes:
+      - citysignal_media:/srv/media:ro
     depends_on:
       db: { condition: service_healthy }
     # analytics-platform_internal — внешняя сеть проекта analytics-platform;

@@ -53,9 +53,11 @@ async def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true", help="записать (иначе dry-run)")
     ap.add_argument("--skip-taxonomy", action="store_true", help="не трогать ctype/weight каналов")
+    ap.add_argument("--phash", action="store_true", help="включить дедуп по картинке (dHash) даже если PHASH_DEDUP_ENABLED=false")
     args = ap.parse_args()
 
     settings = Settings()
+    ham = settings.phash_max_hamming if (settings.phash_dedup_enabled or args.phash) else None
     engine = create_engine(settings.postgres_dsn)
     session_factory = create_session_maker(engine)
 
@@ -64,7 +66,7 @@ async def main() -> None:
             tax = _load_taxonomy()
             matched, missing = await _seed_taxonomy(s, tax, apply=args.apply)
             print(f"таксономия: {matched} каналов размечено, {missing} из файла не нашлось в БД")
-        res = await recompute_feed_ranks(s, apply=args.apply)
+        res = await recompute_feed_ranks(s, apply=args.apply, phash_hamming=ham)
         print(
             f"ранг: {res.rows} фид-строк → {res.groups} событий "
             f"(дедуп −{res.collapsed}); одобрено @animalswithhands: {res.endorsed}; "

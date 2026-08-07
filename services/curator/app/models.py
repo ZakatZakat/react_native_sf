@@ -81,6 +81,10 @@ class PostRaw(Base):
     # posters under different URLs, so this is the reliable de-dupe key. Backfilled
     # + kept fresh by deploy/hash_media.sh (curator has no media mount to hash live).
     media_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    # Перцептивный хэш (dHash, 16-hex) первого постера — ловит один и тот же постер,
+    # перепакованный Telegram при перепосте (media_hash-sha256 при этом расходится).
+    # Заполняется app.backfill_phash из MEDIA_LOCAL_DIR (см. app.imagehash).
+    media_phash: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
     published_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=False), nullable=True)
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), default=datetime.utcnow, nullable=False)
 

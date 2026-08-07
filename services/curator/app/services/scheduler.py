@@ -85,16 +85,38 @@ class CuratorScheduler:
             from app.db import create_engine, create_session_maker, session_scope
             from app.ranking import recompute_feed_ranks
 
+            ham = self.settings.phash_max_hamming if self.settings.phash_dedup_enabled else None
             engine = create_engine(self.settings.postgres_dsn)
             try:
                 sf = create_session_maker(engine)
                 async with session_scope(sf) as s:
-                    res = await recompute_feed_ranks(s, apply=True)
+                    res = await recompute_feed_ranks(s, apply=True, phash_hamming=ham)
                 logger.info("scheduler: rank recompute %d rows → %d events (dedup −%d)", res.rows, res.groups, res.collapsed)
             finally:
                 await engine.dispose()
         except Exception:  # noqa: BLE001
             logger.exception("scheduler: rank recompute failed")
+
+    async def _run_phash_refresh(self) -> None:
+        """Досчитать dHash новых постеров (media_phash IS NULL) для дедупа по
+        картинке. Инкрементально по ленте. Изолировано: ошибка логируется."""
+        media_dir = self.settings.media_local_dir
+        if not media_dir:
+            return
+        try:
+            from app.backfill_phash import refresh_phashes
+            from app.db import create_engine, create_session_maker, session_scope
+
+            engine = create_engine(self.settings.postgres_dsn)
+            try:
+                sf = create_session_maker(engine)
+                async with session_scope(sf) as s:
+                    res = await refresh_phashes(s, media_dir, only_feed=True)
+                logger.info("scheduler: phash refresh — %s", res)
+            finally:
+                await engine.dispose()
+        except Exception:  # noqa: BLE001
+            logger.exception("scheduler: phash refresh failed")
 
     async def _run_moderation_cleanup(self) -> None:
         """Ночная чистка: прошедшие manual_review → rejected. Изолировано —
@@ -243,6 +265,19 @@ class CuratorScheduler:
             misfire_grace_time=600,
             next_run_time=datetime.utcnow() + timedelta(seconds=90),
         )
+        # Досчёт dHash новых постеров (дедуп по картинке) — каждые phash_refresh_minutes,
+        # первый через 60с (до первого rank recompute на 90с, чтобы phash был свежим).
+        if self.settings.media_local_dir:
+            self._scheduler.add_job(
+                self._run_phash_refresh,
+                trigger=IntervalTrigger(minutes=self.settings.phash_refresh_minutes),
+                id="phash:refresh",
+                replace_existing=True,
+                max_instances=1,
+                coalesce=True,
+                misfire_grace_time=600,
+                next_run_time=datetime.utcnow() + timedelta(seconds=60),
+            )
         # Ночная чистка очереди модерации: прошедшие manual_review → rejected (03:30 UTC).
         self._scheduler.add_job(
             self._run_moderation_cleanup,
