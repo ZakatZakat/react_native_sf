@@ -65,9 +65,11 @@ async def main() -> None:
 
     now = datetime.utcnow()
     filled = 0          # live events that gained an end date
+    started = 0         # shared-month events whose START was also corrected
     revived = 0         # wrongly-closed ongoing shows restored
     scanned_live = scanned_rej = 0
     end_updates: list[tuple[int, datetime]] = []      # (id, event_time_end)
+    start_updates: list[tuple[int, datetime, datetime]] = []  # (id, event_time, event_time_end)
     revive: list[tuple[int, datetime]] = []           # (id, event_time_end) + status flip
 
     async with session_scope(sf) as s:
@@ -94,6 +96,20 @@ async def main() -> None:
                 continue
             enr = enrich_event(text or "", det.hits, published_at=_base_of(pub, fet, cre))
             end = enr.event_time_end
+            new_start = enr.event_time
+            # Диапазон «общий месяц» («с 6 по 16 августа»): старый детектор брал
+            # единственной датой КОНЕЦ, поэтому сохранённый event_time = день
+            # закрытия. Ре-энричер теперь даёт более ранний старт → чиним ОБА поля
+            # (иначе start==end и «последний шанс»/лента их не увидят). Признак:
+            # новый старт РАНЬШЕ сохранённого, а конец не раньше сохранённого.
+            if (new_start is not None and et is not None and end is not None
+                    and new_start < et and end >= et):
+                start_updates.append((eid, new_start, end))
+                started += 1
+                if started <= 30:
+                    one = " ".join((text or "").split())[:44]
+                    print(f"  start-fix id={eid:<6} {new_start:%m-%d}→{end:%m-%d} | {one}")
+                continue
             if end is None or (et is not None and end <= et):
                 continue
             end_updates.append((eid, end))
@@ -145,6 +161,11 @@ async def main() -> None:
                 await s.execute(
                     update(EventCurated).where(EventCurated.id == eid).values(event_time_end=end)
                 )
+            for eid, start, end in start_updates:
+                await s.execute(
+                    update(EventCurated).where(EventCurated.id == eid)
+                    .values(event_time=start, event_time_end=end)
+                )
             for eid, end in revive:
                 await s.execute(
                     update(EventCurated)
@@ -160,8 +181,8 @@ async def main() -> None:
     await engine.dispose()
     mode = "APPLIED" if args.apply else "DRY-RUN (no writes)"
     print(
-        f"\n[{mode}] pass1 live: scanned={scanned_live} filled_end={filled} | "
-        f"pass2 rejected-as-past: scanned={scanned_rej} revived={revived}"
+        f"\n[{mode}] pass1 live: scanned={scanned_live} filled_end={filled} "
+        f"start_fixed={started} | pass2 rejected-as-past: scanned={scanned_rej} revived={revived}"
     )
     if not args.apply and (filled or revived):
         print("Re-run with --apply to write.")
