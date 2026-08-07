@@ -13,11 +13,11 @@ D_NOON = datetime(2026, 7, 31, 12, 0)
 D_2000 = datetime(2026, 7, 31, 20, 0)
 
 
-def _mk(id, descr, channel, dt, title="", venue=None, media_hash=None):
+def _mk(id, descr, channel, dt, title="", venue=None, media_hash=None, phash=None):
     return _Row(
         id=id, title=title, descr=descr, event_time=dt, event_time_end=None,
         media_hash=media_hash, filter_score=5, channel=channel, message_id=id,
-        ctype=None, authority=1.0, venue=venue,
+        ctype=None, authority=1.0, venue=venue, phash=phash,
     )
 
 
@@ -94,3 +94,50 @@ def test_pass_a_precision_diff_events_same_venue():
     a = _mk(1, "детали", "chanA", D_NOON, title="выставка мозаика цветы лето", venue="ges2")
     b = _mk(2, "иное", "chanB", D_2000, title="концерт джаз квартет вечер", venue="ges2")
     assert len(cluster([a, b])) == 2
+
+
+# ── Проходы C/D: перцептивный dHash постера (реальные хэши с прода, Ham=10) ──
+_PH_A = "c4d4e83071f0e4d4"  # L'atelier de Musique без плашки (#7544)
+_PH_B = "ced4c83071a0cce0"  # тот же постер + «Т БАНК» (#7611) — Ham(A,B)=10
+
+
+def test_pass_c_strict_merges_identical_poster():
+    # Байт-разные, но визуально идентичные (Ham 0) + разный текст → строгий проход C.
+    rows = [
+        _mk(1, "событие альфа один текст", "chanA", D_2000, title="альфа", phash=_PH_A),
+        _mk(2, "событие бета совсем другой текст", "chanB", D_2000, title="бета иное", phash=_PH_A),
+    ]
+    assert len(cluster(rows, phash_max_hamming=8, phash_corrob_hamming=14)) == 1
+
+
+def test_pass_d_corrob_merges_lookalike_same_event():
+    # «L'atelier de Musique» с/без плашки «Т БАНК»: Ham=10 (> строгого 8), но общий
+    # токен имени (atelier/musique) → склеиваем рыхлым проходом D.
+    rows = [
+        _mk(1, "7 августа L'atelier de Musique в Нюансе, техно", "chanA", D_2000,
+            title="L'atelier de Musique", phash=_PH_A),
+        _mk(2, "«Нюанс» x L'atelier de Musique французский дворик", "chanB", D_2000,
+            title="Нюанс x L'atelier de Musique", phash=_PH_B),
+    ]
+    assert len(cluster(rows, phash_max_hamming=8, phash_corrob_hamming=14)) == 1
+
+
+def test_pass_d_needs_shared_name():
+    # Похожие постеры одного шаблона (Ham=10 в рыхлой зоне), но РАЗНЫЕ события без
+    # общих слов имени → НЕ склеиваем (защита от лукэлайков).
+    rows = [
+        _mk(1, "ФИНСКИЙ ЗАЛИВ ХАУС ПАТИ на воде вечером", "chanA", D_2000,
+            title="Финский залив хаус пати", phash=_PH_A),
+        _mk(2, "SATURDAY NIGHT FABULA приземляется на Стрелку", "chanB", D_2000,
+            title="Saturday night Fabula", phash=_PH_B),
+    ]
+    assert len(cluster(rows, phash_max_hamming=8, phash_corrob_hamming=14)) == 2
+
+
+def test_pass_d_off_when_only_strict():
+    # Только строгий порог (corrob=None): Ham=10 не склеивается даже при общем имени.
+    rows = [
+        _mk(1, "L'atelier de Musique техно", "chanA", D_2000, title="L'atelier de Musique", phash=_PH_A),
+        _mk(2, "Нюанс x L'atelier de Musique", "chanB", D_2000, title="Нюанс x L'atelier de Musique", phash=_PH_B),
+    ]
+    assert len(cluster(rows, phash_max_hamming=8)) == 2

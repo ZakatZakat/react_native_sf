@@ -85,6 +85,9 @@ class Settings(BaseSettings):
     media_local_dir: str = Field("", alias="MEDIA_LOCAL_DIR")
     phash_dedup_enabled: bool = Field(False, alias="PHASH_DEDUP_ENABLED")
     phash_max_hamming: int = Field(8, alias="PHASH_MAX_HAMMING")
+    # Рыхлый порог Прохода D — склейка при Hamming ≤ этого И общем имени-токене
+    # (тот же постер с мелкой правкой: спонсор-плашка и т.п.). Выше строгого порога.
+    phash_corrob_hamming: int = Field(14, alias="PHASH_CORROB_HAMMING")
     phash_refresh_minutes: int = Field(15, alias="PHASH_REFRESH_MIN")
 
     # Экспертный гейт оценок: право ставить звёзды/комменты получает тот, кто за

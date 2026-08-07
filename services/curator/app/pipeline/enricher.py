@@ -198,19 +198,34 @@ _RANGE_RE: re.Pattern[str] = re.compile(
 # «до» (not «по») to avoid false hits like «по 8 адресам».
 _END_ONLY_RE: re.Pattern[str] = re.compile(rf"\bдо\s+({_DATE_TOKEN})", re.IGNORECASE)
 
+# «D–D <месяца>» / «с D по D <месяца>» — диапазон с ОБЩИМ месяцем: у СТАРТА своего
+# месяца нет, он вынесен к концу («с 6 по 16 августа», «20—24 августа»,
+# «15-16 августа», «7 - 8 августа»). _RANGE_RE такое не берёт (левая дата без
+# месяца — не _DATE_TOKEN), а детектор берёт единственной датой КОНЕЦ (16-е) →
+# и старт, и end оказываются концом. Тут вытаскиваем ОБА дня общего месяца.
+# group(1)=день старта, group(2)=день конца, group(3)=месяц.
+_SHARED_MONTH_RE: re.Pattern[str] = re.compile(
+    rf"(?:с\s+)?(\d{{1,2}})\s*(?:[–—-]|по)\s*(\d{{1,2}})\s+((?:{'|'.join(RU_MONTHS)})[а-я]*)",
+    re.IGNORECASE,
+)
 
-def _find_end_date_snippet(text: str) -> str | None:
-    """The closing date of a range, if the text states one."""
+
+def _find_range(text: str) -> tuple[str | None, str | None]:
+    """(start_snippet, end_snippet) диапазона дат, если он в тексте есть. Три формы:
+    полный диапазон (обе даты с месяцем), общий месяц (у старта месяца нет), и
+    открытый «до DATE» (старт неизвестен → None)."""
     if (m := _RANGE_RE.search(text)) is not None:
-        return m.group(2)
+        return m.group(1), m.group(2)
+    if (m := _SHARED_MONTH_RE.search(text)) is not None:
+        month = m.group(3)
+        return f"{m.group(1)} {month}", f"{m.group(2)} {month}"
     if (m := _END_ONLY_RE.search(text)) is not None:
-        return m.group(1)
-    return None
+        return None, m.group(1)
+    return None, None
 
 
-def _build_range_end(text: str, base: datetime) -> datetime | None:
-    """Normalized closing date, run through the same pipeline as event_time."""
-    snippet = _find_end_date_snippet(text)
+def _resolve_snippet_dt(snippet: str | None, base: datetime) -> datetime | None:
+    """Нормализовать и распарсить дату-сниппет тем же конвейером, что event_time."""
     if not snippet:
         return None
     snippet = _expand_two_digit_year(snippet)  # «01.09.26» → «01.09.2026»
@@ -273,13 +288,24 @@ def enrich_event(
     event_time = _drop_far_future(event_time, base_dt)
     event_time_end = _drop_far_future(event_time_end, base_dt)
 
-    # A multi-day range («19.07 — 01.09», «до 1 сентября») → closing date. Only
-    # when a same-day time-range hasn't already set an end, and only if it's not
-    # before the start (a mis-paired date is dropped rather than trusted).
+    # A multi-day range («19.07 — 01.09», «с 6 по 16 августа», «до 1 сентября») →
+    # closing date. Only when a same-day time-range hasn't already set an end, and
+    # only if it's not before the start (a mis-paired date is dropped, not trusted).
     if event_time_end is None:
-        range_end = _build_range_end(text, base_dt)
+        range_start_s, range_end_s = _find_range(text)
+        range_end = _resolve_snippet_dt(range_end_s, base_dt)
         if range_end is not None and (event_time is None or range_end >= event_time):
             event_time_end = range_end
+            # Диапазон с общим месяцем («с 6 по 16 августа»): детектор берёт КОНЕЦ
+            # единственной датой (у старта своего месяца нет), поэтому event_time
+            # встаёт на конец. Если у диапазона есть более ранний старт — берём его
+            # как открытие (иначе start==end и событие «однодневное», выпадает из
+            # «последнего шанса» и раньше уходит из ленты).
+            range_start = _resolve_snippet_dt(range_start_s, base_dt)
+            if range_start is not None and range_start < range_end and (
+                event_time is None or event_time > range_start
+            ):
+                event_time = range_start
 
     # ── Location ──
     location_text: str | None = None

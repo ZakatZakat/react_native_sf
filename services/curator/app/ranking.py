@@ -145,11 +145,16 @@ class _Row:
     phash: str | None = None     # dHash постера — дедуп по картинке (см. Проход C)
 
 
-def cluster(rows: list[_Row], phash_max_hamming: int | None = None) -> list[list[_Row]]:
+def cluster(
+    rows: list[_Row],
+    phash_max_hamming: int | None = None,
+    phash_corrob_hamming: int | None = None,
+) -> list[list[_Row]]:
     """Схлопывает кросс-посты в группы. Возвращает список групп (списков строк).
 
-    phash_max_hamming — если задан, включает Проход C (дедуп по перцептивному хэшу
-    постера). None → проход выключен (обратная совместимость / до офлайн-ревью)."""
+    phash_max_hamming — строгий порог dHash (Проход C, безусловная склейка);
+    phash_corrob_hamming — рыхлый порог dHash с подтверждением именем (Проход D).
+    None → соответствующий проход выключен (обратная совместимость)."""
     groups: list[list[_Row]] = []
     reps: list[_Row] = []  # представитель группы (лучший титул), индекс = группа
     exact_to_idx: dict[str, int] = {}
@@ -264,11 +269,15 @@ def cluster(rows: list[_Row], phash_max_hamming: int | None = None) -> list[list
                         and _quotes_overlap(g_quotes[ga], g_quotes[gb]):
                     parent[_find(ga)] = _find(gb)
 
-    # Проход C — перцептивный dHash постера. Один и тот же постер, перепакованный
+    # Проходы C/D — перцептивный dHash постера. Один и тот же постер, перепакованный
     # Telegram при перепосте (media_hash-sha256 разошёлся, текст/имя разные), даёт
-    # почти одинаковый dHash. Сливаем группы того же ДНЯ, чьи постеры визуально
-    # идентичны (min Hamming ≤ порог). Гейт — phash_max_hamming (None → выключено).
-    if phash_max_hamming is not None:
+    # почти одинаковый dHash. Сравниваем группы того же ДНЯ:
+    #   C (строгий) — min Hamming ≤ phash_max_hamming → сливаем (визуально идентично);
+    #   D (рыхлый + имя) — Hamming ≤ phash_corrob_hamming И общий токен имени (≥0.5):
+    #     тот же постер с мелкой правкой (спонсор-плашка) — «L'atelier de Musique»
+    #     без/с «Т БАНК» даёт Ham=10. Подтверждение именем отсекает лукэлайки разных
+    #     афиш одного шаблона («ФИНСКИЙ ЗАЛИВ» vs «FABŪLA» — общих слов нет).
+    if phash_max_hamming is not None or phash_corrob_hamming is not None:
         from app.imagehash import hamming as _ham
 
         g_phashes = [[m.phash for m in g if m.phash] for g in groups]
@@ -276,6 +285,10 @@ def cluster(rows: list[_Row], phash_max_hamming: int | None = None) -> list[list
         for gi in range(len(groups)):
             for d in g_days[gi]:
                 day_bucket.setdefault(d, []).append(gi)
+
+        def _phash_min(pa: list[str], pb: list[str]) -> int:
+            return min((_ham(x, y) for x in pa for y in pb if len(x) == len(y)), default=99)
+
         for gis in day_bucket.values():
             for a in range(len(gis)):
                 for b in range(a + 1, len(gis)):
@@ -283,11 +296,14 @@ def cluster(rows: list[_Row], phash_max_hamming: int | None = None) -> list[list
                     if _find(ga) == _find(gb):
                         continue
                     pa, pb = g_phashes[ga], g_phashes[gb]
-                    if pa and pb and any(
-                        len(x) == len(y) and _ham(x, y) <= phash_max_hamming
-                        for x in pa for y in pb
-                    ):
-                        parent[_find(ga)] = _find(gb)
+                    if not (pa and pb):
+                        continue
+                    d = _phash_min(pa, pb)
+                    if phash_max_hamming is not None and d <= phash_max_hamming:
+                        parent[_find(ga)] = _find(gb)  # Проход C — строгий
+                    elif phash_corrob_hamming is not None and d <= phash_corrob_hamming \
+                            and _overlap(g_names[ga], g_names[gb]) >= 0.5:
+                        parent[_find(ga)] = _find(gb)  # Проход D — рыхлый + имя
 
     if any(parent[i] != i for i in range(len(parent))):
         by_root: dict[int, list[_Row]] = {}
@@ -418,14 +434,16 @@ async def _load_endorsed_links(session: AsyncSession) -> set[tuple[str, int]]:
 
 
 async def recompute_feed_ranks(
-    session: AsyncSession, *, apply: bool = True, phash_hamming: int | None = None
+    session: AsyncSession, *, apply: bool = True,
+    phash_hamming: int | None = None, phash_corrob: int | None = None,
 ) -> RankResult:
     """Пересчитать дедуп-группы + rank_score для всех фид-событий.
 
-    phash_hamming — порог dHash для Прохода C (дедуп по картинке); None → выкл."""
+    phash_hamming — строгий порог dHash (Проход C); phash_corrob — рыхлый порог с
+    подтверждением именем (Проход D). None → соответствующий проход выключен."""
     rows = await _load_rows(session)
     endorsed_links = await _load_endorsed_links(session)
-    groups = cluster(rows, phash_max_hamming=phash_hamming)
+    groups = cluster(rows, phash_max_hamming=phash_hamming, phash_corrob_hamming=phash_corrob)
     today = datetime.utcnow().date()
 
     res = RankResult(rows=len(rows), groups=len(groups), collapsed=len(rows) - len(groups))

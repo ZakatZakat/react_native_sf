@@ -85,12 +85,14 @@ class CuratorScheduler:
             from app.db import create_engine, create_session_maker, session_scope
             from app.ranking import recompute_feed_ranks
 
-            ham = self.settings.phash_max_hamming if self.settings.phash_dedup_enabled else None
+            on = self.settings.phash_dedup_enabled
+            ham = self.settings.phash_max_hamming if on else None
+            corrob = self.settings.phash_corrob_hamming if on else None
             engine = create_engine(self.settings.postgres_dsn)
             try:
                 sf = create_session_maker(engine)
                 async with session_scope(sf) as s:
-                    res = await recompute_feed_ranks(s, apply=True, phash_hamming=ham)
+                    res = await recompute_feed_ranks(s, apply=True, phash_hamming=ham, phash_corrob=corrob)
                 logger.info("scheduler: rank recompute %d rows → %d events (dedup −%d)", res.rows, res.groups, res.collapsed)
             finally:
                 await engine.dispose()

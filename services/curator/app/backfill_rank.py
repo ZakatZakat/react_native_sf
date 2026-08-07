@@ -57,7 +57,9 @@ async def main() -> None:
     args = ap.parse_args()
 
     settings = Settings()
-    ham = settings.phash_max_hamming if (settings.phash_dedup_enabled or args.phash) else None
+    on = settings.phash_dedup_enabled or args.phash
+    ham = settings.phash_max_hamming if on else None
+    corrob = settings.phash_corrob_hamming if on else None
     engine = create_engine(settings.postgres_dsn)
     session_factory = create_session_maker(engine)
 
@@ -66,7 +68,7 @@ async def main() -> None:
             tax = _load_taxonomy()
             matched, missing = await _seed_taxonomy(s, tax, apply=args.apply)
             print(f"таксономия: {matched} каналов размечено, {missing} из файла не нашлось в БД")
-        res = await recompute_feed_ranks(s, apply=args.apply, phash_hamming=ham)
+        res = await recompute_feed_ranks(s, apply=args.apply, phash_hamming=ham, phash_corrob=corrob)
         print(
             f"ранг: {res.rows} фид-строк → {res.groups} событий "
             f"(дедуп −{res.collapsed}); одобрено @animalswithhands: {res.endorsed}; "
