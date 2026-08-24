@@ -420,9 +420,17 @@ class TelegramService:
                     failed[channel] = "ResolveThrottled (прогрев кэша)"
                     continue
             try:
-                # min_id=0 → отдаём Telethon как None (иначе он это как «с самого начала»)
+                # min_id=0 → отдаём Telethon как None (иначе он это как «с самого начала»).
+                # reverse=True при догоне (min_id задан): iter_messages по умолчанию
+                # newest-first, поэтому у активного канала, выложившего >limit между
+                # опросами, старые сообщения из пачки ТЕРЯЛИСЬ навсегда (брались 25
+                # новейших, last_message_id прыгал на новейший, дыра не добиралась).
+                # oldest-first добирает пропуск ПО ПОРЯДКУ, last_message_id растёт
+                # постепенно — без дыр при любой пачке. Первый опрос (min_id=0) —
+                # как был, newest-first (последние N).
                 async for message in client.iter_messages(
-                    entity=channel, limit=per_channel_limit, min_id=(min_id or 0)
+                    entity=channel, limit=per_channel_limit,
+                    min_id=(min_id or 0), reverse=bool(min_id),
                 ):
                     if not isinstance(message, Message):
                         continue
