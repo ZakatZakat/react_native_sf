@@ -34,7 +34,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.auth import require_admin
 from app.db import session_scope
-from app.models import BotSubscriber
+from app.models import BotSubscriber, FeedbackNote
 
 logger = logging.getLogger(__name__)
 
@@ -58,10 +58,16 @@ HELP = (
     "Что-то не так или есть идея — /feedback."
 )
 
-FEEDBACK = (
-    "Пиши прямо в приложении: «Открыть» → профиль → «Написать нам». "
-    "Читаем всё."
+# Промпт начинается с маркера FEEDBACK_MARKER — по нему ловим ответ юзера
+# (reply_to_message.text) без серверного стейта: force_reply привязывает ответ
+# именно к этому сообщению.
+FEEDBACK_MARKER = "Напишите ваш отзыв"
+FEEDBACK_PROMPT = (
+    "Напишите ваш отзыв или идею одним сообщением — прямо в ответ на это. "
+    "Читаю всё, передам команде."
 )
+FEEDBACK_THANKS = "Спасибо! Отзыв передан команде 🙏"
+FEEDBACK_EMPTY = "Пусто — напишите текст отзыва одним сообщением."
 
 STOP = (
     "Ок, больше не буду присылать подборки. Захочешь вернуться — жми /start."
@@ -110,9 +116,45 @@ def webhook_secret(token: str) -> str:
 def _keyboard(webapp_url: str) -> dict:
     return {
         "inline_keyboard": [
-            [{"text": "Открыть CitySignal", "web_app": {"url": webapp_url}}]
+            [{"text": "Открыть CitySignal", "web_app": {"url": webapp_url}}],
+            [{"text": "Обратная связь", "callback_data": "fb"}],
         ]
     }
+
+
+FEEDBACK_REPLY_MARKUP = {"force_reply": True, "input_field_placeholder": "Ваш отзыв…"}
+
+
+async def _answer_callback(token: str, callback_query_id: str | None) -> None:
+    """Снять «часики» с нажатой inline-кнопки (иначе клиент крутит спиннер)."""
+    if not callback_query_id:
+        return
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            await client.post(
+                f"https://api.telegram.org/bot{token}/answerCallbackQuery",
+                json={"callback_query_id": callback_query_id},
+            )
+    except Exception as e:  # noqa: BLE001 — не роняем webhook
+        logger.warning("answerCallbackQuery failed: %s", e)
+
+
+async def _save_feedback(request: Request, chat: dict, text: str) -> bool:
+    """Сохранить отзыв из ЛС бота в ту же таблицу, что и веб-фидбек (feedback_notes,
+    админ-эндпоинт /admin/feedback-notes их уже читает). Ошибки не роняют webhook."""
+    sf = getattr(request.app.state, "session_factory", None)
+    chat_id = chat.get("id")
+    if sf is None or not chat_id:
+        return False
+    uname = chat.get("username")
+    name = f"@{uname}" if uname else (chat.get("first_name") or None)
+    try:
+        async with session_scope(sf) as s:
+            s.add(FeedbackNote(user_id=chat_id, user_name=name, text=text[:4000]))
+        return True
+    except Exception as e:  # noqa: BLE001
+        logger.warning("bot feedback save failed: %s", e)
+        return False
 
 
 async def _send(token: str, chat_id: int, text: str, reply_markup: dict | None = None) -> None:
@@ -155,13 +197,39 @@ async def webhook(
     except Exception:  # noqa: BLE001
         return Response(status_code=200)
 
+    # Нажатие inline-кнопки «Обратная связь» → просим написать отзыв ответом на
+    # промпт (force_reply). Стейт не храним: привязка живёт в reply_to_message.
+    cq = update.get("callback_query")
+    if isinstance(cq, dict):
+        cq_chat = ((cq.get("message") or {}).get("chat")) or {}
+        cq_chat_id = cq_chat.get("id")
+        await _answer_callback(token, cq.get("id"))
+        if (cq.get("data") or "") == "fb" and cq_chat_id:
+            await _send(token, cq_chat_id, FEEDBACK_PROMPT, FEEDBACK_REPLY_MARKUP)
+        return Response(status_code=200)
+
     msg = update.get("message") or update.get("edited_message")
     if not isinstance(msg, dict):
         return Response(status_code=200)
     text = (msg.get("text") or "").strip()
     chat = msg.get("chat") or {}
     chat_id = chat.get("id")
-    if not chat_id or not text.startswith("/"):
+    if not chat_id:
+        return Response(status_code=200)
+
+    # Захват отзыва: сообщение — это ответ на наш промпт (force_reply привязал его
+    # к сообщению, начинающемуся с FEEDBACK_MARKER). Ловим ДО гейта на «/».
+    reply_txt = ((msg.get("reply_to_message") or {}).get("text") or "")
+    if reply_txt.startswith(FEEDBACK_MARKER) and not text.startswith("/"):
+        if not text:
+            await _send(token, chat_id, FEEDBACK_EMPTY, FEEDBACK_REPLY_MARKUP)
+        else:
+            await _upsert_subscriber(request, chat, None)  # освежить профиль
+            ok = await _save_feedback(request, chat, text)
+            await _send(token, chat_id, FEEDBACK_THANKS if ok else FEEDBACK_EMPTY)
+        return Response(status_code=200)
+
+    if not text.startswith("/"):
         return Response(status_code=200)
 
     # /start@BotName и /start deep_link → берём первое слово без @suffix
@@ -177,7 +245,7 @@ async def webhook(
     elif cmd == "/help":
         await _send(token, chat_id, HELP, _keyboard(settings.cs_webapp_url))
     elif cmd == "/feedback":
-        await _send(token, chat_id, FEEDBACK)
+        await _send(token, chat_id, FEEDBACK_PROMPT, FEEDBACK_REPLY_MARKUP)
     elif cmd == "/stop":
         await _send(token, chat_id, STOP)
     return Response(status_code=200)
