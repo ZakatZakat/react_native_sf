@@ -7,8 +7,10 @@
 
 Скрипт: берёт approved-события со свежим .jpg-постером, HEAD-ит его через nginx;
 для 404 (ни в кэше, ни у поллера) зовёт поллер `/refetch-media`. Идемпотентно:
-поллер пропускает уже скачанные файлы. TG channel_id берём из имени файла →
-`/refetch-media` идёт через PeerChannel, без ResolveUsername (без флуда).
+поллер пропускает уже скачанные файлы. channel_id в item НЕ шлём: с ним поллер
+идёт `PeerChannel(channel_id)` на свежем in-memory клиенте (пустой entity-кэш) и
+падает «input entity not found» — чинил ноль; без него резолвит по хэндлу
+(get_entity), Telethon кэширует entity в вызове, повторы канала бесплатны.
 
 Запуск: `python -m app.backfill_media_retry --apply [--days 3]`. Также крутится
 в scheduler'е каждые 30 мин (CuratorScheduler._run_media_retry).
@@ -88,21 +90,27 @@ async def retry_broken_posters(
                     broken.append(item)
         await asyncio.gather(*(check(i) for i in cands))
 
-    # refetch-элементы: TG channel_id из имени файла (без него — резолв опасен, пропускаем)
+    # refetch-элементы. channel_id НЕ шлём намеренно: с ним поллер идёт через
+    # PeerChannel(channel_id), но refetch поднимает свежий in-memory клиент с пустым
+    # entity-кэшем → «Could not find the input entity» на КАЖДОМ (чинил ноль). Без
+    # channel_id поллер резолвит канал по хэндлу (get_entity), а Telethon кэширует
+    # entity в рамках вызова → повторы того же канала бесплатны. Сортируем по каналу,
+    # чтобы его items шли подряд (один ResolveUsername на канал, без флуда).
     items: list[dict[str, Any]] = []
     for handle, mid, u in broken:
-        m = _FN.search(u)
-        if not m:
+        if not _FN.search(u):
             continue
-        items.append({"channel": handle, "message_id": mid, "channel_id": int(m.group(1))})
+        items.append({"channel": handle, "message_id": mid})
+    items.sort(key=lambda it: it["channel"])
 
-    result: dict[str, Any] = {"scanned": len(cands), "broken": len(broken), "refetched": 0}
+    result: dict[str, Any] = {"scanned": len(cands), "broken": len(broken), "repaired": 0, "failed": 0}
     if apply and items:
         for i in range(0, len(items), 40):
             batch = items[i:i + 40]
             try:
-                await tg_client.refetch_media(batch)
-                result["refetched"] += len(batch)
+                res = await tg_client.refetch_media(batch)
+                result["repaired"] += len(res.get("repaired", []))
+                result["failed"] += len(res.get("failed", []))
             except Exception as e:  # noqa: BLE001 — один битый батч не должен ронять весь проход
                 result.setdefault("errors", []).append(str(e)[:140])
     return result
