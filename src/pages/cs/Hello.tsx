@@ -9,7 +9,8 @@
  *
  * Воронка логируется: cs.reg.shown (показан) / cs.reg.submit (ввёл, имя в data) /
  * cs.reg.skip (пропустил) — чтобы понять, сколько веб-заходов доходит до реги.
- * Гейт стоит в router.tsx (root «/»): веб + нет имени + нет флага → сюда.
+ * Гейт стоит в router.tsx на /web (веб-лента): нет имени + нет флага → сюда,
+ * после ввода/скипа — обратно в /web.
  */
 import { useEffect, useRef, useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
@@ -35,7 +36,7 @@ export default function CsHello() {
 
   const finish = () => {
     try { localStorage.setItem(REG_DONE_KEY, "1") } catch { /* quota / private mode */ }
-    navigate({ to: "/cs/feed" })
+    navigate({ to: "/web" })
   }
   const submit = () => {
     if (doneRef.current) return

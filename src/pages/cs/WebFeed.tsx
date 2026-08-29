@@ -20,7 +20,7 @@ import {
 import { closingSoon, type Ev } from "./buildDerived"
 import { hideEvent, unhideEvent, clearHidden, useHiddenIds } from "./hidden"
 import { INTERESTS } from "../pipe/preferences"
-import { useDerived } from "./useJourney"
+import { useDerived, useJourneyState } from "./useJourney"
 import { analytics } from "../../lib/analytics"
 
 const CAT_SYM = new Map(INTERESTS.map((i) => [i.label, i.symbol]))
@@ -238,6 +238,10 @@ const WEB_HERO_ARROW: React.CSSProperties = { width: 34, height: 34, flexShrink:
 // ── Страница ────────────────────────────────────────────────────────────
 export default function CsWebFeed() {
   const { derived } = useDerived()
+  // Имя из быстрой реги (/cs/hello): на вебе Telegram-identity нет, поэтому
+  // displayName = введённое имя. Пусто → шапка остаётся нейтральной.
+  const { displayName } = useJourneyState()
+  const greet = displayName.trim().slice(0, 24)
 
   const allEvents = useMemo(() => Object.values(derived.pool).flat(), [derived])
   // Предстоящее (с начала сегодня), прошедшее-сегодня тонет вниз — как в мобиле.
@@ -386,7 +390,7 @@ export default function CsWebFeed() {
               <div style={{ display: "flex", alignItems: "center", gap: 24, flexWrap: "wrap" }}>
                 <div style={{ flex: "1 1 460px", display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, background: SK.paper, border: `2.5px solid ${SK.ink}`, boxShadow: `5px 5px 0 ${SK.ink}`, padding: "16px 24px 18px" }}>
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontFamily: FONT_MONO, fontSize: 12, letterSpacing: "0.3em", textTransform: "uppercase", color: SK.ink55 }}>афиша · москва</div>
+                    <div style={{ fontFamily: FONT_MONO, fontSize: 12, letterSpacing: "0.3em", textTransform: "uppercase", color: SK.ink55 }}>{greet ? `привет, ${greet} · москва` : "афиша · москва"}</div>
                     <div className="cs-head-title" style={{ fontWeight: 900, fontSize: 54, letterSpacing: "-0.045em", lineHeight: 0.92, marginTop: 6 }}>Что в городе</div>
                   </div>
                   <div style={{ flexShrink: 0, textAlign: "right", lineHeight: 1 }}>

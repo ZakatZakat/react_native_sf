@@ -64,23 +64,7 @@ const landingRoute = createRoute({
   // сейчас без редакционного героя). Сами экраны живы по прямым /cs/landing,
   // /cs/week — при желании интро можно вернуть сюда.
   beforeLoad: () => {
-    // Веб-версия (вне Telegram) открывается без Telegram-identity → аноним, в
-    // профиле «Гость». Один раз спрашиваем имя (быстрая рега, /cs/hello), дальше —
-    // в ленту. В Telegram имя берём из аккаунта, регу не показываем. Флаги в
-    // localStorage: cs.journey.name (введённое имя) / cs.reg.done (прошёл/скипнул).
-    let redirectTo: "/cs/hello" | "/cs/feed" = "/cs/feed"
-    if (typeof window !== "undefined") {
-      try {
-        const inTelegram = !!(window as unknown as { Telegram?: { WebApp?: { initData?: string } } })
-          .Telegram?.WebApp?.initData
-        const nameRaw = localStorage.getItem("cs.journey.name")
-        const named = !!nameRaw && nameRaw !== '""' && nameRaw !== "null"
-        const regDone = !!localStorage.getItem("cs.reg.done")
-        const asUser = new URLSearchParams(window.location.search).has("as_user")
-        if (!inTelegram && !named && !regDone && !asUser) redirectTo = "/cs/hello"
-      } catch { /* private mode → просто в ленту */ }
-    }
-    throw redirect({ to: redirectTo })
+    throw redirect({ to: "/cs/feed" })
   },
 })
 const landingOldRoute = createRoute({ getParentRoute: () => rootRoute, path: "/landing-1", component: Landing })
@@ -118,7 +102,30 @@ const csPassRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/pa
 const csSwipeRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/swipe", component: CsSwipe })
 const csSummaryRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/summary", component: CsSummary })
 const csFeedRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/feed", component: CsFeed })
-const csWebRoute = createRoute({ getParentRoute: () => rootRoute, path: "/web", component: CsWebFeed })
+// Веб-версия афиши (/web) открывается без Telegram-identity → аноним, в профиле
+// «Гость». Первый заход (нет имени и регу не скипали) один раз отправляем на
+// быструю регу /cs/hello — спросить, как обращаться; дальше Hello ведёт обратно
+// в /web. В Telegram (мини-апп) и с ?as_user регу не показываем. Флаги в
+// localStorage: cs.journey.name (введённое имя, JSON-строка) / cs.reg.done.
+function webNeedsReg(): boolean {
+  if (typeof window === "undefined") return false
+  try {
+    const inTelegram = !!(window as unknown as { Telegram?: { WebApp?: { initData?: string } } })
+      .Telegram?.WebApp?.initData
+    if (inTelegram) return false
+    if (new URLSearchParams(window.location.search).has("as_user")) return false
+    const nameRaw = localStorage.getItem("cs.journey.name")
+    const named = !!nameRaw && nameRaw !== '""' && nameRaw !== "null"
+    const regDone = !!localStorage.getItem("cs.reg.done")
+    return !named && !regDone
+  } catch { return false }
+}
+const csWebRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/web",
+  beforeLoad: () => { if (webNeedsReg()) throw redirect({ to: "/cs/hello" }) },
+  component: CsWebFeed,
+})
 const csWebEventRoute = createRoute({ getParentRoute: () => rootRoute, path: "/web/event/$id", component: CsWebEvent })
 const csProfileRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/profile", component: CsProfile })
 const csAdminRoute = createRoute({ getParentRoute: () => rootRoute, path: "/admin", component: CsAdmin })
