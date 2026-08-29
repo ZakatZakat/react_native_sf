@@ -9,8 +9,14 @@
  *
  * Воронка логируется: cs.reg.shown (показан) / cs.reg.submit (ввёл, имя в data) /
  * cs.reg.skip (пропустил) — чтобы понять, сколько веб-заходов доходит до реги.
- * Гейт стоит в router.tsx на /web (веб-лента): нет имени + нет флага → сюда,
+ * Гейт стоит в router.tsx на /web (веб-лента): нет флага cs.reg.done → сюда,
  * после ввода/скипа — обратно в /web.
+ *
+ * Вёрстка — web-native (НЕ мобильная карточка): экран выведен из телефонной
+ * рамки .cs-frame (см. isWebFullWidth в App.tsx), поэтому идёт во всю ширину.
+ * Бренд сверху-слева, крупный hero-заголовок по центру, ввод — широкой
+ * горизонтальной строкой (поле + кнопка), как строка поиска на /web. На узком
+ * экране строка складывается в колонку.
  */
 import { useEffect, useRef, useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
@@ -59,76 +65,96 @@ export default function CsHello() {
   return (
     <div
       style={{
-        position: "fixed", inset: 0, overflow: "auto",
+        position: "relative", width: "100%", minHeight: "100vh", boxSizing: "border-box",
         background: SK.paper,
         backgroundImage:
           "linear-gradient(#EAE9E4 1px, transparent 1px), linear-gradient(90deg, #EAE9E4 1px, transparent 1px)",
-        backgroundSize: "26px 26px",
+        backgroundSize: "30px 30px",
         fontFamily: FONT_SANS, color: SK.ink,
-        display: "flex", flexDirection: "column", justifyContent: "center",
-        padding: "32px 26px",
+        display: "flex", flexDirection: "column",
       }}
     >
-      <div style={{ maxWidth: 460, width: "100%", margin: "0 auto" }}>
-        {/* Лого-локап */}
-        <div style={{ display: "inline-flex", height: 40, border: `2px solid ${SK.ink}`, boxShadow: `3px 3px 0 ${SK.ink}`, marginBottom: 30 }}>
-          <span style={{ display: "flex", alignItems: "center", padding: "0 13px", background: SK.ink, color: "#fff", fontWeight: 900, fontSize: 20, letterSpacing: "-0.03em", textTransform: "uppercase" }}>City</span>
-          <span style={{ display: "flex", alignItems: "center", padding: "0 13px", background: SK.blue, color: "#fff", fontWeight: 900, fontSize: 20, letterSpacing: "-0.03em", textTransform: "uppercase" }}>Signal</span>
+      <style>{`
+        .hello-wrap { flex: 1; width: 100%; max-width: 1180px; margin: 0 auto; padding: 40px clamp(22px, 5vw, 72px) 48px; box-sizing: border-box; display: flex; flex-direction: column; }
+        .hello-center { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+        .hello-title { font-weight: 900; text-transform: uppercase; letter-spacing: -0.045em; line-height: 0.92; margin: 18px 0 clamp(22px, 3.2vw, 36px); font-size: clamp(48px, 8.4vw, 108px); }
+        .hello-bar { display: flex; gap: 16px; align-items: stretch; width: 100%; max-width: 860px; }
+        .hello-input { flex: 1 1 auto; min-width: 0; }
+        .hello-go { flex: 0 0 auto; white-space: nowrap; }
+        @media (max-width: 640px) {
+          .hello-bar { flex-direction: column; gap: 12px; }
+          .hello-go { width: 100%; }
+          .hello-title { font-size: clamp(40px, 13vw, 64px); }
+        }
+      `}</style>
+
+      <div className="hello-wrap">
+        {/* ── Бренд сверху-слева ── */}
+        <div style={{ display: "inline-flex", alignSelf: "flex-start", height: 44, border: `2px solid ${SK.ink}`, boxShadow: `3px 3px 0 ${SK.ink}` }}>
+          <span style={{ display: "flex", alignItems: "center", padding: "0 15px", background: SK.ink, color: "#fff", fontWeight: 900, fontSize: 22, letterSpacing: "-0.03em", textTransform: "uppercase" }}>City</span>
+          <span style={{ display: "flex", alignItems: "center", padding: "0 15px", background: SK.blue, color: "#fff", fontWeight: 900, fontSize: 22, letterSpacing: "-0.03em", textTransform: "uppercase" }}>Signal</span>
         </div>
 
-        <div style={{ fontFamily: FONT_MONO, fontSize: 11.5, letterSpacing: "0.22em", textTransform: "uppercase", color: SK.ink55, marginBottom: 12 }}>
-          Афиша Москвы · знакомимся
+        {/* ── Hero по центру ── */}
+        <div className="hello-center">
+          <div style={{ fontFamily: FONT_MONO, fontSize: 13, letterSpacing: "0.26em", textTransform: "uppercase", color: SK.ink55 }}>
+            Афиша Москвы · знакомимся
+          </div>
+          <h1 className="hello-title">
+            Привет!<br />Как тебя <span style={{ color: SK.blue }}>называть?</span>
+          </h1>
+          <p style={{ fontSize: "clamp(16px, 1.4vw, 19px)", lineHeight: 1.5, color: SK.ink55, margin: "0 0 28px", maxWidth: 560 }}>
+            Чтобы обращаться по-человечески. Одно поле — и сразу к афише. Можно пропустить.
+          </p>
+
+          {/* широкая строка ввода: поле + кнопка */}
+          <div className="hello-bar">
+            <input
+              ref={inputRef}
+              className="hello-input"
+              value={value}
+              onChange={(e) => setValue(e.target.value.slice(0, MAX))}
+              onKeyDown={(e) => { if (e.key === "Enter") submit() }}
+              placeholder="Имя"
+              maxLength={MAX}
+              autoComplete="given-name"
+              style={{
+                boxSizing: "border-box", height: 70, padding: "0 22px",
+                fontFamily: FONT_SANS, fontSize: 22, fontWeight: 600, color: SK.ink,
+                background: "#fff", border: `2.5px solid ${SK.ink}`, boxShadow: `5px 5px 0 ${SK.ink}`,
+                outline: "none", borderRadius: 0,
+              }}
+              onFocus={(e) => { e.currentTarget.style.boxShadow = `5px 5px 0 ${SK.blue}`; e.currentTarget.style.borderColor = SK.blue }}
+              onBlur={(e) => { e.currentTarget.style.boxShadow = `5px 5px 0 ${SK.ink}`; e.currentTarget.style.borderColor = SK.ink }}
+            />
+            <button
+              className="hello-go"
+              onClick={submit}
+              disabled={!canGo}
+              style={{
+                boxSizing: "border-box", height: 70, padding: "0 clamp(24px, 3vw, 44px)",
+                fontFamily: FONT_SANS, fontWeight: 800, fontSize: 18, letterSpacing: "0.02em", textTransform: "uppercase",
+                color: "#fff", background: canGo ? SK.blue : SK.ink35,
+                border: `2.5px solid ${SK.ink}`, boxShadow: canGo ? `5px 5px 0 ${SK.ink}` : "none",
+                cursor: canGo ? "pointer" : "default", borderRadius: 0, transition: "background 0.12s, box-shadow 0.12s",
+              }}
+            >
+              Продолжить →
+            </button>
+          </div>
+
+          <button
+            onClick={skip}
+            style={{
+              alignSelf: "flex-start", marginTop: 22, padding: "8px 0",
+              background: "none", border: "none", cursor: "pointer",
+              fontFamily: FONT_MONO, fontSize: 13.5, letterSpacing: "0.05em", textTransform: "uppercase",
+              color: SK.ink55, textDecoration: "underline", textUnderlineOffset: 4,
+            }}
+          >
+            Пропустить и сразу к афише
+          </button>
         </div>
-        <h1 style={{ fontWeight: 900, fontSize: "clamp(30px, 8vw, 42px)", lineHeight: 1.02, letterSpacing: "-0.035em", margin: "0 0 10px", textTransform: "uppercase" }}>
-          Привет!<br />Как тебя <span style={{ color: SK.blue }}>называть?</span>
-        </h1>
-        <p style={{ fontSize: 15, lineHeight: 1.5, color: SK.ink55, margin: "0 0 24px", maxWidth: 380 }}>
-          Чтобы обращаться по-человечески. Одно поле — и сразу к афише. Можно пропустить.
-        </p>
-
-        <input
-          ref={inputRef}
-          value={value}
-          onChange={(e) => setValue(e.target.value.slice(0, MAX))}
-          onKeyDown={(e) => { if (e.key === "Enter") submit() }}
-          placeholder="Имя"
-          maxLength={MAX}
-          autoComplete="given-name"
-          style={{
-            width: "100%", boxSizing: "border-box", height: 56, padding: "0 16px",
-            fontFamily: FONT_SANS, fontSize: 19, fontWeight: 600, color: SK.ink,
-            background: "#fff", border: `2.5px solid ${SK.ink}`, boxShadow: `4px 4px 0 ${SK.ink}`,
-            outline: "none", borderRadius: 0,
-          }}
-          onFocus={(e) => { e.currentTarget.style.boxShadow = `4px 4px 0 ${SK.blue}`; e.currentTarget.style.borderColor = SK.blue }}
-          onBlur={(e) => { e.currentTarget.style.boxShadow = `4px 4px 0 ${SK.ink}`; e.currentTarget.style.borderColor = SK.ink }}
-        />
-
-        <button
-          onClick={submit}
-          disabled={!canGo}
-          style={{
-            width: "100%", boxSizing: "border-box", height: 56, marginTop: 18,
-            fontFamily: FONT_SANS, fontWeight: 800, fontSize: 17, letterSpacing: "0.01em", textTransform: "uppercase",
-            color: "#fff", background: canGo ? SK.blue : SK.ink35,
-            border: `2.5px solid ${SK.ink}`, boxShadow: canGo ? `4px 4px 0 ${SK.ink}` : "none",
-            cursor: canGo ? "pointer" : "default", borderRadius: 0, transition: "background 0.12s, box-shadow 0.12s",
-          }}
-        >
-          Продолжить
-        </button>
-
-        <button
-          onClick={skip}
-          style={{
-            display: "block", margin: "18px auto 0", padding: "8px 12px",
-            background: "none", border: "none", cursor: "pointer",
-            fontFamily: FONT_MONO, fontSize: 13, letterSpacing: "0.06em", textTransform: "uppercase",
-            color: SK.ink55, textDecoration: "underline", textUnderlineOffset: 3,
-          }}
-        >
-          Пропустить
-        </button>
       </div>
     </div>
   )

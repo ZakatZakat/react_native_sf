@@ -62,6 +62,12 @@ const ALL_ROUTES = [...PIPE_ROUTES, ...ALT_ROUTES] as const
 // bring the route picker back for local design review.
 const SHOW_DEV_NAV = false
 
+// Пути веб-версии, которые идут во всю ширину экрана (без телефонной рамки):
+// лента /web (+ /web/event/...) и быстрая рега /cs/hello.
+function isWebFullWidth(pathname: string): boolean {
+  return pathname.startsWith("/web") || pathname === "/cs/hello"
+}
+
 export default function App() {
   const tg = typeof window !== "undefined" ? window.Telegram?.WebApp : undefined
   const navigate = useNavigate()
@@ -128,8 +134,9 @@ export default function App() {
       )}
       {/* Телефонная рамка: на широком экране — колонка телефонной ширины по
           центру (см. .cs-frame в index.css), на телефоне — всё как есть.
-          Веб-версия (/web) рамку не берёт — идёт во всю ширину экрана. */}
-      <div className={location.pathname.startsWith("/web") ? undefined : "cs-frame"}>
+          Веб-версия рамку НЕ берёт — идёт во всю ширину: и лента /web, и
+          быстрая рега /cs/hello (это веб-экран, а не мини-апповый). */}
+      <div className={isWebFullWidth(location.pathname) ? undefined : "cs-frame"}>
         <Outlet />
       </div>
     </Box>
