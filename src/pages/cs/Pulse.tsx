@@ -38,6 +38,9 @@ const ACTION_LABEL: Record<string, string> = {
   "cs.event.tg_channel": "Открытия канала",
   "cs.event.tg_post": "Открытия поста",
   "cs.name.submit": "Ввод имени",
+  "cs.reg.shown": "Показ быстрой реги (веб)",
+  "cs.reg.submit": "Ввели имя (веб)",
+  "cs.reg.skip": "Пропустили регу (веб)",
   "cs.admin.week_pick": "Правки «выбора недели»",
   "cs.admin.week_clear": "Сброс «выбора недели»",
 }

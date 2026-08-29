@@ -28,6 +28,7 @@ import PipeRadarCategory from "./pages/PipeRadarCategory"
 import PipeExampleOnlyBlue from "./pages/PipeExampleOnlyBlue"
 import PipeFeedOnlyBlue from "./pages/PipeFeedOnlyBlue"
 import CsLanding from "./pages/cs/Landing"
+import CsHello from "./pages/cs/Hello"
 import CsLoading from "./pages/cs/Loading"
 import CsWeek from "./pages/cs/Week"
 import CsPass from "./pages/cs/Pass"
@@ -63,7 +64,23 @@ const landingRoute = createRoute({
   // сейчас без редакционного героя). Сами экраны живы по прямым /cs/landing,
   // /cs/week — при желании интро можно вернуть сюда.
   beforeLoad: () => {
-    throw redirect({ to: "/cs/feed" })
+    // Веб-версия (вне Telegram) открывается без Telegram-identity → аноним, в
+    // профиле «Гость». Один раз спрашиваем имя (быстрая рега, /cs/hello), дальше —
+    // в ленту. В Telegram имя берём из аккаунта, регу не показываем. Флаги в
+    // localStorage: cs.journey.name (введённое имя) / cs.reg.done (прошёл/скипнул).
+    let redirectTo: "/cs/hello" | "/cs/feed" = "/cs/feed"
+    if (typeof window !== "undefined") {
+      try {
+        const inTelegram = !!(window as unknown as { Telegram?: { WebApp?: { initData?: string } } })
+          .Telegram?.WebApp?.initData
+        const nameRaw = localStorage.getItem("cs.journey.name")
+        const named = !!nameRaw && nameRaw !== '""' && nameRaw !== "null"
+        const regDone = !!localStorage.getItem("cs.reg.done")
+        const asUser = new URLSearchParams(window.location.search).has("as_user")
+        if (!inTelegram && !named && !regDone && !asUser) redirectTo = "/cs/hello"
+      } catch { /* private mode → просто в ленту */ }
+    }
+    throw redirect({ to: redirectTo })
   },
 })
 const landingOldRoute = createRoute({ getParentRoute: () => rootRoute, path: "/landing-1", component: Landing })
@@ -94,6 +111,7 @@ const pipeRadarCategoryRoute = createRoute({ getParentRoute: () => rootRoute, pa
 const pipeExampleOnlyBlueRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-example-only-blue", component: PipeExampleOnlyBlue })
 const pipeFeedOnlyBlueRoute = createRoute({ getParentRoute: () => rootRoute, path: "/pipe-feed-only-blue", component: PipeFeedOnlyBlue })
 const csLandingRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/landing", component: CsLanding })
+const csHelloRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/hello", component: CsHello })
 const csLoadingRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/loading", component: CsLoading })
 const csWeekRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/week", component: CsWeek })
 const csPassRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/pass", component: CsPass })
@@ -141,6 +159,7 @@ const routeTree = rootRoute.addChildren([
   pipeExampleOnlyBlueRoute,
   pipeFeedOnlyBlueRoute,
   csLandingRoute,
+  csHelloRoute,
   csLoadingRoute,
   csWeekRoute,
   csPassRoute,
