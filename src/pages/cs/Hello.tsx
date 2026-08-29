@@ -36,7 +36,9 @@ export default function CsHello() {
 
   useEffect(() => {
     analytics.track("cs.reg.shown")
-    const t = setTimeout(() => inputRef.current?.focus(), 350)
+    // preventScroll — иначе автофокус на низком вьюпорте утаскивает страницу
+    // вниз (сверху проглядывал тёмный сурраунд #root).
+    const t = setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 350)
     return () => clearTimeout(t)
   }, [])
 
@@ -100,12 +102,9 @@ export default function CsHello() {
           <div style={{ fontFamily: FONT_MONO, fontSize: 13, letterSpacing: "0.26em", textTransform: "uppercase", color: SK.ink55 }}>
             Афиша Москвы · знакомимся
           </div>
-          <h1 className="hello-title">
+          <h1 className="hello-title" style={{ marginBottom: "clamp(26px, 3.4vw, 40px)" }}>
             Привет!<br />Как тебя <span style={{ color: SK.blue }}>называть?</span>
           </h1>
-          <p style={{ fontSize: "clamp(16px, 1.4vw, 19px)", lineHeight: 1.5, color: SK.ink55, margin: "0 0 28px", maxWidth: 560 }}>
-            Чтобы обращаться по-человечески. Одно поле — и сразу к афише. Можно пропустить.
-          </p>
 
           {/* широкая строка ввода: поле + кнопка */}
           <div className="hello-bar">
