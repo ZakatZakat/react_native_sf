@@ -760,11 +760,24 @@ function formatEventDesc(raw: string, ...heads: string[]): string {
   // char starts a new clause). «!?…» never abbreviate, so they always break; the
   // «.» case skips common Russian abbreviations (ул./д./г./им./см.) whose dot is
   // NOT a sentence end — otherwise «ул. Правды» splits into two lines. JS \b is
-  // ASCII-only (unreliable next to Cyrillic), so the lookbehind spells out the
-  // preceding boundary explicitly. V8 supports variable-length lookbehind.
+  // ASCII-only (unreliable next to Cyrillic), so we spell out the preceding
+  // boundary explicitly. Zero-width lookbehind — точный вариант, НО WebKit /
+  // iOS Safari <16.4 бросает SyntaxError на lookbehind-регэкспе, из-за чего
+  // падал ВЕСЬ рендер EventSheet → белый экран в Telegram-боте (Mini App) на
+  // старом айфоне. Веб /web не задет — там форматирование своё. Фолбэк без
+  // lookbehind: прячем точки аббревиатур в плейсхолдер, режем по остальным
+  // точкам, возвращаем обратно.
   const ABBR = "ул|пер|просп|пр|пл|наб|бул|ш|стр|корп|кв|эт|оф|д|г|гор|обл|им|тел|руб|мин|макс|напр|см|т|е"
   s = s.replace(/([!?…])\s+(?=[«"„(A-ZА-ЯЁ0-9])/g, "$1\n")
-  s = s.replace(new RegExp(`(?<!(?:^|[\\s(«"„])(?:${ABBR}))\\.\\s+(?=[«"„(A-ZА-ЯЁ0-9])`, "giu"), ".\n")
+  try {
+    s = s.replace(new RegExp(`(?<!(?:^|[\\s(«"„])(?:${ABBR}))\\.\\s+(?=[«"„(A-ZА-ЯЁ0-9])`, "giu"), ".\n")
+  } catch {
+    const PH = ""
+    s = s
+      .replace(new RegExp(`(^|[\\s(«"„])(${ABBR})\\.`, "giu"), `$1$2${PH}`)
+      .replace(/\.\s+(?=[«"„(A-ZА-ЯЁ0-9])/g, ".\n")
+      .split(PH).join(".")
+  }
   const norm = (x: string) => x.toLowerCase().replace(/[^0-9a-zа-яё ]/gi, " ").replace(/\s+/g, " ").trim()
   const headNorms = heads.map(norm).filter((h) => h.length > 3)
   const noDate = (x: string) => x.replace(/^\s*\d{1,2}[.\/]\d{1,2}(?:[.\/]\d{2,4})?\s*[—–\-·]*\s*/, "")
