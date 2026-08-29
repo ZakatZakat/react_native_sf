@@ -486,12 +486,11 @@ export default function CsWebFeed() {
                   {showClosing && (
                     <>
                       <SectionRule>последний шанс · закрывается скоро</SectionRule>
-                      {/* CSS-grid auto-fit, а не MasonryCols: если у события битый постер,
-                          карточка рендерит null и просто исчезает из DOM — остальные
-                          сами сдвигаются влево, пустой колонки-«дыры» не остаётся */}
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 22, alignItems: "start" }}>
-                        {closing.map((ev, i) => <WebCard key={ev.id} ev={ev} i={i} />)}
-                      </div>
+                      {/* Masonry, как в каталоге: карточки разной высоты пакуются в
+                          колонки без row-выравнивания, поэтому под низкими не зияют
+                          дыры. Битые постеры MasonryCols сам отфильтровывает до
+                          раскладки (раньше ради этого тут был CSS-grid). */}
+                      <MasonryCols items={closing} />
                     </>
                   )}
 
