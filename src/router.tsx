@@ -103,10 +103,14 @@ const csSwipeRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/s
 const csSummaryRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/summary", component: CsSummary })
 const csFeedRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/feed", component: CsFeed })
 // Веб-версия афиши (/web) открывается без Telegram-identity → аноним, в профиле
-// «Гость». Первый заход (нет имени и регу не скипали) один раз отправляем на
-// быструю регу /cs/hello — спросить, как обращаться; дальше Hello ведёт обратно
-// в /web. В Telegram (мини-апп) и с ?as_user регу не показываем. Флаги в
-// localStorage: cs.journey.name (введённое имя, JSON-строка) / cs.reg.done.
+// «Гость». Пока не прошёл/не скипнул новую регу (флаг cs.reg.done) — один раз
+// отправляем на быструю регу /cs/hello, дальше Hello ведёт обратно в /web.
+// В Telegram (мини-апп) и с ?as_user регу не показываем.
+//
+// Гейтим ТОЛЬКО по cs.reg.done — его ставит лишь эта рега. На cs.journey.name
+// НЕ смотрим: у ранних пользователей там устаревший остаток от удалённого
+// journey-шага ввода имени, из-за которого они выглядели «уже с именем» и регу
+// им никогда не показывало (owner ловил именно это — «открыл, не спросили»).
 function webNeedsReg(): boolean {
   if (typeof window === "undefined") return false
   try {
@@ -114,10 +118,7 @@ function webNeedsReg(): boolean {
       .Telegram?.WebApp?.initData
     if (inTelegram) return false
     if (new URLSearchParams(window.location.search).has("as_user")) return false
-    const nameRaw = localStorage.getItem("cs.journey.name")
-    const named = !!nameRaw && nameRaw !== '""' && nameRaw !== "null"
-    const regDone = !!localStorage.getItem("cs.reg.done")
-    return !named && !regDone
+    return !localStorage.getItem("cs.reg.done")
   } catch { return false }
 }
 const csWebRoute = createRoute({
