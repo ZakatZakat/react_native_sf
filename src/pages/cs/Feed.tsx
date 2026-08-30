@@ -45,7 +45,6 @@ import { useDerived, useJourneyState } from "./useJourney"
 import { analytics } from "../../lib/analytics"
 import CsFeedLegacy from "./FeedLegacy"
 import MapIntro from "./MapIntro"
-import { FeedbackSheet } from "./FeedbackModal"
 
 const FALLBACK: Ev = {
   id: "—", t: "—", sub: "", v: "—", d: "—", tm: "—",
@@ -475,8 +474,8 @@ function RefreshGlyph({ spin = 0 }: { variant?: string; spin?: number }) {
 // иконка по центру, подпись капсом под ней. Тап/наведение — лёгкий сдвиг.
 const CTRL_TILE = 44
 function CtrlTile({
-  label, onClick, ariaLabel, children,
-}: { label: string; onClick?: () => void; ariaLabel?: string; children: React.ReactNode }) {
+  label, onClick, ariaLabel, dark = false, children,
+}: { label: string; onClick?: () => void; ariaLabel?: string; dark?: boolean; children: React.ReactNode }) {
   const [hover, setHover] = useState(false)
   const [press, setPress] = useState(false)
   const lift = press ? "translate(2px,2px)" : hover ? "translate(-1px,-1px)" : "none"
@@ -496,7 +495,7 @@ function CtrlTile({
       <span
         style={{
           display: "flex", width: CTRL_TILE, height: CTRL_TILE, alignItems: "center", justifyContent: "center",
-          background: SK.paper, color: SK.ink, border: `2.5px solid ${SK.ink}`,
+          background: dark ? SK.ink : SK.paper, color: dark ? SK.paper : SK.ink, border: `2.5px solid ${SK.ink}`,
           boxShadow: shadow, transform: lift,
           transition: "transform 0.13s cubic-bezier(0.22,1,0.36,1), box-shadow 0.13s cubic-bezier(0.22,1,0.36,1)",
         }}
@@ -516,11 +515,6 @@ const IconSearch = () => (
 const IconProfile = () => (
   <svg width={CTRL_ICON} height={CTRL_ICON} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="square">
     <circle cx="12" cy="8" r="4" /><path d="M4.5 21c0-4.1 3.4-6.5 7.5-6.5s7.5 2.4 7.5 6.5" />
-  </svg>
-)
-const IconFeedback = () => (
-  <svg width={CTRL_ICON} height={CTRL_ICON} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="square">
-    <path d="M3 4h18v13H9l-6 4z" /><line x1="8" y1="10.5" x2="16" y2="10.5" />
   </svg>
 )
 const IconMap = () => (
@@ -621,7 +615,6 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
   const [nonce, setNonce] = useState(0)
   const [sweep, setSweep] = useState(0)
   const [searchOpen, setSearchOpen] = useState(false)
-  const [fbOpen, setFbOpen] = useState(false)
   const [heroIdx, setHeroIdx] = useState(0)  // «выбор недели»: индекс листаемого кандидата (стрелки ‹ ›)
   // Full upcoming catalog (already future-filtered + chronological upstream).
   const E = useMemo(() => feed.filter((e) => e && !e.id.startsWith("__placeholder")), [feed])
@@ -733,16 +726,13 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
             <CtrlTile label="Поиск" ariaLabel="Поиск по афише" onClick={() => setSearchOpen(true)}>
               <IconSearch />
             </CtrlTile>
-            <CtrlTile label="Профиль" onClick={nav.openProfile}>
+            <CtrlTile label="Профиль" dark onClick={nav.openProfile}>
               <IconProfile />
             </CtrlTile>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <CtrlTile label="Обновить" ariaLabel="Обновить ленту" onClick={refresh}>
               <RefreshGlyph spin={sweep} />
-            </CtrlTile>
-            <CtrlTile label="Отзыв" ariaLabel="Оставить отзыв" onClick={() => setFbOpen(true)}>
-              <IconFeedback />
             </CtrlTile>
             {onMap && (
               <CtrlTile label="Карта" ariaLabel="Открыть карту" onClick={onMap}>
@@ -839,7 +829,6 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
       </div>
 
       {searchOpen && <BoardSearch events={searchFeed ?? E} onClose={() => setSearchOpen(false)} />}
-      <FeedbackSheet open={fbOpen} onClose={() => setFbOpen(false)} />
     </div>
   )
 }
