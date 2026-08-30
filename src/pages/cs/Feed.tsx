@@ -964,11 +964,11 @@ export default function CsFeed() {
   )
 
   // v4 map-first intro — a 3D map overlay on first board entry per session.
-  // ВРЕМЕННО ОТКЛЮЧЕНО для пользователей (MAP_ENABLED=false): доска/лента грузится
-  // сразу, без карты. Весь функционал карты сохранён (MapIntro, кнопка «карта»,
-  // dismiss/reopen, ?nointro=1) — чтобы вернуть, поставь MAP_ENABLED=true; тогда
-  // работает прежняя логика «раз за сессию» (cs.mapintro.seen). Доработаем позже.
-  const MAP_ENABLED = false
+  // ВКЛЮЧЕНО (2026-08-30): при первом входе на доску за сессию показываем карту-
+  // интро (раз за сессию, флаг cs.mapintro.seen; `?nointro=1` пропускает), плюс
+  // кнопка «карта» в 2×2-кластере переоткрывает её. Чтобы снова отключить —
+  // поставь MAP_ENABLED=false (доска грузится сразу, без карты).
+  const MAP_ENABLED = true
   const [showIntro, setShowIntro] = useState(() => {
     if (!MAP_ENABLED) return false
     if (typeof window === "undefined") return false
