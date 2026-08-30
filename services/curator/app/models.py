@@ -425,6 +425,29 @@ class FeedbackNote(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), default=datetime.utcnow, nullable=False)
 
 
+class WebReg(Base):
+    """Факт «этот браузер уже прошёл/скипнул веб-регу» (/web без Telegram).
+
+    Ключ — device_id из аналитики (localStorage `cs_device_id`, стабильно
+    доезжает на сервер в каждом событии). Держим на СЕРВЕРЕ, потому что
+    localStorage в in-app webview (открытие ссылки из чата) ненадёжен на
+    ЗАПИСЬ: флаг `cs.reg.done` у части юзеров не сохранялся, и экран реги
+    показывался повторно. Гейт /web спрашивает этот факт по device_id и
+    больше не полагается только на localStorage."""
+
+    __tablename__ = "web_reg"
+    __table_args__ = ({"schema": SCHEMA},)
+
+    device_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    name: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=False), default=datetime.utcnow, nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=False), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
+
+
 # ────────────────────────────────────────────────────────────────────
 # Подписчики бота — те, кто нажал /start. База для рассылок дайджеста
 # (Telegram позволяет писать только тем, кто сам начал диалог с ботом).

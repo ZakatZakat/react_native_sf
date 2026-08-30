@@ -111,6 +111,12 @@ let lastRouteAt = 0
 const sessionId = readOrCreateSessionId()
 const deviceId = readOrCreateDeviceId()
 const sessionStartedAt = Date.now()
+
+/** Стабильный id браузера (localStorage `cs_device_id`) — им гейт /web
+ *  привязывает «уже регался» к серверу, а не только к хрупкому localStorage. */
+export function getDeviceId(): string {
+  return deviceId
+}
 let eventsInSession = 0
 
 const queue: QueuedEvent[] = []

@@ -6,6 +6,8 @@
  * appends `?as_user=<id>` (curator must have AUTH_DEV_MODE=true).
  */
 
+import { getDeviceId } from "./analytics"
+
 export const CURATOR_BASE = (
   import.meta.env.VITE_CURATOR_URL || "http://localhost:8003"
 ).replace(/\/$/, "")
@@ -168,6 +170,18 @@ export type EventRatings = {
 export const Curator = {
   // Tags
   listTags: () => curatorFetch<CuratorTag[]>("/tags"),
+
+  // Веб-рега: серверный флаг «уже показывали регу» по стабильному device_id.
+  // localStorage в in-app webview ненадёжен на запись → дублируем на сервере.
+  setWebReg: (name?: string) =>
+    curatorFetch<{ ok: boolean }>("/me/web-reg", {
+      method: "POST",
+      body: JSON.stringify({ device_id: getDeviceId(), name: name || undefined }),
+    }),
+  getWebReg: () =>
+    curatorFetch<{ registered: boolean }>("/me/web-reg", {
+      query: { device_id: getDeviceId() },
+    }),
 
   // Interests
   getInterests: () => curatorFetch<string[]>("/me/interests", { auth: true }),

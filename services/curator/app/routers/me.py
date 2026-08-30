@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 
 from app.auth import current_user_id, optional_current_user_id
 from app.db import session_scope
-from app.models import FeedbackAction, FeedbackNote
+from app.models import FeedbackAction, FeedbackNote, WebReg
 from app.repositories.me import (
     PersonalizedFeedRepository,
     UserFeedbackRepository,
@@ -189,6 +192,50 @@ async def post_feedback_note(
             text=text[:4000],
         ))
     return {"status": "ok"}
+
+
+# ── Веб-рега: серверный флаг «уже показывали регу» по device_id ─────
+# localStorage в in-app webview ненадёжен на запись → гейт /web не может
+# полагаться только на cs.reg.done. Дублируем факт на сервере по стабильному
+# device_id. Эндпоинты ПУБЛИЧНЫЕ (веб-юзер анонимен, без Telegram-identity).
+class WebRegBody(BaseModel):
+    device_id: str
+    name: str | None = None
+
+
+@router.post("/web-reg")
+async def set_web_reg(
+    body: WebRegBody,
+    sf: async_sessionmaker[AsyncSession] = Depends(get_session_factory),
+) -> dict:
+    dev = (body.device_id or "").strip()[:64]
+    if not dev:
+        raise HTTPException(400, "device_id required")
+    name = (body.name or "").strip()[:64] or None
+    set_: dict = {"updated_at": datetime.utcnow()}
+    if name:
+        set_["name"] = name  # скип не затирает уже сохранённое имя
+    stmt = (
+        pg_insert(WebReg)
+        .values(device_id=dev, name=name)
+        .on_conflict_do_update(index_elements=[WebReg.device_id], set_=set_)
+    )
+    async with session_scope(sf) as s:
+        await s.execute(stmt)
+    return {"ok": True}
+
+
+@router.get("/web-reg")
+async def get_web_reg(
+    device_id: str = Query(...),
+    sf: async_sessionmaker[AsyncSession] = Depends(get_session_factory),
+) -> dict:
+    dev = (device_id or "").strip()[:64]
+    if not dev:
+        return {"registered": False}
+    async with session_scope(sf) as s:
+        row = (await s.execute(select(WebReg.device_id).where(WebReg.device_id == dev))).first()
+    return {"registered": row is not None}
 
 
 # ── Feedback ───────────────────────────────────────────────────────

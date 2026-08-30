@@ -1,5 +1,6 @@
 // src/router.tsx
 import { createRootRoute, createRouter, createRoute, redirect } from "@tanstack/react-router"
+import { Curator } from "./lib/curator"
 import App from "./App"
 import Landing from "./pages/Landing"
 import Landing2 from "./pages/Landing2"
@@ -111,20 +112,34 @@ const csFeedRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/fe
 // НЕ смотрим: у ранних пользователей там устаревший остаток от удалённого
 // journey-шага ввода имени, из-за которого они выглядели «уже с именем» и регу
 // им никогда не показывало (owner ловил именно это — «открыл, не спросили»).
-function webNeedsReg(): boolean {
+// Возвращает true, если регу надо показать. Сначала дешёвые синхронные отсечки
+// (Telegram / ?as_user / локальный флаг), и только если локального флага нет —
+// спрашиваем сервер по стабильному device_id. Это ловит случай, когда запись
+// cs.reg.done в localStorage не сохранилась (in-app webview): device уже
+// регистрировался на сервере → регу не показываем и чиним локальный флаг.
+async function webNeedsReg(): Promise<boolean> {
   if (typeof window === "undefined") return false
   try {
     const inTelegram = !!(window as unknown as { Telegram?: { WebApp?: { initData?: string } } })
       .Telegram?.WebApp?.initData
     if (inTelegram) return false
     if (new URLSearchParams(window.location.search).has("as_user")) return false
-    return !localStorage.getItem("cs.reg.done")
+    if (localStorage.getItem("cs.reg.done")) return false  // быстрый путь, без сети
   } catch { return false }
+  // Локального флага нет — но он мог не записаться. Истина — на сервере.
+  try {
+    const { registered } = await Curator.getWebReg()
+    if (registered) {
+      try { localStorage.setItem("cs.reg.done", "1") } catch { /* noop */ }
+      return false
+    }
+  } catch { /* сеть недоступна — падаем к показу реги, как раньше */ }
+  return true
 }
 const csWebRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/web",
-  beforeLoad: () => { if (webNeedsReg()) throw redirect({ to: "/cs/hello" }) },
+  beforeLoad: async () => { if (await webNeedsReg()) throw redirect({ to: "/cs/hello" }) },
   component: CsWebFeed,
 })
 const csWebEventRoute = createRoute({ getParentRoute: () => rootRoute, path: "/web/event/$id", component: CsWebEvent })

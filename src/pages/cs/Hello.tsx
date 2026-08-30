@@ -23,6 +23,7 @@ import { useNavigate } from "@tanstack/react-router"
 import { SK, FONT_SANS, FONT_MONO } from "./shared"
 import { useJourneyState } from "./useJourney"
 import { analytics } from "../../lib/analytics"
+import { Curator } from "../../lib/curator"
 
 export const REG_DONE_KEY = "cs.reg.done"
 const MAX = 32
@@ -42,8 +43,12 @@ export default function CsHello() {
     return () => clearTimeout(t)
   }, [])
 
-  const finish = () => {
+  const finish = (name?: string) => {
     try { localStorage.setItem(REG_DONE_KEY, "1") } catch { /* quota / private mode */ }
+    // Серверный дубль флага по стабильному device_id: localStorage в in-app
+    // webview ненадёжен на запись (флаг терялся → рега показывалась снова).
+    // Сервер = истина для гейта /web. Fire-and-forget, ошибки глотаем.
+    Curator.setWebReg(name).catch(() => { /* сеть недоступна — переживём */ })
     navigate({ to: "/web" })
   }
   const submit = () => {
@@ -53,7 +58,7 @@ export default function CsHello() {
     doneRef.current = true
     setName(n)
     analytics.track("cs.reg.submit", { len: n.length }, { data: n })
-    finish()
+    finish(n)
   }
   const skip = () => {
     if (doneRef.current) return
