@@ -458,17 +458,76 @@ function MosaicGrid({ events }: { events: Ev[] }) {
 }
 
 function RefreshGlyph({ spin = 0 }: { variant?: string; spin?: number }) {
-  // одна чистая круговая стрелка «обновить» — line-art, в тон лупе/пину
-  // (раньше был случайный из 3 глифов; двойные стрелки читались как «recycle»)
+  // круговая стрелка «обновить» — новый набор иконок шапки (пунктирный круг +
+  // сплошной треугольник); currentColor, чтобы читать цвет плитки. Крутится на тап.
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4}>
       <g style={{ transformOrigin: "12px 12px", transform: `rotate(${spin}deg)`, transition: "transform 0.7s cubic-bezier(0.34,1.12,0.64,1)" }}>
-        <path d="M12 5 A7 7 0 1 1 5 12" fill="none" stroke={SK.ink} strokeWidth="2" strokeLinecap="round" />
-        <polygon points="12.2,1.6 12.2,8.4 16.8,5" fill={SK.blue} />
+        <circle cx="12" cy="12" r="8" strokeDasharray="37.7 12.6" strokeLinecap="butt" />
+        <polygon points="12,0.9 12,7.1 17.6,4" fill="currentColor" stroke="none" />
       </g>
     </svg>
   )
 }
+
+// ── Плитки шапки «быстрые действия» (ПОИСК / ПРОФИЛЬ / ОБНОВИТЬ / ОТЗЫВ) ──
+// Новый дизайн (вариант caption-below): белая плитка, ink-рамка, синяя тень,
+// иконка по центру, подпись капсом под ней. Тап/наведение — лёгкий сдвиг.
+const CTRL_TILE = 44
+function CtrlTile({
+  label, onClick, ariaLabel, children,
+}: { label: string; onClick?: () => void; ariaLabel?: string; children: React.ReactNode }) {
+  const [hover, setHover] = useState(false)
+  const [press, setPress] = useState(false)
+  const lift = press ? "translate(2px,2px)" : hover ? "translate(-1px,-1px)" : "none"
+  const shadow = press ? `1px 1px 0 ${SK.blue}` : hover ? `5px 5px 0 ${SK.blue}` : `4px 4px 0 ${SK.blue}`
+  return (
+    <button
+      onClick={onClick}
+      aria-label={ariaLabel ?? label}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => { setHover(false); setPress(false) }}
+      onMouseDown={() => setPress(true)}
+      onMouseUp={() => setPress(false)}
+      onTouchStart={() => setPress(true)}
+      onTouchEnd={() => setPress(false)}
+      style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 7 }}
+    >
+      <span
+        style={{
+          display: "flex", width: CTRL_TILE, height: CTRL_TILE, alignItems: "center", justifyContent: "center",
+          background: SK.paper, color: SK.ink, border: `2.5px solid ${SK.ink}`,
+          boxShadow: shadow, transform: lift,
+          transition: "transform 0.13s cubic-bezier(0.22,1,0.36,1), box-shadow 0.13s cubic-bezier(0.22,1,0.36,1)",
+        }}
+      >{children}</span>
+      <span style={{ fontFamily: FONT_SANS, fontWeight: 900, fontSize: 7.5, letterSpacing: "0.09em", textTransform: "uppercase", color: SK.ink, lineHeight: 1, whiteSpace: "nowrap" }}>{label}</span>
+    </button>
+  )
+}
+
+// Иконки набора — тонкий ink line-art (stroke=currentColor, квадратные торцы).
+const CTRL_ICON = 22
+const IconSearch = () => (
+  <svg width={CTRL_ICON} height={CTRL_ICON} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="square">
+    <circle cx="10.5" cy="10.5" r="6.5" /><line x1="15.5" y1="15.5" x2="21" y2="21" />
+  </svg>
+)
+const IconProfile = () => (
+  <svg width={CTRL_ICON} height={CTRL_ICON} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="square">
+    <circle cx="12" cy="8" r="4" /><path d="M4.5 21c0-4.1 3.4-6.5 7.5-6.5s7.5 2.4 7.5 6.5" />
+  </svg>
+)
+const IconFeedback = () => (
+  <svg width={CTRL_ICON} height={CTRL_ICON} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="square">
+    <path d="M3 4h18v13H9l-6 4z" /><line x1="8" y1="10.5" x2="16" y2="10.5" />
+  </svg>
+)
+const IconMap = () => (
+  <svg width={CTRL_ICON} height={CTRL_ICON} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinejoin="round">
+    <path d="M12 21 C12 21 5 13.5 5 9 A7 7 0 0 1 19 9 C19 13.5 12 21 12 21 Z" /><circle cx="12" cy="9" r="2.4" fill="currentColor" stroke="none" />
+  </svg>
+)
 
 /** Full-screen catalog search — filters the board's events by title / venue /
  *  channel / category as you type; tap a result to open its sheet. Replaces the
@@ -654,10 +713,6 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
   }
   useLayoutEffect(() => { measureBeak() /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [cat, tagChips.length])
 
-  // общие стили кластера кнопок шапки (иконка + подпись капсом под ней)
-  const CTRL_BTN: React.CSSProperties = { width: 38, height: 38, background: SK.paper, border: `2px solid ${SK.ink}`, boxShadow: `2.5px 2.5px 0 ${SK.blue}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }
-  const CTRL_CELL: React.CSSProperties = { display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }
-  const CTRL_CAP: React.CSSProperties = { fontFamily: FONT_SANS, fontWeight: 800, fontSize: 7.5, letterSpacing: "0.06em", textTransform: "uppercase", color: SK.ink55, lineHeight: 1, whiteSpace: "nowrap" }
   // Стрелка-переключатель «выбора недели».
   const HERO_ARROW: React.CSSProperties = { width: 26, height: 26, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, border: `2px solid ${SK.ink}`, background: SK.paper, boxShadow: `2px 2px 0 ${SK.blue}`, cursor: "pointer", fontWeight: 900, fontSize: 17, lineHeight: 1, color: SK.ink }
 
@@ -675,51 +730,24 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
         {/* controls — 2×2 кластер иконок с подписями: [поиск][профиль] / [обновить][карта] */}
         <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 9, marginTop: 2 }}>
           <div style={{ display: "flex", gap: 8 }}>
-            <div style={CTRL_CELL}>
-              <button onClick={() => setSearchOpen(true)} aria-label="Поиск по афише" style={CTRL_BTN}>
-                <svg width="19" height="19" viewBox="0 0 19 19" fill="none">
-                  <circle cx="8" cy="8" r="5.6" stroke={SK.ink} strokeWidth="2.2" />
-                  <line x1="12.3" y1="12.3" x2="17" y2="17" stroke={SK.ink} strokeWidth="2.2" strokeLinecap="round" />
-                </svg>
-              </button>
-              <span style={CTRL_CAP}>Поиск</span>
-            </div>
-            <div style={CTRL_CELL}>
-              <ProfileBadge name={name} onClick={nav.openProfile} icon={
-                <svg width="21" height="21" viewBox="0 0 24 24" fill="none">
-                  <circle cx="12" cy="8.4" r="3.7" stroke={SK.paper} strokeWidth="2" />
-                  <path d="M5.6 19.4a6.6 6.6 0 0 1 12.8 0" stroke={SK.paper} strokeWidth="2" strokeLinecap="round" />
-                </svg>
-              } />
-              <span style={CTRL_CAP}>Профиль</span>
-            </div>
+            <CtrlTile label="Поиск" ariaLabel="Поиск по афише" onClick={() => setSearchOpen(true)}>
+              <IconSearch />
+            </CtrlTile>
+            <CtrlTile label="Профиль" onClick={nav.openProfile}>
+              <IconProfile />
+            </CtrlTile>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            <div style={CTRL_CELL}>
-              <button onClick={refresh} aria-label="Обновить ленту" style={CTRL_BTN}>
-                <RefreshGlyph variant={btn} spin={sweep} />
-              </button>
-              <span style={CTRL_CAP}>Обновить</span>
-            </div>
-            <div style={CTRL_CELL}>
-              <button onClick={() => setFbOpen(true)} aria-label="Оставить отзыв" style={CTRL_BTN}>
-                <svg width="21" height="21" viewBox="0 0 24 24" fill="none">
-                  <path d="M4 5.4h16a1.6 1.6 0 0 1 1.6 1.6v8a1.6 1.6 0 0 1-1.6 1.6H10.5L6 20.6V16.6H4A1.6 1.6 0 0 1 2.4 15V7A1.6 1.6 0 0 1 4 5.4Z" stroke={SK.ink} strokeWidth="2" strokeLinejoin="round" />
-                  <circle cx="12" cy="10.9" r="1.6" fill={SK.blue} />
-                </svg>
-              </button>
-              <span style={CTRL_CAP}>Отзыв</span>
-            </div>
+            <CtrlTile label="Обновить" ariaLabel="Обновить ленту" onClick={refresh}>
+              <RefreshGlyph spin={sweep} />
+            </CtrlTile>
+            <CtrlTile label="Отзыв" ariaLabel="Оставить отзыв" onClick={() => setFbOpen(true)}>
+              <IconFeedback />
+            </CtrlTile>
             {onMap && (
-              <div style={CTRL_CELL}>
-                <button onClick={onMap} aria-label="Открыть карту" style={CTRL_BTN}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                    <path d="M12 21 C12 21 5 13.5 5 9 A7 7 0 0 1 19 9 C19 13.5 12 21 12 21 Z" stroke={SK.ink} strokeWidth="2" strokeLinejoin="round" />
-                    <circle cx="12" cy="9" r="2.6" fill={SK.blue} />
-                  </svg>
-                </button>
-                <span style={CTRL_CAP}>Карта</span>
-              </div>
+              <CtrlTile label="Карта" ariaLabel="Открыть карту" onClick={onMap}>
+                <IconMap />
+              </CtrlTile>
             )}
           </div>
         </div>
