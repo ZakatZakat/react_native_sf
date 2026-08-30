@@ -406,20 +406,8 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const [catFilter, setCatFilter] = useState<Set<string>>(() => new Set()) // мульти-фильтр карты по категориям (пусто = все)
   const [dateFilter, setDateFilter] = useState<string>("all") // одиночный фильтр по дате: all|today|tomorrow|weekend|week
   const [deckHidden, setDeckHidden] = useState(false) // hide the deck to reveal the centred building
-  // 2D/3D тумблер: плоский вид сверху без 3D-домов (fill-extrusion) ↔ кинематографичный 3D.
-  // flatRef читается в easeTo-переходах (Level 1/2), чтобы 2D-режим «прилипал» при навигации.
-  const [flat, setFlat] = useState(false)
-  const flatRef = useRef(false); flatRef.current = flat
-  const setFlatMode = (next: boolean) => {
-    if (next === flatRef.current) return // уже в этом режиме — не дёргаем камеру
-    const map = mapRef.current
-    setFlat(next); flatRef.current = next
-    if (!map) return
-    for (const id of ["cs-building-3d", EVT_BLDG_LAYER]) {
-      if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", next ? "none" : "visible")
-    }
-    map.easeTo({ pitch: next ? 0 : 52, bearing: next ? 0 : -14, duration: 500 })
-  }
+  // Карта всегда 3D (кинематографичный вид, pitch 52 / bearing −14). Тумблер
+  // 2D/3D убран из мини-аппа — оставлен только 3D.
   const [selZone, setSelZone] = useState<string | null>(null)
   const [selCluster, setSelCluster] = useState<number | null>(null)
   const [selPage, setSelPage] = useState(0)  // page within the opened district (Level 1)
@@ -533,7 +521,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
             if (deckWrapRef.current) deckWrapRef.current.style.display = "none"
             setDeckHidden(true)
             deckHiddenRef.current = true; drawLeadersRef.current() // erase the leader now
-            map.easeTo({ center: [g[1], g[0]], zoom: 16.6, pitch: flatRef.current ? 0 : 52, bearing: flatRef.current ? 0 : -14, duration: 650 })
+            map.easeTo({ center: [g[1], g[0]], zoom: 16.6, pitch: 52, bearing: -14, duration: 650 })
           }
           return
         }
@@ -887,7 +875,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       if (overviewFitRef.current !== selZone) {
         // first entry into this district → fit the camera ONCE
         overviewFitRef.current = selZone
-        map.easeTo({ center: [cLng, cLat], zoom, pitch: flatRef.current ? 0 : OVERVIEW_PITCH, bearing: flatRef.current ? 0 : -14, duration: 800, padding: { top: 250, bottom: 300, left: 20, right: 20 } })
+        map.easeTo({ center: [cLng, cLat], zoom, pitch: OVERVIEW_PITCH, bearing: -14, duration: 800, padding: { top: 250, bottom: 300, left: 20, right: 20 } })
         pendingMoveend = deOverlap
         map.once("moveend", deOverlap)
       } else {
@@ -915,7 +903,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         // Mark venues immediately (deterministic — no need to wait for tiles),
         // then ease to the centroid at building-visible zoom.
         paintClusterRef.current(cl)
-        map.easeTo({ center: [cl.ll[1], cl.ll[0]], zoom: 15, pitch: flatRef.current ? 0 : 52, bearing: flatRef.current ? 0 : -14, duration: 700 })
+        map.easeTo({ center: [cl.ll[1], cl.ll[0]], zoom: 15, pitch: 52, bearing: -14, duration: 700 })
       }
     }
     return () => { if (pendingMoveend) map.off("moveend", pendingMoveend) }
@@ -943,36 +931,6 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       <style>{`.cs-catbar::-webkit-scrollbar{display:none}`}</style>
       {!failed && <div ref={boxRef} style={{ position: "absolute", inset: 0, isolation: "isolate", background: "#E4E4E1" }} />}
       {failed && <div style={{ position: "absolute", inset: 0, background: "linear-gradient(160deg,#16213a,#0d0d0d)" }} />}
-
-      {/* 2D/3D переключатель — обе кнопки видны, активный режим подсвечен синим. */}
-      {!failed && ready && (
-        <div style={{ position: "absolute", top: "43%", right: 12, zIndex: 10, display: "flex", flexDirection: "column", alignItems: "stretch", gap: 4 }}>
-          {/* «КАРТА» — обозначение, что 2D/3D переключает именно вид карты */}
-          <div style={{ background: CS.W, border: `2px solid ${CS.K}`, borderRadius: 8, padding: "2px 0", textAlign: "center", fontFamily: FONT_MONO, fontWeight: 800, fontSize: 8, letterSpacing: "0.16em", color: "rgba(13,13,13,0.7)", boxShadow: "2px 2px 0 rgba(13,13,13,0.22)" }}>КАРТА</div>
-          <div style={{
-            display: "flex", flexDirection: "column",
-            background: CS.W, border: `2px solid ${CS.K}`, borderRadius: 10, overflow: "hidden",
-            boxShadow: "2px 2px 0 rgba(13,13,13,0.22)",
-          }}>
-          {([["2D", true], ["3D", false]] as [string, boolean][]).map(([label, isFlat], i) => {
-            const active = flat === isFlat
-            return (
-              <button
-                key={label}
-                onClick={() => setFlatMode(isFlat)}
-                aria-pressed={active}
-                style={{
-                  width: 40, padding: "8px 0", border: "none", cursor: "pointer", lineHeight: 1,
-                  borderTop: i === 1 ? `2px solid ${CS.K}` : "none",
-                  background: active ? CS.B : "transparent", color: active ? CS.W : CS.K,
-                  fontFamily: FONT_MONO, fontWeight: 800, fontSize: 12, letterSpacing: "0.04em",
-                }}
-              >{label}</button>
-            )
-          })}
-          </div>
-        </div>
-      )}
 
       {/* subtle scrims for legibility */}
       <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 150, background: "linear-gradient(rgba(13,13,13,0.18), rgba(13,13,13,0))", zIndex: 6, pointerEvents: "none" }} />
