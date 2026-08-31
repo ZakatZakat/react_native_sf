@@ -21,6 +21,7 @@ import { venueInfo, type VenueInfo } from "./venues"
 import { VENUE_FOOTPRINTS } from "./venueFootprints"
 import { weekMeta } from "./WeekDesigns"
 import { INTERESTS } from "../pipe/preferences"
+import { analytics } from "../../lib/analytics"
 
 const MSK: [number, number] = [37.62, 55.745]
 
@@ -384,6 +385,11 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const openEvent = useOpenEvent()
   const openRef = useRef(openEvent); openRef.current = openEvent
 
+  // Логирование взаимодействий с картой — воронка cs.map.* (видно в /cs/pulse +
+  // /insights): показ, тап района, фильтр, открытие события, вход в ленту.
+  useEffect(() => { analytics.track("cs.map.shown") }, [])
+  const enterFeed = () => { analytics.track("cs.map.enter_feed"); onEnter() }
+
   const boxRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const fitAllRef = useRef<() => void>(() => {})
@@ -534,7 +540,10 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
           openExternalMap(yandexMapsUrl(g, yaBtn.dataset.q || ""))
           return
         }
-        if (t.closest?.(".cs-deck-front")) openRef.current(deckMembersRef.current[evIdxRef.current] ?? deckMembersRef.current[0])
+        if (t.closest?.(".cs-deck-front")) {
+          const item = deckMembersRef.current[evIdxRef.current] ?? deckMembersRef.current[0]
+          if (item) { analytics.track("cs.map.event_open", { id: item.id }, { data: String(item.id) }); openRef.current(item) }
+        }
       })
     }
     // Place card — update ONLY when the venue changes, so paging same-venue
@@ -608,12 +617,16 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
     return m
   }, [byZone])
   const clustersRef = useRef(clustersByZone); clustersRef.current = clustersByZone
-  const onZone = (id: string) => setSelZone((p) => (p === id ? null : id))
+  const onZone = (id: string) => {
+    analytics.track("cs.map.district_tap", { zone: id }, { data: id })
+    setSelZone((p) => (p === id ? null : id))
+  }
   const onZoneRef = useRef(onZone); onZoneRef.current = onZone
   // выбрать категорию: сворачиваем открытый район и применяем фильтр (повторный
   // тап по активной категории — сброс)
   // key === null → сбросить все; иначе тумблер категории в наборе (мульти-выбор).
   const pickCat = (key: string | null) => {
+    analytics.track("cs.map.filter", { kind: "category", value: key ?? "reset" })
     setSelZone(null); setSelCluster(null)
     if (key === null) { setCatFilter(new Set()); return }
     setCatFilter((prev) => {
@@ -626,6 +639,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   // выбрать окно даты: сворачиваем открытый район, повторный тап по активному
   // окну (или тап по «Все») — сброс к «all».
   const pickDate = (key: string) => {
+    analytics.track("cs.map.filter", { kind: "date", value: key })
     setSelZone(null); setSelCluster(null)
     setDateFilter((prev) => (prev === key ? "all" : key))
   }
@@ -1070,7 +1084,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
               <span style={{ width: 8, height: 8, background: CS.B, borderRadius: "50%" }} />тапни район на карте
             </span>
           </div>
-          <button onClick={onEnter} style={{ width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "16px 18px", border: `3px solid ${CS.K}`, background: CS.K, color: "#fff", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 16, letterSpacing: "0.04em", textTransform: "uppercase", boxShadow: `4px 4px 0 ${CS.B}` }}>
+          <button onClick={enterFeed} style={{ width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "16px 18px", border: `3px solid ${CS.K}`, background: CS.K, color: "#fff", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 16, letterSpacing: "0.04em", textTransform: "uppercase", boxShadow: `4px 4px 0 ${CS.B}` }}>
             <span>Вся лента</span><span style={{ fontSize: 19, lineHeight: 1 }}>→</span>
           </button>
         </div>
@@ -1088,7 +1102,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
                 <span style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 12, letterSpacing: "0.02em", color: CS.K, whiteSpace: "nowrap" }}><span style={{ color: CS.B }}>●</span> {RU_PLURAL(deckEvents.length)}</span>
                 <span style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, letterSpacing: "0.06em", color: "rgba(13,13,13,0.5)", textTransform: "uppercase", whiteSpace: "nowrap" }}>листай ← → между карточками</span>
               </div>
-              <button onClick={onEnter} style={{ display: "inline-flex", alignItems: "center", flexShrink: 0, background: CS.K, border: `2px solid ${CS.K}`, padding: "6px 11px", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "0.03em", textTransform: "uppercase", color: "#fff", boxShadow: `2px 2px 0 ${CS.B}` }}>Лента →</button>
+              <button onClick={enterFeed} style={{ display: "inline-flex", alignItems: "center", flexShrink: 0, background: CS.K, border: `2px solid ${CS.K}`, padding: "6px 11px", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "0.03em", textTransform: "uppercase", color: "#fff", boxShadow: `2px 2px 0 ${CS.B}` }}>Лента →</button>
             </div>
           ) : (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "7px 14px 3px" }}>
@@ -1098,7 +1112,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
                 <span style={{ fontWeight: 900, fontSize: 14, letterSpacing: "-0.03em", lineHeight: 1, color: CS.K, textTransform: "uppercase", whiteSpace: "nowrap" }}>Места</span>
                 <span style={{ background: CS.B, color: "#fff", padding: "2px 6px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 8.5, letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{RU_PLURAL(deckEvents.length)}</span>
               </div>
-              <button onClick={onEnter} style={{ display: "inline-flex", alignItems: "center", flexShrink: 0, background: CS.K, border: `2px solid ${CS.K}`, padding: "6px 11px", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "0.03em", textTransform: "uppercase", color: "#fff", boxShadow: `2px 2px 0 ${CS.B}` }}>Лента →</button>
+              <button onClick={enterFeed} style={{ display: "inline-flex", alignItems: "center", flexShrink: 0, background: CS.K, border: `2px solid ${CS.K}`, padding: "6px 11px", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "0.03em", textTransform: "uppercase", color: "#fff", boxShadow: `2px 2px 0 ${CS.B}` }}>Лента →</button>
             </div>
           )}
           {/* level 1 (clusters): hint to drill in · level 2 (cluster): event carousel */}

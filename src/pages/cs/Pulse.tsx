@@ -41,6 +41,11 @@ const ACTION_LABEL: Record<string, string> = {
   "cs.reg.shown": "Показ быстрой реги (веб)",
   "cs.reg.submit": "Ввели имя (веб)",
   "cs.reg.skip": "Пропустили регу (веб)",
+  "cs.map.shown": "Показ карты",
+  "cs.map.district_tap": "Тап по району (карта)",
+  "cs.map.filter": "Фильтр на карте",
+  "cs.map.event_open": "Открытие события с карты",
+  "cs.map.enter_feed": "Переход в ленту с карты",
   "cs.admin.week_pick": "Правки «выбора недели»",
   "cs.admin.week_clear": "Сброс «выбора недели»",
 }
