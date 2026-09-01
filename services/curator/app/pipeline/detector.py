@@ -254,17 +254,18 @@ def looks_like_giveaway(text: str) -> bool:
     существительного (фест/концерт/выставка…). Реальный анонс, что вскользь
     разыгрывает билеты, giveaway-словом не ведёт и имеет событийное слово → остаётся."""
     t = text.strip()
-    first = t.split("\n", 1)[0]
-    m = GIVEAWAY.search(first)
-    if m is None:
-        head = t[:70]
-        m = GIVEAWAY.search(head)
+    # Заголовок = первая строка И первые 80 символов (у постов часто нет \n —
+    # тогда «первая строка» = весь текст, и giveaway-слово глубоко в теле ложно
+    # срабатывало: рекап «Смотрим видео … разыгрываем 4 билета» — НЕ розыгрыш).
+    for seg in (t.split("\n", 1)[0][:80], t[:80]):
+        m = GIVEAWAY.search(seg)
         if m is None:
-            return False
-        first = head
-    if m.start() <= 12:
-        return True
-    return GIVEAWAY_EVENTISH.search(first) is None
+            continue
+        if m.start() <= 12:  # пост ВЕДЁТ розыгрышем
+            return True
+        if GIVEAWAY_EVENTISH.search(seg) is None:  # розыгрыш без событийного слова
+            return True
+    return False
 
 
 @dataclass
