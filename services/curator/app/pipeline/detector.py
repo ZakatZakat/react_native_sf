@@ -153,6 +153,22 @@ BROADCAST: Pattern[str] = re.compile(
     re.IGNORECASE | re.MULTILINE,
 )
 
+# ── Розыгрыши (giveaway) ────────────────────────────────────────────
+# Пост-розыгрыш («разыгрываем билет/мерч/шопер, подпишись + репост») — не событие,
+# на него нельзя «прийти». НО реальный фест/рейв часто ВСКОЛЬЗ разыгрывает билеты
+# («Представляем лайн-ап … и разыгрываем 4 билета») — такой пост оставляем.
+# Отсекаем ТОЛЬКО когда пост ВЕДЁТ розыгрышем (см. looks_like_giveaway).
+GIVEAWAY: Pattern[str] = re.compile(
+    r"(розыгрыш\w*|giveaway|разыгр(?:ыва|а)\w*)", re.IGNORECASE
+)
+# «Событийные» существительные в заголовке → это анонс события, а не чистый
+# розыгрыш (giveaway-слово упомянуто вскользь).
+GIVEAWAY_EVENTISH: Pattern[str] = re.compile(
+    r"(фестивал|лайн[-\s]?ап|вернисаж|выставк|спектакл|концерт|показ|ярмарк|"
+    r"рейв|вечеринк|лекци|презентац|перформанс|маркет)",
+    re.IGNORECASE,
+)
+
 # ── Политическая / антиправительственная «запрещёнка» ──────────────
 # Заказчик работает на РФ-аудиторию: события про политзаключённых, антивоенные
 # акции, митинги/пикеты и упоминания признанных «иноагентами/экстремистами»
@@ -229,6 +245,28 @@ def looks_like_broadcast(text: str) -> bool:
     return not has_venue
 
 
+def looks_like_giveaway(text: str) -> bool:
+    """Пост-розыгрыш (giveaway) — не городское событие, «прийти» нельзя.
+
+    Точный сигнал по ЗАГОЛОВКУ (первая строка / первые ~70 симв.): giveaway-слово
+    в самом начале (пост ВЕДЁТ розыгрышем — «РАЗЫГРЫВАЕМ 2 билета…», «Розыгрыш
+    билета на…») ИЛИ giveaway-слово в заголовке, где НЕТ «событийного»
+    существительного (фест/концерт/выставка…). Реальный анонс, что вскользь
+    разыгрывает билеты, giveaway-словом не ведёт и имеет событийное слово → остаётся."""
+    t = text.strip()
+    first = t.split("\n", 1)[0]
+    m = GIVEAWAY.search(first)
+    if m is None:
+        head = t[:70]
+        m = GIVEAWAY.search(head)
+        if m is None:
+            return False
+        first = head
+    if m.start() <= 12:
+        return True
+    return GIVEAWAY_EVENTISH.search(first) is None
+
+
 @dataclass
 class DetectionHits:
     date: list[str] = field(default_factory=list)
@@ -279,6 +317,10 @@ def detect_event(text: str) -> DetectionResult:
     # Application call / enrolment → reject (dated but not attendable).
     if looks_like_non_event(text):
         return DetectionResult(0, ["non_event"], DetectionHits())
+
+    # Пост-розыгрыш (giveaway) → reject (не событие, «прийти» нельзя).
+    if looks_like_giveaway(text):
+        return DetectionResult(0, ["giveaway"], DetectionHits())
 
     # Online radio show / stream without a venue → reject (not attendable).
     if looks_like_broadcast(text):
