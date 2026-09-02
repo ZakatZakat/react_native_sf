@@ -53,8 +53,9 @@ class Settings(BaseSettings):
     cs_webhook_base: str = Field(
         "https://citysignal.digital-assistant.tech/curator", alias="CS_WEBHOOK_BASE"
     )
-    # Кому слать сервисные пуши бота (новый пользователь и т.п.). 0 = выключено.
-    notify_chat_id: int = Field(0, alias="NOTIFY_CHAT_ID")
+    # Кому слать сервисные пуши бота (новый пользователь и т.п.). Дефолт — chat
+    # владельца (@Faux_monnayage); можно переопределить env NOTIFY_CHAT_ID. 0 = выкл.
+    notify_chat_id: int = Field(149009863, alias="NOTIFY_CHAT_ID")
 
     @property
     def bot_token(self) -> str:
