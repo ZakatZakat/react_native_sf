@@ -68,6 +68,8 @@ FEEDBACK_PROMPT = (
 )
 FEEDBACK_THANKS = "Спасибо! Отзыв передан команде 🙏"
 FEEDBACK_EMPTY = "Пусто — напишите текст отзыва одним сообщением."
+# Быстрый позитивный отклик по кнопке «Всё хорошо» — благодарим, отзыв не просим.
+FEEDBACK_OK_THANKS = "Спасибо за отклик!"
 
 STOP = (
     "Ок, больше не буду присылать подборки. Захочешь вернуться — жми /start."
@@ -204,8 +206,14 @@ async def webhook(
         cq_chat = ((cq.get("message") or {}).get("chat")) or {}
         cq_chat_id = cq_chat.get("id")
         await _answer_callback(token, cq.get("id"))
-        if (cq.get("data") or "") == "fb" and cq_chat_id:
+        cq_data = cq.get("data") or ""
+        if cq_data == "fb" and cq_chat_id:
             await _send(token, cq_chat_id, FEEDBACK_PROMPT, FEEDBACK_REPLY_MARKUP)
+        elif cq_data == "fb_ok" and cq_chat_id:
+            # позитивная кнопка «Всё хорошо» — логируем маркером в тот же
+            # feedback_notes (для подсчёта) и благодарим, текст не просим.
+            await _save_feedback(request, cq.get("from") or cq_chat, "👍 Всё хорошо")
+            await _send(token, cq_chat_id, FEEDBACK_OK_THANKS)
         return Response(status_code=200)
 
     msg = update.get("message") or update.get("edited_message")
