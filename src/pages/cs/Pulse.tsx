@@ -248,8 +248,12 @@ function DayUsers({ days }: { days: InsightsDay[] }) {
                 </span>
                 <span style={{ fontFamily: FONT_MONO, fontSize: 10.5, color: MUTE, whiteSpace: "nowrap" }}>{d.users.length} чел · {d.events} соб</span>
               </div>
-              {/* строки пользователей */}
-              {d.users.map((u, i) => {
+              {/* строки пользователей — по времени первого действия за день (хроно) */}
+              {[...d.users].sort((a, b) => {
+                const ta = (a.windows?.length ? a.windows.map((w) => w.first).sort()[0] : a.first) || "99:99"
+                const tb = (b.windows?.length ? b.windows.map((w) => w.first).sort()[0] : b.first) || "99:99"
+                return ta.localeCompare(tb)
+              }).map((u, i) => {
                 const wins = (u.windows && u.windows.length) ? u.windows : (u.first ? [{ first: u.first, last: u.last || u.first }] : [])
                 const shownW = wins.slice(0, 3)
                 const extraW = wins.length - shownW.length
@@ -319,7 +323,7 @@ export default function CsPulse() {
 
   return (
     <div style={{ minHeight: "100dvh", background: CS.PAGE, color: INK, fontFamily: FONT_SANS }}>
-      <div style={{ maxWidth: "min(920px, 96vw)", margin: "0 auto", padding: "30px 18px 70px" }}>
+      <div style={{ maxWidth: "min(1120px, 96vw)", margin: "0 auto", padding: "30px 18px 70px" }}>
         {/* шапка */}
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
           <div>

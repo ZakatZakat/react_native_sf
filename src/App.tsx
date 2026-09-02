@@ -65,7 +65,7 @@ const SHOW_DEV_NAV = false
 // Пути веб-версии, которые идут во всю ширину экрана (без телефонной рамки):
 // лента /web (+ /web/event/...) и быстрая рега /cs/hello.
 function isWebFullWidth(pathname: string): boolean {
-  return pathname.startsWith("/web") || pathname === "/cs/hello"
+  return pathname.startsWith("/web") || pathname === "/cs/hello" || pathname === "/cs/pulse"
 }
 
 export default function App() {
