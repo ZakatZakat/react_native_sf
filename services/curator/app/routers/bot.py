@@ -105,9 +105,31 @@ async def _upsert_subscriber(request: Request, chat: dict, subscribe: bool | Non
     )
     try:
         async with session_scope(sf) as s:
+            existed = (await s.execute(
+                select(BotSubscriber.chat_id).where(BotSubscriber.chat_id == chat_id)
+            )).first() is not None
             await s.execute(stmt)
+        if not existed:
+            # первый контакт этого chat_id → сразу пингуем владельца
+            await _notify_owner_new_user(request, chat)
     except Exception as e:  # noqa: BLE001
         logger.warning("subscriber upsert failed: %s", e)
+
+
+async def _notify_owner_new_user(request: Request, chat: dict) -> None:
+    """Сразу писать владельцу в ЛС о новом пользователе бота (NOTIFY_CHAT_ID).
+    Ошибки не роняют webhook."""
+    settings = request.app.state.settings
+    target = getattr(settings, "notify_chat_id", 0)
+    token = settings.bot_token
+    if not target or not token:
+        return
+    un = chat.get("username")
+    who = f"@{un}" if un else (chat.get("first_name") or f"id {chat.get('id')}")
+    try:
+        await _send(token, int(target), f"👤 Новый пользователь CitySignal: {who}")
+    except Exception as e:  # noqa: BLE001
+        logger.warning("new-user notify failed: %s", e)
 
 
 def webhook_secret(token: str) -> str:
