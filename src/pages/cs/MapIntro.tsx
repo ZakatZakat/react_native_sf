@@ -955,7 +955,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
     // камера мягко кадрирует дом ниже центра — под постами видно выделенный дом.
     if (Array.isArray(g)) {
       deckMarkerRef.current?.setLngLat([g[1], g[0]])
-      mapRef.current?.easeTo({ center: [g[1], g[0]], offset: [0, 60], pitch: 52, bearing: -14, duration: 450 })
+      mapRef.current?.easeTo({ center: [g[1], g[0]], offset: [0, 60], zoom: 15.4, pitch: 52, bearing: -14, duration: 450 })
     }
     if (ld && Array.isArray(g)) ld.target = g as [number, number]
     drawLeadersRef.current()
