@@ -246,12 +246,27 @@ function clusterLabel(cl: Cluster): { name: string; sub: string } {
  *  up to two "ghost" cards fanned behind to show the pile, and a ← N/total →
  *  pager. Co-located events (all at one building) are a tidy deck you flip
  *  through, not a confusing ring of overlapping cards. */
+/** Короткий блурб-описание для карточки события в деке: из desc, схлопнутый в одну
+ *  строку, без ведущего повтора заголовка. Обрезку по строкам делает CSS
+ *  (-webkit-line-clamp) — тут только грубый лимит длины. */
+function deckBlurb(desc: string | undefined, title: string): string {
+  if (!desc) return ""
+  let s = desc.replace(/\s+/g, " ").trim()
+  if (/^Описание появится ближе к дате/i.test(s)) return ""  // филлер-фолбэк не показываем
+  const t = (title || "").replace(/\s+/g, " ").trim()
+  if (t && s.toLowerCase().startsWith(t.toLowerCase())) {
+    s = s.slice(t.length).replace(/^[\s—·:.,\-–]+/, "")
+  }
+  return s.slice(0, 180)
+}
+
 /** Just the event side of the deck (ghosts + front card) — rebuilt on paging. */
 function eventStackHTML(members: Ev[], i: number): string {
   const e = members[i]
   const n = members.length
   const date = e.d && e.d !== "—" ? e.d : ""
   const meta = [e.tm, e.v].filter((s) => s && s !== "—").join(" · ")
+  const blurb = deckBlurb(e.desc, e.t)
   const ghosts = n > 1 ? `<div class="cs-deck-ghost cs-dg2"></div><div class="cs-deck-ghost cs-dg1"></div>` : ""
   return ghosts +
     `<div class="cs-pola-card cs-deck-front">` +
@@ -259,6 +274,7 @@ function eventStackHTML(members: Ev[], i: number): string {
       `<div class="cs-pola-body">` +
         `<div class="cs-pola-top"><span class="cs-pola-cat">${esc(e.c || "событие")}</span>${date ? `<span class="cs-pola-date">${esc(date)}</span>` : ""}</div>` +
         `<div class="cs-pola-title cs-deck-title">${esc(e.t || "")}</div>` +
+        (blurb ? `<div class="cs-deck-blurb">${esc(blurb)}</div>` : "") +
         (meta ? `<div class="cs-pola-meta">${esc(meta)}</div>` : "") +
       `</div>` +
     `</div>`
