@@ -257,7 +257,7 @@ function deckBlurb(desc: string | undefined, title: string): string {
   if (t && s.toLowerCase().startsWith(t.toLowerCase())) {
     s = s.slice(t.length).replace(/^[\s—·:.,\-–]+/, "")
   }
-  return s.slice(0, 180)
+  return s.slice(0, 340)
 }
 
 /** Just the event side of the deck (ghosts + front card) — rebuilt on paging. */

@@ -200,7 +200,7 @@ const KEYFRAMES = `
   .cs-deck-place-kind { font-family: var(--cs-font-mono); font-size: 6.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #0055FF; line-height: 1.2; }
   .cs-deck-place-name { font-family: var(--cs-font-sans); font-weight: 900; font-size: 12px; letter-spacing: -0.02em; line-height: 1.04; color: #0D0D0D; margin-top: 2px; }
   .cs-deck-place-blurb { font-family: var(--cs-font-sans); font-size: 8px; line-height: 1.32; color: rgba(13,13,13,0.68); margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; }
-  .cs-deck-blurb { font-family: var(--cs-font-sans); font-size: 9px; line-height: 1.34; color: rgba(13,13,13,0.66); margin-top: 6px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .cs-deck-blurb { font-family: var(--cs-font-sans); font-size: 9px; line-height: 1.38; color: rgba(13,13,13,0.66); margin-top: 6px; display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; }
   .cs-deck-place-addr { margin-top: 6px; padding-top: 5px; border-top: 1px solid rgba(13,13,13,0.12); font-family: var(--cs-font-mono); font-size: 7.5px; font-weight: 700; letter-spacing: 0.01em; line-height: 1.35; color: rgba(13,13,13,0.6); }
   .cs-deck-center { display: block; width: 100%; margin-top: 7px; border: 2px solid #0D0D0D; background: #0055FF; color: #fff; cursor: pointer; font-family: var(--cs-font-sans); font-weight: 900; font-size: 9.5px; letter-spacing: 0.01em; text-transform: uppercase; padding: 6px 4px; line-height: 1.1; }
   .cs-deck-center:active { background: #0D0D0D; }
