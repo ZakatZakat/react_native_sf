@@ -928,7 +928,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         // закрывали его. Камера кадрирует дом ниже центра (offset вниз) — так под
         // постами видно выделенное синее здание.
         const g0 = (cl.members[0]?.geo as [number, number]) ?? cl.ll
-        const m = new maplibregl.Marker({ element: wrap, anchor: "bottom", offset: [0, -48] }).setLngLat([g0[1], g0[0]]).addTo(map)
+        const m = new maplibregl.Marker({ element: wrap, anchor: "bottom", offset: [0, -20] }).setLngLat([g0[1], g0[0]]).addTo(map)
         deckMarkerRef.current = m
         scatterRef.current.push(m)
         leadersRef.current = [{ card: cl.ll, target: g0, i: 0 }]
