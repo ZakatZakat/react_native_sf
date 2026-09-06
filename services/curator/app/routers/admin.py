@@ -89,6 +89,7 @@ async def list_events(
             out.append({
                 "event_id": ev.id,
                 "status": ev.status.value,
+                "title": ev.title,  # кураторский заголовок (NULL → фид берёт derive_title)
                 "channel": channel.handle,
                 "message_id": post.message_id,
                 "text": post.text,
