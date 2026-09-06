@@ -45,11 +45,6 @@ import { useDerived, useJourneyState } from "./useJourney"
 import { analytics } from "../../lib/analytics"
 import CsFeedLegacy from "./FeedLegacy"
 import MapIntro from "./MapIntro"
-import WhatsNear from "./WhatsNear"
-
-// Стартовый экран: true — новая афиша по районам «Что рядом 4A», false —
-// прежний map-first MapIntro. Флаг для быстрого отката.
-const START_4A = true
 
 const FALLBACK: Ev = {
   id: "—", t: "—", sub: "", v: "—", d: "—", tm: "—",
@@ -1035,10 +1030,7 @@ export default function CsFeed() {
                 <div style={{ height: "calc(env(safe-area-inset-top, 0px) + 10px)" }} />
                 {!(view === "board" && showIntro) && inner}
               </div>
-              {view === "board" && showIntro &&
-                (START_4A
-                  ? <WhatsNear events={mapEvents} onEnter={dismissIntro} />
-                  : <MapIntro events={mapEvents} onEnter={dismissIntro} />)}
+              {view === "board" && showIntro && <MapIntro events={mapEvents} onEnter={dismissIntro} />}
             </div>
           </EdgeCtx.Provider>
         </EventModalProvider>
