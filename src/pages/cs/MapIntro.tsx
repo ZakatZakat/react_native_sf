@@ -408,6 +408,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
 
   const boxRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
+  const deckMarkerRef = useRef<maplibregl.Marker | null>(null)
   const fitAllRef = useRef<() => void>(() => {})
   const pendulumStopRef = useRef<() => void>(() => {})
   const leaderSvgRef = useRef<SVGSVGElement | null>(null) // overlay for card→building leaders
@@ -922,14 +923,18 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         scaleDeckRef.current() // size the deck to the current zoom right away
         // anchor "bottom" at the cluster centroid; the leader points from here
         // down to the active event's real building.
-        const m = new maplibregl.Marker({ element: wrap, anchor: "bottom", offset: [0, -6] }).setLngLat([cl.ll[1], cl.ll[0]]).addTo(map)
+        // Дек привязываем к зданию АКТИВНОГО события (не к центроиду района) и
+        // приподнимаем над ним (offset вверх), чтобы посты стояли НАД домом, а не
+        // закрывали его. Камера кадрирует дом ниже центра (offset вниз) — так под
+        // постами видно выделенное синее здание.
+        const g0 = (cl.members[0]?.geo as [number, number]) ?? cl.ll
+        const m = new maplibregl.Marker({ element: wrap, anchor: "bottom", offset: [0, -118] }).setLngLat([g0[1], g0[0]]).addTo(map)
+        deckMarkerRef.current = m
         scatterRef.current.push(m)
-        leadersRef.current = [{ card: cl.ll, target: (cl.members[0]?.geo as [number, number]) ?? cl.ll, i: 0 }]
+        leadersRef.current = [{ card: cl.ll, target: g0, i: 0 }]
         drawLeadersRef.current()
-        // Подсветить здание активного (первого) события сразу — детерминированно,
-        // без ожидания тайлов; при листании обновляется в эффекте ниже.
         paintActiveRef.current(cl.members[0])
-        map.easeTo({ center: [cl.ll[1], cl.ll[0]], zoom: 15, pitch: 52, bearing: -14, duration: 700 })
+        map.easeTo({ center: [g0[1], g0[0]], offset: [0, 150], zoom: 15.4, pitch: 52, bearing: -14, duration: 700 })
       }
     }
     return () => { if (pendingMoveend) map.off("moveend", pendingMoveend) }
@@ -946,6 +951,12 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
     paintActiveRef.current(members[evIdx])
     const ld = leadersRef.current[0]
     const g = members[evIdx]?.geo
+    // Дек и камера следуют за зданием активного события: дек стоит НАД домом,
+    // камера мягко кадрирует дом ниже центра — под постами видно выделенный дом.
+    if (Array.isArray(g)) {
+      deckMarkerRef.current?.setLngLat([g[1], g[0]])
+      mapRef.current?.easeTo({ center: [g[1], g[0]], offset: [0, 150], pitch: 52, bearing: -14, duration: 450 })
+    }
     if (ld && Array.isArray(g)) ld.target = g as [number, number]
     drawLeadersRef.current()
   }, [evIdx, selZone, selCluster])
