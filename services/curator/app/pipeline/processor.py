@@ -58,9 +58,11 @@ class PipelineProcessor:
         session_factory: async_sessionmaker[AsyncSession],
         tg_client: TelegramServiceClient,
         settings: Settings,
+        vk_client: object | None = None,
     ) -> None:
         self.sf = session_factory
         self.tg = tg_client
+        self.vk = vk_client  # VKServiceClient | None — для каналов vk:<domain>
         self.settings = settings
         self.classifier = KeywordClassifier()
         self.push_service: object | None = None  # set externally to enable fanout
@@ -78,7 +80,12 @@ class PipelineProcessor:
         # (до limit), а не только последние N. Иначе активный канал, выложивший
         # между опросами >N постов, терял старшие безвозвратно.
         try:
-            raw = await self.tg.fetch(ch.handle, limit=limit, min_id=ch.last_message_id)
+            if ch.handle.startswith("vk:"):
+                if self.vk is None:
+                    raise TelegramFetchError("VK клиент не сконфигурирован")
+                raw = await self.vk.fetch(ch.handle[3:], limit=limit, min_id=ch.last_message_id)
+            else:
+                raw = await self.tg.fetch(ch.handle, limit=limit, min_id=ch.last_message_id)
         except TelegramFetchError as e:
             # Ожидаемый мягкий сбой: поллер не смог вытащить канал (FloodWait /
             # ResolveUsername / потеря доступа). Раньше это выглядело как «success,

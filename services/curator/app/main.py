@@ -82,10 +82,13 @@ async def on_startup() -> None:
         token=settings.telegram_service_token or None,
         media_dir=settings.media_root or None,
     )
+    from app.services.vk_client import VKServiceClient
+    app.state.vk_client = VKServiceClient(token=settings.vk_service_token)
     app.state.processor = PipelineProcessor(
         session_factory=session_factory,
         tg_client=app.state.tg_client,
         settings=settings,
+        vk_client=app.state.vk_client,
     )
 
     # Push service
