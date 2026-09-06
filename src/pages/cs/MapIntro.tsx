@@ -842,15 +842,15 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       // venues Черкизовская↔Пролетарская slide off the sides) and reads clearer.
       // Level 2 tilts back to 52 for the cinematic building view.
       const OVERVIEW_PITCH = 30
-      // Fit the district, but IGNORE geographically ISOLATED outliers. A single
-      // far venue (e.g. LIVE Арена ~15 km out by Crocus, still «west») would
-      // otherwise blow the box wide, floor the zoom to its clamp and shove the
-      // real cluster into a corner. We drop from the FIT only venues whose
-      // nearest neighbour is > NEIGHBOR_KM away — that spares legitimately
-      // spread districts (Восток scatters venues radially, but each has a
-      // neighbour a few km off) and catches only lone strays. The outlier's pin
-      // still draws and is reachable by its numbered sheet row, which drills
-      // straight into it.
+      // Frame the CURRENT PAGE's pins — NOT the whole district. Fitting every
+      // venue (incl. those on later pages) reserved an empty band for pins that
+      // aren't drawn yet: a page's few venues bunched at the top with dead space
+      // below (Юг — Царицыно + a concert hall on later pages dragged the box
+      // ~4 km south, leaving the visible 3 venues squeezed under the heading).
+      // We still drop geographically ISOLATED strays from the fit — nearest
+      // neighbour over the WHOLE district > NEIGHBOR_KM (LIVE Арена ~15 km out
+      // «west», Царицыно ~9 km south). Their pin still draws and is reachable
+      // from the numbered «Места» list, which drills straight into it.
       const COS_MSK = Math.cos((55.75 * Math.PI) / 180)
       const kmBetween = (a: Cluster, b: Cluster) =>
         Math.hypot((a.ll[0] - b.ll[0]) * 111.32, (a.ll[1] - b.ll[1]) * 111.32 * COS_MSK)
@@ -860,34 +860,30 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         for (const o of clusters) if (o !== c) best = Math.min(best, kmBetween(c, o))
         return best
       }
-      let core = clusters.filter((c) => nearestKm(c) <= NEIGHBOR_KM)
-      if (core.length < 1) core = clusters // 0–1 venue, or an all-spread set → fit everything
-      const lats = core.map((c) => c.ll[0])
-      const lngs = core.map((c) => c.ll[1])
-      const minLat = Math.min(...lats), maxLat = Math.max(...lats)
-      const minLng = Math.min(...lngs), maxLng = Math.max(...lngs)
-      const cLat = (minLat + maxLat) / 2, cLng = (minLng + maxLng) / 2
-      // normalised Web-Mercator Y in [0,1]
-      const mercY = (lat: number) => {
-        const s = Math.sin((lat * Math.PI) / 180)
-        return 0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)
-      }
+      const pageClusters = shown.map((s) => s.cl)
+      let core = pageClusters.filter((c) => nearestKm(c) <= NEIGHBOR_KM)
+      if (core.length < 1) core = pageClusters // page holds only strays → fit them anyway
+      // Rotation-invariant fit: frame the pins' bounding CIRCLE (max distance
+      // from the centroid) against the SMALLER usable dimension, so venues never
+      // slide off the sides under the −14° bearing / 30° pitch. The plain
+      // lng/lat box fit put a wide district's venues at the screen edges (the
+      // box diagonal projected to nearly the full width once rotated), and
+      // maplibre's own fitBounds silently no-ops with a non-zero pitch. Centroid
+      // (not box midpoint) centres on the mass; FILL leaves a margin so the fan
+      // cards — which draw ~110px UP from their anchor — clear the heading.
+      const cLat = core.reduce((s, c) => s + c.ll[0], 0) / core.length
+      const cLng = core.reduce((s, c) => s + c.ll[1], 0) / core.length
+      const COS_C = Math.cos((cLat * Math.PI) / 180)
+      let radiusKm = 0.2 // floor: a lone/tight venue still gets a sensible close zoom
+      core.forEach((c) => {
+        radiusKm = Math.max(radiusKm, Math.hypot((c.ll[0] - cLat) * 111.32, (c.ll[1] - cLng) * 111.32 * COS_C))
+      })
       const W = map.getContainer().clientWidth || 375
       const H = map.getContainer().clientHeight || 812
-      // visible band = viewport minus the heading card (top) and the district
-      // sheet (bottom); the fans anchor from the bottom so they draw upward.
-      const usableW = Math.max(120, W - 56)
-      // reserve extra up top: fans anchor at the bottom, so the card + place
-      // label draw ~90px ABOVE the geo point — without this the top fan tucks
-      // under the heading card.
-      const usableH = Math.max(120, H - 250 - 300)
-      const lngFrac = Math.max((maxLng - minLng) / 360, 1e-6)
-      const latFrac = Math.max(Math.abs(mercY(maxLat) - mercY(minLat)), 1e-6)
-      const zLng = Math.log2(usableW / (256 * lngFrac))
-      const zLat = Math.log2(usableH / (256 * latFrac))
-      // Headroom below the exact fit: covers the −14° bearing + 30° pitch
-      // stretching the box, and leaves a little breathing room around the fans.
-      const zoom = Math.max(10.3, Math.min(14.0, Math.min(zLng, zLat) - 0.85))
+      const usableMin = Math.max(140, Math.min(W - 40, H - 250 - 300))
+      const FILL = 0.72 // circle spans ~72% of the band → breathing room around fans
+      const mpp = (radiusKm * 2000) / (usableMin * FILL)
+      const zoom = Math.max(10.3, Math.min(14.0, Math.log2((156543 * COS_C) / mpp)))
       // camera fit is applied once per district (below, after deOverlap)
 
       // De-overlap: once the camera settles, project every fan to the screen
@@ -918,15 +914,28 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         }
         ms.forEach((mk, i) => mk.setOffset([off[i].x, off[i].y]))
       }
-      if (overviewFitRef.current !== selZone) {
-        // first entry into this district → fit the camera ONCE
-        overviewFitRef.current = selZone
-        map.easeTo({ center: [cLng, cLat], zoom, pitch: OVERVIEW_PITCH, bearing: -14, duration: 800, padding: { top: 250, bottom: 300, left: 20, right: 20 } })
+      // Re-fit per (district, page): each page frames its own pins, so a
+      // multi-page district never leaves a page's venues squeezed to one edge.
+      // The old "fit once per district, never move on paging" left later pages'
+      // venues framed by the FIRST page's camera. The move is a quick ease and
+      // only fires on an explicit page/district change — not the per-frame
+      // re-fit that once caused jank.
+      const fitKey = `${selZone}:${pg}`
+      if (overviewFitRef.current !== fitKey) {
+        const sameZone = typeof overviewFitRef.current === "string" && overviewFitRef.current.split(":")[0] === selZone
+        overviewFitRef.current = fitKey
+        map.easeTo({
+          center: [cLng, cLat],
+          zoom,
+          pitch: OVERVIEW_PITCH,
+          bearing: -14,
+          duration: sameZone ? 520 : 800,
+          padding: { top: 250, bottom: 300, left: 20, right: 20 },
+        })
         pendingMoveend = deOverlap
         map.once("moveend", deOverlap)
       } else {
-        // paging within the same district → NO camera move (that per-page 800ms
-        // fly was the jank); just re-spread the freshly-drawn page's fans
+        // same page re-run (e.g. data refresh) → just re-spread, no camera move
         requestAnimationFrame(() => deOverlap())
       }
     } else {
