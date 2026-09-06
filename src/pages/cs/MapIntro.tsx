@@ -842,9 +842,28 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       // venues Черкизовская↔Пролетарская slide off the sides) and reads clearer.
       // Level 2 tilts back to 52 for the cinematic building view.
       const OVERVIEW_PITCH = 30
-      // fit the WHOLE district (all clusters) so paging never needs a camera move
-      const lats = clusters.map((c) => c.ll[0])
-      const lngs = clusters.map((c) => c.ll[1])
+      // Fit the district, but IGNORE geographically ISOLATED outliers. A single
+      // far venue (e.g. LIVE Арена ~15 km out by Crocus, still «west») would
+      // otherwise blow the box wide, floor the zoom to its clamp and shove the
+      // real cluster into a corner. We drop from the FIT only venues whose
+      // nearest neighbour is > NEIGHBOR_KM away — that spares legitimately
+      // spread districts (Восток scatters venues radially, but each has a
+      // neighbour a few km off) and catches only lone strays. The outlier's pin
+      // still draws and is reachable by its numbered sheet row, which drills
+      // straight into it.
+      const COS_MSK = Math.cos((55.75 * Math.PI) / 180)
+      const kmBetween = (a: Cluster, b: Cluster) =>
+        Math.hypot((a.ll[0] - b.ll[0]) * 111.32, (a.ll[1] - b.ll[1]) * 111.32 * COS_MSK)
+      const NEIGHBOR_KM = 6
+      const nearestKm = (c: Cluster) => {
+        let best = Infinity
+        for (const o of clusters) if (o !== c) best = Math.min(best, kmBetween(c, o))
+        return best
+      }
+      let core = clusters.filter((c) => nearestKm(c) <= NEIGHBOR_KM)
+      if (core.length < 1) core = clusters // 0–1 venue, or an all-spread set → fit everything
+      const lats = core.map((c) => c.ll[0])
+      const lngs = core.map((c) => c.ll[1])
       const minLat = Math.min(...lats), maxLat = Math.max(...lats)
       const minLng = Math.min(...lngs), maxLng = Math.max(...lngs)
       const cLat = (minLat + maxLat) / 2, cLng = (minLng + maxLng) / 2
