@@ -934,7 +934,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         leadersRef.current = [{ card: cl.ll, target: g0, i: 0 }]
         drawLeadersRef.current()
         paintActiveRef.current(cl.members[0])
-        map.easeTo({ center: [g0[1], g0[0]], offset: [0, 170], zoom: 15.0, pitch: 52, bearing: -14, duration: 700 })
+        map.easeTo({ center: [g0[1], g0[0]], offset: [0, 306], zoom: 15.0, pitch: 52, bearing: -14, duration: 700 })
       }
     }
     return () => { if (pendingMoveend) map.off("moveend", pendingMoveend) }
@@ -955,7 +955,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
     // камера мягко кадрирует дом ниже центра — под постами видно выделенный дом.
     if (Array.isArray(g)) {
       deckMarkerRef.current?.setLngLat([g[1], g[0]])
-      mapRef.current?.easeTo({ center: [g[1], g[0]], offset: [0, 170], zoom: 15.0, pitch: 52, bearing: -14, duration: 450 })
+      mapRef.current?.easeTo({ center: [g[1], g[0]], offset: [0, 306], zoom: 15.0, pitch: 52, bearing: -14, duration: 450 })
     }
     if (ld && Array.isArray(g)) ld.target = g as [number, number]
     drawLeadersRef.current()
