@@ -484,30 +484,26 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   }
   const scaleDeckRef = useRef(scaleDeck); scaleDeckRef.current = scaleDeck
 
-  // Mark every venue in the cluster: a precomputed building footprint → a blue
-  // building; a venue with no footprint (metro/park/aggregator) → a blue dot.
-  // Fully deterministic (no queryRenderedFeatures) so it's instant, consistent,
-  // and can't over-paint. De-duped so co-located events collapse to one mark.
-  const paintCluster = (cl: Cluster) => {
+  // Highlight ТОЛЬКО здание активного события в деке (то, что ты сейчас листаешь):
+  // футпринт → синий дом, иначе (метро/парк/агрегатор без футпринта) → синяя точка.
+  // Раньше красили дома ВСЕХ площадок кластера → в районном деке светилось по
+  // несколько зданий разом («почему два дома?»). Теперь ровно одно, синхронно с
+  // карточкой, и меняется при листании ← →.
+  const paintActive = (ev: Ev | undefined) => {
     const map = mapRef.current
-    if (!map || !cl) return
+    if (!map) return
     const feats: GeoJSON.Feature[] = []
     const dots: [number, number][] = []
-    const seenFp = new Set<string>()
-    const seenDot = new Set<string>()
-    cl.members.forEach((ev) => {
-      const fp = ev.venueKey ? VENUE_FOOTPRINTS[ev.venueKey] : undefined
-      if (fp && fp.length >= 4) {
-        if (!seenFp.has(ev.venueKey)) { seenFp.add(ev.venueKey); feats.push(footprintFeature(fp)) }
-      } else if (ev.geo) {
-        const k = `${ev.geo[0].toFixed(5)},${ev.geo[1].toFixed(5)}`
-        if (!seenDot.has(k)) { seenDot.add(k); dots.push([ev.geo[1], ev.geo[0]]) }
-      }
-    })
+    const fp = ev?.venueKey ? VENUE_FOOTPRINTS[ev.venueKey] : undefined
+    if (fp && fp.length >= 4) {
+      feats.push(footprintFeature(fp))
+    } else if (ev?.geo) {
+      dots.push([ev.geo[1], ev.geo[0]])
+    }
     renderEventBuildings(map, feats)
     renderVenueDots(map, dots)
   }
-  const paintClusterRef = useRef(paintCluster); paintClusterRef.current = paintCluster
+  const paintActiveRef = useRef(paintActive); paintActiveRef.current = paintActive
 
   // Rebuild the deck's DOM for a given active index + (re)wire its ← / → / open
   // handlers. One marker, updated in place, so paging doesn't recreate it.
@@ -532,7 +528,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       wrap.addEventListener("click", (ev) => {
         const t = ev.target as HTMLElement
         // «Центрировать карту» — прячем карточки и наводим на площадку активного
-        // события (она уже отмечена синим домом или точкой из paintCluster).
+        // события (она уже отмечена синим домом или точкой из paintActive).
         if (t.closest?.(".cs-deck-center")) {
           ev.stopPropagation()
           const map = mapRef.current
@@ -930,9 +926,9 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         scatterRef.current.push(m)
         leadersRef.current = [{ card: cl.ll, target: (cl.members[0]?.geo as [number, number]) ?? cl.ll, i: 0 }]
         drawLeadersRef.current()
-        // Mark venues immediately (deterministic — no need to wait for tiles),
-        // then ease to the centroid at building-visible zoom.
-        paintClusterRef.current(cl)
+        // Подсветить здание активного (первого) события сразу — детерминированно,
+        // без ожидания тайлов; при листании обновляется в эффекте ниже.
+        paintActiveRef.current(cl.members[0])
         map.easeTo({ center: [cl.ll[1], cl.ll[0]], zoom: 15, pitch: 52, bearing: -14, duration: 700 })
       }
     }
@@ -946,6 +942,8 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
     if (selCluster == null) return
     renderDeckRef.current(evIdx)
     const members = deckMembersRef.current
+    // Перекрасить подсветку на здание нового активного события (одно, не весь район).
+    paintActiveRef.current(members[evIdx])
     const ld = leadersRef.current[0]
     const g = members[evIdx]?.geo
     if (ld && Array.isArray(g)) ld.target = g as [number, number]
