@@ -291,8 +291,7 @@ function placeCardHTML(vi: VenueInfo): string {
       `<div class="cs-deck-place-kind">место · ${esc(vi.kind)}</div>` +
       `<div class="cs-deck-place-name">${esc(vi.name)}</div>` +
       `<div class="cs-deck-place-blurb">${esc(vi.blurb)}</div>` +
-      (vi.address ? `<div class="cs-deck-place-addr">📍 ${esc(vi.address)}</div>` : "") +
-      `<button class="cs-deck-center" type="button">Показать на карте</button>` +
+      (vi.address ? `<div class="cs-deck-place-addr"><svg width="8" height="10" viewBox="0 0 8 10" style="display:inline-block;vertical-align:-1px;margin-right:5px"><path d="M4 0C1.79 0 0 1.79 0 4c0 2.5 4 6 4 6s4-3.5 4-6C8 1.79 6.21 0 4 0z" fill="#0055FF"/><circle cx="4" cy="4" r="1.5" fill="#fff"/></svg>${esc(vi.address)}</div>` : "") +
       `<button class="cs-deck-yandex" type="button" data-q="${esc(vi.name + (vi.address ? ", " + vi.address : ""))}">Яндекс.Карты →</button>` +
     `</div>` +
   `</div>`
@@ -533,22 +532,6 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       wrap.querySelector(".cs-deck-next")?.addEventListener("click", (ev) => { ev.stopPropagation(); setEvIdx((x) => (x + 1) % n) })
       wrap.addEventListener("click", (ev) => {
         const t = ev.target as HTMLElement
-        // «Центрировать карту» — прячем карточки и наводим на площадку активного
-        // события (она уже отмечена синим домом или точкой из paintActive).
-        if (t.closest?.(".cs-deck-center")) {
-          ev.stopPropagation()
-          const map = mapRef.current
-          const g = deckMembersRef.current[evIdxRef.current]?.geo
-          if (map && Array.isArray(g)) {
-            // hide the cards via display:none — MapLibre resets a marker's
-            // opacity to 1 on every move, so opacity:0 would be wiped by easeTo.
-            if (deckWrapRef.current) deckWrapRef.current.style.display = "none"
-            setDeckHidden(true)
-            deckHiddenRef.current = true; drawLeadersRef.current() // erase the leader now
-            map.easeTo({ center: [g[1], g[0]], zoom: 16.6, pitch: 52, bearing: -14, duration: 650 })
-          }
-          return
-        }
         // «Открыть в Яндекс.Картах» — редирект наружу на площадку активного
         // события (точный пин по координатам, иначе поиск по адресу).
         const yaBtn = t.closest?.(".cs-deck-yandex") as HTMLElement | null
@@ -1131,7 +1114,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
           const atCluster = selCluster != null && !!activeCluster
           const clusterName = activeCluster ? clusterLabel(activeCluster).name : ""
           const past = { display: "inline-flex", alignItems: "center", flexShrink: 0, background: CS.W, border: `2px solid ${CS.K}`, boxShadow: `2px 2px 0 ${CS.K}`, padding: "5px 9px", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "0.02em", textTransform: "uppercase" as const, color: CS.K }
-          const now = { display: "inline-block", maxWidth: 176, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const, background: CS.K, color: "#fff", border: `2px solid ${CS.K}`, boxShadow: `2px 2px 0 ${CS.B}`, padding: "5px 9px", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "0.02em", textTransform: "uppercase" as const }
+          const now = { display: "inline-block", minWidth: 0, flexShrink: 1, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const, background: CS.K, color: "#fff", border: `2px solid ${CS.K}`, boxShadow: `2px 2px 0 ${CS.B}`, padding: "5px 9px", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "0.02em", textTransform: "uppercase" as const }
           // Separator as SVG, not the «▸» glyph: the glyph renders thin and mushy,
           // and unlike the crumbs (white fill + border) it sat as bare black on the
           // busy map. Solid triangle + white halo (paintOrder: stroke draws the
@@ -1144,7 +1127,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
             </svg>
           )
           return (
-            <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 3 }}>
+            <div style={{ display: "flex", alignItems: "center", flexWrap: "nowrap", gap: 3, minWidth: 0, maxWidth: "100%" }}>
               <button onClick={() => setSelZone(null)} style={past}>Районы</button>
               <Sep />
               {atCluster ? (
