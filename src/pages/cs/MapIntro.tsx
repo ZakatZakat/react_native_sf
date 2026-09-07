@@ -19,6 +19,7 @@ import { CS, FONT_SANS, FONT_MONO, useCsKeyframes, useOpenEvent } from "./shared
 import { CS_STYLE_LIGHT, applyCinematicSky } from "./csMapStyle"
 import { venueInfo, type VenueInfo } from "./venues"
 import { VENUE_FOOTPRINTS } from "./venueFootprints"
+import { METRO_STATIONS } from "./metroStations"
 import { weekMeta } from "./WeekDesigns"
 import { INTERESTS } from "../pipe/preferences"
 import { analytics } from "../../lib/analytics"
@@ -324,6 +325,49 @@ function yandexMapsUrl(geo: [number, number] | null | undefined, query: string):
 const EVT_BLDG_SRC = "cs-evt-bldg"
 const EVT_BLDG_LAYER = "cs-evt-bldg-fill"
 const FOCUS_SRC = "cs-focus"
+
+// Метро в фирменном стиле: синяя брендовая точка + белая «М», подпись станции
+// проявляется на близком зуме. Данные — статический GeoJSON (metroStations.ts).
+// Проявляется с zoom≈11 (при открытии района), чтобы обзор города не был засорён.
+function addMetroLayers(map: maplibregl.Map) {
+  if (map.getSource("cs-metro")) return
+  map.addSource("cs-metro", { type: "geojson", data: METRO_STATIONS })
+  // точка станции — бело-синее «кольцо» (не сплошная, чтобы не конкурировать с
+  // синими маркерами площадок), растёт с зумом
+  map.addLayer({
+    id: "cs-metro-dot", type: "circle", source: "cs-metro", minzoom: 11,
+    paint: {
+      "circle-radius": ["interpolate", ["linear"], ["zoom"], 11, 5, 13.5, 6.5, 16, 9],
+      "circle-color": CS.B,
+      "circle-stroke-color": "#fff",
+      "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], 11, 1.4, 14, 2],
+      // слегка утоплены на обзорном зуме, чтобы не спорить с маркерами площадок
+      "circle-opacity": ["interpolate", ["linear"], ["zoom"], 11, 0.72, 13, 0.95],
+    },
+  } as maplibregl.AddLayerObject)
+  // «М» внутри точки — сразу с того же зума, чтобы точка читалась как метро
+  map.addLayer({
+    id: "cs-metro-m", type: "symbol", source: "cs-metro", minzoom: 11,
+    layout: {
+      "text-field": "М", "text-font": ["JetBrains Mono Medium"],
+      "text-size": ["interpolate", ["linear"], ["zoom"], 11, 7, 16, 12],
+      "text-allow-overlap": true, "text-ignore-placement": true,
+    },
+    paint: { "text-color": "#fff", "text-opacity": ["interpolate", ["linear"], ["zoom"], 11, 0.85, 13, 1] },
+  } as maplibregl.AddLayerObject)
+  // подпись станции — под точкой, только на близком зуме и без наложения (сама
+  // прорежается), чтобы не спорить с подписями районов/улиц
+  map.addLayer({
+    id: "cs-metro-name", type: "symbol", source: "cs-metro", minzoom: 13.5,
+    layout: {
+      "text-field": ["get", "name"], "text-font": ["JetBrains Mono Medium"],
+      "text-size": ["interpolate", ["linear"], ["zoom"], 13.5, 8.5, 16, 11],
+      "text-offset": [0, 0.95], "text-anchor": "top", "text-transform": "uppercase",
+      "text-letter-spacing": 0.02, "text-max-width": 7, "text-optional": true,
+    },
+    paint: { "text-color": CS.B, "text-halo-color": CS.W, "text-halo-width": 1.6 },
+  } as maplibregl.AddLayerObject)
+}
 
 function ensureEventBuildingsLayer(map: maplibregl.Map) {
   if (map.getSource(EVT_BLDG_SRC)) return
@@ -724,6 +768,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         // добавляем только кинематографичное небо + туман у горизонта.
         applyCinematicSky(map, false)
         ensureEventBuildingsLayer(map) // blue overlay for event buildings
+        addMetroLayers(map) // станции метро в фирменном стиле
 
         // SVG overlay for card→building leader lines (drawn every frame so they
         // track the map). Sits above the canvas, below the DOM card markers.
