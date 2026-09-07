@@ -1007,7 +1007,10 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
 
   return (
     <div style={{ position: "absolute", inset: 0, zIndex: 50, background: "#E4E4E1", animation: "cs-mapintro-in 0.4s ease both", fontFamily: FONT_SANS }}>
-      <style>{`.cs-catbar::-webkit-scrollbar{display:none}`}</style>
+      <style>{`.cs-catbar::-webkit-scrollbar{display:none}
+        .maplibregl-ctrl-bottom-right { margin-bottom: 176px !important; margin-right: 8px !important; }
+        .maplibregl-ctrl-bottom-right .maplibregl-ctrl-group button { width: 24px !important; height: 24px !important; }
+        .maplibregl-ctrl-bottom-right .maplibregl-ctrl-group button .maplibregl-ctrl-icon { transform: scale(0.82); }`}</style>
       {!failed && <div ref={boxRef} style={{ position: "absolute", inset: 0, isolation: "isolate", background: "#E4E4E1" }} />}
       {failed && <div style={{ position: "absolute", inset: 0, background: "linear-gradient(160deg,#16213a,#0d0d0d)" }} />}
 
@@ -1174,7 +1177,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
               onPointerUp={(ev) => endDrag(ev, enterFeed)}
               onPointerCancel={() => { teaserDragRef.current = null }}
             >
-              <div style={{ display: "flex", justifyContent: "center", marginBottom: 10, pointerEvents: "none" }}>
+              <div style={{ display: "flex", justifyContent: "center", marginBottom: 24, pointerEvents: "none" }}>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 7, background: CS.W, border: `2px solid ${CS.K}`, boxShadow: `2px 2px 0 ${CS.K}`, padding: "6px 11px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 10, letterSpacing: "0.04em", color: CS.K, transform: "rotate(-0.8deg)" }}>
                   <span style={{ width: 8, height: 8, background: CS.B, borderRadius: "50%" }} />тапни район на карте
                 </span>
