@@ -213,10 +213,10 @@ const KEYFRAMES = `
   .cs-dg1 { transform: translate(7px, 7px) rotate(2.5deg); z-index: 2; }
   .cs-dg2 { transform: translate(13px, 14px) rotate(5deg); z-index: 1; }
   .cs-deck-title { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
-  .cs-deck-nav { display: inline-flex; align-items: center; gap: 5px; margin-top: 9px; background: #0D0D0D; padding: 4px 5px; box-shadow: 2px 2px 0 #0055FF; }
-  .cs-deck-nav button { width: 22px; height: 22px; border: none; background: #fff; color: #0D0D0D; font-weight: 900; font-size: 13px; line-height: 1; cursor: pointer; font-family: var(--cs-font-sans); }
+  .cs-deck-nav { display: inline-flex; align-items: center; gap: 7px; margin-top: 9px; background: #0D0D0D; padding: 5px 7px; box-shadow: 3px 3px 0 #0055FF; }
+  .cs-deck-nav button { width: 36px; height: 32px; border: none; background: #fff; color: #0D0D0D; font-weight: 900; font-size: 19px; line-height: 1; cursor: pointer; font-family: var(--cs-font-sans); }
   .cs-deck-nav button:active { background: #0055FF; color: #fff; }
-  .cs-deck-count { font-family: var(--cs-font-mono); font-weight: 700; font-size: 9px; color: #fff; padding: 0 3px; white-space: nowrap; }
+  .cs-deck-count { font-family: var(--cs-font-mono); font-weight: 700; font-size: 11.5px; color: #fff; padding: 0 6px; white-space: nowrap; }
   @keyframes cs-sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
   /* map-intro zoom/pitch controls: lift above the «Вся лента» CTA so they don't collide */
   .maplibregl-ctrl-bottom-right { margin-bottom: 104px !important; margin-right: 8px !important; }
