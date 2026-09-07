@@ -894,9 +894,11 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       const W = map.getContainer().clientWidth || 375
       const H = map.getContainer().clientHeight || 812
       const usableMin = Math.max(140, Math.min(W - 40, H - 250 - 300))
-      const FILL = 0.72 // circle spans ~72% of the band → breathing room around fans
+      const FILL = 0.62 // circle spans ~62% of the band → камера чуть выше (шире), больше контекста
       const mpp = (radiusKm * 2000) / (usableMin * FILL)
-      const zoom = Math.max(10.3, Math.min(14.0, Math.log2((156543 * COS_C) / mpp)))
+      // Потолок 12.2 (было 14): при открытии района не приближаемся ближе
+      // «обзорного» уровня — тесные районы держим так же широко, как разрозненные.
+      const zoom = Math.max(10.3, Math.min(12.2, Math.log2((156543 * COS_C) / mpp)))
       // camera fit is applied once per district (below, after deOverlap)
 
       // De-overlap: once the camera settles, project every fan to the screen
