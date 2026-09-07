@@ -25,7 +25,7 @@ from sqlalchemy import delete, select
 
 from app.config import Settings
 from app.db import create_engine, create_session_maker, session_scope
-from app.models import EventCurated, EventTag, PostRaw, Tag
+from app.models import ClassifierSource, EventCurated, EventTag, PostRaw, Tag
 from app.seed import INITIAL_TAGS
 
 # Надёжные театральные слова = ключевые слова театра ПОСЛЕ снятия «режисс».
@@ -52,7 +52,11 @@ async def main(apply: bool) -> None:
                 select(EventCurated.id, PostRaw.text)
                 .join(PostRaw, PostRaw.id == EventCurated.post_id)
                 .join(EventTag, EventTag.event_id == EventCurated.id)
-                .where(EventTag.tag_id == theatre.id)
+                # только keyword-разметку; ручные/LLM-решения про театр не трогаем
+                .where(
+                    EventTag.tag_id == theatre.id,
+                    EventTag.source == ClassifierSource.keyword,
+                )
             )
         ).all()
 
@@ -66,7 +70,9 @@ async def main(apply: bool) -> None:
         if apply and victims:
             res = await s.execute(
                 delete(EventTag).where(
-                    EventTag.tag_id == theatre.id, EventTag.event_id.in_(victims)
+                    EventTag.tag_id == theatre.id,
+                    EventTag.source == ClassifierSource.keyword,
+                    EventTag.event_id.in_(victims),
                 )
             )
             removed = res.rowcount or 0
