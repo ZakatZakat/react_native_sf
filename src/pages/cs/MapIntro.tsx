@@ -19,6 +19,7 @@ import { CS, FONT_SANS, FONT_MONO, useCsKeyframes, useOpenEvent } from "./shared
 import { CS_STYLE_LIGHT, applyCinematicSky } from "./csMapStyle"
 import { venueInfo, type VenueInfo } from "./venues"
 import { VENUE_FOOTPRINTS } from "./venueFootprints"
+import { VENUE_PARKS } from "./venueParks"
 import { METRO_STATIONS } from "./metroStations"
 import { weekMeta } from "./WeekDesigns"
 import { INTERESTS } from "../pipe/preferences"
@@ -325,6 +326,7 @@ function yandexMapsUrl(geo: [number, number] | null | undefined, query: string):
 const EVT_BLDG_SRC = "cs-evt-bldg"
 const EVT_BLDG_LAYER = "cs-evt-bldg-fill"
 const FOCUS_SRC = "cs-focus"
+const PARK_SRC = "cs-park"
 
 // Метро в фирменном стиле: синяя брендовая точка + белая «М», подпись станции
 // проявляется на близком зуме. Данные — статический GeoJSON (metroStations.ts).
@@ -371,6 +373,21 @@ function addMetroLayers(map: maplibregl.Map) {
 
 function ensureEventBuildingsLayer(map: maplibregl.Map) {
   if (map.getSource(EVT_BLDG_SRC)) return
+  // Park overlay — a FLAT brand-blue area fill + outline for venues that are whole
+  // open-air PARKS (Музеон, Горького, Сокольники…), where a 3D building or a lone
+  // dot makes no sense. Added first so the 3D buildings, metro and focus dot all
+  // draw ABOVE it. Geometry from venueParks (OSM leisure=park). minzoom 9 so the
+  // park lights up already at district-overview zoom.
+  map.addSource(PARK_SRC, { type: "geojson", data: { type: "FeatureCollection", features: [] } })
+  map.addLayer({
+    id: "cs-park-fill", type: "fill", source: PARK_SRC, minzoom: 9,
+    paint: { "fill-color": CS.B, "fill-opacity": 0.16 },
+  } as maplibregl.AddLayerObject)
+  map.addLayer({
+    id: "cs-park-outline", type: "line", source: PARK_SRC, minzoom: 9,
+    layout: { "line-join": "round" },
+    paint: { "line-color": CS.B, "line-width": 2.2, "line-opacity": 0.9 },
+  } as maplibregl.AddLayerObject)
   map.addSource(EVT_BLDG_SRC, { type: "geojson", data: { type: "FeatureCollection", features: [] } })
   map.addLayer({
     id: EVT_BLDG_LAYER, type: "fill-extrusion", source: EVT_BLDG_SRC, minzoom: 13,
@@ -436,6 +453,19 @@ function polyCentroid(geom: GeoJSON.Geometry): [number, number] | null {
  *  Inflated ~4% so it fully covers the grey MapTiler building beneath it. */
 function footprintFeature(ring: [number, number][]): GeoJSON.Feature {
   return { type: "Feature", geometry: inflate({ type: "Polygon", coordinates: [ring] }), properties: {} }
+}
+
+/** Flat Polygon feature from a stored park ring ([lng,lat]) — painted as a brand
+ *  area fill (not a 3D building). NOT inflated: a park is big, exact cover isn't
+ *  needed. Venues that are whole parks light up by area instead of a lone dot. */
+function parkFeature(ring: [number, number][]): GeoJSON.Feature {
+  return { type: "Feature", geometry: { type: "Polygon", coordinates: [ring] }, properties: {} }
+}
+
+/** Paint the given park polygons into the flat park overlay. */
+function renderVenueParks(map: maplibregl.Map, features: GeoJSON.Feature[]) {
+  const src = map.getSource(PARK_SRC) as maplibregl.GeoJSONSource | undefined
+  if (src) src.setData({ type: "FeatureCollection", features })
 }
 
 export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: () => void }) {
@@ -542,14 +572,21 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
     const map = mapRef.current
     if (!map) return
     const feats: GeoJSON.Feature[] = []
+    const parks: GeoJSON.Feature[] = []
     const dots: [number, number][] = []
     const fp = ev?.venueKey ? VENUE_FOOTPRINTS[ev.venueKey] : undefined
+    const park = ev?.venueKey ? VENUE_PARKS[ev.venueKey] : undefined
+    // Приоритет: точный дом (footprint) → площадь парка → точка-фолбэк. Парк —
+    // плоская заливка территории (Музеон/Горького/Сокольники не точкой, а областью).
     if (fp && fp.length >= 4) {
       feats.push(footprintFeature(fp))
+    } else if (park && park.length >= 4) {
+      parks.push(parkFeature(park))
     } else if (ev?.geo) {
       dots.push([ev.geo[1], ev.geo[0]])
     }
     renderEventBuildings(map, feats)
+    renderVenueParks(map, parks)
     renderVenueDots(map, dots)
   }
   const paintActiveRef = useRef(paintActive); paintActiveRef.current = paintActive
