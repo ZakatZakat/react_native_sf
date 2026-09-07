@@ -426,6 +426,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   // the explode effect re-ran and the dense «Центр» fans reshuffled/repositioned
   // for the first few seconds as posters streamed in («всё летает при открытии»).
   const [headOpen, setHeadOpen] = useState(true) // heading card collapse
+  const [filtersOpen, setFiltersOpen] = useState(false) // компактные фильтры «Когда/Что» свёрнуты по умолчанию
   const [catFilter, setCatFilter] = useState<Set<string>>(() => new Set()) // мульти-фильтр карты по категориям (пусто = все)
   const [dateFilter, setDateFilter] = useState<string>("all") // одиночный фильтр по дате: all|today|tomorrow|weekend|week
   const [deckHidden, setDeckHidden] = useState(false) // hide the deck to reveal the centred building
@@ -1054,7 +1055,28 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
             <span style={{ fontSize: 11, lineHeight: 1 }}>▾</span>
           </button>
         )}
-        {!selZone && DATE_CHIPS.some((dc) => dateChips.counts[dc.key] > 0) && (
+        {!selZone && (DATE_CHIPS.some((dc) => dateChips.counts[dc.key] > 0) || catChips.length > 0) && (() => {
+          const activeDate = DATE_CHIPS.find((dc) => dc.key === dateFilter && dateFilter !== "all")
+          const activeCount = (dateFilter !== "all" ? 1 : 0) + catFilter.size
+          const resetAll = () => { pickDate("all"); pickCat(null) }
+          return (
+          <div style={{ width: "100%" }}>
+            <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+              <button onClick={() => setFiltersOpen((o) => !o)} style={{ display: "inline-flex", alignItems: "center", gap: 7, flexShrink: 0, cursor: "pointer", padding: "6px 11px", border: `2px solid ${CS.K}`, background: filtersOpen ? CS.K : CS.W, color: filtersOpen ? "#fff" : CS.K, boxShadow: filtersOpen ? "none" : `2px 2px 0 ${CS.K}`, fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                <span>Фильтры</span>
+                {activeCount > 0 && <span style={{ background: CS.B, color: "#fff", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, padding: "1px 5px" }}>{activeCount}</span>}
+                <span style={{ fontSize: 10, lineHeight: 1 }}>{filtersOpen ? "▲" : "▼"}</span>
+              </button>
+              {!filtersOpen && activeCount > 0 && (
+                <button onClick={resetAll} aria-label="сбросить фильтры" style={{ display: "inline-flex", alignItems: "center", gap: 6, flexShrink: 0, maxWidth: "60%", cursor: "pointer", padding: "6px 8px", border: `2px solid ${CS.K}`, background: CS.W, color: CS.K, fontFamily: FONT_SANS, fontWeight: 800, fontSize: 10.5, textTransform: "uppercase" }}>
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{activeDate ? activeDate.label : ""}{activeDate && catFilter.size ? " · " : ""}{catFilter.size ? `${catFilter.size} ${CAT_WORD(catFilter.size)}` : ""}</span>
+                  <span style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", width: 15, height: 15, border: `1.5px solid ${CS.K}`, fontSize: 10, lineHeight: 1 }}>✕</span>
+                </button>
+              )}
+            </div>
+            {filtersOpen && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 7, marginTop: 8 }}>
+            {DATE_CHIPS.some((dc) => dateChips.counts[dc.key] > 0) && (
           <div style={{ display: "flex", gap: 6, width: "100%", alignItems: "stretch" }}>
             <span style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", padding: "0 9px", background: CS.K, color: "#fff", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, letterSpacing: "0.16em" }}>КОГДА</span>
             <div className="cs-catbar" style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", paddingBottom: 2, flex: 1, minWidth: 0 }}>
@@ -1072,7 +1094,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
             </div>
           </div>
         )}
-        {!selZone && catChips.length > 0 && (
+            {catChips.length > 0 && (
           <div style={{ display: "flex", gap: 6, width: "100%", alignItems: "stretch" }}>
             <span style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", padding: "0 9px", background: CS.B, color: "#fff", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, letterSpacing: "0.16em" }}>ЧТО</span>
           <div className="cs-catbar" style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", paddingBottom: 2, flex: 1, minWidth: 0 }}>
@@ -1093,6 +1115,11 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
           </div>
           </div>
         )}
+            </div>
+            )}
+          </div>
+          )
+        })()}
         {selZone && (() => {
           // Breadcrumb: Районы › [зона] › [место]. Past crumbs are white/tappable
           // (jump to that level); the current level is the solid black crumb. This
