@@ -1112,7 +1112,6 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
           // районы» / «← кластеры» buttons are gone.
           const zoneName = ZONE_BY_ID[selZone].t
           const atCluster = selCluster != null && !!activeCluster
-          const clusterName = activeCluster ? clusterLabel(activeCluster).name : ""
           const past = { display: "inline-flex", alignItems: "center", flexShrink: 0, background: CS.W, border: `2px solid ${CS.K}`, boxShadow: `2px 2px 0 ${CS.K}`, padding: "5px 9px", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "0.02em", textTransform: "uppercase" as const, color: CS.K }
           const now = { display: "inline-block", minWidth: 0, flexShrink: 1, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const, background: CS.K, color: "#fff", border: `2px solid ${CS.K}`, boxShadow: `2px 2px 0 ${CS.B}`, padding: "5px 9px", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "0.02em", textTransform: "uppercase" as const }
           // Separator as SVG, not the «▸» glyph: the glyph renders thin and mushy,
@@ -1127,19 +1126,15 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
             </svg>
           )
           return (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4, maxWidth: "100%" }}>
-              {/* навигация: Районы › Зона (в одну строку) */}
-              <div style={{ display: "flex", alignItems: "center", flexWrap: "nowrap", gap: 3, maxWidth: "100%" }}>
-                <button onClick={() => setSelZone(null)} style={past}>Районы</button>
-                <Sep />
-                {atCluster
-                  ? <button onClick={() => setSelCluster(null)} style={past}>{zoneName}</button>
-                  : <span style={now}>{zoneName}</span>}
-              </div>
-              {/* текущее место — отдельной строкой, полное имя с переносом */}
-              {atCluster && (
-                <span style={{ ...now, whiteSpace: "normal", overflow: "visible", textOverflow: "clip", maxWidth: "100%", lineHeight: 1.18 }}>{clusterName}</span>
-              )}
+            <div style={{ display: "flex", alignItems: "center", flexWrap: "nowrap", gap: 3, maxWidth: "100%" }}>
+              {/* Только навигация: Районы › Зона. Имя площадки не дублируем —
+                  оно и так целиком в карточке места ниже. На уровне места крошка
+                  зоны кликабельна: возвращает к списку площадок района. */}
+              <button onClick={() => setSelZone(null)} style={past}>Районы</button>
+              <Sep />
+              {atCluster
+                ? <button onClick={() => setSelCluster(null)} style={{ ...now, cursor: "pointer" }}>{zoneName}</button>
+                : <span style={now}>{zoneName}</span>}
             </div>
           )
         })()}
