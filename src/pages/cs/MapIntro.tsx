@@ -1334,17 +1334,26 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
                       const vk = cl.members[0]?.venueKey
                       const vi = vk ? venueInfo(vk) : null
                       const img = resolveMedia(vi?.img ?? undefined) || cl.members.find((e) => e.p)?.p || null
+                      const posters = cl.members.filter((e) => e.p).map((e) => e.p as string)
                       return (
-                        <button key={gi} onClick={() => setSelCluster(gi)} style={{ flex: 1, minWidth: 82, maxWidth: 140, height: 116, position: "relative", padding: 0, border: `2.5px solid ${CS.K}`, background: "rgba(0,85,255,0.4)", boxShadow: `3px 3px 0 ${CS.B}`, cursor: "pointer", overflow: "hidden", display: "block" }}>
-                          {img && <img src={img} alt="" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none" }} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />}
-                          {/* тёмный градиент снизу под подпись */}
-                          <span style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "66%", background: "linear-gradient(rgba(13,13,13,0), rgba(13,13,13,0.86))", pointerEvents: "none" }} />
-                          {/* номер (как пин на карте) */}
-                          <span style={{ position: "absolute", top: 4, left: 4, minWidth: 17, height: 17, padding: "0 3px", background: CS.B, color: "#fff", border: `2px solid ${CS.K}`, fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9.5, display: "flex", alignItems: "center", justifyContent: "center" }}>{gi + 1}</span>
-                          {/* счётчик событий */}
-                          <span style={{ position: "absolute", top: 4, right: 4, background: CS.W, color: CS.K, border: `2px solid ${CS.K}`, fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, padding: "0 4px", lineHeight: "15px" }}>{cl.members.length}</span>
-                          {/* имя площадки поверх градиента */}
-                          <span style={{ position: "absolute", left: 6, right: 6, bottom: 6, color: "#fff", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 10, lineHeight: 1.12, letterSpacing: "-0.01em", textTransform: "uppercase", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{name}</span>
+                        <button key={gi} onClick={() => setSelCluster(gi)} style={{ flex: 1, minWidth: 92, maxWidth: 150, display: "flex", flexDirection: "column", padding: 0, border: `2.5px solid ${CS.K}`, background: CS.W, boxShadow: `3px 3px 0 ${CS.B}`, cursor: "pointer", overflow: "hidden", textAlign: "left" }}>
+                          {/* фото площадки + имя белым поверх градиента (без цифр) */}
+                          <div style={{ position: "relative", width: "100%", height: 66, background: "rgba(0,85,255,0.4)", overflow: "hidden" }}>
+                            {img && <img src={img} alt="" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none" }} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />}
+                            <span style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "78%", background: "linear-gradient(rgba(13,13,13,0), rgba(13,13,13,0.9))", pointerEvents: "none" }} />
+                            <span style={{ position: "absolute", left: 5, right: 5, bottom: 4, color: "#fff", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 9.5, lineHeight: 1.1, letterSpacing: "-0.01em", textTransform: "uppercase", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{name}</span>
+                          </div>
+                          {/* мелкие постеры событий этого места */}
+                          <div style={{ display: "flex", gap: 2, padding: 3, background: CS.W, borderTop: `2px solid ${CS.K}` }}>
+                            {posters.slice(0, 3).map((p, i) => (
+                              <span key={i} style={{ flex: 1, height: 38, minWidth: 0, background: "rgba(0,85,255,0.4)", border: `1px solid ${CS.K}`, overflow: "hidden" }}>
+                                <img src={p} alt="" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none" }} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                              </span>
+                            ))}
+                            {posters.length === 0 && (
+                              <span style={{ flex: 1, height: 38, background: "rgba(0,85,255,0.14)", border: `1px solid ${CS.K}`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 8, color: CS.B }}>{RU_PLURAL(cl.members.length)}</span>
+                            )}
+                          </div>
                         </button>
                       )
                     })}
