@@ -10,7 +10,7 @@
  *  the intro for the feed.
  */
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
 import maplibregl from "maplibre-gl"
 import "maplibre-gl/dist/maplibre-gl.css"
 import type { Ev } from "./buildDerived"
@@ -436,11 +436,9 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const [selPage, setSelPage] = useState(0)  // page within the opened district (Level 1)
   const [evIdx, setEvIdx] = useState(0)
   const evIdxRef = useRef(0); evIdxRef.current = evIdx
-  // Тизер ленты внизу карты: можно СМАХИВАТЬ карточки (листать события) и
-  // тянуть вверх / тапать, чтобы войти в ленту.
-  const [teaserPage, setTeaserPage] = useState(0)
-  const [teaserDX, setTeaserDX] = useState(0) // смещение при активном свайпе
-  const teaserDirRef = useRef(1)              // направление последнего свайпа (для слайд-анимации)
+  // Тизер ленты внизу карты: карточки можно СПРЯТАТЬ свайпом вниз (чтобы
+  // спокойно сидеть в карте) и вернуть свайпом вверх / ручкой; тап — в ленту.
+  const [teaserHidden, setTeaserHidden] = useState(false)
   const teaserDragRef = useRef<{ x: number; y: number; on: boolean } | null>(null)
   const selZoneRef = useRef<string | null>(null); selZoneRef.current = selZone
   const selClusterRef = useRef<number | null>(null); selClusterRef.current = selCluster
@@ -1009,9 +1007,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
 
   return (
     <div style={{ position: "absolute", inset: 0, zIndex: 50, background: "#E4E4E1", animation: "cs-mapintro-in 0.4s ease both", fontFamily: FONT_SANS }}>
-      <style>{`.cs-catbar::-webkit-scrollbar{display:none}
-        @keyframes cs-teaser-inL { from { opacity: 0; transform: translateX(56px) } to { opacity: 1; transform: translateX(0) } }
-        @keyframes cs-teaser-inR { from { opacity: 0; transform: translateX(-56px) } to { opacity: 1; transform: translateX(0) } }`}</style>
+      <style>{`.cs-catbar::-webkit-scrollbar{display:none}`}</style>
       {!failed && <div ref={boxRef} style={{ position: "absolute", inset: 0, isolation: "isolate", background: "#E4E4E1" }} />}
       {failed && <div style={{ position: "absolute", inset: 0, background: "linear-gradient(160deg,#16213a,#0d0d0d)" }} />}
 
@@ -1145,100 +1141,82 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         </div>
       )}
 
-      {/* bottom — hint + «Вся лента» CTA (hidden when a zone is open) */}
-      {!selZone && (
-        <div style={{ position: "absolute", left: 14, right: 14, bottom: "calc(env(safe-area-inset-bottom,0px) + 10px)", zIndex: 10 }}>
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 7, background: CS.W, border: `2px solid ${CS.K}`, boxShadow: `2px 2px 0 ${CS.K}`, padding: "6px 11px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 10, letterSpacing: "0.04em", color: CS.K, transform: "rotate(-0.8deg)" }}>
-              <span style={{ width: 8, height: 8, background: CS.B, borderRadius: "50%" }} />тапни район на карте
-            </span>
-          </div>
-          {/* Тизер ленты: карточки событий «выглядывают» из плашки — сразу
-              видно, как выглядит лента. Их можно СМАХИВАТЬ (листать события ←→),
-              а тап / свайп вверх — войти в ленту. */}
-          {(() => {
-            const N = 5
-            const pages = Math.max(1, Math.ceil(teaserPool.length / N))
-            const tp = ((teaserPage % pages) + pages) % pages
-            const teaser: Ev[] = []
-            for (let i = 0; i < Math.min(N, teaserPool.length); i++) teaser.push(teaserPool[(tp * N + i) % teaserPool.length])
-            const ROT = [-7, -3.5, 0, 3.5, 7]
-            const LIFT = [13, 5, 0, 5, 13] // arc: центр выше, края ниже
-            const ZI = [1, 2, 3, 2, 1] // центральная карточка поверх
-            const commit = (dx: number, dy: number) => {
-              const ax = Math.abs(dx), ay = Math.abs(dy)
-              if (ax < 9 && ay < 9) { enterFeed(); return }          // тап
-              if (dy < -44 && ay > ax) { enterFeed(); return }        // свайп вверх → лента
-              if (ax > 38 && ax >= ay && pages > 1) {                 // свайп вбок → листаем
-                const dir = dx < 0 ? 1 : -1
-                teaserDirRef.current = dir
-                setTeaserPage((p) => p + dir)
-              }
-            }
-            return (
-              <div
-                style={{ cursor: "pointer", userSelect: "none", touchAction: "none" }}
-                onPointerDown={(ev) => { teaserDragRef.current = { x: ev.clientX, y: ev.clientY, on: true }; try { (ev.currentTarget as HTMLElement).setPointerCapture(ev.pointerId) } catch { /* noop */ } }}
-                onPointerMove={(ev) => { const d = teaserDragRef.current; if (!d?.on) return; const dx = ev.clientX - d.x, dy = ev.clientY - d.y; if (Math.abs(dx) > Math.abs(dy)) setTeaserDX(dx) }}
-                onPointerUp={(ev) => { const d = teaserDragRef.current; teaserDragRef.current = null; setTeaserDX(0); if (d?.on) commit(ev.clientX - d.x, ev.clientY - d.y) }}
-                onPointerCancel={() => { teaserDragRef.current = null; setTeaserDX(0) }}
-              >
-                {teaser.length > 0 && (
-                  <div
-                    key={tp}
-                    style={{
-                      display: "flex",
-                      justifyContent: "center",
-                      alignItems: "flex-end",
-                      height: 92,
-                      pointerEvents: "none",
-                      transform: `translateX(${teaserDX * 0.55}px)`,
-                      transition: teaserDragRef.current?.on ? "none" : "transform 0.18s ease-out",
-                      animation: `${teaserDirRef.current < 0 ? "cs-teaser-inR" : "cs-teaser-inL"} 0.26s cubic-bezier(0.22,1,0.36,1) both`,
-                    }}
-                  >
-                    {teaser.map((e, i) => (
-                      <div
-                        key={e.id + ":" + i}
-                        style={{
-                          width: 76,
-                          height: 104,
-                          marginLeft: i ? -14 : 0,
-                          transform: `translateY(${LIFT[i] ?? 9}px) rotate(${ROT[i] ?? 0}deg)`,
-                          transformOrigin: "bottom center",
-                          zIndex: ZI[i] ?? 1,
-                          background: CS.W,
-                          border: `2px solid ${CS.K}`,
-                          boxShadow: "2.5px 2.5px 0 rgba(13,13,13,0.26)",
-                          overflow: "hidden",
-                          position: "relative",
-                          flexShrink: 0,
-                        }}
-                      >
-                        <img
-                          src={e.p as string}
-                          alt=""
-                          onError={(ev) => { (ev.currentTarget as HTMLImageElement).style.display = "none" }}
-                          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                        />
-                        <span style={{ position: "absolute", top: 4, left: 4, background: CS.K, color: "#fff", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 7, letterSpacing: "0.04em", padding: "1px 4px", textTransform: "uppercase", maxWidth: "86%", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{e.c}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <div style={{ position: "relative", zIndex: 6, marginTop: teaser.length ? -26 : 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "14px 18px", border: `3px solid ${CS.K}`, background: CS.K, color: "#fff", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 16, letterSpacing: "0.04em", textTransform: "uppercase", boxShadow: `4px 4px 0 ${CS.B}` }}>
-                  <span style={{ fontSize: 17, lineHeight: 1 }}>↑</span><span>Вся лента</span>
-                </div>
-                {pages > 1 && (
-                  <div style={{ marginTop: 6, display: "flex", justifyContent: "center", alignItems: "center", gap: 6, fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, letterSpacing: "0.08em", color: "rgba(13,13,13,0.55)", textTransform: "uppercase" }}>
-                    <span>← смахни карточки →</span>
-                  </div>
-                )}
+      {/* bottom — «тапни район» + тизер ленты. Карточки можно СПРЯТАТЬ свайпом
+          вниз (или ручкой), чтобы сидеть в карте; плашка «Вся лента» всегда
+          прижата к низу экрана (safe-area). Скрыт при открытом районе. */}
+      {!selZone && (() => {
+        const teaser = teaserPool.slice(0, 5)
+        const ROT = [-7, -3.5, 0, 3.5, 7]
+        const LIFT = [13, 5, 0, 5, 13] // arc: центр выше, края ниже
+        const ZI = [1, 2, 3, 2, 1] // центральная карточка поверх
+        const startDrag = (ev: ReactPointerEvent) => { teaserDragRef.current = { x: ev.clientX, y: ev.clientY, on: true }; try { (ev.currentTarget as HTMLElement).setPointerCapture(ev.pointerId) } catch { /* noop */ } }
+        const endDrag = (ev: ReactPointerEvent, onTap: () => void) => {
+          const d = teaserDragRef.current; teaserDragRef.current = null
+          if (!d?.on) return
+          const dx = ev.clientX - d.x, dy = ev.clientY - d.y, ax = Math.abs(dx), ay = Math.abs(dy)
+          if (ay > ax && ay > 28) { setTeaserHidden(dy > 0); return } // свайп вниз → спрятать, вверх → показать
+          if (ax < 10 && ay < 10) onTap()
+        }
+        return (
+          <div style={{ position: "absolute", left: 14, right: 14, bottom: "calc(env(safe-area-inset-bottom,0px) + 8px)", zIndex: 10, pointerEvents: "none" }}>
+            {/* верхняя группа (подсказка + карточки) — прячется свайпом вниз */}
+            <div
+              style={{
+                transform: teaserHidden ? "translateY(150%)" : "translateY(0)",
+                opacity: teaserHidden ? 0 : 1,
+                transition: "transform 0.34s cubic-bezier(0.22,1,0.36,1), opacity 0.24s ease",
+                pointerEvents: teaserHidden ? "none" : "auto",
+                touchAction: "none",
+                cursor: "pointer",
+                userSelect: "none",
+              }}
+              onPointerDown={startDrag}
+              onPointerUp={(ev) => endDrag(ev, enterFeed)}
+              onPointerCancel={() => { teaserDragRef.current = null }}
+            >
+              <div style={{ display: "flex", justifyContent: "center", marginBottom: 10, pointerEvents: "none" }}>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 7, background: CS.W, border: `2px solid ${CS.K}`, boxShadow: `2px 2px 0 ${CS.K}`, padding: "6px 11px", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 10, letterSpacing: "0.04em", color: CS.K, transform: "rotate(-0.8deg)" }}>
+                  <span style={{ width: 8, height: 8, background: CS.B, borderRadius: "50%" }} />тапни район на карте
+                </span>
               </div>
-            )
-          })()}
-        </div>
-      )}
+              {teaser.length > 0 && (
+                <div style={{ display: "flex", justifyContent: "center", alignItems: "flex-end", height: 92, marginBottom: -26, pointerEvents: "none" }}>
+                  {teaser.map((e, i) => (
+                    <div
+                      key={e.id + ":" + i}
+                      style={{ width: 76, height: 104, marginLeft: i ? -14 : 0, transform: `translateY(${LIFT[i] ?? 9}px) rotate(${ROT[i] ?? 0}deg)`, transformOrigin: "bottom center", zIndex: ZI[i] ?? 1, background: CS.W, border: `2px solid ${CS.K}`, boxShadow: "2.5px 2.5px 0 rgba(13,13,13,0.26)", overflow: "hidden", position: "relative", flexShrink: 0 }}
+                    >
+                      <img src={e.p as string} alt="" onError={(ev) => { (ev.currentTarget as HTMLImageElement).style.display = "none" }} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                      <span style={{ position: "absolute", top: 4, left: 4, background: CS.K, color: "#fff", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 7, letterSpacing: "0.04em", padding: "1px 4px", textTransform: "uppercase", maxWidth: "86%", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{e.c}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* плашка «Вся лента» — плавающая; сверху грабер-ручка: потяни её
+                (или карточки) ВНИЗ, чтобы спрятать афишу, и ВВЕРХ — чтобы вернуть
+                (тап по ручке тоже переключает). Тап по плашке — в ленту. */}
+            <div
+              style={{ position: "relative", pointerEvents: "auto", touchAction: "none", cursor: "pointer", userSelect: "none", border: `3px solid ${CS.K}`, background: CS.K, boxShadow: `4px 4px 0 ${CS.B}` }}
+              onPointerDown={startDrag}
+              onPointerUp={(ev) => endDrag(ev, () => {
+                if ((ev.target as HTMLElement)?.closest?.("[data-teaser-grip]")) setTeaserHidden((h) => !h)
+                else enterFeed()
+              })}
+              onPointerCancel={() => { teaserDragRef.current = null }}
+            >
+              {/* грабер-ручка (широкая зона тапа, тонкая линия внутри) */}
+              <div data-teaser-grip aria-label={teaserHidden ? "показать афишу" : "спрятать афишу"} style={{ position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", width: 78, height: 18, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2 }}>
+                <span style={{ width: 42, height: 4, background: "rgba(255,255,255,0.6)" }} />
+              </div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "19px 18px 15px", color: "#fff", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 16, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+                <span style={{ fontSize: 17, lineHeight: 1 }}>↑</span><span>Вся лента</span>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* district bottom-sheet — selected zone deck */}
       {selZone && deckEvents.length > 0 && (
