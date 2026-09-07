@@ -21,6 +21,30 @@ export const CS = {
   G35: "rgba(13,13,13,0.35)", G18: "rgba(13,13,13,0.18)",
 } as const
 
+// Родовые «венью»-слова (тип площадки, а не её имя) — в блоке «Место» НЕ
+// показываем: лучше без места, чем «кафедра»/«музей»/«пространство». Настоящее
+// имя приходит из gazetteer-площадки (venueInfo по venueKey), иначе — конкретное
+// имя из текста, если оно не голое тип-слово.
+export const GENERIC_VENUE = new Set([
+  "театр", "бар", "кафе", "ресторан", "клуб", "галерея", "галерее", "музей", "музее", "зал", "зале",
+  "сцена", "сцене", "аудитория", "аудитории", "площадка", "площадке", "пространство", "пространстве",
+  "центр", "центре", "дворец", "парк", "парке", "кинотеатр", "лекторий", "студия", "студии", "магазин",
+  "библиотека", "библиотеке", "коворкинг", "лофт", "веранда", "крыша", "двор", "дом", "доме", "храм",
+  "собор", "церковь", "мастерская", "мастерской", "отель", "хостел", "склад", "ангар", "завод", "фабрика",
+  "дк", "тц", "школа", "усадьба", "кафедра", "кафедре",
+])
+
+// «Место» для показа: имя gazetteer-площадки (venueKey) приоритетно; иначе имя
+// из текста (ev.v), но не голое тип-слово и не @-хендл. Пусто → блок не рисуем.
+export function venueLabel(ev: { venueKey?: string; v?: string | null }): string {
+  const vi = ev.venueKey ? venueInfo(ev.venueKey) : null
+  if (vi?.name) return vi.name
+  const raw = (ev.v || "").trim()
+  if (!raw || raw === "—" || raw.startsWith("@")) return ""
+  const norm = raw.toLowerCase().replace(/[«»"'.]/g, "").replace(/ё/g, "е").trim()
+  return GENERIC_VENUE.has(norm) ? "" : raw
+}
+
 
 export const FONT_SANS = "var(--cs-font-sans)"
 export const FONT_MONO = "var(--cs-font-mono)"
@@ -1010,7 +1034,7 @@ function EventSheet({ ev, onClose }: { ev: Ev | null; onClose: () => void }) {
                 location text. Sits right under the title so «где» is obvious. */}
             {(() => {
               const vi = venueInfo(ev.venueKey)
-              const name = vi?.name || (ev.v && ev.v !== "—" && !ev.v.startsWith("@") ? ev.v : "")
+              const name = venueLabel(ev)
               if (!name) return null
               const sub = vi ? [vi.kind, shortAddress(vi.address)].filter(Boolean).join(" · ") : ""
               return (
