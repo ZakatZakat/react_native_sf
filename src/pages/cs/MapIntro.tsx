@@ -31,16 +31,6 @@ const MSK: [number, number] = [37.62, 55.745]
 // глифа доминирующей категории на кластерах.
 const CAT_SYM: Record<string, string> = Object.fromEntries(INTERESTS.map((i) => [i.key, i.symbol]))
 
-/** Доминирующая крупная категория набора событий (для глифа кластера). */
-function domCat(members: Ev[]): string | null {
-  const counts = new Map<string, number>()
-  members.forEach((e) => { if (CAT_SYM[e.catKey]) counts.set(e.catKey, (counts.get(e.catKey) ?? 0) + 1) })
-  let best: string | null = null
-  let bn = 0
-  counts.forEach((n, k) => { if (n > bn) { bn = n; best = k } })
-  return best
-}
-
 // `ll` = real district centre (events are assigned to their true nearest
 // district by this). `dll` = display position — pulled ≈45% toward central
 // Moscow so far districts like Восток (Винзавод, 7+ km east) still sit in
@@ -210,7 +200,6 @@ function clusterFanEl(cl: Cluster, gi: number): HTMLElement {
     `<span class="cs-clu-card" style="--zr:${single ? 0 : (rots[i] || 0)}deg;--zz:${single ? 1 : i}"><img src="${esc(e.p as string)}" alt="" data-eid="${esc(e.id)}"/></span>`,
   ).join("")
   const { name } = clusterLabel(cl)
-  const dc = domCat(cl.members) // глиф доминирующей категории кластера
   const wrap = document.createElement("div")
   wrap.className = "cs-scatter-wrap"
   wrap.style.cssText = "display:flex;flex-direction:column;align-items:center;"
@@ -218,7 +207,7 @@ function clusterFanEl(cl: Cluster, gi: number): HTMLElement {
     `<div class="cs-clu${single ? " cs-clu-single" : ""}" style="--si:${gi}"><div class="cs-clu-fan">${thumbs}` +
     `<span class="cs-clu-num">${gi + 1}</span>` +
     `<span class="cs-clu-count">${cl.members.length}</span></div>` +
-    `<div class="cs-clu-name">${dc ? `<span style="font-weight:900;margin-right:3px">${CAT_SYM[dc]}</span>` : ""}${esc(name)}</div></div>`
+    `<div class="cs-clu-name">${esc(name)}</div></div>`
   // Битый постер (404) → прячем всю карточку, а не только <img> (иначе белый span).
   wrap.querySelectorAll("img").forEach((im) => im.addEventListener("error", () => {
     const card = (im.closest(".cs-clu-card") as HTMLElement | null) ?? (im as HTMLElement)
