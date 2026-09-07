@@ -259,7 +259,15 @@ async def webhook(
             await _send(token, chat_id, FEEDBACK_THANKS if ok else FEEDBACK_EMPTY)
         return Response(status_code=200)
 
+    # Catch-all: любой обычный текст в ЛС (не команда, не пустой) считаем отзывом
+    # и сохраняем в feedback_notes. Иначе фидбек теряется: люди отвечают на наши
+    # рассылки/пишут боту напрямую, а Telegram отдаёт апдейт webhook'у один раз.
+    # Только приватный чат — группы/каналы не трогаем.
     if not text.startswith("/"):
+        if text and chat.get("type") == "private":
+            await _upsert_subscriber(request, chat, None)  # освежить профиль
+            if await _save_feedback(request, chat, text):
+                await _send(token, chat_id, FEEDBACK_THANKS)
         return Response(status_code=200)
 
     # /start@BotName и /start deep_link → берём первое слово без @suffix
