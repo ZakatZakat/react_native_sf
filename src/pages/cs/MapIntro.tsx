@@ -1325,15 +1325,22 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
                       </div>
                     )
                   })()}
-                  <div style={{ padding: "0 12px 7px" }}>
+                  {/* Карточки мест с фото площадки (вместо списка), 4 на страницу
+                      — совпадают с пронумерованными пинами на карте. Тап → вглубь. */}
+                  <div style={{ display: "flex", gap: 6, padding: "0 12px 9px", overflowX: "auto", scrollbarWidth: "none" }} className="cs-catbar">
                     {shownCl.map(({ cl, gi }) => {
                       const { name } = clusterLabel(cl)
+                      const vk = cl.members[0]?.venueKey
+                      const vi = vk ? venueInfo(vk) : null
+                      const img = resolveMedia(vi?.img ?? undefined) || cl.members.find((e) => e.p)?.p || null
                       return (
-                        <button key={gi} onClick={() => setSelCluster(gi)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "3px 4px", background: "transparent", border: "none", borderTop: gi === start ? "none" : "1px solid rgba(13,13,13,0.1)", cursor: "pointer", textAlign: "left" }}>
-                          <span style={{ width: 16, height: 16, flexShrink: 0, background: CS.B, color: "#fff", borderRadius: 999, fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center" }}>{gi + 1}</span>
-                          <span style={{ flex: 1, minWidth: 0, fontWeight: 900, fontSize: 11, letterSpacing: "-0.01em", textTransform: "uppercase", color: CS.K, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
-                          <span style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 10.5, color: CS.B, flexShrink: 0 }}>{cl.members.length}</span>
-                          <span style={{ fontSize: 13, fontWeight: 900, color: CS.K, flexShrink: 0, marginLeft: 2 }}>→</span>
+                        <button key={gi} onClick={() => setSelCluster(gi)} style={{ flex: 1, minWidth: 78, maxWidth: 130, display: "flex", flexDirection: "column", padding: 0, border: `2px solid ${CS.K}`, background: CS.W, boxShadow: `2px 2px 0 ${CS.K}`, cursor: "pointer", textAlign: "left", overflow: "hidden" }}>
+                          <div style={{ position: "relative", width: "100%", height: 50, background: "rgba(0,85,255,0.5)", overflow: "hidden", borderBottom: `2px solid ${CS.K}` }}>
+                            {img && <img src={img} alt="" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none" }} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
+                            <span style={{ position: "absolute", top: 2, left: 2, minWidth: 14, height: 14, padding: "0 2px", background: CS.B, color: "#fff", border: `1.5px solid ${CS.K}`, fontFamily: FONT_MONO, fontWeight: 700, fontSize: 8.5, display: "flex", alignItems: "center", justifyContent: "center" }}>{gi + 1}</span>
+                            <span style={{ position: "absolute", top: 2, right: 2, background: CS.K, color: "#fff", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 8.5, padding: "1px 4px" }}>{cl.members.length}</span>
+                          </div>
+                          <span style={{ padding: "4px 5px 5px", fontWeight: 900, fontSize: 8.5, lineHeight: 1.15, letterSpacing: "-0.01em", textTransform: "uppercase", color: CS.K, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{name}</span>
                         </button>
                       )
                     })}
