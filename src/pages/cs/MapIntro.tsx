@@ -288,7 +288,7 @@ function placeCardHTML(vi: VenueInfo): string {
   // сырой "/media/venues/..." резолвился в текущий origin и на dev 404-ил.
   const img = resolveMedia(vi.img ?? undefined)
   return `<div class="cs-deck-place">` +
-    (img ? `<div class="cs-deck-place-img"><img class="cs-deck-place-bg" src="${esc(img)}" alt=""/><img class="cs-deck-place-fg" src="${esc(img)}" alt=""/></div>` : "") +
+    (img ? `<div class="cs-deck-place-img"><img src="${esc(img)}" alt=""/></div>` : "") +
     `<div class="cs-deck-place-body">` +
       `<div class="cs-deck-place-kind">место · ${esc(vi.kind)}</div>` +
       `<div class="cs-deck-place-name">${esc(vi.name)}</div>` +
