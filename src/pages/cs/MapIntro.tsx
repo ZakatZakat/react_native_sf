@@ -436,6 +436,12 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const [selPage, setSelPage] = useState(0)  // page within the opened district (Level 1)
   const [evIdx, setEvIdx] = useState(0)
   const evIdxRef = useRef(0); evIdxRef.current = evIdx
+  // Тизер ленты внизу карты: можно СМАХИВАТЬ карточки (листать события) и
+  // тянуть вверх / тапать, чтобы войти в ленту.
+  const [teaserPage, setTeaserPage] = useState(0)
+  const [teaserDX, setTeaserDX] = useState(0) // смещение при активном свайпе
+  const teaserDirRef = useRef(1)              // направление последнего свайпа (для слайд-анимации)
+  const teaserDragRef = useRef<{ x: number; y: number; on: boolean } | null>(null)
   const selZoneRef = useRef<string | null>(null); selZoneRef.current = selZone
   const selClusterRef = useRef<number | null>(null); selClusterRef.current = selCluster
   // Reset drill-down + page SYNCHRONOUSLY when the district changes — during
@@ -614,6 +620,14 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
     return INTERESTS.filter((i) => counts.has(i.key)).map((i) => ({ key: i.key, label: i.label, symbol: i.symbol, n: counts.get(i.key) as number }))
   }, [events, dateFilter, wins])
   const mappableTotal = useMemo(() => events.filter((e) => e.p && e.geo && inMoscow(e.geo[0], e.geo[1]) && inWindow(e.ts, dateFilter, wins)).length, [events, dateFilter, wins])
+  // Пул для свайпаемого тизера: события с постером, «разные категории впереди»
+  // (чтобы первая пятёрка не была одинаковой), затем остальные — листаем по кругу.
+  const teaserPool = useMemo(() => {
+    const withP = events.filter((e) => e.p)
+    const seen = new Set<string>(); const lead: Ev[] = []; const rest: Ev[] = []
+    for (const e of withP) { if (!seen.has(e.catKey)) { seen.add(e.catKey); lead.push(e) } else rest.push(e) }
+    return [...lead, ...rest]
+  }, [events])
   // окна дат, реально присутствующие на карте (+счётчики), в разрезе текущего
   // фильтра по категории — для строки фильтра «КОГДА»
   const dateChips = useMemo(() => {
@@ -995,7 +1009,9 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
 
   return (
     <div style={{ position: "absolute", inset: 0, zIndex: 50, background: "#E4E4E1", animation: "cs-mapintro-in 0.4s ease both", fontFamily: FONT_SANS }}>
-      <style>{`.cs-catbar::-webkit-scrollbar{display:none}`}</style>
+      <style>{`.cs-catbar::-webkit-scrollbar{display:none}
+        @keyframes cs-teaser-inL { from { opacity: 0; transform: translateX(56px) } to { opacity: 1; transform: translateX(0) } }
+        @keyframes cs-teaser-inR { from { opacity: 0; transform: translateX(-56px) } to { opacity: 1; transform: translateX(0) } }`}</style>
       {!failed && <div ref={boxRef} style={{ position: "absolute", inset: 0, isolation: "isolate", background: "#E4E4E1" }} />}
       {failed && <div style={{ position: "absolute", inset: 0, background: "linear-gradient(160deg,#16213a,#0d0d0d)" }} />}
 
@@ -1138,27 +1154,52 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
             </span>
           </div>
           {/* Тизер ленты: карточки событий «выглядывают» из плашки — сразу
-              видно, как выглядит лента, и что туда можно перейти и выбирать
-              (реальные постеры из ленты). */}
+              видно, как выглядит лента. Их можно СМАХИВАТЬ (листать события ←→),
+              а тап / свайп вверх — войти в ленту. */}
           {(() => {
-            // до 5 карточек РАЗНЫХ категорий (чтобы тизер выглядел как
-            // разнообразная лента, а не пять одинаковых выставок), добираем
-            // остальными при нехватке
-            const withP = events.filter((e) => e.p)
-            const seenCat = new Set<string>()
+            const N = 5
+            const pages = Math.max(1, Math.ceil(teaserPool.length / N))
+            const tp = ((teaserPage % pages) + pages) % pages
             const teaser: Ev[] = []
-            for (const e of withP) { if (!seenCat.has(e.catKey)) { seenCat.add(e.catKey); teaser.push(e); if (teaser.length >= 5) break } }
-            for (const e of withP) { if (teaser.length >= 5) break; if (!teaser.includes(e)) teaser.push(e) }
+            for (let i = 0; i < Math.min(N, teaserPool.length); i++) teaser.push(teaserPool[(tp * N + i) % teaserPool.length])
             const ROT = [-7, -3.5, 0, 3.5, 7]
             const LIFT = [13, 5, 0, 5, 13] // arc: центр выше, края ниже
             const ZI = [1, 2, 3, 2, 1] // центральная карточка поверх
+            const commit = (dx: number, dy: number) => {
+              const ax = Math.abs(dx), ay = Math.abs(dy)
+              if (ax < 9 && ay < 9) { enterFeed(); return }          // тап
+              if (dy < -44 && ay > ax) { enterFeed(); return }        // свайп вверх → лента
+              if (ax > 38 && ax >= ay && pages > 1) {                 // свайп вбок → листаем
+                const dir = dx < 0 ? 1 : -1
+                teaserDirRef.current = dir
+                setTeaserPage((p) => p + dir)
+              }
+            }
             return (
-              <div onClick={enterFeed} style={{ cursor: "pointer", userSelect: "none" }}>
+              <div
+                style={{ cursor: "pointer", userSelect: "none", touchAction: "none" }}
+                onPointerDown={(ev) => { teaserDragRef.current = { x: ev.clientX, y: ev.clientY, on: true }; try { (ev.currentTarget as HTMLElement).setPointerCapture(ev.pointerId) } catch { /* noop */ } }}
+                onPointerMove={(ev) => { const d = teaserDragRef.current; if (!d?.on) return; const dx = ev.clientX - d.x, dy = ev.clientY - d.y; if (Math.abs(dx) > Math.abs(dy)) setTeaserDX(dx) }}
+                onPointerUp={(ev) => { const d = teaserDragRef.current; teaserDragRef.current = null; setTeaserDX(0); if (d?.on) commit(ev.clientX - d.x, ev.clientY - d.y) }}
+                onPointerCancel={() => { teaserDragRef.current = null; setTeaserDX(0) }}
+              >
                 {teaser.length > 0 && (
-                  <div style={{ display: "flex", justifyContent: "center", alignItems: "flex-end", height: 92, pointerEvents: "none" }}>
+                  <div
+                    key={tp}
+                    style={{
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "flex-end",
+                      height: 92,
+                      pointerEvents: "none",
+                      transform: `translateX(${teaserDX * 0.55}px)`,
+                      transition: teaserDragRef.current?.on ? "none" : "transform 0.18s ease-out",
+                      animation: `${teaserDirRef.current < 0 ? "cs-teaser-inR" : "cs-teaser-inL"} 0.26s cubic-bezier(0.22,1,0.36,1) both`,
+                    }}
+                  >
                     {teaser.map((e, i) => (
                       <div
-                        key={e.id}
+                        key={e.id + ":" + i}
                         style={{
                           width: 76,
                           height: 104,
@@ -1188,6 +1229,11 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
                 <div style={{ position: "relative", zIndex: 6, marginTop: teaser.length ? -26 : 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "14px 18px", border: `3px solid ${CS.K}`, background: CS.K, color: "#fff", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 16, letterSpacing: "0.04em", textTransform: "uppercase", boxShadow: `4px 4px 0 ${CS.B}` }}>
                   <span style={{ fontSize: 17, lineHeight: 1 }}>↑</span><span>Вся лента</span>
                 </div>
+                {pages > 1 && (
+                  <div style={{ marginTop: 6, display: "flex", justifyContent: "center", alignItems: "center", gap: 6, fontFamily: FONT_MONO, fontWeight: 700, fontSize: 9, letterSpacing: "0.08em", color: "rgba(13,13,13,0.55)", textTransform: "uppercase" }}>
+                    <span>← смахни карточки →</span>
+                  </div>
+                )}
               </div>
             )
           })()}
