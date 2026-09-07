@@ -1137,9 +1137,60 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
               <span style={{ width: 8, height: 8, background: CS.B, borderRadius: "50%" }} />тапни район на карте
             </span>
           </div>
-          <button onClick={enterFeed} style={{ width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "16px 18px", border: `3px solid ${CS.K}`, background: CS.K, color: "#fff", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 16, letterSpacing: "0.04em", textTransform: "uppercase", boxShadow: `4px 4px 0 ${CS.B}` }}>
-            <span>Вся лента</span><span style={{ fontSize: 19, lineHeight: 1 }}>→</span>
-          </button>
+          {/* Тизер ленты: карточки событий «выглядывают» из плашки — сразу
+              видно, как выглядит лента, и что туда можно перейти и выбирать
+              (реальные постеры из ленты). */}
+          {(() => {
+            // до 5 карточек РАЗНЫХ категорий (чтобы тизер выглядел как
+            // разнообразная лента, а не пять одинаковых выставок), добираем
+            // остальными при нехватке
+            const withP = events.filter((e) => e.p)
+            const seenCat = new Set<string>()
+            const teaser: Ev[] = []
+            for (const e of withP) { if (!seenCat.has(e.catKey)) { seenCat.add(e.catKey); teaser.push(e); if (teaser.length >= 5) break } }
+            for (const e of withP) { if (teaser.length >= 5) break; if (!teaser.includes(e)) teaser.push(e) }
+            const ROT = [-7, -3.5, 0, 3.5, 7]
+            const LIFT = [13, 5, 0, 5, 13] // arc: центр выше, края ниже
+            const ZI = [1, 2, 3, 2, 1] // центральная карточка поверх
+            return (
+              <div onClick={enterFeed} style={{ cursor: "pointer", userSelect: "none" }}>
+                {teaser.length > 0 && (
+                  <div style={{ display: "flex", justifyContent: "center", alignItems: "flex-end", height: 92, pointerEvents: "none" }}>
+                    {teaser.map((e, i) => (
+                      <div
+                        key={e.id}
+                        style={{
+                          width: 76,
+                          height: 104,
+                          marginLeft: i ? -14 : 0,
+                          transform: `translateY(${LIFT[i] ?? 9}px) rotate(${ROT[i] ?? 0}deg)`,
+                          transformOrigin: "bottom center",
+                          zIndex: ZI[i] ?? 1,
+                          background: CS.W,
+                          border: `2px solid ${CS.K}`,
+                          boxShadow: "2.5px 2.5px 0 rgba(13,13,13,0.26)",
+                          overflow: "hidden",
+                          position: "relative",
+                          flexShrink: 0,
+                        }}
+                      >
+                        <img
+                          src={e.p as string}
+                          alt=""
+                          onError={(ev) => { (ev.currentTarget as HTMLImageElement).style.display = "none" }}
+                          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                        />
+                        <span style={{ position: "absolute", top: 4, left: 4, background: CS.K, color: "#fff", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 7, letterSpacing: "0.04em", padding: "1px 4px", textTransform: "uppercase", maxWidth: "86%", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{e.c}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div style={{ position: "relative", zIndex: 6, marginTop: teaser.length ? -26 : 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "14px 18px", border: `3px solid ${CS.K}`, background: CS.K, color: "#fff", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 16, letterSpacing: "0.04em", textTransform: "uppercase", boxShadow: `4px 4px 0 ${CS.B}` }}>
+                  <span style={{ fontSize: 17, lineHeight: 1 }}>↑</span><span>Вся лента</span>
+                </div>
+              </div>
+            )
+          })()}
         </div>
       )}
 
