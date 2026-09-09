@@ -182,6 +182,7 @@ const KEYFRAMES = `
   @keyframes cs-burst-in { 0% { opacity: 0; transform: scale(0.3); } 100% { opacity: 1; transform: scale(1); } }
   /* ── v7 sys-fan (hybrid): cluster fans + polaroid drill-down ── */
   @keyframes cs-soft-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+  @keyframes cs-teaser-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
   .cs-clu { position: relative; display: flex; flex-direction: column; align-items: center; cursor: pointer; animation: cs-scatter-in 0.4s cubic-bezier(0.22,1,0.36,1) both; animation-delay: calc(var(--si,0) * 0.07s); }
   .cs-clu-fan { position: relative; width: 78px; height: 64px; animation: cs-soft-bob calc(3.4s + var(--si,0) * 0.5s) ease-in-out infinite; }
   .cs-clu-card { position: absolute; left: 50%; top: 50%; box-sizing: border-box; width: 44px; height: 54px; margin: -27px 0 0 -22px; border: 2px solid #0D0D0D; background: #fff; overflow: hidden; box-shadow: 2px 2px 0 rgba(13,13,13,0.5); transform: translateX(calc((var(--zz) - 1) * 12px)) rotate(var(--zr)); z-index: calc(4 - var(--zz)); transition: transform 0.24s cubic-bezier(0.22,1,0.36,1); }

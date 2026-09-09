@@ -1264,12 +1264,17 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
               {teaser.length > 0 && (
                 <div style={{ display: "flex", justifyContent: "center", alignItems: "flex-end", height: 92, marginBottom: -26, pointerEvents: "none" }}>
                   {teaser.map((e, i) => (
+                    // Внешний div держит позицию/наклон (статично), внутренний —
+                    // лёгкое «парение» (cs-teaser-float), у каждого свой сдвиг фазы,
+                    // чтобы карточки покачивались вразнобой, а не синхронно.
                     <div
                       key={e.id + ":" + i}
-                      style={{ width: 76, height: 104, marginLeft: i ? -14 : 0, transform: `translateY(${LIFT[i] ?? 9}px) rotate(${ROT[i] ?? 0}deg)`, transformOrigin: "bottom center", zIndex: ZI[i] ?? 1, background: CS.W, border: `2px solid ${CS.K}`, boxShadow: "2.5px 2.5px 0 rgba(13,13,13,0.26)", overflow: "hidden", position: "relative", flexShrink: 0 }}
+                      style={{ marginLeft: i ? -14 : 0, transform: `translateY(${LIFT[i] ?? 9}px) rotate(${ROT[i] ?? 0}deg)`, transformOrigin: "bottom center", zIndex: ZI[i] ?? 1, flexShrink: 0 }}
                     >
-                      <img src={e.p as string} alt="" onError={(ev) => { (ev.currentTarget as HTMLImageElement).style.display = "none" }} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                      <span style={{ position: "absolute", top: 4, left: 4, background: CS.K, color: "#fff", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 7, letterSpacing: "0.04em", padding: "1px 4px", textTransform: "uppercase", maxWidth: "86%", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{e.c}</span>
+                      <div style={{ width: 76, height: 104, background: CS.W, border: `2px solid ${CS.K}`, boxShadow: "2.5px 2.5px 0 rgba(13,13,13,0.26)", overflow: "hidden", position: "relative", animation: `cs-teaser-float ${(3.1 + i * 0.28).toFixed(2)}s ease-in-out ${(i * 0.34).toFixed(2)}s infinite` }}>
+                        <img src={e.p as string} alt="" onError={(ev) => { (ev.currentTarget as HTMLImageElement).style.display = "none" }} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                        <span style={{ position: "absolute", top: 4, left: 4, background: CS.K, color: "#fff", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 7, letterSpacing: "0.04em", padding: "1px 4px", textTransform: "uppercase", maxWidth: "86%", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{e.c}</span>
+                      </div>
                     </div>
                   ))}
                 </div>
