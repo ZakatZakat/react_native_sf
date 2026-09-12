@@ -670,9 +670,13 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
   }, [mainE, editorialIds])
   const usingReco = heroPicks.length > 0
   const heroSource = usingReco ? heroPicks : heroPool
-  // Листается стрелками (heroIdx). Пока рекомендации не загружены — героя нет
-  // (heroN=0), чтобы не мелькнуло алгоритмическое событие до подмены на пик.
-  const heroN = recosReady ? Math.min(heroSource.length, 8) : 0
+  // Листается стрелками (heroIdx). Героя показываем, только когда решено, что в
+  // нём: есть пики в ленте → пики; ИЛИ рекомендации загружены и (матчей нет вовсе
+  // ИЛИ лента уже пришла — значит алгоритмический откат правомерен). Иначе (пики
+  // ждём, лента ещё грузится) — героя нет, чтобы не мелькнуло чужое событие.
+  const hasEditorial = editorialIds.length > 0
+  const heroReady = usingReco || (recosReady && (!hasEditorial || mainE.length > 0))
+  const heroN = heroReady ? Math.min(heroSource.length, 8) : 0
   const heroCur = heroN ? (((heroIdx % heroN) + heroN) % heroN) : 0
   const hero = heroN ? heroSource[heroCur] : undefined
   const rest = mainE.filter((e) => e !== hero)
