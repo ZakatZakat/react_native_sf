@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState } from "react"
 import { useLocation, useNavigate } from "@tanstack/react-router"
 import { CS, SK, FONT_SANS, FONT_MONO, ScreenBG } from "./shared"
 import { Curator, type WallPost } from "../../lib/curator"
+import { openTelegram } from "../../lib/telegram"
 import { analytics } from "../../lib/analytics"
 
 function fmtWhen(iso: string | null): string {
@@ -42,7 +43,7 @@ function WallCard({ p, i }: { p: WallPost; i: number }) {
   const text = (p.text || "").replace(/\n{3,}/g, "\n\n").trim()
   const open = () => {
     analytics.track("cs.wall.open", { channel: p.channel, post: p.post })
-    window.open(p.url, "_blank", "noopener")
+    openTelegram(p.url)  // в мини-аппе — через Telegram-клиент, в вебе — новая вкладка
   }
   // альтернируем цвет тени для скрапбук-ощущения
   const shadow = i % 3 === 0 ? CS.B : SK.ink
@@ -119,7 +120,7 @@ export default function CsRecommendations() {
           <span style={{ fontFamily: FONT_MONO, fontSize: 11, color: "#fff", background: CS.B, border: `1.5px solid ${SK.ink}`, padding: "4px 8px", fontWeight: 700, letterSpacing: "0.04em", marginBottom: 6 }}>живая лента</span>
         </div>
         <div style={{ fontFamily: FONT_MONO, fontSize: 12, color: "rgba(13,13,13,0.62)", letterSpacing: "0.02em", marginBottom: 22 }}>
-          что пишут авторские каналы москвы — рецензии, вайбы, находки{items && authors ? ` · ${authors} автор.` : ""}
+          что пишут авторские каналы москвы — рецензии, вайбы, находки{items && authors ? ` · ${authors} каналов` : ""}
         </div>
 
         {items === null && !err && <div style={{ fontFamily: FONT_MONO, fontSize: 13, color: "rgba(13,13,13,0.55)", padding: "70px 0", textAlign: "center" }}>собираем голоса…</div>}
@@ -127,7 +128,7 @@ export default function CsRecommendations() {
         {items && items.length === 0 && <div style={{ fontFamily: FONT_MONO, fontSize: 13, color: "rgba(13,13,13,0.55)", padding: "70px 0", textAlign: "center" }}>пока тихо</div>}
 
         {items && items.length > 0 && (
-          <div style={{ columnWidth: 172, columnGap: 13 } as React.CSSProperties}>
+          <div style={{ columnWidth: 158, columnGap: 12 } as React.CSSProperties}>
             {items.map((p, i) => <WallCard key={p.post} p={p} i={i} />)}
           </div>
         )}
