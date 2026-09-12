@@ -553,5 +553,8 @@ class RecommendationEvent(Base):
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     cover_url: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
     category: Mapped[Optional[str]] = mapped_column(String(48), nullable=True)
+    # id события ленты (events_curated), с которым сматчен пик — если найден, метка
+    # «выбор редакции» вешается на существующее событие (его постер/карточка).
+    matched_event_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     published_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=False), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), default=datetime.utcnow, nullable=False)

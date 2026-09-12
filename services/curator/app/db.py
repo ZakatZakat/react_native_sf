@@ -50,6 +50,9 @@ _ADDITIVE_MIGRATIONS: list[str] = [
     'CREATE INDEX IF NOT EXISTS ix_events_dup_group ON "{s}".events_curated (dup_group_id)',
     'CREATE INDEX IF NOT EXISTS ix_events_dup_override ON "{s}".events_curated (dup_override_group)',
     'ALTER TABLE "{s}".reminders ADD COLUMN IF NOT EXISTS when_text varchar(80)',
+    # recommendations: id события ленты (events_curated), с которым сматчен пик
+    # дайджеста — «выбор редакции» подсвечивает существующее событие (его постер).
+    'ALTER TABLE "{s}".recommendations ADD COLUMN IF NOT EXISTS matched_event_id varchar(64)',
 ]
 
 

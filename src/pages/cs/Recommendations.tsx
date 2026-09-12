@@ -85,10 +85,7 @@ export default function CsRecommendations() {
           <span style={{ fontSize: 16, lineHeight: 1 }}>←</span> к афише
         </button>
 
-        <h1 style={{ fontWeight: 900, fontSize: "clamp(29px, 8.4vw, 40px)", lineHeight: 1.0, letterSpacing: "-0.03em", textTransform: "uppercase", margin: "22px 0 4px" }}>Рекомендации</h1>
-        <div style={{ fontFamily: FONT_MONO, fontSize: 12, color: "rgba(13,13,13,0.6)", letterSpacing: "0.03em", marginBottom: 26 }}>
-          Выбор редакции «Первого ночного» — выставки и тусовки недели
-        </div>
+        <h1 style={{ fontWeight: 900, fontSize: "clamp(29px, 8.4vw, 40px)", lineHeight: 1.0, letterSpacing: "-0.03em", textTransform: "uppercase", margin: "22px 0 26px" }}>Рекомендации</h1>
 
         {items === null && !err && <div style={{ fontFamily: FONT_MONO, fontSize: 13, color: "rgba(13,13,13,0.55)", padding: "60px 0", textAlign: "center" }}>загружаем…</div>}
         {err && <div style={{ fontFamily: FONT_MONO, fontSize: 13, color: "rgba(13,13,13,0.55)", padding: "60px 0", textAlign: "center" }}>не удалось загрузить</div>}

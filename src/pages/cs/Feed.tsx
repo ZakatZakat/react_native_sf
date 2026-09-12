@@ -254,37 +254,9 @@ function BoardLead({ ev }: { ev: Ev }) {
   )
 }
 
-/** Hero card variant for a редакторский пик из дайджеста (таблица recommendations).
- *  Тот же силуэт, что BoardLead, но данные — из Recommendation (постер = обложка
- *  из статьи Teletype), а тап ведёт в раздел «Рекомендации», а не в модалку. */
-function RecoLead({ r, onOpen }: { r: Recommendation; onOpen: () => void }) {
-  const when = r.date_text || ""
-  const len = (r.title || "").length
-  const fs = len <= 20 ? 27 : len <= 34 ? 22 : len <= 52 ? 18 : len <= 74 ? 15 : 13
-  return (
-    <div onClick={onOpen} style={{ display: "flex", alignItems: "stretch", gap: 12, background: SK.paper, border: `2px solid ${SK.ink}`, boxShadow: `4px 4px 0 ${SK.ink}`, padding: 8, cursor: "pointer", animation: "sk-refresh 0.5s cubic-bezier(0.22,1,0.36,1) both" }}>
-      {r.cover && <img src={r.cover} alt="" draggable={false} style={{ display: "block", flexShrink: 0, alignSelf: "center", width: 132, height: 152, objectFit: "cover", border: `1.5px solid ${SK.ink}` }} />}
-      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 8 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-          {r.category ? <CatChip c={r.category} dark /> : <span />}
-          <Lbl size={8} style={{ letterSpacing: "0.2em" }}>выбор редакции</Lbl>
-        </div>
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", minHeight: 0 }}>
-          <div style={{ fontWeight: 900, fontSize: fs, letterSpacing: "-0.03em", lineHeight: 1.02, color: SK.ink, textTransform: "uppercase", overflowWrap: "break-word", textWrap: "balance", display: "-webkit-box", WebkitLineClamp: 5, WebkitBoxOrient: "vertical", overflow: "hidden" } as React.CSSProperties}>{r.title}</div>
-          {r.description && <div style={{ fontFamily: FONT_SANS, fontWeight: 500, fontSize: 11, color: SK.ink55, marginTop: 4, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" } as React.CSSProperties}>{r.description}</div>}
-        </div>
-        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8 }}>
-          <div style={{ fontFamily: FONT_MONO, fontSize: 9.5, letterSpacing: "0.04em", color: SK.ink, lineHeight: 1.5, minWidth: 0, overflow: "hidden" }}>{r.venue}{when ? <><br />{when}</> : null}</div>
-          <span style={{ fontFamily: FONT_MONO, fontSize: 9, letterSpacing: "0.06em", color: CS.B, fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0 }}>к подборке →</span>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 /** Catalog card — one bordered component: framed poster (date badge) + a
  *  distinct footer block (meta · full title · venue · description). */
-function MosaicCard({ ev, i, onImg, onBroken }: { ev: Ev; i: number; onImg?: () => void; onBroken?: (id: string) => void }) {
+function MosaicCard({ ev, i, onImg, onBroken, pick = false }: { ev: Ev; i: number; onImg?: () => void; onBroken?: (id: string) => void; pick?: boolean }) {
   const open = useOpenEvent()
   // Poster failed to load (0-byte/404/corrupt) — a mosaic card is poster-first,
   // so drop the whole card rather than show a broken «?» tile. CSS columns reflow
@@ -365,6 +337,11 @@ function MosaicCard({ ev, i, onImg, onBroken }: { ev: Ev; i: number; onImg?: () 
                   {showNew && !cs && (
                     <span style={{ position: "absolute", top: 8, left: 8, background: CS.B, color: "#fff", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 9, letterSpacing: "0.06em", textTransform: "uppercase", padding: "4px 7px", border: `1.5px solid ${SK.ink}`, boxShadow: `1.5px 1.5px 0 ${SK.ink}`, lineHeight: 1 }}>Новое</span>
                   )}
+                  {/* «выбор редакции» — событие из дайджеста «Первого ночного»;
+                      bottom-left, чёрная плашка со звездой (не конфликтует с датой). */}
+                  {pick && (
+                    <span style={{ position: "absolute", bottom: 8, left: 8, display: "inline-flex", alignItems: "center", gap: 3, background: SK.ink, color: "#fff", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 8.5, letterSpacing: "0.07em", textTransform: "uppercase", padding: "4px 7px", border: `1.5px solid ${SK.ink}`, boxShadow: `1.5px 1.5px 0 ${CS.B}`, lineHeight: 1 }}><span style={{ color: CS.B }}>★</span> выбор редакции</span>
+                  )}
                 </>
               )
             })()}
@@ -400,7 +377,7 @@ function MosaicCard({ ev, i, onImg, onBroken }: { ev: Ev; i: number; onImg?: () 
   )
 }
 
-function MosaicGrid({ events }: { events: Ev[] }) {
+function MosaicGrid({ events, picks }: { events: Ev[]; picks?: Set<string> }) {
   // Height-aware 2-column masonry. Each card is measured and placed into the
   // currently-SHORTER column (greedy) — so uneven poster heights don't leave a
   // big empty gap the way CSS `column-count` did (its heuristic balance made a
@@ -478,7 +455,7 @@ function MosaicGrid({ events }: { events: Ev[] }) {
           ref={(el) => { cardRefs.current[i] = el }}
           style={{ position: "absolute", left: 0, top: 0, width: layout.pos[i]?.w ?? "calc(50% - 7px)", transform: `translate(${layout.pos[i]?.x ?? 0}px, ${layout.pos[i]?.y ?? 0}px)`, transition: layout.anim ? "transform 0.22s cubic-bezier(0.22,1,0.36,1)" : "none" }}
         >
-          <MosaicCard ev={e} i={i} onImg={scheduleRelayout} onBroken={markBroken} />
+          <MosaicCard ev={e} i={i} onImg={scheduleRelayout} onBroken={markBroken} pick={picks?.has(e.id)} />
         </div>
       ))}
     </div>
@@ -646,15 +623,26 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
   const [sweep, setSweep] = useState(0)
   const [searchOpen, setSearchOpen] = useState(false)
   const [heroIdx, setHeroIdx] = useState(0)  // «выбор недели»: индекс листаемого кандидата (стрелки ‹ ›)
-  // Редакторские пики из дайджестов «Первого ночного» (таблица recommendations):
-  // именно они наполняют «выбор недели». Берём только с постером — герой всегда
-  // с картинкой. Если дайджестов нет — откат на алгоритмический heroPool ниже.
+  // Редакторские пики из дайджестов «Первого ночного» (таблица recommendations)
+  // ПОДСВЕЧИВАЮТ уже существующие события ленты: matched_event_id = id события в
+  // нашей афише. «Выбор недели» = эти сматченные события (их реальные постеры и
+  // карточки). Пока не загрузились — героя не показываем (без мелькания). Нет
+  // сматченных — откат на алгоритмический heroPool.
   const [recos, setRecos] = useState<Recommendation[]>([])
+  const [recosReady, setRecosReady] = useState(false)
   useEffect(() => {
-    Curator.recommendations(60).then((r) => setRecos(r.items || [])).catch(() => { /* нет — откат на алгоритм */ })
+    Curator.recommendations(80)
+      .then((r) => setRecos(r.items || []))
+      .catch(() => { /* нет — откат на алгоритм */ })
+      .finally(() => setRecosReady(true))
   }, [])
-  const recoHero = useMemo(() => recos.filter((r) => r.cover).slice(0, 8), [recos])
-  const usingReco = recoHero.length > 0
+  // id событий-пиков в порядке свежести дайджеста (recos уже published_at desc)
+  const editorialIds = useMemo(() => {
+    const seen = new Set<string>(); const ids: string[] = []
+    for (const r of recos) { const m = r.matched_event_id; if (m && !seen.has(m)) { seen.add(m); ids.push(m) } }
+    return ids
+  }, [recos])
+  const editorialSet = useMemo(() => new Set(editorialIds), [editorialIds])
   // Full upcoming catalog (already future-filtered + chronological upstream).
   const E = useMemo(() => feed.filter((e) => e && !e.id.startsWith("__placeholder")), [feed])
   // Полка «для знатока» убрана — insider-контент (закрытые/пресс/VIP-показы,
@@ -674,12 +662,19 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
       return (a.ts ?? Infinity) - (b.ts ?? Infinity) // при равной доступности — раньше
     })
   }, [mainE])
-  // «Выбор недели» листается стрелками (heroIdx) по топ-N кандидатам того же
-  // heroPool (доступность / близость даты). refresh тоже сдвигает.
-  const heroN = usingReco ? recoHero.length : Math.min(heroPool.length, 8)
+  // «выбор недели» = сматченные события-пики (реальные карточки/постеры ленты),
+  // в порядке свежести дайджеста. Нет пиков в текущей ленте — алгоритмический пул.
+  const heroPicks = useMemo(() => {
+    const byId = new Map(mainE.map((e) => [e.id, e]))
+    return editorialIds.map((id) => byId.get(id)).filter(Boolean) as Ev[]
+  }, [mainE, editorialIds])
+  const usingReco = heroPicks.length > 0
+  const heroSource = usingReco ? heroPicks : heroPool
+  // Листается стрелками (heroIdx). Пока рекомендации не загружены — героя нет
+  // (heroN=0), чтобы не мелькнуло алгоритмическое событие до подмены на пик.
+  const heroN = recosReady ? Math.min(heroSource.length, 8) : 0
   const heroCur = heroN ? (((heroIdx % heroN) + heroN) % heroN) : 0
-  const hero = usingReco ? undefined : (heroN ? heroPool[heroCur] : undefined)
-  const recoHeroCur = usingReco && heroN ? recoHero[heroCur] : undefined
+  const hero = heroN ? heroSource[heroCur] : undefined
   const rest = mainE.filter((e) => e !== hero)
   const refresh = () => { setNonce((n) => n + 1); setSweep((s) => s + 360); setHeroIdx((i) => i + 1) }
   // Category filter — applies ONLY to the «Каталог» grid; «выбор недели» stays.
@@ -846,30 +841,34 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
         {/* hero re-animates only on refresh (nonce → new heroIdx); a category
             tap must not remount it. The catalog keys on the filter too, so its
             stagger replays when the visible set changes. */}
-        {/* «выбор недели» + листание: стрелки ‹ N/M › крутят топ-кандидатов */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "24px 0 14px" }}>
-          <Lbl size={9} style={{ letterSpacing: "0.24em" }}>выбор недели</Lbl>
-          <div style={{ flex: 1, height: 2, background: SK.ink }} />
-          {heroN > 1 && (
-            <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-              <button onClick={() => setHeroIdx((i) => i - 1)} aria-label="Предыдущий вариант" style={HERO_ARROW}>‹</button>
-              <span style={{ fontFamily: FONT_MONO, fontSize: 9, letterSpacing: "0.06em", color: SK.ink55, minWidth: 30, textAlign: "center" }}>{heroCur + 1}/{heroN}</span>
-              <button onClick={() => setHeroIdx((i) => i + 1)} aria-label="Следующий вариант" style={HERO_ARROW}>›</button>
+        {/* «выбор недели» + листание: стрелки ‹ N/M › крутят пики (сматченные с
+            дайджестами события ленты; нет пиков — алгоритмический топ). Секцию не
+            рендерим, пока не решили, что показать (нет мелькания). */}
+        {hero && (
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "24px 0 14px" }}>
+              <Lbl size={9} style={{ letterSpacing: "0.24em" }}>выбор недели</Lbl>
+              <div style={{ flex: 1, height: 2, background: SK.ink }} />
+              {heroN > 1 && (
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                  <button onClick={() => setHeroIdx((i) => i - 1)} aria-label="Предыдущий вариант" style={HERO_ARROW}>‹</button>
+                  <span style={{ fontFamily: FONT_MONO, fontSize: 9, letterSpacing: "0.06em", color: SK.ink55, minWidth: 30, textAlign: "center" }}>{heroCur + 1}/{heroN}</span>
+                  <button onClick={() => setHeroIdx((i) => i + 1)} aria-label="Следующий вариант" style={HERO_ARROW}>›</button>
+                </div>
+              )}
             </div>
-          )}
-        </div>
-        {recoHeroCur
-          ? <div key={`rhero-${heroCur}`}><RecoLead r={recoHeroCur} onOpen={() => { analytics.track("cs.reco.enter", { from: "hero" }); navigate({ to: "/cs/recommendations" }) }} /></div>
-          : hero && <div key={`hero-${heroCur}`}><BoardLead ev={hero} /></div>}
+            <div key={`hero-${hero.id}-${heroCur}`}><BoardLead ev={hero} /></div>
+          </>
+        )}
         {showClosing && (
           <>
             <SectionLabel>последний шанс · закрывается скоро</SectionLabel>
-            <div key={`closing-${closing.length}`}><MosaicGrid events={closing} /></div>
+            <div key={`closing-${closing.length}`}><MosaicGrid events={closing} picks={editorialSet} /></div>
           </>
         )}
         <SectionLabel>каталог</SectionLabel>
         {catalog.length > 0 ? (
-          <div key={`${nonce}-${cat}-${tag ?? ""}-${access ?? ""}`}><MosaicGrid events={catalog} /></div>
+          <div key={`${nonce}-${cat}-${tag ?? ""}-${access ?? ""}`}><MosaicGrid events={catalog} picks={editorialSet} /></div>
         ) : (
           <div style={{ fontFamily: FONT_MONO, fontSize: 11, color: SK.ink55, letterSpacing: "0.04em", padding: "10px 2px 4px" }}>
             {access ? "по этому фильтру пусто" : cat === "Все" ? "событий пока нет" : `в категории «${cat.toLowerCase()}» пока пусто`}

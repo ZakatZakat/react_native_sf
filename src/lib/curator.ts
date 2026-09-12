@@ -180,6 +180,7 @@ export type Recommendation = {
   description: string | null
   cover: string | null
   category: string | null
+  matched_event_id: string | null // id события ленты, если пик сматчен (метка «выбор редакции»)
   digest_title: string | null // из какой подборки
   digest_url: string          // ссылка на статью-дайджест (Teletype)
   source: string              // @napervom

@@ -65,6 +65,7 @@ async def list_recommendations(
         "description": r.description,
         "cover": r.cover_url,
         "category": r.category,
+        "matched_event_id": r.matched_event_id,
         "digest_title": r.digest_title,
         "digest_url": r.digest_url,
         "source": r.source_channel,
@@ -126,6 +127,36 @@ async def set_covers(
                 update(RecommendationEvent)
                 .where(RecommendationEvent.id == it.id)
                 .values(cover_url=it.cover_url)
+            )
+            updated += res.rowcount or 0
+    return {"updated": updated, "received": len(body.items)}
+
+
+# ── POST: привязать пики к событиям ленты (events_curated) ───────────
+# «Выбор редакции» подсвечивает СУЩЕСТВУЮЩЕЕ событие ленты (его постер/карточку),
+# а не дубль-карточку из статьи. Матчинг делает внешний прогон (семантика + verify).
+class MatchItem(BaseModel):
+    id: int
+    matched_event_id: Optional[str] = None   # null → снять привязку
+
+
+class MatchBody(BaseModel):
+    items: list[MatchItem]
+
+
+@router.post("/matches")
+async def set_matches(
+    body: MatchBody,
+    _admin: int = Depends(require_admin),
+    sf: async_sessionmaker[AsyncSession] = Depends(get_session_factory),
+) -> dict:
+    updated = 0
+    async with session_scope(sf) as s:
+        for it in body.items:
+            res = await s.execute(
+                update(RecommendationEvent)
+                .where(RecommendationEvent.id == it.id)
+                .values(matched_event_id=(it.matched_event_id or None))
             )
             updated += res.rowcount or 0
     return {"updated": updated, "received": len(body.items)}
