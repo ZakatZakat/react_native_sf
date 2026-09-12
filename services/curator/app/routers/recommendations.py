@@ -18,7 +18,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -99,6 +99,36 @@ def _dt(iso: Optional[str]) -> Optional[datetime]:
         return datetime.fromisoformat(iso.replace("Z", "+00:00")).replace(tzinfo=None)
     except ValueError:
         return None
+
+
+# ── POST: проставить обложки (постеры) существующим ивентам по id ─────
+# Постеры тянутся из статей-дайджестов Teletype (по одному <figure> на ивент)
+# и заливаются сюда батчем — как заголовки/модерация.
+class CoverItem(BaseModel):
+    id: int
+    cover_url: str
+
+
+class CoverBody(BaseModel):
+    items: list[CoverItem]
+
+
+@router.post("/covers")
+async def set_covers(
+    body: CoverBody,
+    _admin: int = Depends(require_admin),
+    sf: async_sessionmaker[AsyncSession] = Depends(get_session_factory),
+) -> dict:
+    updated = 0
+    async with session_scope(sf) as s:
+        for it in body.items:
+            res = await s.execute(
+                update(RecommendationEvent)
+                .where(RecommendationEvent.id == it.id)
+                .values(cover_url=it.cover_url)
+            )
+            updated += res.rowcount or 0
+    return {"updated": updated, "received": len(body.items)}
 
 
 @router.post("/ingest")

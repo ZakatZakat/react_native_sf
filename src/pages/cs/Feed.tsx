@@ -43,6 +43,7 @@ const CAT_SYM = new Map(INTERESTS.map((i) => [i.label, i.symbol]))
 const CAT_PRIORITY = ["Выставки", "Кино", "Музыка"]
 import { useDerived, useJourneyState } from "./useJourney"
 import { analytics } from "../../lib/analytics"
+import { Curator, type Recommendation } from "../../lib/curator"
 import CsFeedLegacy from "./FeedLegacy"
 import MapIntro from "./MapIntro"
 
@@ -247,6 +248,34 @@ function BoardLead({ ev }: { ev: Ev }) {
             <AgeTag ev={ev} />
             <PriceTag ev={ev} />
           </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** Hero card variant for a редакторский пик из дайджеста (таблица recommendations).
+ *  Тот же силуэт, что BoardLead, но данные — из Recommendation (постер = обложка
+ *  из статьи Teletype), а тап ведёт в раздел «Рекомендации», а не в модалку. */
+function RecoLead({ r, onOpen }: { r: Recommendation; onOpen: () => void }) {
+  const when = r.date_text || ""
+  const len = (r.title || "").length
+  const fs = len <= 20 ? 27 : len <= 34 ? 22 : len <= 52 ? 18 : len <= 74 ? 15 : 13
+  return (
+    <div onClick={onOpen} style={{ display: "flex", alignItems: "stretch", gap: 12, background: SK.paper, border: `2px solid ${SK.ink}`, boxShadow: `4px 4px 0 ${SK.ink}`, padding: 8, cursor: "pointer", animation: "sk-refresh 0.5s cubic-bezier(0.22,1,0.36,1) both" }}>
+      {r.cover && <img src={r.cover} alt="" draggable={false} style={{ display: "block", flexShrink: 0, alignSelf: "center", width: 132, height: 152, objectFit: "cover", border: `1.5px solid ${SK.ink}` }} />}
+      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+          {r.category ? <CatChip c={r.category} dark /> : <span />}
+          <Lbl size={8} style={{ letterSpacing: "0.2em" }}>выбор редакции</Lbl>
+        </div>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", minHeight: 0 }}>
+          <div style={{ fontWeight: 900, fontSize: fs, letterSpacing: "-0.03em", lineHeight: 1.02, color: SK.ink, textTransform: "uppercase", overflowWrap: "break-word", textWrap: "balance", display: "-webkit-box", WebkitLineClamp: 5, WebkitBoxOrient: "vertical", overflow: "hidden" } as React.CSSProperties}>{r.title}</div>
+          {r.description && <div style={{ fontFamily: FONT_SANS, fontWeight: 500, fontSize: 11, color: SK.ink55, marginTop: 4, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" } as React.CSSProperties}>{r.description}</div>}
+        </div>
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8 }}>
+          <div style={{ fontFamily: FONT_MONO, fontSize: 9.5, letterSpacing: "0.04em", color: SK.ink, lineHeight: 1.5, minWidth: 0, overflow: "hidden" }}>{r.venue}{when ? <><br />{when}</> : null}</div>
+          <span style={{ fontFamily: FONT_MONO, fontSize: 9, letterSpacing: "0.06em", color: CS.B, fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0 }}>к подборке →</span>
         </div>
       </div>
     </div>
@@ -617,6 +646,15 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
   const [sweep, setSweep] = useState(0)
   const [searchOpen, setSearchOpen] = useState(false)
   const [heroIdx, setHeroIdx] = useState(0)  // «выбор недели»: индекс листаемого кандидата (стрелки ‹ ›)
+  // Редакторские пики из дайджестов «Первого ночного» (таблица recommendations):
+  // именно они наполняют «выбор недели». Берём только с постером — герой всегда
+  // с картинкой. Если дайджестов нет — откат на алгоритмический heroPool ниже.
+  const [recos, setRecos] = useState<Recommendation[]>([])
+  useEffect(() => {
+    Curator.recommendations(60).then((r) => setRecos(r.items || [])).catch(() => { /* нет — откат на алгоритм */ })
+  }, [])
+  const recoHero = useMemo(() => recos.filter((r) => r.cover).slice(0, 8), [recos])
+  const usingReco = recoHero.length > 0
   // Full upcoming catalog (already future-filtered + chronological upstream).
   const E = useMemo(() => feed.filter((e) => e && !e.id.startsWith("__placeholder")), [feed])
   // Полка «для знатока» убрана — insider-контент (закрытые/пресс/VIP-показы,
@@ -638,9 +676,10 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
   }, [mainE])
   // «Выбор недели» листается стрелками (heroIdx) по топ-N кандидатам того же
   // heroPool (доступность / близость даты). refresh тоже сдвигает.
-  const heroN = Math.min(heroPool.length, 8)
+  const heroN = usingReco ? recoHero.length : Math.min(heroPool.length, 8)
   const heroCur = heroN ? (((heroIdx % heroN) + heroN) % heroN) : 0
-  const hero = heroN ? heroPool[heroCur] : undefined
+  const hero = usingReco ? undefined : (heroN ? heroPool[heroCur] : undefined)
+  const recoHeroCur = usingReco && heroN ? recoHero[heroCur] : undefined
   const rest = mainE.filter((e) => e !== hero)
   const refresh = () => { setNonce((n) => n + 1); setSweep((s) => s + 360); setHeroIdx((i) => i + 1) }
   // Category filter — applies ONLY to the «Каталог» grid; «выбор недели» stays.
@@ -819,7 +858,9 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
             </div>
           )}
         </div>
-        {hero && <div key={`hero-${heroCur}`}><BoardLead ev={hero} /></div>}
+        {recoHeroCur
+          ? <div key={`rhero-${heroCur}`}><RecoLead r={recoHeroCur} onOpen={() => { analytics.track("cs.reco.enter", { from: "hero" }); navigate({ to: "/cs/recommendations" }) }} /></div>
+          : hero && <div key={`hero-${heroCur}`}><BoardLead ev={hero} /></div>}
         {showClosing && (
           <>
             <SectionLabel>последний шанс · закрывается скоро</SectionLabel>
