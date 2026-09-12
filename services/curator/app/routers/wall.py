@@ -17,7 +17,12 @@ import re
 import time
 
 import httpx
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
+from sqlalchemy import desc, select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+from app.db import session_scope
+from app.models import Channel, PostRaw
 
 router = APIRouter(prefix="/wall", tags=["wall"])
 
@@ -37,6 +42,15 @@ WALL_CHANNELS: list[str] = [
     "besplatnoekino",     # бесплатное кино
     "hecplace",           # места/пространства
 ]
+
+# Каналы БЕЗ публичного веб-превью t.me/s (content-protected / preview off), но
+# которые мы поллим сами — их посты берём из своей БД (posts_raw + /media).
+# @animalswithhands («Филиал КЛЮРСИ», арт-события) — как раз такой.
+POLLER_CHANNELS: list[str] = [
+    "animalswithhands",
+]
+
+_IMG_RE = re.compile(r"\.(?:jpe?g|png|webp|gif)(?:\?|$)", re.I)
 
 _TTL = 900.0  # 15 минут
 _CACHE: dict = {"ts": 0.0, "items": []}
@@ -97,21 +111,61 @@ async def _fetch_channel(client: httpx.AsyncClient, channel: str) -> list[dict]:
         return []
 
 
-async def _refresh() -> list[dict]:
+async def _poller_posts(sf: async_sessionmaker[AsyncSession], handles: list[str], per_channel: int = 14) -> list[dict]:
+    """Посты каналов без t.me/s — из нашего posts_raw (+ /media)."""
+    out: list[dict] = []
+    async with session_scope(sf) as s:
+        for handle in handles:
+            ch = (await s.execute(
+                select(Channel).where(Channel.handle.in_([handle, f"@{handle}"]))
+            )).scalars().first()
+            if not ch:
+                continue
+            rows = (await s.execute(
+                select(PostRaw)
+                .where(PostRaw.channel_id == ch.id)
+                .order_by(desc(PostRaw.published_at), desc(PostRaw.message_id))
+                .limit(per_channel)
+            )).scalars().all()
+            title = ch.title or handle
+            for r in rows:
+                imgs = [u for u in (r.media_urls or []) if isinstance(u, str) and _IMG_RE.search(u)]
+                text = (r.text or "").strip()
+                if not imgs and not text:
+                    continue
+                out.append({
+                    "channel": handle,
+                    "channel_title": title,
+                    "post": f"{handle}/{r.message_id}",
+                    "url": f"https://t.me/{handle}/{r.message_id}",
+                    "date": r.published_at.isoformat() if r.published_at else None,
+                    "images": imgs[:6],
+                    "text": text[:800],
+                })
+    return out
+
+
+async def _refresh(sf: async_sessionmaker[AsyncSession] | None) -> list[dict]:
     async with httpx.AsyncClient(follow_redirects=True) as client:
         chunks = await asyncio.gather(*[_fetch_channel(client, c) for c in WALL_CHANNELS])
     items = [p for chunk in chunks for p in chunk]
+    if sf is not None and POLLER_CHANNELS:
+        try:
+            items += await _poller_posts(sf, POLLER_CHANNELS)
+        except Exception:
+            pass  # БД-источник best-effort, не роняем стену
     items.sort(key=lambda p: p.get("date") or "", reverse=True)
     return items
 
 
 @router.get("")
-async def wall(limit: int = Query(140, ge=1, le=400)) -> dict:
+async def wall(request: Request, limit: int = Query(140, ge=1, le=400)) -> dict:
     now = time.time()
     if not _CACHE["items"] or now - _CACHE["ts"] > _TTL:
         async with _LOCK:
             if not _CACHE["items"] or time.time() - _CACHE["ts"] > _TTL:
-                fresh = await _refresh()
+                sf = getattr(request.app.state, "session_factory", None)
+                fresh = await _refresh(sf)
                 if fresh:  # не затираем кэш пустым (сетевой сбой)
                     _CACHE["items"] = fresh
                     _CACHE["ts"] = time.time()
