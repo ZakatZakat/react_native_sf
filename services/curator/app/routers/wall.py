@@ -15,6 +15,7 @@ import asyncio
 import html as _html
 import re
 import time
+from datetime import datetime, timedelta
 
 import httpx
 from fastapi import APIRouter, Query, Request
@@ -114,6 +115,9 @@ async def _fetch_channel(client: httpx.AsyncClient, channel: str) -> list[dict]:
 async def _poller_posts(sf: async_sessionmaker[AsyncSession], handles: list[str], per_channel: int = 14) -> list[dict]:
     """Посты каналов без t.me/s — из нашего posts_raw (+ /media)."""
     out: list[dict] = []
+    # «живая» стена — только свежие посты; иначе всплывает старьё от каналов,
+    # которые мы давно перестали поллить (напр. @animalswithhands, off с 08.2026).
+    cutoff = datetime.utcnow() - timedelta(days=21)
     async with session_scope(sf) as s:
         for handle in handles:
             ch = (await s.execute(
@@ -124,6 +128,8 @@ async def _poller_posts(sf: async_sessionmaker[AsyncSession], handles: list[str]
             rows = (await s.execute(
                 select(PostRaw)
                 .where(PostRaw.channel_id == ch.id)
+                .where(PostRaw.published_at.is_not(None))
+                .where(PostRaw.published_at >= cutoff)
                 .order_by(desc(PostRaw.published_at), desc(PostRaw.message_id))
                 .limit(per_channel)
             )).scalars().all()
