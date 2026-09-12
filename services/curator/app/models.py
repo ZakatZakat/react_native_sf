@@ -522,3 +522,36 @@ class EventRating(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=False), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
     )
+
+
+class RecommendationEvent(Base):
+    """Ивент, вытащенный из редакторского дайджеста (@napervom — статьи на
+    Teletype «Выставки/Тусовки недели»). Отдельно от events_curated: это
+    редакционная подборка «выбор редакции», НЕ проходит event-пайплайн детекции.
+    Показывается в разделе «Рекомендации» (фаза 1) и в основной афише с меткой
+    «выбор редакции» (фаза 2). Геокод площадки — best-effort через gazetteer."""
+
+    __tablename__ = "recommendations"
+    __table_args__ = (
+        UniqueConstraint("digest_url", "title", name="uq_reco_digest_title"),
+        Index("ix_reco_event_time", "event_time"),
+        {"schema": SCHEMA},
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    source_channel: Mapped[str] = mapped_column(String(64), nullable=False)      # @napervom
+    digest_url: Mapped[str] = mapped_column(String(512), nullable=False)         # teletype-статья
+    digest_title: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
+    title: Mapped[str] = mapped_column(String(300), nullable=False)
+    venue: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
+    address: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    venue_key: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)  # gazetteer venue
+    lat: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    lng: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    date_text: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    event_time: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=False), nullable=True)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    cover_url: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
+    category: Mapped[Optional[str]] = mapped_column(String(48), nullable=True)
+    published_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=False), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), default=datetime.utcnow, nullable=False)

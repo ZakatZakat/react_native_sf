@@ -1,98 +1,142 @@
-"""Раздел «Рекомендации» — редакторские дайджесты из @napervom («Первый ночной»).
+"""Раздел «Рекомендации» — ивенты, вытащенные из редакторских дайджестов
+@napervom («Первый ночной»). Дайджесты — статьи на Teletype («Выставки/Тусовки
+недели»); из каждой достаём ОТДЕЛЬНЫЕ ивенты (название, площадка, дата, описание,
+обложка) и складываем в таблицу recommendations как «выбор редакции».
 
-Дайджесты «Первого ночного» — это статьи на Teletype (кастомный домен
-blog.myidem.moscow): «Выставки недели», «Тусовки недели» и т.п. В самом
-ТГ-канале — короткий тизер + link-preview на статью.
+- GET  /recommendations            — публичная лента этих ивентов (для раздела).
+- POST /recommendations/ingest     — залив вытащенных ивентов (require_admin);
+  геокодит площадку через gazetteer (best-effort) и дедупит по (digest_url,title).
 
-Здесь server-side тянем публичную веб-ленту канала (t.me/s/napervom), берём
-посты, у которых превью ведёт на Teletype, и отдаём их как ленту дайджестов
-(заголовок + тизер + обложка + ссылка на полную статью). Кэш в памяти (15 мин),
-чтобы не дёргать t.me на каждый запрос. Публичный эндпоинт — контент публичный.
+Извлечение из статей делает не бэкенд (нет LLM), а внешний прогон (агент/воркфлоу),
+который POST-ит сюда — как модерация/заголовки.
 """
 
 from __future__ import annotations
 
-import html as _html
-import re
-import time
+from datetime import datetime
+from typing import Optional
 
-import httpx
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query, Request
+from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+from app.auth import require_admin
+from app.db import session_scope
+from app.models import RecommendationEvent
+from app.pipeline import gazetteer
 
 router = APIRouter(prefix="/recommendations", tags=["recommendations"])
 
-SOURCE_CHANNEL = "napervom"
-DIGEST_HOSTS = ("blog.myidem.moscow", "teletype.in", "telegra.ph")
-CACHE_TTL = 900  # сек
-_cache: dict = {"ts": 0.0, "items": []}
 
-_UA = "Mozilla/5.0 (compatible; CitySignal/1.0)"
+def get_session_factory(request: Request) -> async_sessionmaker[AsyncSession]:
+    return request.app.state.session_factory
 
 
-def _strip(s: str) -> str:
-    """HTML → текст: <br> в перенос, срезать теги, раскодировать сущности."""
-    s = re.sub(r"<br\s*/?>", "\n", s or "")
-    s = re.sub(r"<[^>]+>", "", s)
-    return _html.unescape(s).strip()
-
-
-def _find(chunk: str, pattern: str) -> str:
-    m = re.search(pattern, chunk, re.S)
-    return _strip(m.group(1)) if m else ""
-
-
-def _parse(html_text: str) -> list[dict]:
-    """Разобрать t.me/s HTML в дайджесты (посты с teletype-превью)."""
-    items: list[dict] = []
-    # разбиваем на блоки сообщений
-    chunks = re.split(r'(?=<div class="tgme_widget_message[ "])', html_text)
-    for chunk in chunks:
-        mid_m = re.search(r'data-post="[^"]*?/(\d+)"', chunk)
-        lp_m = re.search(r'<a class="tgme_widget_message_link_preview"\s+href="([^"]+)"', chunk)
-        if not mid_m or not lp_m:
-            continue
-        url = _html.unescape(lp_m.group(1))
-        if not any(host in url for host in DIGEST_HOSTS):
-            continue
-        mid = int(mid_m.group(1))
-        title = _find(chunk, r'link_preview_title[^>]*>(.*?)</div>')
-        desc = _find(chunk, r'link_preview_description[^>]*>(.*?)</div>')
-        cover_m = re.search(r"link_preview_image[^\"]*\"[^>]*background-image:\s*url\('([^']+)'\)", chunk)
-        cover = _html.unescape(cover_m.group(1)) if cover_m else None
-        teaser = _find(chunk, r'<div class="tgme_widget_message_text[^"]*"[^>]*>(.*?)</div>\s*(?:<a class="tgme_widget_message_link_preview"|<div class="tgme_widget_message_footer)')
-        date = _find(chunk, r'<time[^>]*datetime="([^"]+)"')
-        items.append({
-            "id": str(mid),
-            "message_id": mid,
-            "title": title or "Дайджест",
-            "teaser": teaser,
-            "cover": cover,
-            "digest_url": url,
-            "published_at": date or None,
-            "tg_url": f"https://t.me/{SOURCE_CHANNEL}/{mid}",
-        })
-    # новые сверху
-    items.sort(key=lambda x: x["message_id"], reverse=True)
-    return items
-
-
-async def _fetch_source() -> list[dict]:
-    now = time.time()
-    if _cache["items"] and now - _cache["ts"] < CACHE_TTL:
-        return _cache["items"]
-    try:
-        async with httpx.AsyncClient(timeout=20, headers={"User-Agent": _UA}) as c:
-            r = await c.get(f"https://t.me/s/{SOURCE_CHANNEL}")
-            r.raise_for_status()
-            items = _parse(r.text)
-        if items:  # не затираем кэш пустотой при временном сбое парсинга
-            _cache["items"], _cache["ts"] = items, now
-        return items or _cache["items"]
-    except Exception:  # noqa: BLE001 — раздел не должен падать из-за внешнего фетча
-        return _cache["items"]
-
-
+# ── GET: лента ивентов-рекомендаций ──────────────────────────────────
 @router.get("")
-async def list_recommendations(limit: int = Query(20, ge=1, le=50)) -> dict:
-    items = await _fetch_source()
-    return {"source": f"@{SOURCE_CHANNEL}", "items": items[:limit], "count": min(len(items), limit)}
+async def list_recommendations(
+    limit: int = Query(60, ge=1, le=200),
+    sf: async_sessionmaker[AsyncSession] = Depends(get_session_factory),
+) -> dict:
+    async with session_scope(sf) as s:
+        rows = (
+            await s.execute(
+                select(RecommendationEvent)
+                # свежие дайджесты сверху, внутри — по времени события
+                .order_by(
+                    RecommendationEvent.published_at.desc().nullslast(),
+                    RecommendationEvent.event_time.asc().nullslast(),
+                    RecommendationEvent.id.asc(),
+                )
+                .limit(limit)
+            )
+        ).scalars().all()
+    items = [{
+        "id": str(r.id),
+        "title": r.title,
+        "venue": r.venue,
+        "address": r.address,
+        "venue_key": r.venue_key,
+        "geo": [r.lat, r.lng] if (r.lat is not None and r.lng is not None) else None,
+        "date_text": r.date_text,
+        "event_time": r.event_time.isoformat() if r.event_time else None,
+        "description": r.description,
+        "cover": r.cover_url,
+        "category": r.category,
+        "digest_title": r.digest_title,
+        "digest_url": r.digest_url,
+        "source": r.source_channel,
+    } for r in rows]
+    return {"items": items, "count": len(items)}
+
+
+# ── POST: залив вытащенных из статьи ивентов ─────────────────────────
+class RecoItem(BaseModel):
+    digest_url: str
+    digest_title: Optional[str] = None
+    title: str
+    venue: Optional[str] = None
+    address: Optional[str] = None
+    date_text: Optional[str] = None
+    event_time: Optional[str] = None      # ISO
+    description: Optional[str] = None
+    cover_url: Optional[str] = None
+    category: Optional[str] = None
+    published_at: Optional[str] = None     # ISO (дата поста-дайджеста)
+    source_channel: str = "@napervom"
+
+
+class RecoIngestBody(BaseModel):
+    items: list[RecoItem]
+
+
+def _dt(iso: Optional[str]) -> Optional[datetime]:
+    if not iso:
+        return None
+    try:
+        return datetime.fromisoformat(iso.replace("Z", "+00:00")).replace(tzinfo=None)
+    except ValueError:
+        return None
+
+
+@router.post("/ingest")
+async def ingest_recommendations(
+    body: RecoIngestBody,
+    _admin: int = Depends(require_admin),
+    sf: async_sessionmaker[AsyncSession] = Depends(get_session_factory),
+) -> dict:
+    inserted = 0
+    async with session_scope(sf) as s:
+        for it in body.items:
+            geo = gazetteer.geocode(
+                text=f"{it.title} {it.description or ''}",
+                location_text=it.venue or it.address,
+                channel_handle=None,
+            )
+            values = {
+                "source_channel": it.source_channel,
+                "digest_url": it.digest_url,
+                "digest_title": it.digest_title,
+                "title": it.title.strip()[:300],
+                "venue": (it.venue or None),
+                "address": (it.address or None),
+                "venue_key": geo.get("venue") if geo else None,
+                "lat": geo.get("lat") if geo else None,
+                "lng": geo.get("lng") if geo else None,
+                "date_text": it.date_text,
+                "event_time": _dt(it.event_time),
+                "description": it.description,
+                "cover_url": it.cover_url,
+                "category": it.category,
+                "published_at": _dt(it.published_at),
+            }
+            stmt = (
+                pg_insert(RecommendationEvent)
+                .values(**values)
+                .on_conflict_do_nothing(constraint="uq_reco_digest_title")
+            )
+            res = await s.execute(stmt)
+            inserted += res.rowcount or 0
+    return {"inserted": inserted, "received": len(body.items)}
