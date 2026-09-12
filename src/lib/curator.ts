@@ -168,6 +168,17 @@ export type EventRatings = {
   mine: { stars: number; comment: string | null } | null
 }
 
+export type Recommendation = {
+  id: string
+  message_id: number
+  title: string
+  teaser: string
+  cover: string | null
+  digest_url: string          // ссылка на статью-дайджест (Teletype)
+  published_at: string | null
+  tg_url: string
+}
+
 export const Curator = {
   // Tags
   listTags: () => curatorFetch<CuratorTag[]>("/tags"),
@@ -224,6 +235,12 @@ export const Curator = {
         offset: opts?.offset,
         tags: opts?.tags?.length ? opts.tags.join(",") : undefined,
       },
+    }),
+
+  // Рекомендации — редакторские дайджесты из @napervom (статьи на Teletype)
+  recommendations: (limit = 20) =>
+    curatorFetch<{ source: string; items: Recommendation[]; count: number }>("/recommendations", {
+      query: { limit },
     }),
 
   // Free-text feedback / пожелания — tied to the caller's Telegram id

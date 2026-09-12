@@ -237,6 +237,7 @@ const WEB_HERO_ARROW: React.CSSProperties = { width: 34, height: 34, flexShrink:
 
 // ── Страница ────────────────────────────────────────────────────────────
 export default function CsWebFeed() {
+  const navigate = useNavigate()
   const { derived } = useDerived()
   // Имя из быстрой реги (/cs/hello): на вебе Telegram-identity нет, поэтому
   // displayName = введённое имя. Пусто → шапка остаётся нейтральной.
@@ -403,6 +404,13 @@ export default function CsWebFeed() {
                   <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="поиск по афише…" style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontFamily: FONT_MONO, fontSize: 14, letterSpacing: "0.02em", color: SK.ink }} />
                   {q && <button onClick={() => setQ("")} aria-label="Очистить" style={{ border: "none", background: "none", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 16, color: SK.ink55 }}>✕</button>}
                 </div>
+              </div>
+
+              {/* Рекомендации — редакторские дайджесты недели («Первый ночной») */}
+              <div style={{ marginTop: 16 }}>
+                <button onClick={() => { analytics.track("cs.reco.enter"); navigate({ to: "/web/recommendations" }) }} style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "12px 20px", border: `2.5px solid ${SK.ink}`, background: CS.B, color: "#fff", boxShadow: `4px 4px 0 ${SK.ink}`, cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 14, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+                  ★ Рекомендации <span style={{ fontWeight: 400, fontFamily: FONT_MONO, fontSize: 12, textTransform: "none", opacity: 0.85 }}>дайджесты недели</span> <span style={{ fontSize: 16, lineHeight: 1 }}>→</span>
+                </button>
               </div>
 
               {/* category filter */}

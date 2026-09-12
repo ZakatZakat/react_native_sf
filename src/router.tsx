@@ -38,6 +38,7 @@ import CsSummary from "./pages/cs/Summary"
 import CsFeed from "./pages/cs/Feed"
 import CsWebFeed from "./pages/cs/WebFeed"
 import CsWebEvent from "./pages/cs/WebEvent"
+import CsRecommendations from "./pages/cs/Recommendations"
 import CsProfile from "./pages/cs/Profile"
 import CsAdmin from "./pages/cs/Admin"
 import CsAdminWeek from "./pages/cs/AdminWeek"
@@ -143,6 +144,7 @@ const csWebRoute = createRoute({
   component: CsWebFeed,
 })
 const csWebEventRoute = createRoute({ getParentRoute: () => rootRoute, path: "/web/event/$id", component: CsWebEvent })
+const csRecommendationsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/web/recommendations", component: CsRecommendations })
 const csProfileRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/profile", component: CsProfile })
 const csAdminRoute = createRoute({ getParentRoute: () => rootRoute, path: "/admin", component: CsAdmin })
 const csAdminWeekRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/admin/week", component: CsAdminWeek })
@@ -191,6 +193,7 @@ const routeTree = rootRoute.addChildren([
   csFeedRoute,
   csWebRoute,
   csWebEventRoute,
+  csRecommendationsRoute,
   csProfileRoute,
   csAdminRoute,
   csAdminWeekRoute,
