@@ -120,6 +120,8 @@ async def insights(
                    count(*) FILTER (WHERE type = 'cs.feed.filter')  AS filters,
                    min(received_at) AS first_seen,
                    max(received_at) AS last_seen,
+                   array_agg(DISTINCT (received_at AT TIME ZONE 'Europe/Moscow')::date
+                             ORDER BY (received_at AT TIME ZONE 'Europe/Moscow')::date DESC) AS active_days,
                    (array_agg({_PLAT} ORDER BY received_at DESC))[1] AS platform
             FROM events
             WHERE service = :svc AND {_UID} IS NOT NULL
@@ -150,6 +152,7 @@ async def insights(
                 "platform": r["platform"],
                 "first_seen": r["first_seen"].isoformat() if r["first_seen"] else None,
                 "last_seen": r["last_seen"].isoformat() if r["last_seen"] else None,
+                "active_days": [d.isoformat() for d in (r["active_days"] or [])],
             })
 
         # ── Кто и когда: активность TG-юзеров по дням, ОКНА ПО ЗАХОДАМ (МСК) ──

@@ -182,16 +182,17 @@ function HourChart({ by_hour }: { by_hour: number[] }) {
 }
 
 function UsersTable({ users }: { users: InsightsUser[] }) {
-  const [by, setBy] = useState<"last" | "events" | "rsvps">("events")
+  const [by, setBy] = useState<"last" | "events" | "rsvps" | "sessions">("events")
   const sorted = useMemo(() => {
     const c = [...users]
     if (by === "events") c.sort((a, b) => b.events - a.events)
     else if (by === "rsvps") c.sort((a, b) => b.rsvps - a.rsvps || b.events - a.events)
+    else if (by === "sessions") c.sort((a, b) => b.sessions - a.sessions || b.events - a.events)
     else c.sort((a, b) => (new Date(b.last_seen || 0).getTime()) - (new Date(a.last_seen || 0).getTime()))
     return c
   }, [users, by])
   const maxE = Math.max(1, ...users.map((u) => u.events))
-  const Sort = ({ id, children }: { id: "last" | "events" | "rsvps"; children: React.ReactNode }) => (
+  const Sort = ({ id, children }: { id: "last" | "events" | "rsvps" | "sessions"; children: React.ReactNode }) => (
     <button onClick={() => setBy(id)} style={{ border: `1.5px solid ${by === id ? INK : HAIR}`, background: by === id ? INK : PAPER, color: by === id ? PAPER : MUTE, cursor: "pointer", fontFamily: FONT_MONO, fontSize: 10.5, letterSpacing: "0.04em", textTransform: "uppercase", padding: "5px 10px" }}>{children}</button>
   )
   return (
@@ -201,6 +202,7 @@ function UsersTable({ users }: { users: InsightsUser[] }) {
         <span style={{ fontFamily: FONT_MONO, fontSize: 10, color: FAINT, textTransform: "uppercase", letterSpacing: "0.06em" }}>сорт:</span>
         <Sort id="events">событий</Sort>
         <Sort id="rsvps">пойду</Sort>
+        <Sort id="sessions">сессий</Sort>
         <Sort id="last">недавно</Sort>
       </div>
       <div style={{ border: `2px solid ${INK}`, background: PAPER }}>
@@ -217,6 +219,14 @@ function UsersTable({ users }: { users: InsightsUser[] }) {
               <div style={{ fontFamily: FONT_MONO, fontSize: 10.5, color: MUTE, marginTop: 4, lineHeight: 1.5 }}>
                 {u.opens} откр · <span style={{ color: u.rsvps ? BLUE : FAINT, fontWeight: u.rsvps ? 700 : 400 }}>{u.rsvps} пойду</span> · {u.sessions} сес · {u.platform === "web" ? "веб" : "tg"} · был {relTime(u.last_seen)}
               </div>
+              {/* даты заходов (МСК, новые первыми) */}
+              {u.active_days && u.active_days.length > 0 && (
+                <div style={{ fontFamily: FONT_MONO, fontSize: 10, color: FAINT, marginTop: 4, lineHeight: 1.5 }}>
+                  <span style={{ textTransform: "uppercase", letterSpacing: "0.04em" }}>заходил:</span>{" "}
+                  {u.active_days.slice(0, 12).map((d) => `${d.slice(8, 10)}.${d.slice(5, 7)}`).join(" · ")}
+                  {u.active_days.length > 12 ? ` +${u.active_days.length - 12}` : ""}
+                </div>
+              )}
               {/* полоса активности */}
               <div style={{ height: 4, background: HAIR, marginTop: 7, position: "relative", overflow: "hidden" }}>
                 <div style={{ position: "absolute", inset: 0, width: `${pct}%`, background: BLUE }} />

@@ -67,6 +67,7 @@ export type InsightsUser = {
   platform: string | null
   first_seen: string | null
   last_seen: string | null
+  active_days?: string[]  // даты активности (МСК, YYYY-MM-DD), новые первыми
 }
 export type InsightsDayUser = {
   user_id: string
