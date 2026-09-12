@@ -611,6 +611,7 @@ function heroScore(e: Ev): number {
 
 function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: { feed: Ev[]; searchFeed?: Ev[]; btn?: string; name?: string; onMap?: () => void }) {
   const nav = useContext(NavCtx)
+  const navigate = useNavigate()
   const wk = weekMeta()
   const [nonce, setNonce] = useState(0)
   const [sweep, setSweep] = useState(0)
@@ -741,6 +742,13 @@ function BoardView({ feed, searchFeed, btn = "b", name = "Гость", onMap }: 
             )}
           </div>
         </div>
+      </div>
+
+      {/* Рекомендации — ивенты из редакторских дайджестов недели («Первый ночной») */}
+      <div style={{ padding: "0 14px", marginBottom: 16 }}>
+        <button onClick={() => { analytics.track("cs.reco.enter"); navigate({ to: "/cs/recommendations" }) }} style={{ width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "11px 16px", border: `2px solid ${SK.ink}`, background: CS.B, color: "#fff", boxShadow: `3px 3px 0 ${SK.ink}`, cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 12.5, letterSpacing: "0.05em", textTransform: "uppercase" }}>
+          ★ Рекомендации <span style={{ fontWeight: 400, fontFamily: FONT_MONO, fontSize: 10.5, textTransform: "none", opacity: 0.85 }}>дайджесты недели</span> <span style={{ fontSize: 15, lineHeight: 1 }}>→</span>
+        </button>
       </div>
 
       {/* category filter — chips filter the «Каталог» grid only (hero stays) */}

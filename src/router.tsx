@@ -145,6 +145,8 @@ const csWebRoute = createRoute({
 })
 const csWebEventRoute = createRoute({ getParentRoute: () => rootRoute, path: "/web/event/$id", component: CsWebEvent })
 const csRecommendationsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/web/recommendations", component: CsRecommendations })
+// Тот же экран в мини-аппе (в телефонной рамке, не full-width как /web/*)
+const csRecommendationsMiniRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/recommendations", component: CsRecommendations })
 const csProfileRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/profile", component: CsProfile })
 const csAdminRoute = createRoute({ getParentRoute: () => rootRoute, path: "/admin", component: CsAdmin })
 const csAdminWeekRoute = createRoute({ getParentRoute: () => rootRoute, path: "/cs/admin/week", component: CsAdminWeek })
@@ -194,6 +196,7 @@ const routeTree = rootRoute.addChildren([
   csWebRoute,
   csWebEventRoute,
   csRecommendationsRoute,
+  csRecommendationsMiniRoute,
   csProfileRoute,
   csAdminRoute,
   csAdminWeekRoute,

@@ -7,7 +7,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react"
-import { useNavigate } from "@tanstack/react-router"
+import { useLocation, useNavigate } from "@tanstack/react-router"
 import { CS, SK, FONT_SANS, FONT_MONO, ScreenBG } from "./shared"
 import { Curator, type Recommendation } from "../../lib/curator"
 import { analytics } from "../../lib/analytics"
@@ -53,6 +53,9 @@ function EventCard({ r }: { r: Recommendation }) {
 
 export default function CsRecommendations() {
   const navigate = useNavigate()
+  const location = useLocation()
+  // Открыто из мини-аппа (/cs/recommendations) → назад в /cs/feed; из веба — в /web
+  const backTo = location.pathname.startsWith("/cs") ? "/cs/feed" : "/web"
   const [items, setItems] = useState<Recommendation[] | null>(null)
   const [err, setErr] = useState(false)
 
@@ -78,11 +81,11 @@ export default function CsRecommendations() {
     <div style={{ position: "relative", minHeight: "100vh", background: CS.W, color: SK.ink, fontFamily: FONT_SANS }}>
       <ScreenBG theme="grid" opacity={0.5} />
       <div style={{ position: "relative", maxWidth: 1120, margin: "0 auto", padding: "26px 20px 90px" }}>
-        <button onClick={() => navigate({ to: "/web" })} style={{ display: "inline-flex", alignItems: "center", gap: 8, border: `2px solid ${SK.ink}`, background: SK.paper, boxShadow: `3px 3px 0 ${SK.ink}`, padding: "9px 15px", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 800, fontSize: 13, letterSpacing: "0.05em", textTransform: "uppercase", color: SK.ink }}>
+        <button onClick={() => navigate({ to: backTo })} style={{ display: "inline-flex", alignItems: "center", gap: 8, border: `2px solid ${SK.ink}`, background: SK.paper, boxShadow: `3px 3px 0 ${SK.ink}`, padding: "9px 15px", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 800, fontSize: 13, letterSpacing: "0.05em", textTransform: "uppercase", color: SK.ink }}>
           <span style={{ fontSize: 16, lineHeight: 1 }}>←</span> к афише
         </button>
 
-        <h1 style={{ fontWeight: 900, fontSize: 40, lineHeight: 1.0, letterSpacing: "-0.03em", textTransform: "uppercase", margin: "22px 0 4px" }}>Рекомендации</h1>
+        <h1 style={{ fontWeight: 900, fontSize: "clamp(29px, 8.4vw, 40px)", lineHeight: 1.0, letterSpacing: "-0.03em", textTransform: "uppercase", margin: "22px 0 4px" }}>Рекомендации</h1>
         <div style={{ fontFamily: FONT_MONO, fontSize: 12, color: "rgba(13,13,13,0.6)", letterSpacing: "0.03em", marginBottom: 26 }}>
           Выбор редакции «Первого ночного» — выставки и тусовки недели
         </div>
