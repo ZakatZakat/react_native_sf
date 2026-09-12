@@ -21,6 +21,7 @@ from app.routers import recommendations as recommendations_router
 from app.routers import scheduler as scheduler_router
 from app.routers import sync as sync_router
 from app.routers import tags as tags_router
+from app.routers import wall as wall_router
 from app.seed import INITIAL_TAGS
 from app.klursi_tags import KLURSI_TAGS
 from app.services.push import PushService, set_push_service
@@ -50,6 +51,7 @@ app.include_router(push_router.router)
 app.include_router(bot_router.router)
 app.include_router(ratings_router.router)
 app.include_router(recommendations_router.router)
+app.include_router(wall_router.router)
 
 
 @app.on_event("startup")

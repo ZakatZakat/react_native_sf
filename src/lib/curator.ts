@@ -186,6 +186,17 @@ export type Recommendation = {
   source: string              // @napervom
 }
 
+// «Голоса» — живой пост из авторского культур-канала (t.me/s), для стены-пинтереста
+export type WallPost = {
+  channel: string
+  channel_title: string
+  post: string          // "channel/msgid"
+  url: string           // https://t.me/channel/msgid
+  date: string | null   // ISO
+  images: string[]      // cdn.telesco.pe (хотлинк)
+  text: string
+}
+
 export const Curator = {
   // Tags
   listTags: () => curatorFetch<CuratorTag[]>("/tags"),
@@ -247,6 +258,12 @@ export const Curator = {
   // Рекомендации — редакторские дайджесты из @napervom (статьи на Teletype)
   recommendations: (limit = 60) =>
     curatorFetch<{ items: Recommendation[]; count: number }>("/recommendations", {
+      query: { limit },
+    }),
+
+  // «Голоса» — живая стена постов из авторских каналов (t.me/s)
+  wall: (limit = 140) =>
+    curatorFetch<{ items: WallPost[]; count: number }>("/wall", {
       query: { limit },
     }),
 

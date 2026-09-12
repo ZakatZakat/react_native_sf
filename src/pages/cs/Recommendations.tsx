@@ -1,51 +1,87 @@
 /**
- * CitySignal · «Рекомендации» — ивенты, вытащенные из редакторских дайджестов
- * @napervom («Первый ночной», статьи на Teletype). Каждый ивент — карточка
- * (обложка/категория + название + площадка + дата + описание), сгруппированы по
- * подборке («Выставки недели», «Тусовки недели»). Ссылка ведёт на статью-источник.
- * Данные — GET /recommendations.
+ * CitySignal · «Голоса» — живая стена постов из авторских культур-каналов Москвы
+ * (рецензии, вайбы, находки). Формат Pinterest/Insta: masonry из карточек с
+ * картинками и текстовыми баблами, в брутал-скрапбук-стиле CitySignal. Тап по
+ * карточке открывает исходный пост в Telegram. Данные — GET /wall (t.me/s-парсинг).
  */
 
 import { useEffect, useMemo, useState } from "react"
 import { useLocation, useNavigate } from "@tanstack/react-router"
 import { CS, SK, FONT_SANS, FONT_MONO, ScreenBG } from "./shared"
-import { Curator, type Recommendation } from "../../lib/curator"
+import { Curator, type WallPost } from "../../lib/curator"
 import { analytics } from "../../lib/analytics"
 
-function fmtDate(iso: string | null): string {
+function fmtWhen(iso: string | null): string {
   if (!iso) return ""
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ""
-  return d.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })
+  const now = new Date()
+  const day = 86400000
+  const startOf = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
+  const diff = Math.round((startOf(now) - startOf(d)) / day)
+  if (diff <= 0) return "сегодня"
+  if (diff === 1) return "вчера"
+  if (diff < 7) return `${diff} дн. назад`
+  return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" })
 }
 
-function EventCard({ r }: { r: Recommendation }) {
+// хэши в стабильный акцент: у каждого канала свой цвет плашки-автора
+const ACCENTS = ["#2D2A8C", "#0B7A3B", "#B5122A", "#8A5A00", "#5A2D8C", "#0E6E8C"]
+function accentFor(ch: string): string {
+  let h = 0
+  for (let i = 0; i < ch.length; i++) h = (h * 31 + ch.charCodeAt(i)) >>> 0
+  return ACCENTS[h % ACCENTS.length]
+}
+
+function WallCard({ p, i }: { p: WallPost; i: number }) {
   const [broken, setBroken] = useState(false)
+  const img = p.images[0]
+  const hasImg = !!img && !broken
+  const accent = accentFor(p.channel)
+  const when = fmtWhen(p.date)
+  const text = (p.text || "").replace(/\n{3,}/g, "\n\n").trim()
   const open = () => {
-    analytics.track("cs.reco.open", { title: r.title, url: r.digest_url })
-    window.open(r.digest_url, "_blank", "noopener")
+    analytics.track("cs.wall.open", { channel: p.channel, post: p.post })
+    window.open(p.url, "_blank", "noopener")
   }
-  const when = r.date_text || fmtDate(r.event_time)
+  // альтернируем цвет тени для скрапбук-ощущения
+  const shadow = i % 3 === 0 ? CS.B : SK.ink
   return (
-    <div onClick={open} style={{ background: SK.paper, border: `2.5px solid ${SK.ink}`, boxShadow: `5px 6px 0 ${SK.ink}`, overflow: "hidden", cursor: "pointer", display: "flex", flexDirection: "column" }}>
-      {r.cover && !broken ? (
-        <div style={{ position: "relative", lineHeight: 0, borderBottom: `2.5px solid ${SK.ink}`, background: "#E4E4E1" }}>
-          <img src={r.cover} alt="" onError={() => setBroken(true)} style={{ width: "100%", height: 160, objectFit: "cover", display: "block" }} />
-          {r.category && <span style={{ position: "absolute", top: 10, left: 10, background: CS.B, color: "#fff", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", padding: "5px 10px", border: `1.5px solid ${SK.ink}` }}>{r.category}</span>}
+    <div
+      onClick={open}
+      style={{
+        breakInside: "avoid", WebkitColumnBreakInside: "avoid", marginBottom: 13,
+        background: SK.paper, border: `2px solid ${SK.ink}`, boxShadow: `3px 4px 0 ${shadow}`,
+        overflow: "hidden", cursor: "pointer", display: "block",
+      } as React.CSSProperties}
+    >
+      {hasImg ? (
+        <div style={{ position: "relative", lineHeight: 0, borderBottom: `2px solid ${SK.ink}`, background: "#E4E4E1" }}>
+          <img src={img} alt="" loading="lazy" onError={() => setBroken(true)} style={{ width: "100%", height: "auto", display: "block", maxHeight: 460, objectFit: "cover" }} />
+          {p.images.length > 1 && (
+            <span style={{ position: "absolute", top: 8, right: 8, background: SK.ink, color: "#fff", fontFamily: FONT_MONO, fontSize: 9, fontWeight: 700, letterSpacing: "0.04em", padding: "3px 7px", border: `1.5px solid ${SK.ink}` }}>{p.images.length} фото</span>
+          )}
         </div>
       ) : (
-        <div style={{ background: SK.ink, color: "#fff", padding: "10px 14px", borderBottom: `2.5px solid ${SK.ink}` }}>
-          <span style={{ fontFamily: FONT_SANS, fontWeight: 900, fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", background: CS.B, padding: "3px 8px" }}>{r.category || "событие"}</span>
-        </div>
+        // текст-бабл: узкая акцентная полоса сверху + кавычка
+        <div style={{ height: 6, background: accent }} />
       )}
-      <div style={{ padding: "13px 15px 15px", display: "flex", flexDirection: "column", gap: 6, flex: 1 }}>
-        <div style={{ fontFamily: FONT_SANS, fontWeight: 900, fontSize: 17, lineHeight: 1.06, letterSpacing: "-0.02em", color: SK.ink }}>{r.title}</div>
-        <div style={{ fontFamily: FONT_MONO, fontSize: 11, letterSpacing: "0.02em", color: CS.B, fontWeight: 700 }}>
-          {[r.venue, when].filter(Boolean).join(" · ")}
-        </div>
-        {r.description && (
-          <div style={{ fontFamily: FONT_SANS, fontSize: 12.5, lineHeight: 1.45, color: "rgba(13,13,13,0.68)", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{r.description}</div>
+      <div style={{ padding: hasImg ? "10px 12px 11px" : "12px 13px 13px" }}>
+        {text && (
+          <div style={{
+            fontFamily: FONT_SANS, color: SK.ink, whiteSpace: "pre-wrap", overflow: "hidden",
+            ...(hasImg
+              ? { fontSize: 12.5, lineHeight: 1.42, display: "-webkit-box", WebkitLineClamp: 6, WebkitBoxOrient: "vertical" as const }
+              : { fontSize: 15, lineHeight: 1.4, fontWeight: 600, display: "-webkit-box", WebkitLineClamp: 12, WebkitBoxOrient: "vertical" as const }),
+          }}>{text}</div>
         )}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 9 }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 5, minWidth: 0 }}>
+            <span style={{ width: 7, height: 7, background: accent, flexShrink: 0, border: `1px solid ${SK.ink}` }} />
+            <span style={{ fontFamily: FONT_MONO, fontSize: 10, fontWeight: 700, color: SK.ink, letterSpacing: "0.01em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.channel_title || "@" + p.channel}</span>
+          </span>
+          {when && <span style={{ fontFamily: FONT_MONO, fontSize: 9.5, color: "rgba(13,13,13,0.5)", flexShrink: 0 }}>{when}</span>}
+        </div>
       </div>
     </div>
   )
@@ -54,54 +90,47 @@ function EventCard({ r }: { r: Recommendation }) {
 export default function CsRecommendations() {
   const navigate = useNavigate()
   const location = useLocation()
-  // Открыто из мини-аппа (/cs/recommendations) → назад в /cs/feed; из веба — в /web
   const backTo = location.pathname.startsWith("/cs") ? "/cs/feed" : "/web"
-  const [items, setItems] = useState<Recommendation[] | null>(null)
+  const [items, setItems] = useState<WallPost[] | null>(null)
   const [err, setErr] = useState(false)
 
   useEffect(() => {
-    analytics.track("cs.reco.shown")
-    Curator.recommendations(80)
+    analytics.track("cs.wall.shown")
+    Curator.wall(160)
       .then((r) => setItems(r.items || []))
       .catch(() => setErr(true))
   }, [])
 
-  // группировка по подборке (сохраняя порядок — свежие дайджесты сверху)
-  const groups = useMemo(() => {
-    const map = new Map<string, { title: string; url: string; items: Recommendation[] }>()
-    for (const it of items || []) {
-      const key = it.digest_url
-      if (!map.has(key)) map.set(key, { title: it.digest_title || "Подборка", url: it.digest_url, items: [] })
-      map.get(key)!.items.push(it)
-    }
-    return Array.from(map.values())
+  const authors = useMemo(() => {
+    const s = new Set((items || []).map((p) => p.channel))
+    return s.size
   }, [items])
 
   return (
     <div style={{ position: "relative", minHeight: "100vh", background: CS.W, color: SK.ink, fontFamily: FONT_SANS }}>
       <ScreenBG theme="grid" opacity={0.5} />
-      <div style={{ position: "relative", maxWidth: 1120, margin: "0 auto", padding: "26px 20px 90px" }}>
+      <div style={{ position: "relative", maxWidth: 1160, margin: "0 auto", padding: "26px 16px 90px" }}>
         <button onClick={() => navigate({ to: backTo })} style={{ display: "inline-flex", alignItems: "center", gap: 8, border: `2px solid ${SK.ink}`, background: SK.paper, boxShadow: `3px 3px 0 ${SK.ink}`, padding: "9px 15px", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 800, fontSize: 13, letterSpacing: "0.05em", textTransform: "uppercase", color: SK.ink }}>
           <span style={{ fontSize: 16, lineHeight: 1 }}>←</span> к афише
         </button>
 
-        <h1 style={{ fontWeight: 900, fontSize: "clamp(29px, 8.4vw, 40px)", lineHeight: 1.0, letterSpacing: "-0.03em", textTransform: "uppercase", margin: "22px 0 26px" }}>Рекомендации</h1>
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 10, flexWrap: "wrap", margin: "22px 0 4px" }}>
+          <h1 style={{ fontWeight: 900, fontSize: "clamp(34px, 10vw, 52px)", lineHeight: 0.92, letterSpacing: "-0.04em", textTransform: "uppercase", margin: 0 }}>Голоса</h1>
+          <span style={{ fontFamily: FONT_MONO, fontSize: 11, color: "#fff", background: CS.B, border: `1.5px solid ${SK.ink}`, padding: "4px 8px", fontWeight: 700, letterSpacing: "0.04em", marginBottom: 6 }}>живая лента</span>
+        </div>
+        <div style={{ fontFamily: FONT_MONO, fontSize: 12, color: "rgba(13,13,13,0.62)", letterSpacing: "0.02em", marginBottom: 22 }}>
+          что пишут авторские каналы москвы — рецензии, вайбы, находки{items && authors ? ` · ${authors} автор.` : ""}
+        </div>
 
-        {items === null && !err && <div style={{ fontFamily: FONT_MONO, fontSize: 13, color: "rgba(13,13,13,0.55)", padding: "60px 0", textAlign: "center" }}>загружаем…</div>}
-        {err && <div style={{ fontFamily: FONT_MONO, fontSize: 13, color: "rgba(13,13,13,0.55)", padding: "60px 0", textAlign: "center" }}>не удалось загрузить</div>}
-        {items && items.length === 0 && <div style={{ fontFamily: FONT_MONO, fontSize: 13, color: "rgba(13,13,13,0.55)", padding: "60px 0", textAlign: "center" }}>пока пусто</div>}
+        {items === null && !err && <div style={{ fontFamily: FONT_MONO, fontSize: 13, color: "rgba(13,13,13,0.55)", padding: "70px 0", textAlign: "center" }}>собираем голоса…</div>}
+        {err && <div style={{ fontFamily: FONT_MONO, fontSize: 13, color: "rgba(13,13,13,0.55)", padding: "70px 0", textAlign: "center" }}>не удалось загрузить</div>}
+        {items && items.length === 0 && <div style={{ fontFamily: FONT_MONO, fontSize: 13, color: "rgba(13,13,13,0.55)", padding: "70px 0", textAlign: "center" }}>пока тихо</div>}
 
-        {groups.map((g) => (
-          <div key={g.url} style={{ marginBottom: 34 }}>
-            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, borderBottom: `2.5px solid ${SK.ink}`, paddingBottom: 8, marginBottom: 16 }}>
-              <h2 style={{ fontWeight: 900, fontSize: 22, letterSpacing: "-0.02em", margin: 0 }}>{g.title}</h2>
-              <a href={g.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ flexShrink: 0, fontFamily: FONT_MONO, fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: CS.B, textDecoration: "none" }}>вся подборка ↗</a>
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16 }}>
-              {g.items.map((r) => <EventCard key={r.id} r={r} />)}
-            </div>
+        {items && items.length > 0 && (
+          <div style={{ columnWidth: 172, columnGap: 13 } as React.CSSProperties}>
+            {items.map((p, i) => <WallCard key={p.post} p={p} i={i} />)}
           </div>
-        ))}
+        )}
       </div>
     </div>
   )
