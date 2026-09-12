@@ -170,13 +170,19 @@ export type EventRatings = {
 
 export type Recommendation = {
   id: string
-  message_id: number
-  title: string
-  teaser: string
+  title: string               // название ивента
+  venue: string | null
+  address: string | null
+  venue_key: string | null
+  geo: [number, number] | null
+  date_text: string | null
+  event_time: string | null
+  description: string | null
   cover: string | null
+  category: string | null
+  digest_title: string | null // из какой подборки
   digest_url: string          // ссылка на статью-дайджест (Teletype)
-  published_at: string | null
-  tg_url: string
+  source: string              // @napervom
 }
 
 export const Curator = {
@@ -238,8 +244,8 @@ export const Curator = {
     }),
 
   // Рекомендации — редакторские дайджесты из @napervom (статьи на Teletype)
-  recommendations: (limit = 20) =>
-    curatorFetch<{ source: string; items: Recommendation[]; count: number }>("/recommendations", {
+  recommendations: (limit = 60) =>
+    curatorFetch<{ items: Recommendation[]; count: number }>("/recommendations", {
       query: { limit },
     }),
 
