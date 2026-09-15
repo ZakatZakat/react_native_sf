@@ -302,6 +302,7 @@ class BroadcastReq(BaseModel):
     caption: str = ""           # подпись к фото (<=1024), опц.
     parse_mode: str = "HTML"
     target: str = "test"        # test → админам; subscribers → is_subscribed
+    channel: str | None = None  # публикация в канал по @username / -100… (бот должен быть админом)
     chat_ids: list[int] | None = None  # явный список получателей (перекрывает target) — для точечных/персональных рассылок
     as_document: bool = False   # true → sendDocument (без сжатия Telegram), иначе sendPhoto
     dry_run: bool = False
@@ -322,7 +323,9 @@ async def broadcast(
     if not token:
         raise HTTPException(500, "bot token not configured")
 
-    if req.chat_ids:
+    if req.channel:
+        recipients = [req.channel]  # строка-username канала — шлём как есть (str(cid) в цикле)
+    elif req.chat_ids:
         recipients = [int(c) for c in req.chat_ids]
     elif req.target == "subscribers":
         sf = request.app.state.session_factory
