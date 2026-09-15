@@ -52,8 +52,9 @@ def avatar(handle, name):
     buf=io.BytesIO(); im.save(buf,"JPEG",quality=85); return "data:image/jpeg;base64,"+base64.b64encode(buf.getvalue()).decode()
 
 esc=lambda s:(s or "").replace("&","&amp;").replace("<","&lt;")
+ROT=[-4,3,-2.5,4,-3.5,2.5]; SIDE=["l","r","l","r","l","r"]
 cards=""
-for ch,txt,cat,ttl,date,exc in SPEC:
+for i,(ch,txt,cat,ttl,date,exc) in enumerate(SPEC):
     w=pick(ch,txt)
     cover=emb_cover(w["images"][0],620,470) if w and w.get("images") else None
     handle=(w.get("channel") if w else ch) or ch
@@ -61,9 +62,11 @@ for ch,txt,cat,ttl,date,exc in SPEC:
     av=avatar(handle, name)
     img=f'<img class="cov" src="{cover}" alt="">' if cover else '<div class="cov ph"></div>'
     cards+=f'''<div class="card">
+      <div class="author {SIDE[i%6]}" style="transform:rotate({ROT[i%6]}deg)">
+        <img class="av" src="{av}" alt=""><span class="ainfo"><span class="nm">{esc(name)}</span><span class="dt">{esc(date)}</span></span>
+      </div>
       <div class="imw">{img}<span class="cat" style="background:{CATCOL[cat]}">{esc(cat)}</span></div>
       <div class="ttl">{esc(ttl)}</div>
-      <div class="by"><img class="av" src="{av}" alt=""><span class="nm">{esc(name)}</span><span class="dt">{esc(date)}</span></div>
       <div class="exc">{esc(exc)}</div></div>'''
 
 CSS="""*{box-sizing:border-box;margin:0}
@@ -81,17 +84,21 @@ html,body{margin:0;background:var(--ground);background-image:linear-gradient(var
 .h1{font-weight:900;font-size:64px;letter-spacing:-.04em;line-height:.9;text-transform:uppercase;margin-top:22px}
 .hl{color:var(--blue)}
 .rule{height:3px;background:var(--ink);margin:18px 0 30px}
-.grid{display:grid;grid-template-columns:repeat(3,1fr);column-gap:26px;row-gap:38px}
-.card{display:flex;flex-direction:column}
-.imw{position:relative;border:2.5px solid var(--ink);box-shadow:5px 6px 0 var(--ink);background:#E4E4E1;line-height:0}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);column-gap:26px;row-gap:52px}
+.card{position:relative;padding-top:48px;display:flex;flex-direction:column}
+/* карточка автора — крупнее, небрежно выглядывает из-за постера */
+.author{position:absolute;top:0;z-index:1;display:inline-flex;align-items:center;gap:11px;background:var(--paper);border:2.5px solid var(--ink);box-shadow:4px 5px 0 var(--ink);padding:7px 16px 7px 7px}
+.author.l{left:-8px;transform-origin:left bottom}
+.author.r{right:-8px;transform-origin:right bottom}
+.av{width:56px;height:56px;object-fit:cover;border:2px solid var(--ink);flex:0 0 auto}
+.ainfo{display:flex;flex-direction:column;gap:3px}
+.ainfo .nm{font-family:var(--mono);font-weight:700;font-size:13.5px;color:var(--ink);max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ainfo .dt{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.imw{position:relative;z-index:2;border:2.5px solid var(--ink);box-shadow:5px 6px 0 var(--ink);background:#E4E4E1;line-height:0}
 .cov{width:100%;height:230px;object-fit:cover;display:block}
 .cov.ph{height:230px}
-.cat{position:absolute;top:9px;left:9px;color:#fff;font-family:var(--sans);font-weight:900;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;padding:4px 8px;border:1.5px solid var(--ink);box-shadow:1.5px 1.5px 0 var(--ink)}
+.cat{position:absolute;bottom:9px;left:9px;color:#fff;font-family:var(--sans);font-weight:900;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;padding:4px 8px;border:1.5px solid var(--ink);box-shadow:1.5px 1.5px 0 var(--ink)}
 .ttl{font-weight:800;font-size:20px;line-height:1.08;letter-spacing:-.02em;color:var(--ink);margin-top:14px}
-.by{display:flex;align-items:center;gap:8px;margin-top:11px}
-.av{width:26px;height:26px;object-fit:cover;border:2px solid var(--ink);flex:0 0 auto}
-.nm{font-family:var(--mono);font-weight:700;font-size:12px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.dt{font-family:var(--mono);font-size:11px;color:var(--muted);margin-left:auto;flex:0 0 auto}
 .exc{font-size:13.5px;line-height:1.42;color:#5f5d57;margin-top:10px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .foot{font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:40px}"""
 
