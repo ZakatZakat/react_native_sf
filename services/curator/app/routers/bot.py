@@ -23,6 +23,7 @@ import asyncio
 import base64
 import binascii
 import hashlib
+import json
 import logging
 from datetime import datetime
 
@@ -307,6 +308,7 @@ class BroadcastReq(BaseModel):
     as_document: bool = False   # true → sendDocument (без сжатия Telegram), иначе sendPhoto
     dry_run: bool = False
     photo_b64: str | None = None  # PNG в base64 (без data:-префикса)
+    photos_b64: list[str] | None = None  # ≥2 PNG в base64 → альбом (sendMediaGroup), подпись у первой
     filename: str = "digest.png"
 
 
@@ -344,6 +346,12 @@ async def broadcast(
             photo_bytes = base64.b64decode(req.photo_b64)
         except (binascii.Error, ValueError) as e:
             raise HTTPException(400, f"bad photo_b64: {e}")
+    photos_bytes: list[bytes] = []
+    if req.photos_b64:
+        try:
+            photos_bytes = [base64.b64decode(pb) for pb in req.photos_b64]
+        except (binascii.Error, ValueError) as e:
+            raise HTTPException(400, f"bad photos_b64: {e}")
     caption, parse_mode = req.caption, req.parse_mode
     text = req.text
     fname = req.filename or "digest.png"
@@ -353,7 +361,19 @@ async def broadcast(
     sent, failed, errors = 0, 0, []
     for cid in recipients:
         try:
-            if photo_bytes is not None:
+            if len(photos_bytes) >= 2:  # альбом
+                media, files = [], {}
+                for i, pb in enumerate(photos_bytes):
+                    key = f"photo{i}"
+                    files[key] = (f"{i}.png", pb, "image/png")
+                    item = {"type": "photo", "media": f"attach://{key}"}
+                    if i == 0 and caption:
+                        item["caption"] = caption
+                        item["parse_mode"] = parse_mode
+                    media.append(item)
+                await _tg_post(token, "sendMediaGroup",
+                               data={"chat_id": str(cid), "media": json.dumps(media)}, files=files)
+            elif photo_bytes is not None:
                 data = {"chat_id": str(cid)}
                 if caption:
                     data["caption"] = caption
