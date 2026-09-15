@@ -1,0 +1,55 @@
+# CitySignal · библиотека дизайн-форматов постов
+
+Шаблоны картинок для канала **@city_signalll** в фирменном стиле. Каждый формат —
+самодостаточный Python-генератор (собирает HTML → рендер в PNG через Chrome/Playwright)
++ пример-картинка. Меняются только данные (события/дата/заголовок), дизайн зафиксирован.
+
+Смежный, более «карточный» формат дайджеста (masonry-коллаж с постерами) живёт в
+skill `citysignal-digest` — см. память `citysignal-digest`.
+
+## Фирменные константы
+
+- Цвета: `--ink #0D0D0D`, `--blue #0055FF`, `--red #E0162B`, фон-«миллиметровка` `--ground #ECEBE6` (сетка 28px), плейсхолдер-постер `#E4E4E1`.
+- Шапка: lockup **CITY|SIGNAL** (City на чёрном + Signal на синем) + мета теми же бейджами (`.dstamp` дата, `.stamp`/`.pick` плашки, `.tag` теги).
+- Штамп-бейджи: белый блок + рамка 2px + смещённая тень (синяя/чёрная). Даты — mono.
+- Категории (для маркеров/точек): выставки=ink, музыка/клубы=blue, кино/сцена=red.
+
+## Форматы
+
+| Файл | Формат | Когда постить |
+|---|---|---|
+| `week-digest.py` | **Недельный дайджест** — вся неделя по дням, одна панель / 2 CSS-колонки без пустот. Флагман. | Понедельник (якорь недели) |
+| `week-picks.py` | **«Выбор недели»** — редакторский serif-индекс: крупное имя + мини-постер + дата. | Раз в неделю, альтернатива/дополнение дайджесту |
+| `spotlight.py` | **Спотлайт одного события** — большой постер + фирменная рамка (дата, «выбор редакции», тайтл, площадка, теги). | Будни, точечный анонс выставки/события |
+
+Примеры — `*.example.jpg` рядом с каждым генератором.
+
+## Как пересобрать
+
+Нужен Chrome + Playwright (`pip install playwright && playwright install chrome`).
+Генераторы, где данные тянутся из ленты (`week-picks.py`, `spotlight.py`), ходят в
+`citysignal.digital-assistant.tech/curator`. Правишь данные вверху файла, затем:
+
+```bash
+python3 week-picks.py            # соберёт week-picks.html
+# рендер в PNG:
+python3 - <<'PY'
+from playwright.sync_api import sync_playwright; import pathlib
+html=pathlib.Path("week-picks.html").read_text(encoding="utf-8")
+with sync_playwright() as p:
+    b=p.chromium.launch(channel="chrome")
+    pg=b.new_page(viewport={"width":1100,"height":1000},device_scale_factor=2)
+    pg.set_content(html, wait_until="load"); pg.wait_for_timeout(400)
+    pg.screenshot(path="week-picks.png", full_page=True); b.close()
+PY
+```
+
+Ширина вьюпорта под формат: week-digest ≈1180, week-picks ≈1100, spotlight ≈940.
+
+## Постинг
+
+Картинка + подпись → в канал и/или рассылкой одним вызовом
+`POST /curator/tg/broadcast?as_user=1838615751` (`channel:"@city_signalll"` или
+`target:"subscribers"`, `photo_b64`, `caption`, `parse_mode:"HTML"`). Ссылки в подписи
+`<a href>` не считаются в лимит 1024 — влезает вводный абзац + все ссылки. Подробнее —
+память `citysignal-artweek-post`.
