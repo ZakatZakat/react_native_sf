@@ -47,7 +47,9 @@ export function makeCSStyle(dark: boolean): StyleSpecification {
       // (MapIntro), NOT feature-state — MapTiler reuses building ids across
       // tiles, so feature-state bled onto same-id buildings elsewhere.
       { id: "cs-building", type: "fill", source: "composite", "source-layer": "building", minzoom: 13,
-        paint: { "fill-color": P.building, "fill-outline-color": P.bout, "fill-opacity": ["interpolate", ["linear"], ["zoom"], 13, 0, 14, 0.92] } },
+        // Контуры домов проявляются РЕЗЧЕ (13→13.4, не 13→14): как только появились
+        // тайлы зданий — сразу видно застройку, без долгого «проявления».
+        paint: { "fill-color": P.building, "fill-outline-color": P.bout, "fill-opacity": ["interpolate", ["linear"], ["zoom"], 13, 0, 13.4, 0.92] } },
       { id: "cs-road-casing", type: "line", source: "composite", "source-layer": "transportation",
         filter: ["match", ["get", "class"], ["motorway", "trunk", "primary", "secondary", "tertiary", "minor"], true, false],
         layout: { "line-cap": "round", "line-join": "round" },
@@ -80,9 +82,12 @@ export function makeCSStyle(dark: boolean): StyleSpecification {
       // улиц не участвуют в тесте глубины и иначе просвечивают сквозь дома.
       // Такой порядок слоёв даёт домам закрашивать перекрываемые ими улицы, а
       // подписи (ниже по списку) остаются сверху — текст не прячется под дома.
-      { id: "cs-building-3d", type: "fill-extrusion", source: "composite", "source-layer": "building", minzoom: 14,
+      // 3D-дома появляются РАНЬШЕ (minzoom 13.5, было 14) и почти сразу выходят
+      // на ПОЛНУЮ высоту (13.5→14.4, было 14→15.5) — раньше дома медленно
+      // «вырастали» аж до z15.5, отсюда ощущение «отрисовываются при приближении».
+      { id: "cs-building-3d", type: "fill-extrusion", source: "composite", "source-layer": "building", minzoom: 13.5,
         paint: { "fill-extrusion-color": P.b3d,
-          "fill-extrusion-height": ["interpolate", ["linear"], ["zoom"], 14, 0, 15.5, ["coalesce", ["to-number", ["get", "render_height"]], 8]],
+          "fill-extrusion-height": ["interpolate", ["linear"], ["zoom"], 13.5, 0, 14.4, ["coalesce", ["to-number", ["get", "render_height"]], 8]],
           "fill-extrusion-base": ["coalesce", ["to-number", ["get", "render_min_height"]], 0],
           "fill-extrusion-opacity": 0.95 } },
       { id: "cs-road-label", type: "symbol", source: "composite", "source-layer": "transportation_name", minzoom: 13,
