@@ -14,6 +14,16 @@ import { CS_STYLE_LIGHT } from "./csMapStyle"
 // Same intro view MapIntro opens at — so the prewarm fetches the right tiles.
 const MSK: [number, number] = [37.62, 55.745]
 
+// Прогреваем тайлы зданий ТОЛЬКО по Центру (самый плотный по событиям район —
+// туда заходят чаще всего). Ключ MapTiler общий и лимитирован, поэтому греем один
+// район (~10-12 тайлов), а не все пять (~60 на каждый вход). [lng, lat].
+// z14 — предел building-слоя OpenMapTiles; z15+ во вьюхе берётся overzoom'ом из
+// этих же тайлов, так что одного z14-прогрева хватает и для более близких зумов.
+const WARM_TARGETS: [number, number][] = [
+  [37.6190, 55.7587], // Центр (Бульварное)
+]
+const WARM_ZOOM = 14
+
 export default function CsLoading() {
   const navigate = useNavigate()
   const [pct, setPct] = useState(0)
@@ -31,6 +41,7 @@ export default function CsLoading() {
     const el = warmRef.current
     if (!el) return
     let map: maplibregl.Map | null = null
+    let alive = true
     try {
       map = new maplibregl.Map({
         container: el,
@@ -39,8 +50,20 @@ export default function CsLoading() {
         interactive: false, attributionControl: false, antialias: false, fadeDuration: 0,
       })
       map.on("error", () => { /* warm is best-effort — ignore tile/style errors */ })
+      // После обзорных тайлов — прогреваем тайлы ЗДАНИЙ (z14) по WARM_TARGETS
+      // (сейчас — Центр), чтобы при заходе вглубь дома рисовались из HTTP-кэша,
+      // без сетевой паузы. Идём по одной цели за раз (по событию `idle`), иначе
+      // MapLibre отменяет ещё не догруженные тайлы при следующем прыжке. Best-effort.
+      let i = 0
+      const warmNext = () => {
+        if (!alive || !map || i >= WARM_TARGETS.length) return
+        const m = map
+        m.jumpTo({ center: WARM_TARGETS[i++], zoom: WARM_ZOOM, pitch: 0, bearing: 0 })
+        m.once("idle", warmNext)
+      }
+      map.once("idle", warmNext)
     } catch { /* no WebGL context available — skip warming */ }
-    return () => { try { map?.remove() } catch { /* noop */ } }
+    return () => { alive = false; try { map?.remove() } catch { /* noop */ } }
   }, [])
 
   useEffect(() => {
