@@ -973,6 +973,37 @@ type FeedView = "diary" | "board" | "journal"
 type FeedEdge = "thin" | "bold" | "card" | "mat"
 type FeedBtn = "a" | "b" | "c"
 
+// Deep-link из канала: t.me/citysignalllbot?startapp=e<id> открывает мини-апп сразу
+// на карточке события (там «Иду» + напоминание). Читаем Telegram start_param (плюс
+// ?startapp / #tgWebAppStartParam как запасные), один раз находим событие по id и
+// открываем его модалку. Нет совпадения — тихо ничего не делаем.
+function DeepLinkOpener({ events }: { events: Ev[] }) {
+  const open = useOpenEvent()
+  const fired = useRef(false)
+  useEffect(() => {
+    if (fired.current || !events.length) return
+    let param: string | undefined
+    try {
+      param = (window as unknown as { Telegram?: { WebApp?: { initDataUnsafe?: { start_param?: string } } } })
+        .Telegram?.WebApp?.initDataUnsafe?.start_param
+    } catch { /* noop */ }
+    if (!param && typeof window !== "undefined") {
+      try {
+        const u = new URL(window.location.href)
+        param = u.searchParams.get("startapp") || u.searchParams.get("event") || undefined
+        if (!param && window.location.hash) {
+          param = new URLSearchParams(window.location.hash.replace(/^#/, "")).get("tgWebAppStartParam") || undefined
+        }
+      } catch { /* noop */ }
+    }
+    const m = String(param || "").match(/^e?(\d+)$/)
+    if (!m) return
+    const ev = events.find((e) => String(e.id) === m[1])
+    if (ev) { fired.current = true; open(ev) }
+  }, [events, open])
+  return null
+}
+
 export default function CsFeed() {
   const navigate = useNavigate()
   const { derived } = useDerived()
@@ -1058,6 +1089,7 @@ export default function CsFeed() {
     <NavCtx.Provider value={navValue}>
       <GoingProvider>
         <EventModalProvider>
+          <DeepLinkOpener events={allEvents} />
           <EdgeCtx.Provider value={edge}>
             {/* relative + 100dvh gives the absolute children a real
                 positioning context (the App's Chakra Container is static
