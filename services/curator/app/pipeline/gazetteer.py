@@ -70,7 +70,7 @@ VENUES: tuple[Venue, ...] = (
           ("школа родченко", "rodchenko")),
     Venue("zverev", 55.7720, 37.6840, ("@zverevcenter",),
           ("зверевский центр", "новорязанская 29")),
-    Venue("fabrika", 55.7805, 37.6720, ("@cci_fabrika",),
+    Venue("fabrika", 55.779663, 37.689703, ("@cci_fabrika",),
           ("цти фабрика", "переведеновский 18")),
     Venue("nekrasovka", 55.7710, 37.6790, ("@nekrasovkalibrary",),
           ("библиотека некрасова", "библиотека некрасовка",)),
