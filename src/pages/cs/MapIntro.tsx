@@ -487,7 +487,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   // from clustering: doing that mutated a global Set → re-clustered + re-sorted →
   // the explode effect re-ran and the dense «Центр» fans reshuffled/repositioned
   // for the first few seconds as posters streamed in («всё летает при открытии»).
-  const [headOpen, setHeadOpen] = useState(true) // heading card collapse
+  const [headOpen, setHeadOpen] = useState(false) // heading card collapse (свёрнут по умолчанию)
   const [filtersOpen, setFiltersOpen] = useState(false) // компактные фильтры «Когда/Что» свёрнуты по умолчанию
   const [catFilter, setCatFilter] = useState<Set<string>>(() => new Set()) // мульти-фильтр карты по категориям (пусто = все)
   const [dateFilter, setDateFilter] = useState<string>("all") // одиночный фильтр по дате: all|today|tomorrow|weekend|week
