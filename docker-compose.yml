@@ -24,10 +24,10 @@ services:
       - traefik.docker.network=traefik-public
       - traefik.constraint-label=traefik-public
       - traefik.http.services.citysignal-frontend.loadbalancer.server.port=80
-      - traefik.http.routers.citysignal-frontend-http.rule=(Host(`${DOMAIN}`) || Host(`city-signalll.xyz`))
+      - traefik.http.routers.citysignal-frontend-http.rule=Host(`city-signalll.xyz`)
       - traefik.http.routers.citysignal-frontend-http.entrypoints=http
       - traefik.http.routers.citysignal-frontend-http.middlewares=https-redirect
-      - traefik.http.routers.citysignal-frontend-https.rule=(Host(`${DOMAIN}`) || Host(`city-signalll.xyz`))
+      - traefik.http.routers.citysignal-frontend-https.rule=Host(`city-signalll.xyz`)
       - traefik.http.routers.citysignal-frontend-https.entrypoints=https
       - traefik.http.routers.citysignal-frontend-https.tls=true
       - traefik.http.routers.citysignal-frontend-https.tls.certresolver=le
@@ -78,12 +78,12 @@ services:
       - traefik.constraint-label=traefik-public
       - traefik.http.services.citysignal-api.loadbalancer.server.port=8000
       - traefik.http.middlewares.citysignal-api-strip.stripprefix.prefixes=/api
-      - traefik.http.routers.citysignal-api-https.rule=(Host(`${DOMAIN}`) || Host(`city-signalll.xyz`)) && PathPrefix(`/api`)
+      - traefik.http.routers.citysignal-api-https.rule=Host(`city-signalll.xyz`) && PathPrefix(`/api`)
       - traefik.http.routers.citysignal-api-https.entrypoints=https
       - traefik.http.routers.citysignal-api-https.tls=true
       - traefik.http.routers.citysignal-api-https.tls.certresolver=le
       - traefik.http.routers.citysignal-api-https.middlewares=citysignal-api-strip
-      - traefik.http.routers.citysignal-media-https.rule=(Host(`${DOMAIN}`) || Host(`city-signalll.xyz`)) && PathPrefix(`/media`)
+      - traefik.http.routers.citysignal-media-https.rule=Host(`city-signalll.xyz`) && PathPrefix(`/media`)
       - traefik.http.routers.citysignal-media-https.entrypoints=https
       - traefik.http.routers.citysignal-media-https.tls=true
       - traefik.http.routers.citysignal-media-https.tls.certresolver=le
@@ -118,7 +118,7 @@ services:
       - traefik.constraint-label=traefik-public
       - traefik.http.services.citysignal-curator.loadbalancer.server.port=8003
       - traefik.http.middlewares.citysignal-curator-strip.stripprefix.prefixes=/curator
-      - traefik.http.routers.citysignal-curator-https.rule=(Host(`${DOMAIN}`) || Host(`city-signalll.xyz`)) && PathPrefix(`/curator`)
+      - traefik.http.routers.citysignal-curator-https.rule=Host(`city-signalll.xyz`) && PathPrefix(`/curator`)
       - traefik.http.routers.citysignal-curator-https.entrypoints=https
       - traefik.http.routers.citysignal-curator-https.tls=true
       - traefik.http.routers.citysignal-curator-https.tls.certresolver=le
@@ -171,7 +171,7 @@ services:
       - traefik.docker.network=traefik-public
       - traefik.constraint-label=traefik-public
       - traefik.http.services.citysignal-media-nginx.loadbalancer.server.port=80
-      - traefik.http.routers.citysignal-media-r.rule=(Host(`${DOMAIN}`) || Host(`city-signalll.xyz`)) && PathPrefix(`/media`)
+      - traefik.http.routers.citysignal-media-r.rule=Host(`city-signalll.xyz`) && PathPrefix(`/media`)
       - traefik.http.routers.citysignal-media-r.entrypoints=https
       - traefik.http.routers.citysignal-media-r.tls=true
       - traefik.http.routers.citysignal-media-r.tls.certresolver=le
