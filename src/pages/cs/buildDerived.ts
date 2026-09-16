@@ -231,7 +231,7 @@ const mskDay = (ts: number): number => Math.floor((ts + MSK_MS) / 86400000)
 // Сигнал «это именно ЗАКРЫТИЕ» для однодневных (финисаж / последний день выставки):
 // иначе обычный однодневный концерт получал бы «закрывается сегодня».
 export const CLOSING_RE = /финисаж|финиссаж|последн(ий день|яя неделя|юю неделю)|закрыт(ие|ия) выставк|выставка закрыва|успейте|last day|closing/iu
-export function closingSoon(ev: Ev, within = 7): { days: number; label: string } | null {
+export function closingSoon(ev: Ev, within = 3): { days: number; label: string } | null {
   if (ev.endTs == null) return null
   const endDay = mskDay(ev.endTs)
   const startDay = ev.ts != null ? mskDay(ev.ts) : null
