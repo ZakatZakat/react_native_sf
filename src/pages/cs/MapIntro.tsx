@@ -726,6 +726,9 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const activeCats = catChips.filter((c) => catFilter.has(c.key))
 
   const zoneMlRef = useRef<maplibregl.Marker[]>([])
+  // one-shot: значки районов проигрывают анимацию въезда только при первом
+  // открытии карты (последующие перерисовки — фильтр/догрузка — без анимации).
+  const zonesEnteredRef = useRef(false)
   /** (Re)place the district bubble markers. Runs on map load AND when the feed
    *  data arrives — so zones still appear if the curator responded only after
    *  the map finished loading (they used to be placed once → lost that race). */
@@ -735,6 +738,11 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
     zoneMlRef.current.forEach((m) => m.remove())
     zoneMlRef.current = []
     zoneMarkersRef.current = {}
+    // Анимируем въезд один раз — на первой раскладке, где уже есть реальные
+    // события (если фид ещё не подъехал, ждём его раскладку, чтобы не «попать»
+    // сначала карточками «нет результатов», а потом молча их подменять).
+    const willEnter = !zonesEnteredRef.current && ZONES.some((z) => (byZoneRef.current[z.id]?.length ?? 0) > 0)
+    let placed = 0
     ZONES.forEach((z) => {
       const evs = byZoneRef.current[z.id]
       // Без фильтра — рендерим ВСЕ районы (пустые показывают «нет результатов»).
@@ -742,10 +750,13 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       // выводим — ни зоны, ни карточки «нет результатов».
       if ((catFilter.size || dateFilter !== "all") && (!evs || evs.length === 0)) return
       const el = zoneBubbleEl(z, evs, (id) => onZoneRef.current(id))
+      if (willEnter) { el.classList.add("cs-zone-enter"); el.style.setProperty("--zi", String(placed)) }
       zoneMarkersRef.current[z.id] = el
       const mk = new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([z.dll[1], z.dll[0]]).addTo(map)
       zoneMlRef.current.push(mk)
+      placed++
     })
+    if (willEnter) zonesEnteredRef.current = true
   }
   const placeZonesRef = useRef(placeZones); placeZonesRef.current = placeZones
 
@@ -806,7 +817,11 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         }
         map.on("render", () => { drawLeadersRef.current(); scaleDeckRef.current() })
 
-        placeZonesRef.current() // district bubbles (re-placed later if data was slow)
+        // Значки районов ставит эффект по [byZone, ready] (ниже) — он сработает,
+        // как только setReady(true) переключит ready. Раньше здесь была ещё одна
+        // (немедленная) раскладка, но она тут же перетиралась ready-раскладкой, и
+        // анимация въезда не успевала проиграться. Теперь раскладка ровно одна →
+        // значки красиво «выезжают» с лёгкой паузой после открытия карты.
         // Fixed view anchored on central Moscow — NOT fitBounds, which would
         // centre on the midpoint of whatever districts happen to exist and
         // drift east when only Центр+Восток are populated. Padding offsets the
