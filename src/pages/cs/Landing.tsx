@@ -24,7 +24,6 @@ import { resolvePoster } from "./buildDerived"
 import { PosterRow } from "./PosterRow"
 import { markIntroSeen } from "../../lib/intro"
 import { analytics } from "../../lib/analytics"
-import ColdOpenBar from "./ColdOpenBar"
 
 const K = CS.K
 const W = CS.W
@@ -122,17 +121,8 @@ export default function CsLanding() {
   const { derived } = useDerived()
   const wk = weekMeta()
 
-  // v6 cold-open «Полоса» — plays once per session, the City/Signal lockup
-  // settles into the bar card's banner. While it runs the card's own banner is
-  // hidden (the lockup draws it), so there's no double banner.
-  const [coldOpen, setColdOpen] = useState(() => {
-    if (typeof window === "undefined") return false
-    return !sessionStorage.getItem("cs.coldopen.seen")
-  })
-  const dismissColdOpen = () => {
-    try { sessionStorage.setItem("cs.coldopen.seen", "1") } catch { /* noop */ }
-    setColdOpen(false)
-  }
+  // Cold-open «Полоса» (заставка CITY|SIGNAL с разъездом-жалюзи) убрана по
+  // просьбе владельца — лендинг показывается сразу, без шторки.
 
   // Показ лендинга = недельное интро показано → повторные заходы в эту неделю
   // с корня (/) уйдут сразу в ленту (см. router beforeLoad + lib/intro).
@@ -242,8 +232,8 @@ export default function CsLanding() {
             zIndex={5}
             style={{ boxShadow: `5px 5px 0 ${B}`, fontFamily: FONT_SANS, padding: "14px" }}
           >
-            {/* slim banner CITY|SIGNAL — cold-open dock target; hidden while the lockup is in flight */}
-            <Box display="flex" style={{ height: 26, visibility: coldOpen ? "hidden" : "visible" }}>
+            {/* slim banner CITY|SIGNAL */}
+            <Box display="flex" style={{ height: 26 }}>
               <Box style={{ width: 108, background: K, display: "flex", alignItems: "center", paddingLeft: 10 }}>
                 <span style={{ fontWeight: 900, fontSize: 15, letterSpacing: "-0.05em", textTransform: "uppercase", color: W }}>City</span>
               </Box>
@@ -304,9 +294,6 @@ export default function CsLanding() {
         <Flex as="span" align="center" justify="center" style={{ fontSize: 26, fontWeight: 900, width: 40, height: 40, background: B, color: W, flexShrink: 0 }}>→</Flex>
       </Flex>
 
-      {/* v6 cold-open «Полоса» — overlay; the City/Signal lockup settles into
-          the card banner above, then this is removed (once per session). */}
-      {coldOpen && <ColdOpenBar onDone={dismissColdOpen} />}
     </Box>
   )
 }
