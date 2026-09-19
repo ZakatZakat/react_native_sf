@@ -920,10 +920,10 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       // Fit all fans by ZOOMING OUT to a zoom WE compute (Web-Mercator fit),
       // not map.cameraForBounds — the latter silently folds in the map's
       // leftover padding and returned null/oddly-low zooms here. The overview
-      // is kept at a GENTLE pitch so the flat fit stays honest (at 52° the edge
-      // venues Черкизовская↔Пролетарская slide off the sides) and reads clearer.
-      // Level 2 tilts back to 52 for the cinematic building view.
-      const OVERVIEW_PITCH = 30
+      // При заходе в РАЙОН камера ложится в 2D (pitch 0) — 3D мешает искать и
+      // тапать точки, а плоский вид кадрирует честнее (при 52° крайние венью
+      // Черкизовская↔Пролетарская уезжали за края). Обзор районов остаётся 3D.
+      const OVERVIEW_PITCH = 0
       // Frame the CURRENT PAGE's pins — NOT the whole district. Fitting every
       // venue (incl. those on later pages) reserved an empty band for pins that
       // aren't drawn yet: a page's few venues bunched at the top with dead space
@@ -1046,7 +1046,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         leadersRef.current = [{ card: cl.ll, target: g0, i: 0 }]
         drawLeadersRef.current()
         paintActiveRef.current(cl.members[0])
-        map.easeTo({ center: [g0[1], g0[0]], offset: [0, 235], zoom: 15.0, pitch: 52, bearing: -14, duration: 700 })
+        map.easeTo({ center: [g0[1], g0[0]], offset: [0, 235], zoom: 15.0, pitch: 0, bearing: -14, duration: 700 })
       }
     }
     return () => { if (pendingMoveend) map.off("moveend", pendingMoveend) }
@@ -1067,7 +1067,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
     // камера мягко кадрирует дом ниже центра — под постами видно выделенный дом.
     if (Array.isArray(g)) {
       deckMarkerRef.current?.setLngLat([g[1], g[0]])
-      mapRef.current?.easeTo({ center: [g[1], g[0]], offset: [0, 235], zoom: 15.0, pitch: 52, bearing: -14, duration: 450 })
+      mapRef.current?.easeTo({ center: [g[1], g[0]], offset: [0, 235], zoom: 15.0, pitch: 0, bearing: -14, duration: 450 })
     }
     if (ld && Array.isArray(g)) ld.target = g as [number, number]
     drawLeadersRef.current()
