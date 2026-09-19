@@ -203,6 +203,21 @@ const KEYFRAMES = `
   .cs-clu-count { position: absolute; right: -4px; top: -7px; z-index: 6; min-width: 17px; height: 17px; padding: 0 4px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; background: #0055FF; color: #fff; border: 2px solid #fff; border-radius: 999px; font-family: var(--cs-font-mono); font-weight: 700; font-size: 9px; line-height: 1; }
   .cs-clu-num { position: absolute; left: -6px; top: -7px; z-index: 7; width: 19px; height: 19px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; background: #0D0D0D; color: #fff; border: 2px solid #fff; border-radius: 999px; font-family: var(--cs-font-mono); font-weight: 700; font-size: 10px; line-height: 1; }
   .cs-clu-name { margin-top: 4px; max-width: 108px; background: #fff; border: 1.5px solid #0D0D0D; box-shadow: 1.5px 1.5px 0 rgba(13,13,13,0.8); padding: 2.5px 6px 3px; font-family: var(--cs-font-sans); font-weight: 900; font-size: 8px; line-height: 1.18; letter-spacing: 0.02em; text-transform: uppercase; color: #0D0D0D; text-align: center; white-space: normal; overflow-wrap: anywhere; }
+  /* Режим «все места»: подпись облегчена (меньше, тоньше, максимум 2 строки),
+     чтобы 40+ имён не превращались в кашу из тяжёлых коробок. */
+  .cs-clu-named .cs-clu-name { margin-top: 3px; max-width: 84px; background: rgba(255,255,255,0.94); border: 1px solid rgba(13,13,13,0.22); box-shadow: 0 1px 2px rgba(13,13,13,0.28); border-radius: 3px; padding: 1.5px 4px; font-weight: 800; font-size: 7px; line-height: 1.12; letter-spacing: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  /* ЛАКОНИЧНЫЙ маркер «все площадки района/города разом»: один маленький
+     постер-квадрат + счётчик, без веера и без коробки-имени — чтобы 15–40 точек
+     не наезжали. Имена — в нижней ленте мест и при тапе. */
+  .cs-clu-laconic .cs-clu-fan { width: 32px; height: 38px; animation: none; transform: scale(var(--cs-pin-scale, 1)); transform-origin: center bottom; }
+  .cs-clu-laconic .cs-clu-card { width: 28px; height: 34px; margin: -17px 0 0 -14px; border-width: 2px; box-shadow: 1.5px 1.5px 0 rgba(13,13,13,0.4); transform: none; transition: transform 0.18s cubic-bezier(0.22,1,0.36,1); }
+  .cs-clu-laconic:hover .cs-clu-card { transform: translateY(-2px); }
+  .cs-clu-laconic .cs-clu-card-blank { background: rgba(0,85,255,0.35); }
+  .cs-clu-laconic .cs-clu-count { right: -4px; top: -5px; min-width: 14px; height: 14px; font-size: 7.5px; border-width: 1.5px; }
+  /* Подпись-название у лаконичного маркера: лёгкий лейбл БЕЗ коробки, одна
+     строка с многоточием, с плотным белым ореолом — читается над картой, но не
+     перекрывает соседей коробками. Полное имя — в нижней ленте и по тапу. */
+  .cs-clu-laconic .cs-clu-name { margin-top: 3px; max-width: 84px; background: transparent; border: 0; box-shadow: none; padding: 0; font-weight: 800; font-size: 8px; line-height: 1.05; letter-spacing: 0; text-transform: uppercase; color: #0D0D0D; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 0 2px #fff, 0 0 3px #fff, 0 0 4px #fff, 0 1px 1px #fff; }
   .cs-pola { position: relative; width: 158px; z-index: 3; cursor: pointer; display: flex; flex-direction: column; align-items: center; animation: cs-scatter-in 0.45s cubic-bezier(0.22,1,0.36,1) both; animation-delay: calc(var(--si,0) * 0.06s); }
   .cs-pola-card { width: 158px; box-sizing: border-box; background: #fff; border: 2.5px solid #0D0D0D; box-shadow: 3px 4px 0 rgba(13,13,13,0.85); overflow: hidden; transform-origin: bottom center; transition: transform 0.25s cubic-bezier(0.22,1,0.36,1), box-shadow 0.22s ease, border-color 0.2s ease; }
   /* The poster sets the card height: full width at its own aspect ratio, so it

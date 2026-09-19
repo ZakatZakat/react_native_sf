@@ -193,25 +193,27 @@ function clusterByProximity(evs: Ev[], radiusM = 250): Cluster[] {
  *  (matches the numbered list in the sheet) + the event count + a place label.
  *  A lone poster sits upright and centred (no fan tilt). */
 function clusterFanEl(cl: Cluster, gi: number): HTMLElement {
-  const fan = cl.members.filter((e) => e.p).slice(0, 3) // только с постером — без белых карточек
-  const single = fan.length === 1
-  const rots = [-12, 0, 12]
-  const thumbs = fan.map((e, i) =>
-    `<span class="cs-clu-card" style="--zr:${single ? 0 : (rots[i] || 0)}deg;--zz:${single ? 1 : i}"><img src="${esc(e.p as string)}" alt="" data-eid="${esc(e.id)}"/></span>`,
-  ).join("")
+  // ЛАКОНИЧНЫЙ маркер: один небольшой постер площадки + счётчик событий +
+  // подпись-название. Ни веера из 3 карточек, ни белой коробки — при 15–40
+  // точках они наезжали. Имя — ЛЁГКОЙ подписью с белым ореолом (как лейблы на
+  // карте), в одну строку под пином: читается, но не перекрывает соседей.
+  const poster = cl.members.find((e) => e.p)
   const { name } = clusterLabel(cl)
   const wrap = document.createElement("div")
   wrap.className = "cs-scatter-wrap"
   wrap.style.cssText = "display:flex;flex-direction:column;align-items:center;"
   wrap.innerHTML =
-    `<div class="cs-clu${single ? " cs-clu-single" : ""}" style="--si:${gi}"><div class="cs-clu-fan">${thumbs}` +
-    `<span class="cs-clu-num">${gi + 1}</span>` +
+    `<div class="cs-clu cs-clu-laconic" style="--si:${gi}"><div class="cs-clu-fan">` +
+    (poster
+      ? `<span class="cs-clu-card"><img src="${esc(poster.p as string)}" alt="" data-eid="${esc(poster.id)}"/></span>`
+      : `<span class="cs-clu-card cs-clu-card-blank"></span>`) +
     `<span class="cs-clu-count">${cl.members.length}</span></div>` +
     `<div class="cs-clu-name">${esc(name)}</div></div>`
-  // Битый постер (404) → прячем всю карточку, а не только <img> (иначе белый span).
+  // Битый постер (404) → не прячем карточку (иначе пин исчезает), а превращаем
+  // её в аккуратный синий плейсхолдер, чтобы место всё равно было на карте.
   wrap.querySelectorAll("img").forEach((im) => im.addEventListener("error", () => {
-    const card = (im.closest(".cs-clu-card") as HTMLElement | null) ?? (im as HTMLElement)
-    card.style.display = "none"
+    const card = im.closest(".cs-clu-card") as HTMLElement | null
+    if (card) { card.classList.add("cs-clu-card-blank"); im.remove() }
   }))
   return wrap
 }
@@ -494,7 +496,9 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const [deckHidden, setDeckHidden] = useState(false) // hide the deck to reveal the centred building
   // Карта всегда 3D (кинематографичный вид, pitch 52 / bearing −14). Тумблер
   // 2D/3D убран из мини-аппа — оставлен только 3D.
-  const [selZone, setSelZone] = useState<string | null>(null)
+  // Карта открывается СРАЗУ в режиме «все точки» (2D, все площадки города),
+  // без стадии выбора района. Кнопка «Районы» переключает в старый 3D-обзор.
+  const [selZone, setSelZone] = useState<string | null>("__all__")
   const [selCluster, setSelCluster] = useState<number | null>(null)
   const [selPage, setSelPage] = useState(0)  // page within the opened district (Level 1)
   const [evIdx, setEvIdx] = useState(0)
@@ -551,6 +555,20 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
     inner.style.transform = `scale(${s.toFixed(3)})`
   }
   const scaleDeckRef = useRef(scaleDeck); scaleDeckRef.current = scaleDeck
+
+  // Постер-пины «все места» плавно РАСТУТ при приближении карты. Не 1:1 с зумом
+  // (иначе гиганты), а мягко: базовый размер на зуме района (~12), на общем
+  // плане чуть мельче (спокойнее), вблизи — крупнее. Ставим CSS-переменную на
+  // контейнер карты (наследуется всем маркерам), а сам transform — на .cs-clu-fan
+  // (постер), чтобы подписи не масштабировались и оставались читаемыми.
+  const SCATTER_REF_ZOOM = 12
+  const scaleScatter = () => {
+    const map = mapRef.current
+    if (!map) return
+    const s = Math.min(2.4, Math.max(0.8, 1 + (map.getZoom() - SCATTER_REF_ZOOM) * 0.32))
+    map.getContainer().style.setProperty("--cs-pin-scale", s.toFixed(3))
+  }
+  const scaleScatterRef = useRef(scaleScatter); scaleScatterRef.current = scaleScatter
 
   // Highlight ТОЛЬКО здание активного события в деке (то, что ты сейчас листаешь):
   // футпринт → синий дом, иначе (метро/парк/агрегатор без футпринта) → синяя точка.
@@ -693,6 +711,12 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
     const m: Record<string, Cluster[]> = {}
     // sort clusters by event count desc → biggest venues lead each page
     ZONES.forEach((z) => { m[z.id] = clusterByProximity(byZone[z.id]).sort((a, b) => b.members.length - a.members.length) })
+    // «Все места» = ОБЪЕДИНЕНИЕ покластеренных зон. Этот набор отрисовывается на
+    // карте ВСЕГДА (и в «Все места», и при заходе в конкретную зону): выбор зоны
+    // больше НЕ фильтрует площадки, а только центрирует камеру. Порядок стабилен
+    // (зона за зоной, внутри — по числу событий), поэтому индекс кластера
+    // (selCluster) не «плывёт» между перерисовками.
+    m["__all__"] = ZONES.flatMap((z) => m[z.id])
     return m
   }, [byZone])
   const clustersRef = useRef(clustersByZone); clustersRef.current = clustersByZone
@@ -768,10 +792,13 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   // (re)place district bubbles when the feed data lands — covers the case where
   // the curator answered after the map loaded. Skip while a zone is open so an
   // in-flight refresh doesn't disturb the current drill-down.
+  // selZone В ЗАВИСИМОСТЯХ: с дефолтом «__all__» карта стартует НЕ в обзоре
+  // районов, поэтому пузыри надо (пере)ставить в момент возврата в обзор
+  // (selZone → null), а не только при догрузке данных — иначе «Районы» пусты.
   useEffect(() => {
     if (ready && selZone == null) placeZonesRef.current()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [byZone, ready])
+  }, [byZone, ready, selZone])
 
   // create map + zone markers once
   useEffect(() => {
@@ -815,7 +842,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
           boxRef.current.appendChild(svg)
           leaderSvgRef.current = svg
         }
-        map.on("render", () => { drawLeadersRef.current(); scaleDeckRef.current() })
+        map.on("render", () => { drawLeadersRef.current(); scaleDeckRef.current(); scaleScatterRef.current() })
 
         // Значки районов ставит эффект по [byZone, ready] (ниже) — он сработает,
         // как только setReady(true) переключит ready. Раньше здесь была ещё одна
@@ -881,7 +908,9 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       el.classList.toggle("cs-zone-sel", selZone === z.id)
       el.classList.toggle("cs-zone-dim", !!selZone && selZone !== z.id)
       const bub = el.querySelector<HTMLElement>(".cs-zone-bubble")
-      if (bub) bub.style.display = selZone === z.id ? "none" : ""
+      // Пузыри районов — только на экране-обзоре (selZone == null). Как только
+      // показываем площадки (зона/«Все места»), прячем все пузыри.
+      if (bub) bub.style.display = selZone ? "none" : ""
     })
     if (!selZone) { overviewFitRef.current = null; fitAllRef.current(); return }
     // Stop the idle wobble before any programmatic camera move — its per-frame
@@ -889,7 +918,12 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
     // the map's mousedown, so the auto-stop on interaction doesn't trigger).
     pendulumStopRef.current()
 
-    const clusters = clustersRef.current[selZone] || []
+    // ВСЕГДА все площадки города; зона влияет только на центрирование камеры (ниже).
+    const clusters = clustersRef.current["__all__"] || []
+    // Данные ещё не подъехали (кластеров нет) — ничего не рендерим и НЕ двигаем
+    // камеру. Иначе первый пустой прогон зафиксировал бы fitKey и заблокировал
+    // реальный фит, когда события догрузятся (карта осталась бы пустой/серой).
+    if (!clusters.length) return
     if (selCluster == null) {
       // Level 1 — cluster fans at their REAL positions; tap a fan to drill in.
       //
@@ -897,23 +931,16 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       // just flies the camera into the same spot. Spread districts (Восток
       // scatters venues ~4 km) are handled purely by ZOOMING OUT to fit them
       // all in the band between the heading card and the district sheet.
-      // Only the CURRENT PAGE's clusters draw — keeps a dense district (Центр)
-      // uncluttered. The badge number (gi+1) stays GLOBAL so it matches the
-      // numbered sheet list, and tapping still opens the right cluster.
-      // Clamp the page — a stale selPage (district switched to one with fewer
-      // clusters before the reset effect runs) would slice past the end and draw
-      // an empty map. Mirrors the sheet's clamp below.
-      const pageCount = Math.max(1, Math.ceil(clusters.length / PER_PAGE))
-      const pg = Math.min(selPage, pageCount - 1)
-      const shown = clusters.map((cl, gi) => ({ cl, gi })).slice(pg * PER_PAGE, pg * PER_PAGE + PER_PAGE)
+      // Показываем ВСЕ площадки района разом (и в «Все места», и внутри района) —
+      // без пагинации. Раньше рисовалась только текущая страница (PER_PAGE) ради
+      // разгрузки плотного Центра, но пользователю нужен весь район на 2D-карте
+      // целиком, а не «4 штуки + листалка». Камера-фит ниже сам обрамляет весь
+      // набор, а deOverlap разводит co-located площадки.
+      const shown = clusters.map((cl, gi) => ({ cl, gi }))
       shown.forEach(({ cl, gi }) => {
         const el = clusterFanEl(cl, gi)
         el.style.cursor = "pointer"
         el.addEventListener("click", (ev) => { ev.stopPropagation(); setSelCluster(gi) })
-        // A poster that 404s → hide just that <img> (leaves the card frame as a
-        // clean blank, keeps the fan geometry). NO re-cluster — that was the jank.
-        el.querySelectorAll("img[data-eid]").forEach((im) =>
-          im.addEventListener("error", () => { (im as HTMLElement).style.display = "none" }))
         const m = new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([cl.ll[1], cl.ll[0]]).addTo(map)
         scatterRef.current.push(m)
       })
@@ -942,7 +969,11 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         for (const o of clusters) if (o !== c) best = Math.min(best, kmBetween(c, o))
         return best
       }
-      const pageClusters = shown.map((s) => s.cl)
+      // Камера ЦЕНТРИРУЕТСЯ на выбранной зоне (для «Все места» — на всём городе),
+      // но отрисованы ВСЕ площадки. Поэтому фит считаем по подмножеству зоны, а
+      // рендер (shown) остаётся по всему городу.
+      const fitSet = selZone && selZone !== "__all__" ? (clustersRef.current[selZone] || shown.map((s) => s.cl)) : shown.map((s) => s.cl)
+      const pageClusters = fitSet
       let core = pageClusters.filter((c) => nearestKm(c) <= NEIGHBOR_KM)
       if (core.length < 1) core = pageClusters // page holds only strays → fit them anyway
       // Rotation-invariant fit: frame the pins' bounding CIRCLE (max distance
@@ -980,7 +1011,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
         if (ms.length < 2) return
         const pts = ms.map((mk) => map.project(mk.getLngLat()))
         const off = ms.map(() => ({ x: 0, y: 0 }))
-        const MIN = 80 // ~fan card + place label width, so labels clear too
+        const MIN = 58 // лаконичный маркер — мелкий постер-квадрат (~28px) + счётчик; зазор с запасом, чтобы в плотных углах района постеры не наваливались
         for (let it = 0; it < 40; it++) {
           for (let a = 0; a < ms.length; a++) {
             for (let b = a + 1; b < ms.length; b++) {
@@ -997,14 +1028,36 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
           }
         }
         ms.forEach((mk, i) => mk.setOffset([off[i].x, off[i].y]))
+        // Коллизия ПОДПИСЕЙ (не пинов): имя шире пина и могло касаться соседних.
+        // После разведения пинов замеряем экранные рамки подписей и ЖАДНО
+        // оставляем видимыми только непересекающиеся — приоритет у площадок с
+        // бóльшим числом событий; остальные подписи скрываем (пин с постером и
+        // счётчиком остаётся, имя открывается по тапу). Меряем в rAF: setOffset
+        // применяет transform к DOM лишь на следующем кадре.
+        requestAnimationFrame(() => {
+          const labels = ms.map((mk) => mk.getElement().querySelector(".cs-clu-name") as HTMLElement | null)
+          labels.forEach((el) => { if (el) el.style.visibility = "visible" })
+          const order = ms.map((_, i) => i).sort(
+            (a, b) => (shown[b]?.cl.members.length ?? 0) - (shown[a]?.cl.members.length ?? 0),
+          )
+          const kept: DOMRect[] = []
+          const PAD = 2
+          const overlaps = (r: DOMRect) => kept.some(
+            (k) => r.left < k.right + PAD && r.right > k.left - PAD && r.top < k.bottom + PAD && r.bottom > k.top - PAD,
+          )
+          for (const i of order) {
+            const el = labels[i]
+            if (!el) continue
+            const r = el.getBoundingClientRect()
+            if (r.width === 0 || overlaps(r)) el.style.visibility = "hidden"
+            else kept.push(r)
+          }
+        })
       }
-      // Re-fit per (district, page): each page frames its own pins, so a
-      // multi-page district never leaves a page's venues squeezed to one edge.
-      // The old "fit once per district, never move on paging" left later pages'
-      // venues framed by the FIRST page's camera. The move is a quick ease and
-      // only fires on an explicit page/district change — not the per-frame
-      // re-fit that once caused jank.
-      const fitKey = `${selZone}:${pg}`
+      // Фит один раз на район: без пагинации район целиком обрамляется одним
+      // кадром (по всем его площадкам). Ключ — по selZone; ease срабатывает
+      // только при смене района, а не на каждый кадр.
+      const fitKey = `${selZone}`
       if (overviewFitRef.current !== fitKey) {
         const sameZone = typeof overviewFitRef.current === "string" && overviewFitRef.current.split(":")[0] === selZone
         overviewFitRef.current = fitKey
@@ -1051,7 +1104,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
     }
     return () => { if (pendingMoveend) map.off("moveend", pendingMoveend) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selZone, selCluster, selPage, ready])
+  }, [selZone, selCluster, selPage, ready, clustersByZone])
 
   // Paging the deck: rebuild its front card + re-point the leader at the new
   // active event's building. No camera move — the deck stays put.
@@ -1073,8 +1126,9 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
     drawLeadersRef.current()
   }, [evIdx, selZone, selCluster])
 
-  const activeCluster = selZone != null && selCluster != null ? (clustersByZone[selZone]?.[selCluster] ?? null) : null
-  const deckEvents = activeCluster ? activeCluster.members : (selZone ? byZone[selZone] : [])
+  // selCluster индексирует ЕДИНЫЙ городской набор «__all__» (он и рендерится).
+  const activeCluster = selCluster != null ? (clustersByZone["__all__"]?.[selCluster] ?? null) : null
+  const deckEvents = activeCluster ? activeCluster.members : (selZone ? Object.values(byZone).flat() : [])
   const zoneCount = ZONES.filter((z) => byZone[z.id].length).length
 
   return (
@@ -1196,7 +1250,7 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
           // (jump to that level); the current level is the solid black crumb. This
           // is the ONE place all map navigation lives — the scattered «← Все
           // районы» / «← кластеры» buttons are gone.
-          const zoneName = ZONE_BY_ID[selZone].t
+          const zoneName = selZone === "__all__" ? "Все места" : (ZONE_BY_ID[selZone]?.t ?? "")
           const atCluster = selCluster != null && !!activeCluster
           const past = { display: "inline-flex", alignItems: "center", flexShrink: 0, background: CS.W, border: `2px solid ${CS.K}`, boxShadow: `2px 2px 0 ${CS.K}`, padding: "5px 9px", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "0.02em", textTransform: "uppercase" as const, color: CS.K }
           const now = { display: "inline-block", minWidth: 0, flexShrink: 1, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const, background: CS.K, color: "#fff", border: `2px solid ${CS.K}`, boxShadow: `2px 2px 0 ${CS.B}`, padding: "5px 9px", fontFamily: FONT_SANS, fontWeight: 900, fontSize: 11, letterSpacing: "0.02em", textTransform: "uppercase" as const }
@@ -1348,29 +1402,13 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
           {/* level 1 (clusters): hint to drill in · level 2 (cluster): event carousel */}
           {!activeCluster ? (
             (() => {
-              const all = selZone ? (clustersByZone[selZone] || []) : []
-              const pages = Math.max(1, Math.ceil(all.length / PER_PAGE))
-              const page = Math.min(selPage, pages - 1)
-              const start = page * PER_PAGE
-              const shownCl = all.map((cl, gi) => ({ cl, gi })).slice(start, start + PER_PAGE)
-              const pgBtn = (active: boolean) => ({ minWidth: 26, height: 26, boxSizing: "border-box" as const, border: `2px solid ${CS.K}`, background: active ? CS.B : "#F0EEE7", color: active ? "#fff" : CS.K, fontFamily: FONT_MONO, fontWeight: 700, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 6px", boxShadow: `2px 2px 0 ${CS.K}` })
-              const arwBtn = { ...pgBtn(false), background: CS.K, color: "#fff" }
+              const all = clustersByZone["__all__"] || []
+              // Весь список мест района — без пагинации. Полоса карточек ниже
+              // прокручивается горизонтально (overflowX), как и на карте теперь
+              // выложены все площадки района сразу.
+              const shownCl = all.map((cl, gi) => ({ cl, gi }))
               return (
                 <div>
-                  {pages > 1 && (() => {
-                    const ws = Math.max(0, Math.min(page - 2, pages - 5))
-                    const we = Math.min(pages - 1, ws + 4)
-                    const nums = []
-                    for (let p = ws; p <= we; p++) nums.push(p)
-                    return (
-                      <div style={{ display: "flex", gap: 5, alignItems: "center", padding: "1px 12px 6px" }}>
-                        <button onClick={() => setSelPage(Math.max(0, page - 1))} style={arwBtn}>‹</button>
-                        {nums.map((p) => (<button key={p} onClick={() => setSelPage(p)} style={pgBtn(p === page)}>{p + 1}</button>))}
-                        <button onClick={() => setSelPage(Math.min(pages - 1, page + 1))} style={arwBtn}>›</button>
-                        {we < pages - 1 && <span style={{ fontFamily: FONT_MONO, fontSize: 11, color: "rgba(13,13,13,0.4)" }}>/{pages}</span>}
-                      </div>
-                    )
-                  })()}
                   {/* Постер-карточки мест: фото на всю карточку, имя белым поверх
                       тёмного градиента снизу, чипы номера (совпадает с пином на
                       карте) и счётчика событий. 4 на страницу. Тап → вглубь. */}
