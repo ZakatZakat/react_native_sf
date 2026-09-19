@@ -168,17 +168,15 @@ const KEYFRAMES = `
   .cs-zone-exploded .cs-zone-bubble { opacity: 0; transform: translateX(-50%) scale(0.5); pointer-events: none; transition: opacity 0.25s ease, transform 0.25s ease; }
   .cs-zone-exploded .cs-zone-ring { animation: none; opacity: 0; }
   .cs-zone-exploded .cs-zone-dot { background: #0055FF; }
-  /* Появление значков районов при открытии карты — стаггер-«поп» из точки.
-     fill backwards: до своей очереди значок скрыт (кадр 0%), после — transform
-     возвращается базовому правилу, чтобы hover/выбор/затемнение работали как прежде.
-     Ping-кольцо исключает выбранную зону (у неё свой бесконечный cs-zring). */
-  @keyframes cs-zone-pop { 0% { opacity: 0; transform: translateX(-50%) translateY(9px) scale(0.5); } 62% { opacity: 1; transform: translateX(-50%) translateY(-3px) scale(1.05); } 100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); } }
-  @keyframes cs-zone-dot-pop { 0% { opacity: 0; transform: scale(0); } 62% { opacity: 1; transform: scale(1.55); } 100% { opacity: 1; transform: scale(1); } }
-  @keyframes cs-zone-ring-ping { 0% { opacity: 0.55; transform: scale(0.5); } 100% { opacity: 0; transform: scale(3.2); } }
-  .cs-zone-enter .cs-zone-bubble { animation: cs-zone-pop 0.6s cubic-bezier(0.34,1.56,0.64,1) backwards; animation-delay: calc(var(--zi,0) * 0.11s + 0.15s); }
-  .cs-zone-enter .cs-zone-dot { animation: cs-zone-dot-pop 0.5s cubic-bezier(0.34,1.56,0.64,1) backwards; animation-delay: calc(var(--zi,0) * 0.11s); }
-  .cs-zone-enter:not(.cs-zone-sel) .cs-zone-ring { animation: cs-zone-ring-ping 0.85s ease-out; animation-delay: calc(var(--zi,0) * 0.11s + 0.16s); }
-  @media (prefers-reduced-motion: reduce) { .cs-zone-enter .cs-zone-bubble, .cs-zone-enter .cs-zone-dot, .cs-zone-enter .cs-zone-ring { animation: none; } }
+  /* Появление значков районов — «бумажно-воздушный» заход: карточка мягко
+     всплывает и выравнивает лёгкий наклон, точка тихо проявляется. Без пружины
+     и без радар-кольца («сигнала»). fill backwards: до своей очереди значок скрыт
+     (кадр 0%), после — transform отдаётся базовому правилу (hover/выбор/затемнение). */
+  @keyframes cs-zone-air { 0% { opacity: 0; transform: translateX(-50%) translateY(16px) scale(0.99) rotate(-1.6deg); } 100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1) rotate(0deg); } }
+  @keyframes cs-zone-air-dot { 0% { opacity: 0; transform: scale(0.7); } 100% { opacity: 1; transform: scale(1); } }
+  .cs-zone-enter .cs-zone-bubble { animation: cs-zone-air 0.9s cubic-bezier(0.16,1,0.3,1) backwards; animation-delay: calc(var(--zi,0) * 0.13s + 0.1s); }
+  .cs-zone-enter .cs-zone-dot { animation: cs-zone-air-dot 0.7s ease-out backwards; animation-delay: calc(var(--zi,0) * 0.13s); }
+  @media (prefers-reduced-motion: reduce) { .cs-zone-enter .cs-zone-bubble, .cs-zone-enter .cs-zone-dot { animation: none; } }
   /* empty district — always-visible name + a solid signal-blue «нет результатов» card */
   .cs-zone-empty { cursor: default; }
   .cs-zone-empty .cs-zone-empty-card { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 56px; height: 42px; box-sizing: border-box; padding: 3px 6px; background: #0055FF; border: 2px solid #0D0D0D; box-shadow: 2px 2px 0 #0D0D0D; color: #fff; font-family: var(--cs-font-mono); font-weight: 700; font-size: 6.5px; line-height: 1.25; letter-spacing: 0.01em; text-transform: uppercase; text-align: center; white-space: nowrap; animation: cs-zone-empty-pulse 2.6s ease-in-out infinite; }
