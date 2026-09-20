@@ -496,9 +496,10 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   const [deckHidden, setDeckHidden] = useState(false) // hide the deck to reveal the centred building
   // Карта всегда 3D (кинематографичный вид, pitch 52 / bearing −14). Тумблер
   // 2D/3D убран из мини-аппа — оставлен только 3D.
-  // Карта открывается СРАЗУ в режиме «все точки» (2D, все площадки города),
-  // без стадии выбора района. Кнопка «Районы» переключает в старый 3D-обзор.
-  const [selZone, setSelZone] = useState<string | null>("__all__")
+  // Карта открывается в ОБЗОРЕ РАЙОНОВ (null → пузыри «тапни район»). Тап по
+  // району центрирует камеру на нём, показывая при этом все площадки города
+  // (зона не фильтрует). «Все места» (__all__) — общий план без центрирования.
+  const [selZone, setSelZone] = useState<string | null>(null)
   const [selCluster, setSelCluster] = useState<number | null>(null)
   const [selPage, setSelPage] = useState(0)  // page within the opened district (Level 1)
   const [evIdx, setEvIdx] = useState(0)
@@ -803,9 +804,9 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   // (re)place district bubbles when the feed data lands — covers the case where
   // the curator answered after the map loaded. Skip while a zone is open so an
   // in-flight refresh doesn't disturb the current drill-down.
-  // selZone В ЗАВИСИМОСТЯХ: с дефолтом «__all__» карта стартует НЕ в обзоре
-  // районов, поэтому пузыри надо (пере)ставить в момент возврата в обзор
-  // (selZone → null), а не только при догрузке данных — иначе «Районы» пусты.
+  // selZone В ЗАВИСИМОСТЯХ: пузыри надо (пере)ставить и при ВОЗВРАТЕ в обзор
+  // районов (selZone → null), а не только при догрузке данных — иначе после
+  // захода в зону и обратно «Районы» были бы пусты.
   useEffect(() => {
     if (ready && selZone == null) placeZonesRef.current()
     // eslint-disable-next-line react-hooks/exhaustive-deps
