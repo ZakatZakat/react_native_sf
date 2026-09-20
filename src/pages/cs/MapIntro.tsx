@@ -562,11 +562,22 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   // контейнер карты (наследуется всем маркерам), а сам transform — на .cs-clu-fan
   // (постер), чтобы подписи не масштабировались и оставались читаемыми.
   const SCATTER_REF_ZOOM = 12
+  // Гард против покадровой нагрузки: render-хендлер зовёт это КАЖДЫЙ кадр (в т.ч.
+  // при простом пане), но CSS-переменную (→ пересчёт трансформа у всех маркеров)
+  // переписываем ТОЛЬКО когда масштаб реально изменился (т.е. при зуме). При
+  // пане/простое — дешёвый getZoom + сравнение, без записи в DOM.
+  const pinScaleRef = useRef(-1)
   const scaleScatter = () => {
     const map = mapRef.current
     if (!map) return
     const s = Math.min(2.4, Math.max(0.8, 1 + (map.getZoom() - SCATTER_REF_ZOOM) * 0.32))
-    map.getContainer().style.setProperty("--cs-pin-scale", s.toFixed(3))
+    // Квантуем масштаб до шага 0.05 (визуально незаметно) — во время зума
+    // переменная, а значит и пересчёт трансформа у всех маркеров, срабатывает
+    // в разы реже, чем на каждый под-пиксель зума.
+    const r = Math.round(s * 20) / 20
+    if (r === pinScaleRef.current) return
+    pinScaleRef.current = r
+    map.getContainer().style.setProperty("--cs-pin-scale", String(r))
   }
   const scaleScatterRef = useRef(scaleScatter); scaleScatterRef.current = scaleScatter
 
