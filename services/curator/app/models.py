@@ -524,6 +524,30 @@ class EventRating(Base):
     )
 
 
+class EventReport(Base):
+    """Пользовательский отчёт об ошибке в событии — кнопка «Сообщить об ошибке»
+    под постом в канале ведёт в мини-апп, где юзер выбирает причину. reason —
+    один из фиксированных кодов. Репорт ЭКСПЕРТА (алгоритм-гейт как у оценок)
+    сразу скрывает событие (status=rejected) и удаляет пост из канала; репорт
+    обычного юзера — в лог + пинг владельцу для ручной проверки."""
+
+    __tablename__ = "event_reports"
+    __table_args__ = (
+        Index("ix_event_reports_event", "event_id"),
+        {"schema": SCHEMA},
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    event_id: Mapped[int] = mapped_column(BigInteger, index=True, nullable=False)
+    tg_id: Mapped[int] = mapped_column(BigInteger, index=True, nullable=False)
+    reason: Mapped[str] = mapped_column(String(32), nullable=False)  # dup|source|past|place|time|other
+    author_name: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    channel_msg_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)  # id поста в @city_signalll
+    by_expert: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    acted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)  # эксперт → сразу скрыли/удалили
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), default=datetime.utcnow, nullable=False)
+
+
 class RecommendationEvent(Base):
     """Ивент, вытащенный из редакторского дайджеста (@napervom — статьи на
     Teletype «Выставки/Тусовки недели»). Отдельно от events_curated: это

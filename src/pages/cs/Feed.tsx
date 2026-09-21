@@ -46,6 +46,7 @@ import { analytics } from "../../lib/analytics"
 import { Curator, type Recommendation } from "../../lib/curator"
 import CsFeedLegacy from "./FeedLegacy"
 import MapIntro from "./MapIntro"
+import { ReportSheet } from "./ReportSheet"
 
 const FALLBACK: Ev = {
   id: "—", t: "—", sub: "", v: "—", d: "—", tm: "—",
@@ -977,31 +978,48 @@ type FeedBtn = "a" | "b" | "c"
 // на карточке события (там «Иду» + напоминание). Читаем Telegram start_param (плюс
 // ?startapp / #tgWebAppStartParam как запасные), один раз находим событие по id и
 // открываем его модалку. Нет совпадения — тихо ничего не делаем.
+function readStartParam(): string | undefined {
+  let param: string | undefined
+  try {
+    param = (window as unknown as { Telegram?: { WebApp?: { initDataUnsafe?: { start_param?: string } } } })
+      .Telegram?.WebApp?.initDataUnsafe?.start_param
+  } catch { /* noop */ }
+  if (!param && typeof window !== "undefined") {
+    try {
+      const u = new URL(window.location.href)
+      param = u.searchParams.get("startapp") || u.searchParams.get("event") || undefined
+      if (!param && window.location.hash) {
+        param = new URLSearchParams(window.location.hash.replace(/^#/, "")).get("tgWebAppStartParam") || undefined
+      }
+    } catch { /* noop */ }
+  }
+  return param
+}
+
 function DeepLinkOpener({ events }: { events: Ev[] }) {
   const open = useOpenEvent()
   const fired = useRef(false)
+  // Репорт-диплинк (report_e<id>_m<msg>) не зависит от загрузки ленты — id есть
+  // прямо в параметре, поэтому шторку открываем сразу.
+  const reportChecked = useRef(false)
+  const [report, setReport] = useState<{ eventId: number; msgId?: number } | null>(null)
+  useEffect(() => {
+    if (reportChecked.current) return
+    reportChecked.current = true
+    const rm = String(readStartParam() || "").match(/^report_e(\d+)(?:_m(\d+))?$/)
+    if (rm) setReport({ eventId: Number(rm[1]), msgId: rm[2] ? Number(rm[2]) : undefined })
+  }, [])
+  // Обычный диплинк на событие (e<id>) — открывает модалку, нужен загруженный фид.
   useEffect(() => {
     if (fired.current || !events.length) return
-    let param: string | undefined
-    try {
-      param = (window as unknown as { Telegram?: { WebApp?: { initDataUnsafe?: { start_param?: string } } } })
-        .Telegram?.WebApp?.initDataUnsafe?.start_param
-    } catch { /* noop */ }
-    if (!param && typeof window !== "undefined") {
-      try {
-        const u = new URL(window.location.href)
-        param = u.searchParams.get("startapp") || u.searchParams.get("event") || undefined
-        if (!param && window.location.hash) {
-          param = new URLSearchParams(window.location.hash.replace(/^#/, "")).get("tgWebAppStartParam") || undefined
-        }
-      } catch { /* noop */ }
-    }
-    const m = String(param || "").match(/^e?(\d+)$/)
+    const m = String(readStartParam() || "").match(/^e?(\d+)$/)
     if (!m) return
     const ev = events.find((e) => String(e.id) === m[1])
     if (ev) { fired.current = true; open(ev) }
   }, [events, open])
-  return null
+  return report ? (
+    <ReportSheet open onClose={() => setReport(null)} eventId={report.eventId} msgId={report.msgId} />
+  ) : null
 }
 
 export default function CsFeed() {

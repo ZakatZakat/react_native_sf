@@ -25,6 +25,7 @@ import binascii
 import hashlib
 import json
 import logging
+import re
 from datetime import datetime
 
 import httpx
@@ -239,6 +240,15 @@ async def webhook(
             await _send(token, cq_chat_id, FEEDBACK_OK_THANKS)
         return Response(status_code=200)
 
+    # Новый пост в канале: если он про одно событие (несёт диплинк
+    # startapp=e<id> в подписи «Добавить событие»), дорисовываем под ним кнопку
+    # «Сообщить об ошибке». Юзербот-отложка клавиатуру вешать не умеет, поэтому
+    # это делает бот-админ уже после публикации.
+    cp = update.get("channel_post")
+    if isinstance(cp, dict):
+        await _maybe_add_report_button(token, cp)
+        return Response(status_code=200)
+
     msg = update.get("message") or update.get("edited_message")
     if not isinstance(msg, dict):
         return Response(status_code=200)
@@ -296,6 +306,46 @@ async def _tg_post(token: str, method: str, data: dict | None = None, files: dic
         r = await client.post(f"https://api.telegram.org/bot{token}/{method}", data=data, files=files)
     if r.status_code != 200:
         raise RuntimeError(f"{method} {r.status_code}: {r.text[:200]}")
+
+
+REPORT_BOT_USERNAME = "citysignalllbot"  # для диплинка t.me/<bot>?startapp=…
+_STARTAPP_EID_RE = re.compile(r"startapp=e(\d+)")
+
+
+def _extract_event_id(cp: dict) -> int | None:
+    """Достать id события из поста: ссылка «Добавить событие» несёт
+    startapp=e<id>. В HTML-подписи URL лежит в entity, а не в видимом тексте,
+    поэтому смотрим и entity-ссылки, и голый текст/подпись."""
+    for txt_key, ent_key in (("text", "entities"), ("caption", "caption_entities")):
+        for ent in cp.get(ent_key) or []:
+            m = _STARTAPP_EID_RE.search(ent.get("url") or "")
+            if m:
+                return int(m.group(1))
+    m = _STARTAPP_EID_RE.search(f"{cp.get('text') or ''} {cp.get('caption') or ''}")
+    return int(m.group(1)) if m else None
+
+
+async def _maybe_add_report_button(token: str, cp: dict) -> None:
+    """Повесить кнопку «⚠️ Сообщить об ошибке» под новым постом в канале.
+    Только для постов про одно событие (есть диплинк startapp=e<id>). Кнопка —
+    URL на мини-апп с диплинком report_e<id>_m<message_id>: там юзер выбирает
+    причину, а <message_id> нужен, чтобы удалить именно этот пост при репорте
+    эксперта. Ошибки не роняют webhook."""
+    if cp.get("reply_markup"):
+        return  # клавиатура уже есть — не перетираем
+    eid = _extract_event_id(cp)
+    mid = cp.get("message_id")
+    chat_id = (cp.get("chat") or {}).get("id")
+    if not eid or not mid or not chat_id:
+        return
+    deeplink = f"https://t.me/{REPORT_BOT_USERNAME}?startapp=report_e{eid}_m{mid}"
+    markup = {"inline_keyboard": [[{"text": "⚠️ Сообщить об ошибке", "url": deeplink}]]}
+    try:
+        await _tg_post(token, "editMessageReplyMarkup", data={
+            "chat_id": str(chat_id), "message_id": mid, "reply_markup": json.dumps(markup),
+        })
+    except Exception as e:  # noqa: BLE001 — не роняем webhook из-за ответа TG
+        logger.warning("add report button failed (event %s, msg %s): %s", eid, mid, e)
 
 
 class BroadcastReq(BaseModel):

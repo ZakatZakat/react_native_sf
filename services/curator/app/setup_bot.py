@@ -82,7 +82,7 @@ def main() -> int:
         {
             "url": webhook_url,
             "secret_token": webhook_secret(token),
-            "allowed_updates": ["message", "callback_query"],
+            "allowed_updates": ["message", "callback_query", "channel_post"],
             "drop_pending_updates": True,
         },
     )

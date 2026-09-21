@@ -275,6 +275,22 @@ export const Curator = {
       body: JSON.stringify({ text, name }),
     }),
 
+  // Репорт об ошибке в событии (кнопка «⚠️ Сообщить об ошибке» под постом в
+  // канале ведёт сюда через диплинк report_e<id>_m<msg>). reason ∈
+  // dup|source|past|place|time|other; msgId — id поста в канале, чтобы бэкенд
+  // мог удалить именно его при репорте эксперта. Эксперт → событие сразу
+  // скрывается; ответ говорит, сработало ли (expert/acted).
+  reportEvent: (
+    eventId: number | string,
+    reason: string,
+    opts?: { msgId?: number; author?: string | null },
+  ) =>
+    curatorFetch<{ ok: boolean; expert: boolean; acted: boolean }>(`/events/${eventId}/report`, {
+      auth: true,
+      method: "POST",
+      body: JSON.stringify({ reason, msg_id: opts?.msgId ?? null, author: opts?.author ?? null }),
+    }),
+
   // Feedback
   feedback: (eventId: number | string, action: "like" | "hide" | "save" | "dismiss") =>
     curatorFetch(`/me/feedback/${eventId}`, {
