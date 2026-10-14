@@ -18,6 +18,7 @@ services:
         - VITE_OWNER_TG_ID=${OWNER_TG_ID:-}
     env_file: [.env]
     working_dir: /app
+    restart: unless-stopped
     networks: [traefik-public]
     labels:
       - traefik.enable=true
@@ -104,6 +105,7 @@ services:
       # Постеры (том media nginx) — read-only, для перцептивного дедупа по картинке
       MEDIA_LOCAL_DIR: /srv/media
     env_file: [.env]
+    restart: unless-stopped
     volumes:
       - citysignal_media:/srv/media:ro
     depends_on:
