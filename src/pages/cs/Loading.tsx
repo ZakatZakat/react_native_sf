@@ -7,9 +7,8 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
-import maplibregl from "maplibre-gl"
+import type { Map as MlMap } from "maplibre-gl"
 import { CS, FONT_MONO, FONT_SANS, useWordmarkFont } from "./shared"
-import { CS_STYLE_LIGHT } from "./csMapStyle"
 
 // Same intro view MapIntro opens at — so the prewarm fetches the right tiles.
 const MSK: [number, number] = [37.62, 55.745]
@@ -40,29 +39,39 @@ export default function CsLoading() {
   useEffect(() => {
     const el = warmRef.current
     if (!el) return
-    let map: maplibregl.Map | null = null
     let alive = true
-    try {
-      map = new maplibregl.Map({
-        container: el,
-        style: CS_STYLE_LIGHT,
-        center: MSK, zoom: 10.5, pitch: 52, bearing: -14,
-        interactive: false, attributionControl: false, antialias: false, fadeDuration: 0,
-      })
-      map.on("error", () => { /* warm is best-effort — ignore tile/style errors */ })
-      // После обзорных тайлов — прогреваем тайлы ЗДАНИЙ (z14) по WARM_TARGETS
-      // (сейчас — Центр), чтобы при заходе вглубь дома рисовались из HTTP-кэша,
-      // без сетевой паузы. Идём по одной цели за раз (по событию `idle`), иначе
-      // MapLibre отменяет ещё не догруженные тайлы при следующем прыжке. Best-effort.
-      let i = 0
-      const warmNext = () => {
-        if (!alive || !map || i >= WARM_TARGETS.length) return
-        const m = map
-        m.jumpTo({ center: WARM_TARGETS[i++], zoom: WARM_ZOOM, pitch: 0, bearing: 0 })
-        m.once("idle", warmNext)
-      }
-      map.once("idle", warmNext)
-    } catch { /* no WebGL context available — skip warming */ }
+    let map: MlMap | null = null
+    // maplibre + стиль грузим ДИНАМИЧЕСКИ: тяжёлый maplibre-gl теперь в ленивом
+    // чанке карты, а не в начальном бандле. Прогрев тайлов — best-effort, поэтому
+    // асинхронная подгрузка здесь безопасна.
+    void (async () => {
+      try {
+        const [{ default: maplibregl }, { CS_STYLE_LIGHT }] = await Promise.all([
+          import("maplibre-gl"),
+          import("./csMapStyle"),
+        ])
+        if (!alive || !warmRef.current) return
+        map = new maplibregl.Map({
+          container: warmRef.current,
+          style: CS_STYLE_LIGHT,
+          center: MSK, zoom: 10.5, pitch: 52, bearing: -14,
+          interactive: false, attributionControl: false, antialias: false, fadeDuration: 0,
+        })
+        map.on("error", () => { /* warm is best-effort — ignore tile/style errors */ })
+        // После обзорных тайлов — прогреваем тайлы ЗДАНИЙ (z14) по WARM_TARGETS
+        // (сейчас — Центр), чтобы при заходе вглубь дома рисовались из HTTP-кэша,
+        // без сетевой паузы. Идём по одной цели за раз (по событию `idle`), иначе
+        // MapLibre отменяет ещё не догруженные тайлы при следующем прыжке.
+        let i = 0
+        const warmNext = () => {
+          if (!alive || !map || i >= WARM_TARGETS.length) return
+          const m = map
+          m.jumpTo({ center: WARM_TARGETS[i++], zoom: WARM_ZOOM, pitch: 0, bearing: 0 })
+          m.once("idle", warmNext)
+        }
+        map.once("idle", warmNext)
+      } catch { /* no WebGL / не загрузился чанк — просто без прогрева */ }
+    })()
     return () => { alive = false; try { map?.remove() } catch { /* noop */ } }
   }, [])
 

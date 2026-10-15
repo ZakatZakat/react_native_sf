@@ -19,7 +19,7 @@
  *  Spread/Billboard/Combo) is removed per v3 spec.
  */
 
-import { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { lazy, Suspense, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { useNavigate, useSearch } from "@tanstack/react-router"
 import {
   CS, FONT_MONO, FONT_SANS, ScreenBG,
@@ -45,7 +45,9 @@ import { useDerived, useJourneyState } from "./useJourney"
 import { analytics } from "../../lib/analytics"
 import { Curator, type Recommendation } from "../../lib/curator"
 import CsFeedLegacy from "./FeedLegacy"
-import MapIntro from "./MapIntro"
+// Ленивый чанк: MapIntro тянет maplibre-gl (~самая тяжёлая зависимость) — грузим
+// его отдельным чанком только когда реально открывают карту, а не в начальном бандле.
+const MapIntro = lazy(() => import("./MapIntro"))
 import { ReportSheet } from "./ReportSheet"
 
 const FALLBACK: Ev = {
@@ -1132,7 +1134,11 @@ export default function CsFeed() {
                 <div style={{ height: "calc(env(safe-area-inset-top, 0px) + 10px)" }} />
                 {!(view === "board" && showIntro) && inner}
               </div>
-              {view === "board" && showIntro && <MapIntro events={mapEvents} onEnter={dismissIntro} />}
+              {view === "board" && showIntro && (
+                <Suspense fallback={<div style={{ position: "absolute", inset: 0, background: "#e9e7e0" }} />}>
+                  <MapIntro events={mapEvents} onEnter={dismissIntro} />
+                </Suspense>
+              )}
             </div>
           </EdgeCtx.Provider>
         </EventModalProvider>

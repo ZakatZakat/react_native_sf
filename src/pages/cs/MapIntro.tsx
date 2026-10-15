@@ -582,6 +582,40 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
   }
   const scaleScatterRef = useRef(scaleScatter); scaleScatterRef.current = scaleScatter
 
+  // Отсев маркеров за кадром (viewport culling). MapLibre для КАЖДОГО DOM-маркера
+  // каждый кадр репроецирует координату и переписывает transform — при ~60 пинах
+  // (обзор «все места»/районный зум) это заметная нагрузка на пан/зум даже когда
+  // половина пинов вне экрана. На moveend убираем из DOM-карты те, что ушли за
+  // кадр (+35% запас по краям, чтобы они не «моргали» на границе и чтобы учесть
+  // пиксельные сдвиги deOverlap), и возвращаем вернувшиеся. Гео-проверка по
+  // getLngLat() не зависит от deOverlap-offset (тот двигает только на экране).
+  // Дёшево при малом числе пинов — ранний выход, пока их меньше порога.
+  const CULL_MIN = 30
+  const cullScatter = () => {
+    const map = mapRef.current
+    if (!map) return
+    const ms = scatterRef.current
+    if (ms.length < CULL_MIN) return
+    // Экранная проверка (не гео): при pitch 52° getBounds() охватывает пол-города
+    // (до горизонта) → гео-отсев почти ничего не режет. project() даёт реальную
+    // пиксельную позицию пина с учётом наклона — как и deOverlap выше. Запас 25%
+    // по краям: пин у границы не моргает, и перекрывает пиксельные сдвиги
+    // deOverlap (тот двигает пин на экране, не меняя его gps-якорь).
+    const c = map.getContainer()
+    const W = c.clientWidth, H = c.clientHeight
+    if (!W || !H) return
+    const mx = W * 0.25, my = H * 0.25
+    for (const mk of ms) {
+      const p = map.project(mk.getLngLat())
+      const vis = p.x >= -mx && p.x <= W + mx && p.y >= -my && p.y <= H + my
+      const flag = mk as unknown as { _onMap?: boolean }
+      const on = flag._onMap !== false // только что созданный маркер (undefined) = на карте
+      if (vis && !on) { mk.addTo(map); flag._onMap = true }
+      else if (!vis && on) { mk.remove(); flag._onMap = false }
+    }
+  }
+  const cullScatterRef = useRef(cullScatter); cullScatterRef.current = cullScatter
+
   // Highlight ТОЛЬКО здание активного события в деке (то, что ты сейчас листаешь):
   // футпринт → синий дом, иначе (метро/парк/агрегатор без футпринта) → синяя точка.
   // Раньше красили дома ВСЕХ площадок кластера → в районном деке светилось по
@@ -855,6 +889,10 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
           leaderSvgRef.current = svg
         }
         map.on("render", () => { drawLeadersRef.current(); scaleDeckRef.current(); scaleScatterRef.current() })
+        // Viewport-culling пинов: на каждое оседание камеры прячем ушедшие за кадр
+        // маркеры и возвращаем вернувшиеся. Отдельно от render (там каждый кадр) —
+        // getBounds + обход маркеров нужен лишь после движения, а не покадрово.
+        map.on("moveend", () => cullScatterRef.current())
 
         // Значки районов ставит эффект по [byZone, ready] (ниже) — он сработает,
         // как только setReady(true) переключит ready. Раньше здесь была ещё одна
