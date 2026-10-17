@@ -987,9 +987,25 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       // целиком, а не «4 штуки + листалка». Камера-фит ниже сам обрамляет весь
       // набор, а deOverlap разводит co-located площадки.
       const shown = clusters.map((cl, gi) => ({ cl, gi }))
+      // Акцент выбранного района: его площадки получают класс cs-clu-inzone
+      // (крупнее/ярче в CSS), остальные — cs-clu-outzone (мельче, приглушены).
+      // В «Все места» (__all__) акцента нет — все точки равны. Объекты кластеров в
+      // clustersRef.current[selZone] — те же ссылки, что в __all__ (см. clustersByZone),
+      // поэтому членство в зоне проверяется по ссылке через Set.
+      const zoneSet = selZone && selZone !== "__all__" ? new Set(clustersRef.current[selZone] || []) : null
+      let inIdx = 0
       shown.forEach(({ cl, gi }) => {
         const el = clusterFanEl(cl, gi)
         el.style.cursor = "pointer"
+        if (zoneSet) {
+          const inZone = zoneSet.has(cl)
+          el.classList.add(inZone ? "cs-clu-inzone" : "cs-clu-outzone")
+          // Каскад появления (cs-scatter-in, задержка --si × 0.06 с) — по порядку
+          // ВНУТРИ района, а не по глобальному индексу: у последних зон он доходил
+          // до ~3.5 с — тапнул «Юг», а площадки проявлялись только через 3 секунды.
+          const clu = el.querySelector(".cs-clu") as HTMLElement | null
+          clu?.style.setProperty("--si", String(inZone ? Math.min(inIdx++, 10) : 0))
+        }
         el.addEventListener("click", (ev) => { ev.stopPropagation(); setSelCluster(gi) })
         const m = new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([cl.ll[1], cl.ll[0]]).addTo(map)
         scatterRef.current.push(m)
@@ -1013,42 +1029,49 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       const COS_MSK = Math.cos((55.75 * Math.PI) / 180)
       const kmBetween = (a: Cluster, b: Cluster) =>
         Math.hypot((a.ll[0] - b.ll[0]) * 111.32, (a.ll[1] - b.ll[1]) * 111.32 * COS_MSK)
-      const NEIGHBOR_KM = 6
-      const nearestKm = (c: Cluster) => {
-        let best = Infinity
-        for (const o of clusters) if (o !== c) best = Math.min(best, kmBetween(c, o))
-        return best
-      }
       // Камера ЦЕНТРИРУЕТСЯ на выбранной зоне (для «Все места» — на всём городе),
       // но отрисованы ВСЕ площадки. Поэтому фит считаем по подмножеству зоны, а
       // рендер (shown) остаётся по всему городу.
       const fitSet = selZone && selZone !== "__all__" ? (clustersRef.current[selZone] || shown.map((s) => s.cl)) : shown.map((s) => s.cl)
-      const pageClusters = fitSet
-      let core = pageClusters.filter((c) => nearestKm(c) <= NEIGHBOR_KM)
-      if (core.length < 1) core = pageClusters // page holds only strays → fit them anyway
-      // Rotation-invariant fit: frame the pins' bounding CIRCLE (max distance
-      // from the centroid) against the SMALLER usable dimension, so venues never
-      // slide off the sides under the −14° bearing / 30° pitch. The plain
-      // lng/lat box fit put a wide district's venues at the screen edges (the
-      // box diagonal projected to nearly the full width once rotated), and
-      // maplibre's own fitBounds silently no-ops with a non-zero pitch. Centroid
-      // (not box midpoint) centres on the mass; FILL leaves a margin so the fan
-      // cards — which draw ~110px UP from their anchor — clear the heading.
-      const cLat = core.reduce((s, c) => s + c.ll[0], 0) / core.length
-      const cLng = core.reduce((s, c) => s + c.ll[1], 0) / core.length
+      // «Отщепенцев» ищем ТОЛЬКО внутри зоны (fitSet), а не по всему городу: иначе
+      // изолированная внутри Востока площадка (ВДНХ) находила «соседа» через границу
+      // в Центре, не отсеивалась и тащила центр/радиус фита на себя — зум вылетал к
+      // обзорному полу и показывал почти весь город вместо района.
+      const NEIGHBOR_KM = 6
+      const nearestKm = (c: Cluster) => {
+        let best = Infinity
+        for (const o of fitSet) if (o !== c) best = Math.min(best, kmBetween(c, o))
+        return best
+      }
+      let core = fitSet.filter((c) => nearestKm(c) <= NEIGHBOR_KM)
+      if (core.length < 2) core = fitSet // в зоне нет плотного ядра → кадрируем её целиком
+      // Rotation-invariant fit: frame the pins' bounding CIRCLE against the SMALLER
+      // usable dimension, so venues never slide off the sides under the −14° bearing.
+      // Центр кадра — МЕДИАНА координат ядра (устойчива к 1-2 выбросам; среднее
+      // уводило кадр к одинокой площадке → замеренный сдвиг −63,−49 px от центра).
+      // Радиус — 85-й перцентиль расстояний до центра, а НЕ максимум: один далёкий
+      // венью больше не раздувает круг до масштаба города. Крайние площадки зоны
+      // могут частично уйти за край — их достают из нумерованного «Места».
+      const median = (xs: number[]) => {
+        const s = [...xs].sort((a, b) => a - b)
+        const n = s.length
+        return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2
+      }
+      const cLat = median(core.map((c) => c.ll[0]))
+      const cLng = median(core.map((c) => c.ll[1]))
       const COS_C = Math.cos((cLat * Math.PI) / 180)
-      let radiusKm = 0.2 // floor: a lone/tight venue still gets a sensible close zoom
-      core.forEach((c) => {
-        radiusKm = Math.max(radiusKm, Math.hypot((c.ll[0] - cLat) * 111.32, (c.ll[1] - cLng) * 111.32 * COS_C))
-      })
+      const dists = core
+        .map((c) => Math.hypot((c.ll[0] - cLat) * 111.32, (c.ll[1] - cLng) * 111.32 * COS_C))
+        .sort((a, b) => a - b)
+      const radiusKm = Math.max(0.35, dists[Math.min(dists.length - 1, Math.floor(dists.length * 0.85))] ?? 0)
       const W = map.getContainer().clientWidth || 375
       const H = map.getContainer().clientHeight || 812
       const usableMin = Math.max(140, Math.min(W - 40, H - 250 - 300))
-      const FILL = 0.62 // circle spans ~62% of the band → камера чуть выше (шире), больше контекста
+      const FILL = 0.62 // доля полосы между шапкой (250) и шитом «Места» (300), которую занимает круг p85; поля — чтобы постер-карточки (рисуются ~110px вверх от якоря) не лезли на шапку
       const mpp = (radiusKm * 2000) / (usableMin * FILL)
-      // Потолок 12.2 (было 14): при открытии района не приближаемся ближе
-      // «обзорного» уровня — тесные районы держим так же широко, как разрозненные.
-      const zoom = Math.max(10.3, Math.min(12.2, Math.log2((156543 * COS_C) / mpp)))
+      // Пол 11.3 (было 10.3 ≈ обзор всего города — оттого «не зумило» при тапе по
+      // району). Потолок 13.0: тесный район подъезжает ближе, но не в уличный зум.
+      const zoom = Math.max(11.3, Math.min(13.0, Math.log2((156543 * COS_C) / mpp)))
       // camera fit is applied once per district (below, after deOverlap)
 
       // De-overlap: once the camera settles, project every fan to the screen
@@ -1108,7 +1131,10 @@ export default function MapIntro({ events, onEnter }: { events: Ev[]; onEnter: (
       // кадром (по всем его площадкам). Ключ — по selZone; ease срабатывает
       // только при смене района, а не на каждый кадр.
       const fitKey = `${selZone}`
-      if (overviewFitRef.current !== fitKey) {
+      // Пустой район (данные обновились, и в зоне не осталось площадок) даёт NaN
+      // в центре/зуме — maplibre бросает на NaN-координатах. Камеру тогда не трогаем.
+      const fitOk = Number.isFinite(cLat) && Number.isFinite(cLng) && Number.isFinite(zoom)
+      if (overviewFitRef.current !== fitKey && fitOk) {
         const sameZone = typeof overviewFitRef.current === "string" && overviewFitRef.current.split(":")[0] === selZone
         overviewFitRef.current = fitKey
         map.easeTo({

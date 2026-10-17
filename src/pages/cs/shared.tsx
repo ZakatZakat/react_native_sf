@@ -209,7 +209,18 @@ const KEYFRAMES = `
   /* ЛАКОНИЧНЫЙ маркер «все площадки района/города разом»: один маленький
      постер-квадрат + счётчик, без веера и без коробки-имени — чтобы 15–40 точек
      не наезжали. Имена — в нижней ленте мест и при тапе. */
-  .cs-clu-laconic .cs-clu-fan { width: 32px; height: 38px; animation: none; transform: scale(var(--cs-pin-scale, 1)); transform-origin: center bottom; }
+  .cs-clu-laconic .cs-clu-fan { width: 32px; height: 38px; animation: none; transform: scale(calc(var(--cs-pin-scale, 1) * var(--cs-pin-mult, 1))); transform-origin: center bottom; }
+  /* Акцент выбранного района: его площадки КРУПНЕЕ и ярче, площадки других
+     районов — мельче и приглушены. Все городские точки рендерятся всегда (ради
+     стабильного индекса кластера), поэтому выбранный регион выделяем размером,
+     а не скрытием — так понятно, где «твой» район среди всех точек. */
+  .cs-clu-inzone .cs-clu-fan { --cs-pin-mult: 1.22; }
+  .cs-clu-inzone { z-index: 4; }
+  /* Прозрачность — на .cs-clu-fan: на корне маркера её перебивает inline
+     style.opacity от maplibre, а на .cs-clu — анимация cs-scatter-in (fill both). */
+  .cs-clu-outzone .cs-clu-fan { --cs-pin-mult: 0.56; opacity: 0.42; }
+  .cs-clu-outzone { z-index: 1; }
+  .cs-clu-outzone .cs-clu-name { display: none; }
   .cs-clu-laconic .cs-clu-card { width: 28px; height: 34px; margin: -17px 0 0 -14px; border-width: 2px; box-shadow: 1.5px 1.5px 0 rgba(13,13,13,0.4); transform: none; transition: transform 0.18s cubic-bezier(0.22,1,0.36,1); }
   .cs-clu-laconic:hover .cs-clu-card { transform: translateY(-2px); }
   .cs-clu-laconic .cs-clu-card-blank { background: rgba(0,85,255,0.35); }
